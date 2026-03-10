@@ -1,5 +1,4 @@
-﻿import { Header } from "./components/Header";
-import styles from "./landing.module.css";
+import { Header } from "./components/Header";
 import { CapabilitiesSection } from "./sections/CapabilitiesSection";
 import { ContactSection } from "./sections/ContactSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
@@ -12,20 +11,25 @@ import { TestimonialSection } from "./sections/TestimonialSection";
 
 export function LandingPage() {
   return (
-    <div className={styles.page}>
-      <Header />
+    <div className="w-full overflow-x-hidden bg-white text-slate-900">
+      <div className="[zoom:0.92] max-[1320px]:[zoom:1]">
+        <Header />
+        <main>
+          <HeroSection />
+          <HowItWorksSection />
+          <FeaturesSection />
+          <CapabilitiesSection />
+          <SecuritySection />
+        </main>
+      </div>
       <main>
-        <HeroSection />
-        <HowItWorksSection />
-        <FeaturesSection />
-        <CapabilitiesSection />
-        <SecuritySection />
         <TestimonialSection />
         <FaqSection />
-        <ContactSection />
       </main>
-      <FooterSection />
+      <div className="[zoom:0.92] max-[1320px]:[zoom:1]">
+        <ContactSection />
+        <FooterSection />
+      </div>
     </div>
   );
 }
-

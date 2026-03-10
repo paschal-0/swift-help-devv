@@ -11,6 +11,11 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Swift Help",
   description: "Smarter healthcare access, workforce, and AI triage.",
+  icons: {
+    icon: "/jam_medical.png",
+    shortcut: "/jam_medical.png",
+    apple: "/jam_medical.png",
+  },
 };
 
 export default function RootLayout({

@@ -1,13 +1,12 @@
-﻿import { Navbar } from "./Navbar";
-import styles from "../landing.module.css";
+import { containerClass } from "../classes";
+import { Navbar } from "./Navbar";
 
 export function Header() {
   return (
-    <header className={styles.headerWrap}>
-      <div className={styles.container}>
+    <header className="bg-[#e3f2fd] py-[40px] pb-[25px]">
+      <div className={containerClass}>
         <Navbar />
       </div>
     </header>
   );
 }
-
