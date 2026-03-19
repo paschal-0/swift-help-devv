@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const links = [
@@ -15,6 +16,7 @@ const navLinkClass =
   "relative inline-flex h-14 items-center justify-center overflow-hidden rounded-[32px] px-[22px] text-[24px] font-normal tracking-[-0.05em] max-[900px]:h-11 max-[900px]:w-full max-[900px]:px-3.5 max-[900px]:text-[18px]";
 
 export function Navbar() {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState("#home");
 
@@ -105,6 +107,10 @@ export function Navbar() {
         ))}
         <motion.button
           type="button"
+          onClick={() => {
+            setIsMenuOpen(false);
+            router.push("/signup");
+          }}
           className={
             isMenuOpen
               ? "order-4 flex h-[52px] w-full items-center justify-center rounded-[45.14px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[18px] font-normal tracking-[-0.05em] text-[#e3f2fd] min-[901px]:hidden"

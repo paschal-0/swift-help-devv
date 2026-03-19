@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import {
   containerClass,
@@ -56,30 +57,30 @@ export function ContactSection() {
               you.
             </span>
           </p>
-          <div className={`${heroActionsClass} justify-center max-[900px]:hidden`}>
-            <button type="button" className={primaryCtaClass}>
-              Get early access
-              <Image
-                src="/Vector.png"
+            <div className={`${heroActionsClass} justify-center max-[900px]:hidden`}>
+              <Link href="/signup" className={primaryCtaClass}>
+                Get early access
+                <Image
+                  src="/Vector.png"
                 alt=""
                 aria-hidden
                 width={32}
-                height={32}
-                className={ctaIconClass}
-              />
-            </button>
-            <button type="button" className={secondaryLightCtaClass}>
-              Book a demo
-              <Image
-                src="/Vector.png"
+                  height={32}
+                  className={ctaIconClass}
+                />
+              </Link>
+              <Link href="/signup" className={`${secondaryLightCtaClass} !border-white !text-white`}>
+                Book a demo
+                <Image
+                  src="/Vector.png"
                 alt=""
                 aria-hidden
                 width={32}
-                height={32}
-                className={ctaIconClass}
-              />
-            </button>
-          </div>
+                  height={32}
+                  className={`${ctaIconClass} brightness-0 invert`}
+                />
+              </Link>
+            </div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import Typed from "typed.js";
@@ -55,8 +56,8 @@ export function HeroSection() {
               workforce management.
             </p>
             <div className="flex flex-row items-center gap-3 md:flex-row md:gap-4">
-              <button
-                type="button"
+              <Link
+                href="/signup"
                 className={`${primaryCtaClass} max-[900px]:!h-[36px] max-[900px]:!w-[92px] max-[900px]:!min-w-0 max-[900px]:!px-4 max-[900px]:!text-[14px] leading-none transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(21,101,192,0.28)] active:scale-[0.98] md:h-[72px] md:min-w-[295px] md:flex-none md:px-[26px] md:text-[26.53px] md:leading-10`}
               >
                 <span className="md:hidden">Log in</span>
@@ -69,9 +70,9 @@ export function HeroSection() {
                   height={32}
                   className={`${ctaIconClass} hidden md:block`}
                 />
-              </button>
-              <button
-                type="button"
+              </Link>
+              <Link
+                href="/signup"
                 className={`${secondaryCtaClass} max-[900px]:!h-[36px] max-[900px]:!w-[104px] max-[900px]:!min-w-0 max-[900px]:!px-4 max-[900px]:!text-[14px] leading-none transition duration-300 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-white/60 active:scale-[0.98] md:h-[66px] md:min-w-[255px] md:flex-none md:px-[26px] md:text-[26.53px] md:leading-10`}
               >
                 <span className="md:hidden">Sign Up</span>
@@ -84,7 +85,7 @@ export function HeroSection() {
                   height={32}
                   className={`${ctaIconDarkClass} hidden md:block`}
                 />
-              </button>
+              </Link>
             </div>
           </motion.div>
 
