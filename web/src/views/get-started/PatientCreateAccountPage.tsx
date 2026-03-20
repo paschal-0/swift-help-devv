@@ -1,179 +1,428 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  defaultCountries,
+  PhoneInput,
+  type CustomFlagImage,
+} from "react-international-phone";
+import * as flagSvgs from "country-flag-icons/string/3x2";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { motion, type Variants } from "framer-motion";
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 },
+  },
+};
+
+const bannerTextContainer: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15, delayChildren: 0.4 },
+  },
+};
+
+const bannerTextChild: Variants = {
+  hidden: { opacity: 0, x: -30 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut" } },
+};
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <path
+        fill="#1877F2"
+        d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.03 4.39 11.02 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.03 1.79-4.7 4.54-4.7 1.32 0 2.7.24 2.7.24v2.98h-1.52c-1.5 0-1.97.94-1.97 1.9v2.28h3.36l-.54 3.49h-2.82V24C19.61 23.09 24 18.1 24 12.07Z"
+      />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <path
+        fill="#111827"
+        d="M16.7 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.8-1.3-.1-2.5.8-3.1.8s-1.6-.8-2.6-.8c-1.3 0-2.6.8-3.3 2-.7 1.2-.9 3.3.6 5.6.7 1.1 1.6 2.4 2.8 2.3 1.1 0 1.6-.7 2.9-.7s1.8.7 2.9.7c1.2 0 2-1.1 2.7-2.2.8-1.2 1.1-2.3 1.1-2.3-.1 0-2.8-1.1-2.8-4.2Zm-2.1-6.4c.6-.7 1-1.6.9-2.5-.9 0-1.9.6-2.6 1.3-.6.7-1.1 1.6-1 2.5 1 0 2-.5 2.7-1.3Z"
+      />
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12.2 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.8 3.4 14.7 2.5 12.2 2.5c-5.2 0-9.5 4.2-9.5 9.4s4.3 9.4 9.5 9.4c5.5 0 9.1-3.8 9.1-9.2 0-.6-.1-1.1-.2-1.6h-8.9Z"
+      />
+      <path
+        fill="#34A853"
+        d="M3.8 7.4 7 9.8c.8-2.4 2.8-4.1 5.2-4.1 1.8 0 3 .8 3.7 1.5l2.5-2.4C16.8 3.4 14.7 2.5 12.2 2.5c-3.7 0-6.9 2.1-8.4 4.9Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M12.2 21.3c2.4 0 4.5-.8 6-2.3l-2.8-2.2c-.7.5-1.8.9-3.2.9-2.4 0-4.4-1.6-5.1-3.8L3.9 16c1.5 2.9 4.6 5.3 8.3 5.3Z"
+      />
+      <path
+        fill="#4285F4"
+        d="M21.3 11.9c0-.6-.1-1.1-.2-1.6h-8.9v3.9h5.4c-.3 1.3-1.1 2.3-2.2 2.9l2.8 2.2c1.6-1.4 3.1-4 3.1-7.4Z"
+      />
+    </svg>
+  );
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+        <path
+          fill="currentColor"
+          d="M2.54 3.69 1.27 4.96l3.03 3.03C3.1 8.94 2.22 10.36 2 12c.46 3.39 3.37 6 7 6 1.01 0 1.97-.2 2.85-.57l3.19 3.19 1.27-1.27L2.54 3.69ZM9 16c-2.24 0-4.15-1.31-5.06-3.2.18-.38.41-.74.69-1.05l1.55 1.55A2.99 2.99 0 0 0 9 16Zm0-6c.34 0 .65.06.95.16l-2.79-2.79C7.75 7.13 8.36 7 9 7c3.63 0 6.54 2.61 7 6-.21 1.55-1.03 2.9-2.25 3.85l-1.43-1.43c.42-.53.68-1.2.68-1.92a3 3 0 0 0-3-3c-.72 0-1.39.26-1.92.68l-1.43-1.43C7.1 10.03 8.45 9.21 10 9c-.32-.21-.66-.38-1-.5Z"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 6c-4.27 0-7.8 2.94-8.73 6 .93 3.06 4.46 6 8.73 6s7.8-2.94 8.73-6C19.8 8.94 16.27 6 12 6Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-6.4A2.4 2.4 0 1 0 12 14.4 2.4 2.4 0 0 0 12 9.6Z"
+      />
+    </svg>
+  );
+}
+
+function SocialButton({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f8fafc] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(30,136,229,0.12)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe]"
+    >
+      {icon}
+    </Link>
+  );
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex w-full flex-col items-start gap-2">
+      <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+const inputClassName =
+  "h-[47px] w-full rounded-[12px] border border-[#94A3B8] bg-transparent px-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none transition duration-300 placeholder:text-[#94A3B8] hover:border-[#64748b] focus:border-[#1e88e5] focus:shadow-[0_0_0_4px_rgba(191,219,254,0.75)]";
+
+const flagSvgMap = flagSvgs as Record<string, string>;
+
+const customFlags: CustomFlagImage[] = defaultCountries.flatMap(([, iso2]) => {
+  const svg = flagSvgMap[iso2.toUpperCase()];
+
+  if (!svg) {
+    return [];
+  }
+
+  return {
+    iso2,
+    src: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+  };
+});
 
 export function PatientCreateAccountPage() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [formValues, setFormValues] = useState({
+    fullName: "",
+    email: "",
+    phone: "+234",
+    password: "",
+  });
+
+  const handleChange =
+    (field: keyof typeof formValues) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setFormValues((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+    };
+
+  const trimmedFullName = formValues.fullName.trim();
+  const trimmedEmail = formValues.email.trim();
+  const normalizedPhone = formValues.phone.replace(/\s+/g, "");
+  const trimmedPassword = formValues.password.trim();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+  const isPhoneValid = normalizedPhone.replace(/[^\d+]/g, "").length >= 10;
+  const isPasswordValid = trimmedPassword.length >= 8;
+  const isFormValid =
+    trimmedFullName.length > 1 &&
+    isEmailValid &&
+    isPhoneValid &&
+    isPasswordValid;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!isFormValid) {
+      return;
+    }
+
+    router.push("/otp");
+  };
+
   return (
-    <section className="bg-[#e2e8f0] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="relative mx-auto h-auto min-h-[957px] w-full max-w-[1280px] overflow-hidden bg-[#e2e8f0] max-[1200px]:min-h-[1580px]">
-        <div className="absolute left-0 top-0 h-[957px] w-[713px] bg-black max-[1200px]:relative max-[1200px]:h-[540px] max-[1200px]:w-full">
-          <Image
-            src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
-            alt="Doctor background"
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-black/65" />
+    <section className="min-h-screen bg-[#E2E8F0]">
+      <div className="relative min-h-screen w-full bg-[#E2E8F0] lg:h-[957px] lg:min-h-0">
+        <div className="relative min-h-[248px] bg-black sm:min-h-[360px] lg:absolute lg:left-0 lg:top-0 lg:h-[957px] lg:min-h-0 lg:w-[calc(100%-629px)]">
+          <motion.div
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="absolute inset-0"
+          >
+            <Image
+              src="/doctor.jpg"
+              alt="Doctor background"
+              fill
+              sizes="(max-width: 1023px) 100vw, 713px"
+              className="object-cover object-[58%_34%] lg:object-center"
+              priority
+              fetchPriority="high"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.34)_0%,rgba(0,0,0,0.42)_58%,rgba(0,0,0,0.12)_100%)] lg:bg-[linear-gradient(180deg,rgba(0,0,0,0.42)_0%,rgba(0,0,0,0.68)_64%,rgba(0,0,0,0.88)_100%)]" />
+          </motion.div>
 
-          <div className="absolute left-[49px] top-[63px] flex h-[66px] w-[184px] items-center p-0 max-[1200px]:left-6 max-[1200px]:top-6">
-            <span className="inline-flex h-[66px] w-[66px] items-center justify-center">
-              <Image
-                src="/jam_medical.png"
-                alt="Swifthelp logo"
-                width={66}
-                height={66}
-                className="h-[66px] w-[66px] object-contain"
-                priority
-              />
-            </span>
-            <span className="text-[28.0396px] font-medium leading-[42px] tracking-[-0.05em] text-[#1e88e5]">
-              Swifthelp
-            </span>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Link
+              href="/"
+              className="absolute left-5 top-4 flex h-[52px] items-center gap-1 transition duration-300 hover:opacity-85 sm:left-6 sm:top-6 lg:left-[49px] lg:top-[63px] lg:h-[66px]"
+            >
+              <span className="inline-flex h-[52px] w-[52px] items-center justify-center lg:h-[66px] lg:w-[66px]">
+                <Image
+                  src="/jam_medical.png"
+                  alt="Swifthelp logo"
+                  width={66}
+                  height={66}
+                  sizes="66px"
+                  className="h-[52px] w-[52px] object-contain lg:h-[66px] lg:w-[66px]"
+                  priority
+                />
+              </span>
+              <span className="text-[22px] font-medium leading-[32px] tracking-[-0.05em] text-[#1E88E5] lg:text-[28.0396px] lg:leading-[42px]">
+                Swifthelp
+              </span>
+            </Link>
+          </motion.div>
 
-          <div className="absolute left-[54px] top-1/2 flex h-[320px] w-[496px] -translate-y-1/2 flex-col items-start gap-8 max-[1200px]:left-6 max-[1200px]:top-[220px] max-[1200px]:h-auto max-[1200px]:w-[86%] max-[1200px]:translate-y-0">
-            <h2 className="m-0 w-[451px] text-[64px] font-semibold leading-[68px] tracking-[-0.05em] text-[#f8fafc] max-[1200px]:w-full max-[1200px]:text-[50px] max-[1200px]:leading-[54px]">
-              Care starts with a secure connection
-            </h2>
-            <p className="m-0 w-full text-[24px] font-light leading-7 tracking-[-0.05em] text-white max-[1200px]:text-[22px]">
-              Create your account to access AI-guided support, book consultations,
-              and manage care with confidence.
-            </p>
-          </div>
+          <motion.div
+            variants={bannerTextContainer}
+            initial="hidden"
+            animate="show"
+            className="absolute inset-x-5 top-[54%] -translate-y-1/2 sm:inset-x-6 sm:bottom-7 sm:top-auto sm:translate-y-0 lg:left-[54px] lg:right-auto lg:top-1/2 lg:bottom-auto lg:w-[496px] lg:-translate-y-1/2"
+          >
+            <div className="flex flex-col items-center gap-3 text-center sm:gap-5 lg:items-start lg:text-left lg:gap-8">
+              <motion.h1
+                variants={bannerTextChild}
+                className="m-0 w-full max-w-[250px] text-[29px] font-semibold leading-[0.98] tracking-[-0.06em] text-[#F8FAFC] sm:max-w-[451px] sm:text-[40px] sm:leading-[42px] lg:text-[64px] lg:leading-[68px]"
+              >
+                <span className="lg:block">Care starts with a secure connection</span>
+              </motion.h1>
+              <motion.p
+                variants={bannerTextChild}
+                className="m-0 max-w-[260px] text-[11px] font-light leading-4 tracking-[-0.04em] whitespace-nowrap text-white/92 sm:hidden lg:block lg:max-w-[496px] lg:text-[24px] lg:leading-[28px] lg:whitespace-normal"
+              >
+                Secure account setup for AI-guided support.
+              </motion.p>
+            </div>
+          </motion.div>
         </div>
 
-        <div className="absolute left-[587px] top-0 h-[957px] w-[693px] rounded-l-[64px] bg-[#f8fafc] max-[1200px]:relative max-[1200px]:left-0 max-[1200px]:h-auto max-[1200px]:w-full max-[1200px]:rounded-none max-[1200px]:pt-10 max-[1200px]:pb-12">
-          <div className="absolute left-1/2 top-[86px] flex h-[66px] w-[341px] -translate-x-1/2 flex-col items-end gap-1 max-[1200px]:relative max-[1200px]:top-0">
-            <h1 className="m-0 w-full text-[36px] font-normal leading-10 tracking-[-0.05em] text-[#334155]">
-              Create your account
-            </h1>
-            <p className="m-0 w-full text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-              Set up your secure account to get started
-            </p>
+        <div className="relative -mt-5 rounded-t-[36px] bg-[#F8FAFC] px-4 pb-6 pt-5 sm:-mt-6 sm:px-5 sm:py-7 lg:mt-0 lg:rounded-none lg:bg-[#F8FAFC] lg:px-0 lg:py-0 lg:absolute lg:right-0 lg:top-0 lg:h-[957px] lg:w-[693px] lg:rounded-l-[64px]">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden lg:rounded-l-[64px]">
+            <div className="absolute right-[12%] top-[16%] h-24 w-24 rounded-full bg-[#e0f2fe]/65 blur-3xl sm:h-28 sm:w-28 lg:h-36 lg:w-36 lg:animate-form-glow lg:bg-[#e0f2fe]/80" />
+            <div className="absolute right-[10%] bottom-[20%] h-24 w-24 rounded-full bg-[#dbeafe]/55 blur-3xl sm:h-28 sm:w-28 lg:h-40 lg:w-40 lg:animate-form-glow-delayed lg:bg-[#dbeafe]/70" />
           </div>
 
-          <div className="absolute left-1/2 top-[170px] h-[42px] w-[186px] -translate-x-1/2 max-[1200px]:relative max-[1200px]:top-5">
-            <Image
-              src="/Frame 58.png"
-              alt="Social sign in options"
-              width={186}
-              height={42}
-              className="h-[42px] w-[186px] object-contain"
-            />
-            <Link
-              href="#"
-              aria-label="Continue with Facebook"
-              className="absolute left-0 top-0 h-[42px] w-[52px]"
-            />
-            <Link
-              href="#"
-              aria-label="Continue with Apple"
-              className="absolute left-[64px] top-0 h-[42px] w-[58px]"
-            />
-            <Link
-              href="#"
-              aria-label="Continue with Google"
-              className="absolute right-0 top-0 h-[42px] w-[52px]"
-            />
-          </div>
-
-          <div className="absolute left-1/2 top-[236px] flex h-[19px] w-[391px] -translate-x-1/2 items-center gap-[10px] max-[1200px]:relative max-[1200px]:top-9">
-            <span className="h-px w-[164px] bg-[#556578]" />
-            <span className="text-[16px] font-normal leading-[120%] text-[#334155]">
-              Or
-            </span>
-            <span className="h-px w-[188px] bg-[#556578]" />
-          </div>
-
-          <div className="absolute left-1/2 top-[280px] h-[543px] w-[491px] -translate-x-1/2 rounded-[32px] bg-white shadow-[0_0_30px_rgba(0,0,0,0.05)] max-[1200px]:relative max-[1200px]:top-12 max-[1200px]:h-auto max-[1200px]:w-[92%] max-[1200px]:max-w-[520px] max-[1200px]:pb-6">
-            <div className="absolute left-[25px] top-[34px] flex h-[356px] w-[440px] flex-col gap-4 max-[1200px]:relative max-[1200px]:left-0 max-[1200px]:top-0 max-[1200px]:h-auto max-[1200px]:w-full max-[1200px]:px-[25px] max-[1200px]:pt-[34px]">
-              <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-                  Full Name
-                </span>
-                <input
-                  type="text"
-                  placeholder="e.g John Doe"
-                  className="h-[47px] rounded-[12px] border border-[#94a3b8] bg-transparent px-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94a3b8]"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-                  Email address
-                </span>
-                <input
-                  type="email"
-                  placeholder="e.g john@dig.com"
-                  className="h-[47px] rounded-[12px] border border-[#94a3b8] bg-transparent px-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94a3b8]"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-                  Phone number
-                </span>
-                <span className="relative block h-[47px] rounded-[12px] border border-[#94a3b8] bg-[#f8fafc]">
-                  <span className="absolute left-0 top-0 inline-flex h-[47px] w-[83px] items-center justify-center gap-2 bg-[#e3f2fd]">
-                    <span className="inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-[3px] border border-[#d2dce8] bg-white">
-                      <span className="h-full w-2 bg-[#009A49]" />
-                      <span className="h-full w-2 bg-[#EEEEEE]" />
-                      <span className="h-full w-2 bg-[#009A49]" />
-                    </span>
-                    <span className="mt-1 h-2 w-2 rotate-45 border-r-[2px] border-b-[2px] border-[#94a3b8]" />
-                  </span>
-                  <input
-                    type="tel"
-                    placeholder="+234"
-                    className="h-full w-full rounded-[12px] border-0 bg-transparent pl-[99px] pr-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#334155]"
-                  />
-                </span>
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
-                  Password
-                </span>
-                <span className="relative block h-[47px] rounded-[12px] border border-[#94a3b8]">
-                  <input
-                    type="password"
-                    placeholder="Not more than 8 characters"
-                    className="h-full w-full rounded-[12px] border-0 bg-transparent px-[18px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94a3b8]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-6 w-6 text-black"
-                      aria-hidden
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M12 5c5.5 0 9.8 4.7 10 7c-.2 2.3-4.5 7-10 7S2.2 14.3 2 12c.2-2.3 4.5-7 10-7m0 3.5A3.5 3.5 0 1 0 12 15.5a3.5 3.5 0 0 0 0-7"
-                      />
-                    </svg>
-                  </span>
-                </span>
-              </label>
-            </div>
-
-            <p className="absolute left-7 top-[418px] m-0 w-[433px] text-[14px] font-semibold leading-[17px] tracking-[-0.05em] text-black max-[1200px]:relative max-[1200px]:left-0 max-[1200px]:top-0 max-[1200px]:mt-7 max-[1200px]:w-full max-[1200px]:px-7">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
-            </p>
-
-            <Link
-              href="/otp"
-              className="absolute bottom-6 left-[29px] inline-flex h-[50px] w-[436px] items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] max-[1200px]:relative max-[1200px]:bottom-0 max-[1200px]:left-0 max-[1200px]:mt-5 max-[1200px]:mx-auto max-[1200px]:w-[calc(100%-58px)]"
+          <div className="relative mx-auto flex max-w-[491px] flex-col items-center lg:pt-[86px]">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="flex w-full flex-col items-center"
             >
-              Next
-            </Link>
-          </div>
+              <motion.div variants={itemVariants} className="flex w-full max-w-[341px] flex-col items-center gap-1.5 text-center">
+                <h2 className="m-0 w-full text-[27px] font-normal leading-[31px] tracking-[-0.055em] text-[#334155] sm:text-[32px] sm:leading-9 lg:text-[36px] lg:leading-10">
+                  Create your account
+                </h2>
+                <p className="m-0 max-w-[280px] text-[13px] font-light leading-[18px] tracking-[-0.04em] text-black sm:max-w-none sm:text-[15px] sm:leading-5 lg:text-[18px] lg:leading-[22px] lg:tracking-[-0.05em]">
+                  Set up your secure account to get started
+                </p>
+              </motion.div>
 
-          <p className="absolute left-[195px] top-[857px] m-0 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black max-[1200px]:relative max-[1200px]:left-0 max-[1200px]:top-[70px] max-[1200px]:text-center">
-            Already have an account?{" "}
-            <Link href="/signup" className="font-semibold text-[#1565c0]">
-              Log in
-            </Link>
-          </p>
+              <motion.div variants={itemVariants} className="mt-4 flex h-[42px] w-[186px] items-center justify-between rounded-full bg-[#f8fafc] px-1 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.16)] sm:mt-5 sm:bg-transparent sm:px-0 sm:shadow-none lg:mt-[18px]">
+                <SocialButton href="#" label="Continue with Facebook" icon={<FacebookIcon />} />
+                <SocialButton href="#" label="Continue with Apple" icon={<AppleIcon />} />
+                <SocialButton href="#" label="Continue with Google" icon={<GoogleIcon />} />
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="mt-5 flex h-[19px] w-full max-w-[391px] items-center gap-[10px] sm:mt-6 lg:mt-7">
+                <span className="h-px flex-1 bg-[#556578]" />
+                <span className="text-[16px] font-normal leading-[120%] text-[#334155]">Or</span>
+                <span className="h-px flex-1 bg-[#556578]" />
+              </motion.div>
+
+              <motion.form
+                variants={itemVariants}
+                onSubmit={handleSubmit}
+                className="mt-5 w-full rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:mt-6 sm:px-5 sm:py-6 lg:animate-form-panel-shadow lg:mt-9 lg:rounded-[32px] lg:px-[25px] lg:py-[34px] lg:shadow-[0_0_30px_rgba(0,0,0,0.05)] lg:h-[543px]"
+              >
+              <div className="flex w-full flex-col gap-4">
+                <div>
+                  <FormField label="Full Name">
+                    <input
+                      type="text"
+                      placeholder="eg John Doe"
+                      className={inputClassName}
+                      value={formValues.fullName}
+                      onChange={handleChange("fullName")}
+                      autoComplete="name"
+                      required
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Email address">
+                    <input
+                      type="email"
+                      placeholder="eg john@dig.com"
+                      className={inputClassName}
+                      value={formValues.email}
+                      onChange={handleChange("email")}
+                      autoComplete="email"
+                      required
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Phone number">
+                    <PhoneInput
+                      defaultCountry="ng"
+                      value={formValues.phone}
+                      onChange={(phone) =>
+                        setFormValues((current) => ({
+                          ...current,
+                          phone,
+                        }))
+                      }
+                      inputProps={{
+                        name: "phone",
+                        autoComplete: "tel",
+                        placeholder: "Phone number",
+                        required: true,
+                      }}
+                      className="swifthelp-phone-input"
+                      inputClassName="swifthelp-phone-input__field"
+                      flags={customFlags}
+                      countrySelectorStyleProps={{
+                        buttonClassName: "swifthelp-phone-input__selector",
+                        dropdownArrowClassName: "swifthelp-phone-input__arrow",
+                      }}
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Password">
+                    <span className="relative block h-[47px] w-full rounded-[12px] border border-[#94A3B8] transition duration-300 hover:border-[#64748b] focus-within:border-[#1e88e5] focus-within:shadow-[0_0_0_4px_rgba(191,219,254,0.75)]">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Not more than 8 characters"
+                        className="h-full w-full rounded-[12px] border-0 bg-transparent px-[18px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+                        value={formValues.password}
+                        onChange={handleChange("password")}
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition duration-300 hover:text-[#1565C0]"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        <EyeIcon open={showPassword} />
+                      </button>
+                    </span>
+                  </FormField>
+                </div>
+              </div>
+
+              <p className="mt-5 w-full text-[12px] font-semibold leading-4 tracking-[-0.04em] text-black sm:text-[13px] sm:leading-4 lg:mt-7 lg:text-[14px] lg:leading-[17px] lg:tracking-[-0.05em]">
+                By continuing, you agree to our Terms of Service and Privacy Policy.
+              </p>
+
+              <button
+                type="submit"
+                disabled={!isFormValid}
+                className="mt-5 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-7 tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none lg:mt-6 lg:text-[20.0088px] lg:leading-[30px]"
+              >
+                Next
+              </button>
+              </motion.form>
+
+              <motion.p variants={itemVariants} className="mt-5 text-center text-[15px] font-light leading-5 tracking-[-0.04em] text-black sm:text-[16px] lg:mt-[30px] lg:text-[18px] lg:leading-[22px] lg:tracking-[-0.05em]">
+                Already have an account?{" "}
+                <Link href="/signup" className="font-semibold text-[#1565C0] hover:text-[#114B7F]">
+                  Log in
+                </Link>
+              </motion.p>
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>
