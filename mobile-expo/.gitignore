@@ -33,6 +33,12 @@ yarn-error.*
 # local env files
 .env*.local
 
+# local toolchains
+.nodejs/
+.nodejs18/
+..nodejsnode.exe
+mobile-expo@1.0.0
+
 # typescript
 *.tsbuildinfo
 
