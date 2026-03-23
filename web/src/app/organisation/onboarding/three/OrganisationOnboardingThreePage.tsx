@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useMemo, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
 type InviteRole = "Admin" | "Professional";
 type TeamFilter = "All" | "Admin" | "Professional";
@@ -111,12 +112,23 @@ export function OrganisationOnboardingThreePage() {
 
   const handleSendInvite = () => {
     const trimmedValue = emailInput.trim();
-    if (!trimmedValue || !/\S+@\S+\.\S+/.test(trimmedValue)) {
+    if (!trimmedValue) {
+      toast.error("Please enter an email address before sending an invite.");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(trimmedValue)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (emailTags.includes(trimmedValue)) {
+      toast.error("This email has already been invited.");
       return;
     }
 
     setEmailTags((current) =>
-      current.includes(trimmedValue) ? current : [...current, trimmedValue],
+      [...current, trimmedValue],
     );
 
     setTeamMembers((current) => [
@@ -135,6 +147,11 @@ export function OrganisationOnboardingThreePage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!shareLink && emailTags.length === 0) {
+      toast.error("Please generate a link or invite at least one team member before continuing.");
+      return;
+    }
   };
 
   return (

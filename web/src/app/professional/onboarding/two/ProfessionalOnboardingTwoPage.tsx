@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 type UploadEntry = {
   id: string;
@@ -229,6 +230,10 @@ export function ProfessionalOnboardingTwoPage() {
       return;
     }
 
+    const oversizedFiles = selectedFiles.filter(
+      (file) => file.size > maxFileSizeInMb * 1024 * 1024,
+    );
+
     const nextUploads = selectedFiles
       .filter((file) => file.size <= maxFileSizeInMb * 1024 * 1024)
       .map((file) => ({
@@ -241,13 +246,27 @@ export function ProfessionalOnboardingTwoPage() {
       setUploads((current) => [...current, ...nextUploads]);
     }
 
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        `${oversizedFiles.length} file(s) were skipped. Maximum allowed size is ${maxFileSizeInMb}MB.`,
+      );
+    }
+
     event.target.value = "";
   };
 
   const handleUrlImport = () => {
-    const nextUpload = createUrlUpload(urlInput.trim());
+    const trimmedUrl = urlInput.trim();
+
+    if (!trimmedUrl) {
+      toast.error("Please paste a file URL before importing.");
+      return;
+    }
+
+    const nextUpload = createUrlUpload(trimmedUrl);
 
     if (!nextUpload) {
+      toast.error("Please enter a valid URL.");
       return;
     }
 
@@ -259,6 +278,7 @@ export function ProfessionalOnboardingTwoPage() {
     event.preventDefault();
 
     if (!isFormValid) {
+      toast.error("Please upload at least one credential document to continue.");
       return;
     }
 

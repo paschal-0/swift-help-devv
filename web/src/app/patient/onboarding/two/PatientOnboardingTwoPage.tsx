@@ -10,6 +10,7 @@ import {
   type SetStateAction,
 } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 type DisclosureChoice = "Yes" | "No" | "Prefer not to say";
 
@@ -488,7 +489,13 @@ export function PatientOnboardingTwoPage({
   const addAllergy = () => {
     const value = allergyInput.trim();
 
-    if (!value || allergies.includes(value)) {
+    if (!value) {
+      toast.error("Please enter an allergy before adding.");
+      return;
+    }
+
+    if (allergies.includes(value)) {
+      toast.error("This allergy has already been added.");
       return;
     }
 
@@ -499,7 +506,13 @@ export function PatientOnboardingTwoPage({
   const addCondition = () => {
     const value = conditionInput.trim();
 
-    if (!value || conditions.includes(value)) {
+    if (!value) {
+      toast.error("Please enter a medical condition before adding.");
+      return;
+    }
+
+    if (conditions.includes(value)) {
+      toast.error("This medical condition has already been added.");
       return;
     }
 
@@ -543,7 +556,19 @@ export function PatientOnboardingTwoPage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      !allergySectionValid
+        ? "Please add at least one allergy or select 'No'."
+        : !conditionSectionValid
+          ? "Please add at least one medical condition or select 'No'."
+          : !medicationSectionValid
+            ? "Please complete all medication fields or select 'No'."
+            : !supplementSectionValid
+              ? "Please complete all supplement fields or select 'No'."
+              : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

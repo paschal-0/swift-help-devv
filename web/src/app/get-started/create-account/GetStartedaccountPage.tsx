@@ -11,6 +11,7 @@ import {
 import * as flagSvgs from "country-flag-icons/string/3x2";
 import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -234,7 +235,19 @@ export function GetStartedaccountPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      trimmedFullName.length <= 1
+        ? "Please enter your full name."
+        : !isEmailValid
+          ? "Please enter a valid email address."
+          : !isPhoneValid
+            ? "Please enter a valid phone number with at least 10 digits."
+            : !isPasswordValid
+              ? "Password must be at least 8 characters long."
+              : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

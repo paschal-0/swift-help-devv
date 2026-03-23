@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { defaultCountries } from "react-international-phone";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const consultationTypes = ["Virtual", "In person", "Both"] as const;
 const specialityOptions = [
@@ -76,7 +77,23 @@ export function ProfessionalOnboardingOnePage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      formValues.professionalName.trim().length === 0
+        ? "Please enter your professional name."
+        : formValues.licenseNumber.trim().length === 0
+          ? "Please enter your license number."
+          : formValues.speciality.trim().length === 0
+            ? "Please select your speciality."
+            : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
+              ? "Please enter a valid years of experience value."
+              : formValues.consultationType.trim().length === 0
+                ? "Please select consultation type offered."
+                : formValues.primaryPracticeLocation.trim().length === 0
+                  ? "Please select your primary practice location."
+                  : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

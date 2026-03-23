@@ -1,5 +1,6 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { ToasterProvider } from "@/components/providers/ToasterProvider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -25,7 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={poppins.variable}>{children}</body>
+      <body className={poppins.variable}>
+        {children}
+        <ToasterProvider />
+      </body>
     </html>
   );
 }

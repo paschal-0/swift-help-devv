@@ -10,6 +10,7 @@ import {
 import * as flagSvgs from "country-flag-icons/string/3x2";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const flagSvgMap = flagSvgs as Record<string, string>;
 
@@ -84,7 +85,21 @@ export function PatientOnboardingOnePage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      formValues.dateOfBirth.trim().length === 0
+        ? "Please select your date of birth."
+        : formValues.gender.trim().length === 0
+          ? "Please select your gender."
+          : formValues.phone.replace(/[^\d+]/g, "").length < 10
+            ? "Please enter a valid phone number with at least 10 digits."
+            : formValues.preferredLocation.trim().length === 0
+              ? "Please select your preferred location."
+              : formValues.consultationType.trim().length === 0
+                ? "Please select your preferred consultation type."
+                : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

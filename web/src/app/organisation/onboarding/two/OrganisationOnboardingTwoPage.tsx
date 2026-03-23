@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { toast } from "sonner";
 
 type DayKey =
   | "monday"
@@ -151,7 +152,19 @@ export function OrganisationOnboardingTwoPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      formValues.facilityName.trim().length === 0
+        ? "Please enter your facility name."
+        : formValues.address.trim().length === 0
+          ? "Please enter your facility address."
+          : formValues.timezone.trim().length === 0
+            ? "Please select a timezone."
+            : !hasAvailableDay
+              ? "Please enable operating hours for at least one day."
+              : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

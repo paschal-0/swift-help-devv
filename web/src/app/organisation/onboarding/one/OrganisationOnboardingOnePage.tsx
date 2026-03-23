@@ -10,6 +10,7 @@ import {
 import * as flagSvgs from "country-flag-icons/string/3x2";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const flagSvgMap = flagSvgs as Record<string, string>;
 
@@ -76,7 +77,23 @@ export function OrganisationOnboardingOnePage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const validationError =
+      formValues.organisationName.trim().length === 0
+        ? "Please enter your organisation name."
+        : formValues.organisationType.trim().length === 0
+          ? "Please select your organisation type."
+          : formValues.organisationAddress.trim().length === 0
+            ? "Please enter your organisation address."
+            : formValues.companyEmail.trim().length === 0 || !/\S+@\S+\.\S+/.test(formValues.companyEmail)
+              ? "Please enter a valid company email address."
+              : formValues.phone.replace(/[^\d+]/g, "").length < 10
+                ? "Please enter a valid primary phone number with at least 10 digits."
+                : formValues.numberOfLocations.trim().length === 0 || Number(formValues.numberOfLocations) <= 0
+                  ? "Please enter a valid number of locations."
+                  : null;
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 

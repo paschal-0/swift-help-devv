@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { toast } from "sonner";
 
 type DayKey =
   | "monday"
@@ -120,6 +121,7 @@ export function ProfessionalOnboardingThreePage() {
     event.preventDefault();
 
     if (!hasAvailableDay) {
+      toast.error("Please enable availability for at least one day.");
       return;
     }
   };
