@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, type ClipboardEvent, type KeyboardEvent } from "react";
 import { motion, type Variants } from "framer-motion";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const OTP_LENGTH = 6;
 
@@ -77,6 +78,8 @@ const bannerTextChild: Variants = {
 export function GetStartedOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [otpValues, setOtpValues] = useState<string[]>(() => Array(OTP_LENGTH).fill(""));
   const [timeLeft, setTimeLeft] = useState(50);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -101,6 +104,7 @@ export function GetStartedOtpPage() {
   };
 
   const handleOtpChange = (index: number, value: string) => {
+    setHasInteracted(true);
     const nextValue = value.replace(/\D/g, "").slice(-1);
 
     setOtpValues((current) => {
@@ -132,6 +136,7 @@ export function GetStartedOtpPage() {
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
     event.preventDefault();
+    setHasInteracted(true);
 
     const pastedDigits = event.clipboardData
       .getData("text")
@@ -155,8 +160,22 @@ export function GetStartedOtpPage() {
   };
 
   const isOtpComplete = otpValues.every(Boolean);
+  const otpValidationError =
+    !isOtpComplete
+      ? "Please enter the 6-digit verification code."
+      : timeLeft === 0
+        ? "Your code has expired. Please request a new one."
+        : null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("get-started-otp", otpValidationError);
+  }, [hasInteracted, otpValidationError, showValidationToast]);
 
   const handleResend = () => {
+    setHasInteracted(true);
     setTimeLeft(50);
     setOtpValues(Array(OTP_LENGTH).fill(""));
     focusInput(0);
@@ -276,6 +295,7 @@ export function GetStartedOtpPage() {
                       onChange={(event) => handleOtpChange(index, event.target.value)}
                       onKeyDown={(event) => handleKeyDown(index, event)}
                       onPaste={handlePaste}
+                      onBlur={() => setHasInteracted(true)}
                       aria-label={`OTP digit ${index + 1}`}
                       className="h-[48px] w-full rounded-[8px] border border-[#8da2bb] bg-[#f8fafc] text-center text-[20px] font-medium leading-none tracking-[-0.05em] text-[#334155] outline-none transition duration-300 hover:border-[#334155] focus:border-[#1e88e5] focus:bg-white focus:shadow-[0_0_0_3px_rgba(191,219,254,0.75)] sm:h-[64px] sm:rounded-[10px] sm:text-[24px] xl:h-[56px] xl:rounded-[10px] xl:text-[24px]"
                     />

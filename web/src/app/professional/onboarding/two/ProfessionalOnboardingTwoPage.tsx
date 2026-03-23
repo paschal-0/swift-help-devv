@@ -2,9 +2,16 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 type UploadEntry = {
   id: string;
@@ -214,10 +221,23 @@ function UploadCard({
 export function ProfessionalOnboardingTwoPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [uploads, setUploads] = useState<UploadEntry[]>(initialUploads);
   const [urlInput, setUrlInput] = useState("");
 
-  const isFormValid = uploads.length > 0;
+  const validationError =
+    uploads.length > 0
+      ? null
+      : "Please upload at least one credential document to continue.";
+  const isFormValid = validationError === null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("professional-onboarding-two", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
@@ -277,8 +297,9 @@ export function ProfessionalOnboardingTwoPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isFormValid) {
-      toast.error("Please upload at least one credential document to continue.");
+    if (validationError) {
+      setHasInteracted(true);
+      showValidationToast("professional-onboarding-two", validationError);
       return;
     }
 
@@ -344,6 +365,8 @@ export function ProfessionalOnboardingTwoPage() {
 
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
+            onClickCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}

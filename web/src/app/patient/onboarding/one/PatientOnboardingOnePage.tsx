@@ -8,9 +8,15 @@ import {
   type CustomFlagImage,
 } from "react-international-phone";
 import * as flagSvgs from "country-flag-icons/string/3x2";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const flagSvgMap = flagSvgs as Record<string, string>;
 
@@ -57,6 +63,8 @@ export function PatientOnboardingOnePage({
 }) {
   const router = useRouter();
   const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     dateOfBirth: "2003-05-24",
     gender: "Male",
@@ -69,37 +77,41 @@ export function PatientOnboardingOnePage({
   const handleFieldChange =
     (field: "dateOfBirth" | "preferredLocation" | "bloodGroup") =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setHasInteracted(true);
       setFormValues((current) => ({
         ...current,
         [field]: event.target.value,
       }));
     };
 
-  const isFormValid =
-    formValues.dateOfBirth.trim().length > 0 &&
-    formValues.gender.length > 0 &&
-    formValues.phone.replace(/[^\d+]/g, "").length >= 10 &&
-    formValues.preferredLocation.length > 0 &&
-    formValues.consultationType.length > 0;
+  const validationError =
+    formValues.dateOfBirth.trim().length === 0
+      ? "Please select your date of birth."
+      : formValues.gender.trim().length === 0
+        ? "Please select your gender."
+        : formValues.phone.replace(/[^\d+]/g, "").length < 10
+          ? "Please enter a valid phone number with at least 10 digits."
+          : formValues.preferredLocation.trim().length === 0
+            ? "Please select your preferred location."
+            : formValues.consultationType.trim().length === 0
+              ? "Please select your preferred consultation type."
+              : null;
+
+  const isFormValid = validationError === null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("patient-onboarding-one", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      formValues.dateOfBirth.trim().length === 0
-        ? "Please select your date of birth."
-        : formValues.gender.trim().length === 0
-          ? "Please select your gender."
-          : formValues.phone.replace(/[^\d+]/g, "").length < 10
-            ? "Please enter a valid phone number with at least 10 digits."
-            : formValues.preferredLocation.trim().length === 0
-              ? "Please select your preferred location."
-              : formValues.consultationType.trim().length === 0
-                ? "Please select your preferred consultation type."
-                : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("patient-onboarding-one", validationError);
       return;
     }
 
@@ -183,6 +195,7 @@ export function PatientOnboardingOnePage({
           {/* Form */}
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
@@ -244,10 +257,13 @@ export function PatientOnboardingOnePage({
                     defaultCountry="ng"
                     value={formValues.phone}
                     onChange={(phone) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        phone,
-                      }))
+                      {
+                        setHasInteracted(true);
+                        setFormValues((current) => ({
+                          ...current,
+                          phone,
+                        }));
+                      }
                     }
                     inputProps={{
                       name: "phone",
@@ -284,10 +300,13 @@ export function PatientOnboardingOnePage({
                             value={option}
                             checked={isSelected}
                             onChange={() =>
-                              setFormValues((current) => ({
-                                ...current,
-                                consultationType: option,
-                              }))
+                              {
+                                setHasInteracted(true);
+                                setFormValues((current) => ({
+                                  ...current,
+                                  consultationType: option,
+                                }));
+                              }
                             }
                             className="sr-only"
                           />
@@ -321,10 +340,13 @@ export function PatientOnboardingOnePage({
                             value={option}
                             checked={isSelected}
                             onChange={() =>
-                              setFormValues((current) => ({
-                                ...current,
-                                gender: option,
-                              }))
+                              {
+                                setHasInteracted(true);
+                                setFormValues((current) => ({
+                                  ...current,
+                                  gender: option,
+                                }));
+                              }
                             }
                             className="sr-only"
                           />

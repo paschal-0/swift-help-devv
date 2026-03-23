@@ -3,9 +3,9 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { defaultCountries } from "react-international-phone";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const consultationTypes = ["Virtual", "In person", "Both"] as const;
 const specialityOptions = [
@@ -40,6 +40,8 @@ function UnselectedRadio() {
 
 export function ProfessionalOnboardingOnePage() {
   const router = useRouter();
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     professionalName: "",
     licenseNumber: "",
@@ -59,41 +61,43 @@ export function ProfessionalOnboardingOnePage() {
         | "primaryPracticeLocation",
     ) =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setHasInteracted(true);
       setFormValues((current) => ({
         ...current,
         [field]: event.target.value,
       }));
     };
 
-  const isFormValid =
-    formValues.professionalName.trim().length > 0 &&
-    formValues.licenseNumber.trim().length > 0 &&
-    formValues.speciality.trim().length > 0 &&
-    formValues.yearsOfExperience.trim().length > 0 &&
-    Number(formValues.yearsOfExperience) >= 0 &&
-    formValues.consultationType.trim().length > 0 &&
-    formValues.primaryPracticeLocation.trim().length > 0;
+  const validationError =
+    formValues.professionalName.trim().length === 0
+      ? "Please enter your professional name."
+      : formValues.licenseNumber.trim().length === 0
+        ? "Please enter your license number."
+        : formValues.speciality.trim().length === 0
+          ? "Please select your speciality."
+          : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
+            ? "Please enter a valid years of experience value."
+            : formValues.consultationType.trim().length === 0
+              ? "Please select consultation type offered."
+              : formValues.primaryPracticeLocation.trim().length === 0
+                ? "Please select your primary practice location."
+                : null;
+
+  const isFormValid = validationError === null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("professional-onboarding-one", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      formValues.professionalName.trim().length === 0
-        ? "Please enter your professional name."
-        : formValues.licenseNumber.trim().length === 0
-          ? "Please enter your license number."
-          : formValues.speciality.trim().length === 0
-            ? "Please select your speciality."
-            : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
-              ? "Please enter a valid years of experience value."
-              : formValues.consultationType.trim().length === 0
-                ? "Please select consultation type offered."
-                : formValues.primaryPracticeLocation.trim().length === 0
-                  ? "Please select your primary practice location."
-                  : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("professional-onboarding-one", validationError);
       return;
     }
 
@@ -159,6 +163,7 @@ export function ProfessionalOnboardingOnePage() {
 
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
@@ -244,10 +249,13 @@ export function ProfessionalOnboardingOnePage() {
                             value={option}
                             checked={isSelected}
                             onChange={() =>
-                              setFormValues((current) => ({
-                                ...current,
-                                consultationType: option,
-                              }))
+                              {
+                                setHasInteracted(true);
+                                setFormValues((current) => ({
+                                  ...current,
+                                  consultationType: option,
+                                }));
+                              }
                             }
                             className="sr-only"
                           />

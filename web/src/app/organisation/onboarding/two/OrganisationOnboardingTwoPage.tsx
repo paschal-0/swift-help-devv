@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useState, type ChangeEvent, type FormEvent } from "react";
-import { toast } from "sonner";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 type DayKey =
   | "monday"
@@ -125,6 +125,8 @@ function TimeInput({
 
 export function OrganisationOnboardingTwoPage() {
   const router = useRouter();
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     facilityName: "",
     address: "",
@@ -134,37 +136,41 @@ export function OrganisationOnboardingTwoPage() {
     useState<Record<DayKey, DayAvailability>>(initialAvailability);
 
   const hasAvailableDay = orderedDays.some((day) => availability[day].enabled);
-  const isFormValid =
-    formValues.facilityName.trim().length > 0 &&
-    formValues.address.trim().length > 0 &&
-    formValues.timezone.trim().length > 0 &&
-    hasAvailableDay;
+  const validationError =
+    formValues.facilityName.trim().length === 0
+      ? "Please enter your facility name."
+      : formValues.address.trim().length === 0
+        ? "Please enter your facility address."
+        : formValues.timezone.trim().length === 0
+          ? "Please select a timezone."
+          : !hasAvailableDay
+            ? "Please enable operating hours for at least one day."
+            : null;
+  const isFormValid = validationError === null;
 
   const handleFieldChange =
     (field: "facilityName" | "address" | "timezone") =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setHasInteracted(true);
       setFormValues((current) => ({
         ...current,
         [field]: event.target.value,
       }));
     };
 
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("organisation-onboarding-two", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      formValues.facilityName.trim().length === 0
-        ? "Please enter your facility name."
-        : formValues.address.trim().length === 0
-          ? "Please enter your facility address."
-          : formValues.timezone.trim().length === 0
-            ? "Please select a timezone."
-            : !hasAvailableDay
-              ? "Please enable operating hours for at least one day."
-              : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("organisation-onboarding-two", validationError);
       return;
     }
 
@@ -230,6 +236,8 @@ export function OrganisationOnboardingTwoPage() {
 
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
+            onClickCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}

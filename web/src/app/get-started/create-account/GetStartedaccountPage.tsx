@@ -9,9 +9,15 @@ import {
   type CustomFlagImage,
 } from "react-international-phone";
 import * as flagSvgs from "country-flag-icons/string/3x2";
-import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { motion, type Variants } from "framer-motion";
-import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -196,6 +202,8 @@ export function GetStartedaccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     fullName: "",
     email: "",
@@ -206,6 +214,7 @@ export function GetStartedaccountPage() {
   const handleChange =
     (field: keyof typeof formValues) =>
     (event: ChangeEvent<HTMLInputElement>) => {
+      setHasInteracted(true);
       setFormValues((current) => ({
         ...current,
         [field]: event.target.value,
@@ -219,11 +228,17 @@ export function GetStartedaccountPage() {
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
   const isPhoneValid = normalizedPhone.replace(/[^\d+]/g, "").length >= 10;
   const isPasswordValid = trimmedPassword.length >= 8;
-  const isFormValid =
-    trimmedFullName.length > 1 &&
-    isEmailValid &&
-    isPhoneValid &&
-    isPasswordValid;
+  const validationError =
+    trimmedFullName.length <= 1
+      ? "Please enter your full name."
+      : !isEmailValid
+        ? "Please enter a valid email address."
+        : !isPhoneValid
+          ? "Please enter a valid phone number with at least 10 digits."
+          : !isPasswordValid
+            ? "Password must be at least 8 characters long."
+            : null;
+  const isFormValid = validationError === null;
   const roleParam = searchParams.get("role");
   const role =
     roleParam === "professional" || roleParam === "organisation" || roleParam === "patient"
@@ -232,22 +247,19 @@ export function GetStartedaccountPage() {
   const content = roleContent[role];
   const hasLongAccountTitle = role !== "patient";
 
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("get-started-create-account", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      trimmedFullName.length <= 1
-        ? "Please enter your full name."
-        : !isEmailValid
-          ? "Please enter a valid email address."
-          : !isPhoneValid
-            ? "Please enter a valid phone number with at least 10 digits."
-            : !isPasswordValid
-              ? "Password must be at least 8 characters long."
-              : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("get-started-create-account", validationError);
       return;
     }
 
@@ -369,6 +381,7 @@ export function GetStartedaccountPage() {
               <motion.form
                 variants={itemVariants}
                 onSubmit={handleSubmit}
+                onBlurCapture={() => setHasInteracted(true)}
                 className="mt-5 w-full rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:mt-6 sm:px-5 sm:py-6 xl:animate-form-panel-shadow xl:mt-9 xl:rounded-[32px] xl:px-[25px] xl:py-[34px] xl:shadow-[0_0_30px_rgba(0,0,0,0.05)] xl:h-[543px]"
               >
               <div className="flex w-full flex-col gap-4">
@@ -406,10 +419,13 @@ export function GetStartedaccountPage() {
                       defaultCountry="ng"
                       value={formValues.phone}
                       onChange={(phone) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          phone,
-                        }))
+                        {
+                          setHasInteracted(true);
+                          setFormValues((current) => ({
+                            ...current,
+                            phone,
+                          }));
+                        }
                       }
                       inputProps={{
                         name: "phone",

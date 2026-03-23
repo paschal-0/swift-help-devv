@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useState,
   type Dispatch,
   type FormEvent,
@@ -11,6 +12,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 type DisclosureChoice = "Yes" | "No" | "Prefer not to say";
 
@@ -475,6 +477,8 @@ export function PatientOnboardingTwoPage({
   basePath?: string;
 }) {
   const router = useRouter();
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [hasAllergies, setHasAllergies] = useState<DisclosureChoice>("No");
   const [allergyInput, setAllergyInput] = useState("");
   const [allergies, setAllergies] = useState<string[]>([...suggestedAllergies]);
@@ -550,25 +554,31 @@ export function PatientOnboardingTwoPage({
     takesSupplements === "No" || supplements.every(isEntryComplete);
   const allergySectionValid = hasAllergies === "No" || allergies.length > 0;
   const conditionSectionValid = hasConditions === "No" || conditions.length > 0;
-  const isFormValid =
-    allergySectionValid && conditionSectionValid && medicationSectionValid && supplementSectionValid;
+  const validationError =
+    !allergySectionValid
+      ? "Please add at least one allergy or select 'No'."
+      : !conditionSectionValid
+        ? "Please add at least one medical condition or select 'No'."
+        : !medicationSectionValid
+          ? "Please complete all medication fields or select 'No'."
+          : !supplementSectionValid
+            ? "Please complete all supplement fields or select 'No'."
+            : null;
+  const isFormValid = validationError === null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("patient-onboarding-two", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      !allergySectionValid
-        ? "Please add at least one allergy or select 'No'."
-        : !conditionSectionValid
-          ? "Please add at least one medical condition or select 'No'."
-          : !medicationSectionValid
-            ? "Please complete all medication fields or select 'No'."
-            : !supplementSectionValid
-              ? "Please complete all supplement fields or select 'No'."
-              : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("patient-onboarding-two", validationError);
       return;
     }
 
@@ -583,6 +593,8 @@ export function PatientOnboardingTwoPage({
 
         <motion.form
           onSubmit={handleSubmit}
+          onBlurCapture={() => setHasInteracted(true)}
+          onClickCapture={() => setHasInteracted(true)}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}

@@ -8,9 +8,9 @@ import {
   type CustomFlagImage,
 } from "react-international-phone";
 import * as flagSvgs from "country-flag-icons/string/3x2";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const flagSvgMap = flagSvgs as Record<string, string>;
 
@@ -39,6 +39,8 @@ const organisationTypeOptions = [
 
 export function OrganisationOnboardingOnePage() {
   const router = useRouter();
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     organisationName: "",
     organisationType: "Hospital",
@@ -58,42 +60,42 @@ export function OrganisationOnboardingOnePage() {
         | "numberOfLocations",
     ) =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setHasInteracted(true);
       setFormValues((current) => ({
         ...current,
         [field]: event.target.value,
       }));
     };
 
-  const isFormValid =
-    formValues.organisationName.trim().length > 0 &&
-    formValues.organisationType.trim().length > 0 &&
-    formValues.organisationAddress.trim().length > 0 &&
-    formValues.companyEmail.trim().length > 0 &&
-    /\S+@\S+\.\S+/.test(formValues.companyEmail) &&
-    formValues.phone.replace(/[^\d+]/g, "").length >= 10 &&
-    formValues.numberOfLocations.trim().length > 0 &&
-    Number(formValues.numberOfLocations) > 0;
+  const validationError =
+    formValues.organisationName.trim().length === 0
+      ? "Please enter your organisation name."
+      : formValues.organisationType.trim().length === 0
+        ? "Please select your organisation type."
+        : formValues.organisationAddress.trim().length === 0
+          ? "Please enter your organisation address."
+          : formValues.companyEmail.trim().length === 0 || !/\S+@\S+\.\S+/.test(formValues.companyEmail)
+            ? "Please enter a valid company email address."
+            : formValues.phone.replace(/[^\d+]/g, "").length < 10
+              ? "Please enter a valid primary phone number with at least 10 digits."
+              : formValues.numberOfLocations.trim().length === 0 || Number(formValues.numberOfLocations) <= 0
+                ? "Please enter a valid number of locations."
+                : null;
+  const isFormValid = validationError === null;
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("organisation-onboarding-one", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationError =
-      formValues.organisationName.trim().length === 0
-        ? "Please enter your organisation name."
-        : formValues.organisationType.trim().length === 0
-          ? "Please select your organisation type."
-          : formValues.organisationAddress.trim().length === 0
-            ? "Please enter your organisation address."
-            : formValues.companyEmail.trim().length === 0 || !/\S+@\S+\.\S+/.test(formValues.companyEmail)
-              ? "Please enter a valid company email address."
-              : formValues.phone.replace(/[^\d+]/g, "").length < 10
-                ? "Please enter a valid primary phone number with at least 10 digits."
-                : formValues.numberOfLocations.trim().length === 0 || Number(formValues.numberOfLocations) <= 0
-                  ? "Please enter a valid number of locations."
-                  : null;
-
     if (validationError) {
-      toast.error(validationError);
+      setHasInteracted(true);
+      showValidationToast("organisation-onboarding-one", validationError);
       return;
     }
 
@@ -159,6 +161,7 @@ export function OrganisationOnboardingOnePage() {
 
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
@@ -233,10 +236,13 @@ export function OrganisationOnboardingOnePage() {
                     defaultCountry="ng"
                     value={formValues.phone}
                     onChange={(phone) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        phone,
-                      }))
+                      {
+                        setHasInteracted(true);
+                        setFormValues((current) => ({
+                          ...current,
+                          phone,
+                        }));
+                      }
                     }
                     inputProps={{
                       name: "organisation-phone",

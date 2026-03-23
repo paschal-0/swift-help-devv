@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useState, type ChangeEvent, type FormEvent } from "react";
-import { toast } from "sonner";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 type DayKey =
   | "monday"
@@ -112,16 +112,29 @@ function TimeInput({
 }
 
 export function ProfessionalOnboardingThreePage() {
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const showValidationToast = useBlurValidationToast();
   const [availability, setAvailability] =
     useState<Record<DayKey, DayAvailability>>(initialAvailability);
 
   const hasAvailableDay = orderedDays.some((day) => availability[day].enabled);
+  const validationError = hasAvailableDay
+    ? null
+    : "Please enable availability for at least one day.";
+
+  useEffect(() => {
+    if (!hasInteracted) {
+      return;
+    }
+    showValidationToast("professional-onboarding-three", validationError);
+  }, [hasInteracted, showValidationToast, validationError]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!hasAvailableDay) {
-      toast.error("Please enable availability for at least one day.");
+    if (validationError) {
+      setHasInteracted(true);
+      showValidationToast("professional-onboarding-three", validationError);
       return;
     }
   };
@@ -185,6 +198,8 @@ export function ProfessionalOnboardingThreePage() {
 
           <motion.form
             onSubmit={handleSubmit}
+            onBlurCapture={() => setHasInteracted(true)}
+            onClickCapture={() => setHasInteracted(true)}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
