@@ -4,7 +4,7 @@ Monorepo for the Swift Help product.
 
 ## Project Layout
 
-- `web/` - Next.js frontend (App Router, TypeScript)
+- `web/` - Next.js frontend (App Router, TypeScript, Sonner toasts)
 - `mobile-expo/` - mobile app workspace
 
 ## Run the Web App
@@ -16,6 +16,14 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Run the Mobile App
+
+```bash
+cd mobile-expo
+npm install
+npm run start
+```
 
 ## Web Scripts
 
@@ -31,13 +39,17 @@ npm run lint
 ## Current Main Routes (Web)
 
 - `/` - Landing page
-- `/signup`
-- `/get-started` - Welcome page
+- `/get-started` - Welcome page (entry point)
 - `/get-started/create-account`
 - `/get-started/otp`
-- `/onboarding/health-profile`
-- `/onboarding/health-profile-2`
-- `/otp` - legacy redirect to `/get-started/otp`
+- `/patient/onboarding/one`
+- `/patient/onboarding/two`
+- `/professional/onboarding/one`
+- `/professional/onboarding/two`
+- `/professional/onboarding/three`
+- `/organisation/onboarding/one`
+- `/organisation/onboarding/two`
+- `/organisation/onboarding/three`
 
 ## Deployment (Vercel)
 
@@ -51,3 +63,5 @@ If deploying the web app on Vercel, use:
 
 - Node.js 18+ is recommended.
 - Assets used by the landing and onboarding pages are in `web/public/`.
+- Phone inputs are implemented with `react-international-phone`.
+- Form validation feedback uses Sonner toasts.
