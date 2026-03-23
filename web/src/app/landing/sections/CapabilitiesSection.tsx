@@ -25,7 +25,7 @@ const rowClass =
 const copyClass = "flex flex-col gap-3";
 
 const visualClass =
-  "min-h-[510px] w-full rounded-[48px] bg-[linear-gradient(145deg,#d3dae4,#bcc7d4)] max-[900px]:min-h-[340px]";
+  "min-h-[510px] w-full rounded-[48px] bg-[linear-gradient(145deg,#d3dae4,#bcc7d4)] max-[1100px]:min-h-[340px]";
 
 const revealEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -53,10 +53,10 @@ const listItemVariants = {
 
 export function CapabilitiesSection() {
   return (
-    <section className="py-[110px] pb-14 max-[900px]:hidden">
+    <section className="py-[110px] pb-14 max-[1100px]:hidden">
       <div className={containerClass}>
         <motion.h2
-          className="mx-auto mb-[42px] text-center text-[48px] font-semibold leading-[46px] tracking-[-0.05em] text-slate-900 max-[900px]:text-[36px] max-[900px]:leading-10"
+          className="mx-auto mb-[42px] text-center text-[48px] font-semibold leading-[46px] tracking-[-0.05em] text-slate-900 max-[1100px]:text-[36px] max-[1100px]:leading-10"
           initial={{ opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
@@ -76,7 +76,7 @@ export function CapabilitiesSection() {
             <h3 className="m-0 text-[32px] font-normal leading-[46px] tracking-[-0.05em] text-slate-900">
               AI-Assisted Healthcare Intelligence
             </h3>
-            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[900px]:text-[20px] max-[900px]:leading-[26px]">
+            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[1100px]:text-[20px] max-[1100px]:leading-[26px]">
               Swift HELP uses intelligent triage logic to help patients understand
               symptoms and guide them toward appropriate care options. The platform
               assists decision-making while ensuring healthcare professionals remain
@@ -124,7 +124,7 @@ export function CapabilitiesSection() {
             <h3 className="m-0 text-[32px] font-normal leading-[46px] tracking-[-0.05em] text-slate-900">
               On-Demand Healthcare Services
             </h3>
-            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[900px]:text-[20px] max-[900px]:leading-[26px]">
+            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[1100px]:text-[20px] max-[1100px]:leading-[26px]">
               Swift HELP provides a digital marketplace connecting patients with
               verified professionals across various specialties.
             </p>
@@ -170,7 +170,7 @@ export function CapabilitiesSection() {
             <h3 className="m-0 text-[32px] font-normal leading-[46px] tracking-[-0.05em] text-slate-900">
               Workforce & Shift Management
             </h3>
-            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[900px]:text-[20px] max-[900px]:leading-[26px]">
+            <p className="m-0 max-w-[496px] text-[24px] font-light leading-7 tracking-[-0.05em] text-slate-700 max-[1100px]:text-[20px] max-[1100px]:leading-[26px]">
               Healthcare organizations can quickly fill workforce gaps through Swift
               HELP&apos;s staffing platform.
             </p>

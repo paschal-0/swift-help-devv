@@ -28,7 +28,7 @@ export function FooterSection() {
             <span>Swifthelp</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-8 max-[1100px]:col-span-1 max-[1100px]:grid-cols-3 max-[900px]:grid-cols-2 max-[767px]:grid-cols-1 max-[767px]:gap-6">
+          <div className="grid grid-cols-3 gap-8 max-[1100px]:col-span-1 max-[1100px]:grid-cols-3 max-[1100px]:grid-cols-2 max-[767px]:grid-cols-1 max-[767px]:gap-6">
             <div className="flex flex-col gap-[11px] max-[767px]:gap-2">
               <a
                 href="#home"
