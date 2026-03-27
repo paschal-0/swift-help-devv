@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { PatientPlatformShell } from "./components/PatientPlatformShell";
 
 export function PatientPlatformPlaceholderPage({
   title,
@@ -7,9 +11,11 @@ export function PatientPlatformPlaceholderPage({
   title: string;
   description: string;
 }) {
+  const [searchText, setSearchText] = useState("");
+
   return (
-    <section className="min-h-screen bg-[#E2E8F0] p-6">
-      <div className="mx-auto max-w-4xl rounded-2xl bg-[#F8FAFC] p-8 shadow-[0_10px_35px_rgba(15,23,42,0.08)]">
+    <PatientPlatformShell searchText={searchText} onSearchTextChange={setSearchText}>
+      <div className="mt-[26px] rounded-2xl bg-[#F8FAFC] p-8 shadow-[0_10px_35px_rgba(15,23,42,0.08)]">
         <h1 className="text-3xl font-semibold tracking-[-0.05em] text-[#334155]">{title}</h1>
         <p className="mt-3 text-lg font-light tracking-[-0.03em] text-[#64748B]">{description}</p>
         <Link
@@ -19,6 +25,6 @@ export function PatientPlatformPlaceholderPage({
           Back to Dashboard
         </Link>
       </div>
-    </section>
+    </PatientPlatformShell>
   );
 }

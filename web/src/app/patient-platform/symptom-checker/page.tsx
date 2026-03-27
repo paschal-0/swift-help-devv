@@ -1,10 +1,5 @@
-import { PatientPlatformPlaceholderPage } from "../PatientPlatformPlaceholderPage";
+import { PatientSymptomCheckerMainPage } from "./PatientSymptomCheckerMainPage";
 
 export default function PatientSymptomCheckerRoute() {
-  return (
-    <PatientPlatformPlaceholderPage
-      title="Symptom Checker"
-      description="Patient symptom checker page is ready for implementation."
-    />
-  );
+  return <PatientSymptomCheckerMainPage />;
 }
