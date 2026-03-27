@@ -236,7 +236,7 @@ export function GetStartedLoginPage() {
             >
               <motion.div
                 variants={itemVariants}
-                className="flex w-full max-w-[341px] flex-col items-center gap-1.5 text-center"
+                className="flex w-full max-w-[341px] flex-col items-center gap-3 text-center"
               >
                 <h2 className="m-0 w-full text-[27px] leading-[31px] font-normal tracking-[-0.055em] text-[#334155] sm:text-[32px] sm:leading-9 xl:text-[48px] xl:leading-10">
                   Sign in
@@ -250,9 +250,9 @@ export function GetStartedLoginPage() {
                 variants={itemVariants}
                 onSubmit={handleSubmit}
                 onBlurCapture={() => setHasInteracted(true)}
-                className="mt-6 w-full max-w-[392px] rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:px-5 sm:py-6 xl:mt-8 xl:max-w-[408px] xl:rounded-[28px] xl:px-4 xl:py-5 xl:shadow-[0_0_30px_rgba(0,0,0,0.05)]"
+                className="mt-8 w-full max-w-[392px] rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5 py-7 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-8 xl:mt-11 xl:max-w-[408px] xl:rounded-[28px] xl:px-5 xl:py-8 xl:shadow-[0_0_30px_rgba(0,0,0,0.05)]"
               >
-                <div className="flex w-full flex-col gap-2">
+                <div className="flex w-full flex-col gap-4">
                   <label className="flex w-full flex-col items-start gap-1.5">
                     <span className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
                       Email address
@@ -295,7 +295,7 @@ export function GetStartedLoginPage() {
                   </label>
                 </div>
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-6 flex justify-end">
                   <Link
                     href="#"
                     className="text-[14px] font-semibold leading-[17px] tracking-[-0.05em] text-[#1565C0] transition duration-300 hover:text-[#114B7F]"
@@ -307,22 +307,22 @@ export function GetStartedLoginPage() {
                 <button
                   type="submit"
                   disabled={!isFormValid}
-                  className="mt-4 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
+                  className="mt-6 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
                 >
                   Continue
                 </button>
 
-                <p className="mt-3 text-center text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
+                <p className="mt-5 text-center text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">
                   Don&apos;t have an account yet?{" "}
                   <Link
-                    href="/get-started/create-account"
+                    href="/get-started"
                     className="font-semibold text-[#1565C0] hover:text-[#114B7F]"
                   >
                     Sign Up
                   </Link>
                 </p>
 
-                <div className="mt-4 flex w-full flex-col gap-3">
+                <div className="mt-6 flex w-full flex-col gap-4">
                   <button
                     type="button"
                     className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[20px] bg-[#e2e8f0] text-[18px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] transition duration-300 hover:bg-[#d5deea]"

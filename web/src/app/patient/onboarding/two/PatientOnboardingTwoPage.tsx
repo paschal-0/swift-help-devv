@@ -582,7 +582,7 @@ export function PatientOnboardingTwoPage({
       return;
     }
 
-    router.push("/");
+    router.push("/patient-platform");
   };
 
   return (

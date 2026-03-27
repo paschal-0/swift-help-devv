@@ -216,22 +216,33 @@ function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
   );
 }
 
-function DashboardNavItem({ item, active }: { item: NavItem; active: boolean }) {
+function DashboardNavItem({
+  item,
+  active,
+  isExpanded,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  isExpanded: boolean;
+  onClick?: () => void;
+}) {
   return (
     <Link
       href={item.href}
+      onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-[44px] w-full items-center rounded-[12px] pl-6 pr-4 text-left transition ${
+      className={`relative flex h-[44px] w-full items-center rounded-[12px] text-left transition ${
         active ? "bg-[#E3F2FD]" : "hover:bg-[#eef4fb]"
-      } cursor-pointer`}
+      } cursor-pointer ${isExpanded ? "pl-6 pr-4" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-4"}`}
     >
-      {active ? <span className="absolute left-0 top-[-1px] h-[46px] w-[11px] bg-[#1565C0]" /> : null}
-      <span className="inline-flex items-center gap-3">
+      {active ? <span className="absolute left-0 top-[-1px] h-[46px] w-[11px] rounded-r-md bg-[#1565C0]" /> : null}
+      <span className={`inline-flex items-center ${isExpanded ? "gap-3" : "gap-0 xl:gap-3"}`}>
         <Icon type={item.icon} active={active} />
         <span
-          className={`text-[16px] font-medium leading-6 tracking-[-0.05em] whitespace-nowrap ${
+          className={`overflow-hidden whitespace-nowrap text-[16px] font-medium leading-6 tracking-[-0.05em] transition-all duration-300 ${
             active ? "text-[#1E88E5]" : "text-[#94A3B8]"
-          }`}
+          } ${isExpanded ? "ml-0 w-auto opacity-100" : "ml-0 w-0 opacity-0 xl:ml-0 xl:w-auto xl:opacity-100"}`}
         >
           {item.label}
         </span>
@@ -248,6 +259,7 @@ export function PatientDashboardPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string>("appt-3");
   const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
+  const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
 
   const selectedDay = availableDays[selectedDayIndex];
 
@@ -317,27 +329,67 @@ export function PatientDashboardPage() {
 
   return (
     <section className="min-h-screen bg-[#E2E8F0] px-0 py-0">
+      {isMobileNavExpanded ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/35 xl:hidden"
+          onClick={() => setIsMobileNavExpanded(false)}
+          aria-label="Close navigation"
+        />
+      ) : null}
+
       <div className="flex w-full flex-col bg-[#E2E8F0] xl:min-h-screen xl:flex-row">
-        <aside className="w-full bg-[#F8FAFC] px-5 py-6 xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:px-0 xl:py-4">
-          <div className="mx-auto flex w-full max-w-[208px] flex-row items-center gap-1">
-            <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority />
-            <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">Swifthelp</span>
+        <aside
+          className={`fixed left-0 top-0 z-50 flex h-screen flex-col bg-[#F8FAFC] py-6 transition-all duration-300 ease-out ${
+            isMobileNavExpanded ? "w-[272px] px-5 shadow-[0_24px_64px_rgba(15,23,42,0.24)]" : "w-[68px] overflow-hidden px-2 shadow-[0_8px_24px_rgba(148,163,184,0.18)]"
+          } xl:left-0 xl:top-0 xl:w-[284px] xl:overflow-hidden xl:px-0 xl:py-4 xl:shadow-none`}
+        >
+          {!isMobileNavExpanded ? (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 xl:hidden"
+              onClick={() => setIsMobileNavExpanded(true)}
+              aria-label="Open navigation"
+            />
+          ) : null}
+
+          <div className={`relative z-20 flex w-full items-center gap-1 ${isMobileNavExpanded ? "" : "justify-center"} xl:mx-auto xl:max-w-[208px] xl:justify-start`}>
+            <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+            <span
+              className={`text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5] transition-opacity duration-300 ${
+                isMobileNavExpanded ? "opacity-100" : "hidden opacity-0 xl:block xl:opacity-100"
+              }`}
+            >
+              Swifthelp
+            </span>
           </div>
 
-          <div className="mx-auto mt-4 flex w-full max-w-[208px] flex-col gap-2">
+          <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
             {mainNav.map((item) => (
-              <DashboardNavItem key={item.label} item={item} active={isActiveNavItem(item.href)} />
+              <DashboardNavItem
+                key={item.label}
+                item={item}
+                active={isActiveNavItem(item.href)}
+                isExpanded={isMobileNavExpanded}
+                onClick={() => setIsMobileNavExpanded(false)}
+              />
             ))}
           </div>
 
-          <div className="mx-auto mt-auto flex w-full max-w-[208px] flex-col gap-2 pb-3">
+          <div className="relative z-20 mt-auto flex w-full flex-col gap-2 pb-3 xl:mx-auto xl:max-w-[208px]">
             {lowerNav.map((item) => (
-              <DashboardNavItem key={item.label} item={item} active={isActiveNavItem(item.href)} />
+              <DashboardNavItem
+                key={item.label}
+                item={item}
+                active={isActiveNavItem(item.href)}
+                isExpanded={isMobileNavExpanded}
+                onClick={() => setIsMobileNavExpanded(false)}
+              />
             ))}
           </div>
         </aside>
 
-        <main className="w-full px-4 pb-8 pt-6 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px] xl:pb-[34px] xl:pt-[35px]">
+        <main className="ml-[68px] w-[calc(100%-68px)] px-4 pb-8 pt-6 transition-all duration-300 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px] xl:pb-[34px] xl:pt-[35px]">
           <div className="mx-auto w-full max-w-[903px]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <label className="relative block h-[57px] w-full max-w-[344px] rounded-[24px] bg-[#F8FAFC] shadow-[0_0_25px_rgba(148,163,184,0.15)]">
@@ -537,7 +589,7 @@ export function PatientDashboardPage() {
                   </div>
                 </article>
 
-                <article className="relative min-h-[399px] rounded-2xl bg-[#F8FAFC] px-[13px] pt-4">
+                <article className="relative hidden min-h-[399px] rounded-2xl bg-[#F8FAFC] px-[13px] pt-4 xl:block">
                   <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Important Updates</h3>
 
                   <div className="mt-4 space-y-2">
