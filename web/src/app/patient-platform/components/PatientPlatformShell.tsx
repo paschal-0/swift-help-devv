@@ -195,7 +195,7 @@ export function PatientPlatformShell({
     if (href === "/patient-platform") {
       return pathname === "/patient-platform" || pathname === "/patient-platform/dashboard";
     }
-    return pathname === href;
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   return (
@@ -329,7 +329,7 @@ export function PatientPlatformShell({
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   className="h-full w-full rounded-[20px] border-0 bg-transparent pl-10 pr-8 text-[12px] font-light tracking-[-0.04em] text-[#334155] outline-none placeholder:text-[#94A3B8] sm:rounded-[22px] sm:pl-11 sm:pr-9 sm:text-[13px] xl:rounded-[24px] xl:pl-[70px] xl:pr-10 xl:text-[16px] xl:tracking-[-0.05em]"
-                  placeholder="Search..."
+                  placeholder="Search for anything"
                   aria-label="Search dashboard"
                 />
                 {searchText ? (

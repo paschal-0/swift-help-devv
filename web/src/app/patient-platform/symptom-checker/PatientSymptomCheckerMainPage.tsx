@@ -1,8 +1,10 @@
 "use client";
 
-import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function PatientSymptomCheckerMainPage() {
+  const router = useRouter();
+
   return (
     <article className="mt-[26px] min-h-[678px] rounded-[12px] bg-[#F8FAFC] px-5 pb-8 pt-6 xl:px-9 xl:pb-10 xl:pt-[15px]">
         <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Symptom Checker</h1>
@@ -52,14 +54,14 @@ export function PatientSymptomCheckerMainPage() {
         <div className="mt-[40px] flex flex-wrap items-center justify-center gap-[35px]">
           <button
             type="button"
-            onClick={() => toast.info("Assessment flow screen is the next step.")}
+            onClick={() => router.push("/patient-platform/symptom-checker/assessment")}
             className="inline-flex h-[51.31px] w-[216.9px] cursor-pointer items-center justify-center rounded-[18.6577px] border border-[#1565C0] bg-[#F8FAFC] text-[20.6284px] font-normal leading-[31px] tracking-[-0.05em] text-[#1E88E5] shadow-[0_4px_25px_rgba(30,136,229,0.15)]"
           >
             Start Assessment
           </button>
           <button
             type="button"
-            onClick={() => toast.info("Assessment flow screen is the next step.")}
+            onClick={() => router.push("/patient-platform/symptom-checker/assessment")}
             className="inline-flex h-[51.31px] w-[216.9px] cursor-pointer items-center justify-center rounded-[18.6577px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[20.6284px] font-normal leading-[31px] tracking-[-0.05em] text-[#E3F2FD] shadow-[0_4px_25px_rgba(30,136,229,0.15)]"
           >
             Start Assessment

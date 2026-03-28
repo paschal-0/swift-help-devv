@@ -1,10 +1,5 @@
-import { PatientPlatformPlaceholderPage } from "../PatientPlatformPlaceholderPage";
+import { PatientAppointmentsPage } from "./PatientAppointmentsPage";
 
 export default function PatientAppointmentsRoute() {
-  return (
-    <PatientPlatformPlaceholderPage
-      title="Appointments"
-      description="Patient appointments page is ready for implementation."
-    />
-  );
+  return <PatientAppointmentsPage />;
 }
