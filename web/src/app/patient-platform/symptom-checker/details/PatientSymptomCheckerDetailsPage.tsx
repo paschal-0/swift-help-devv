@@ -46,12 +46,14 @@ export function PatientSymptomCheckerDetailsPage() {
   };
 
   return (
-    <article className="mt-[26px] min-h-[964px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-4 xl:px-10 xl:pb-[38px] xl:pt-[17px]">
-      <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Symptom Details</h1>
+    <article className="mx-auto mt-[18px] min-h-[964px] w-full max-w-[640px] rounded-[12px] bg-[#F8FAFC] px-3 pb-8 pt-3 sm:mt-[26px] sm:max-w-none sm:px-5 sm:pb-10 sm:pt-4 xl:px-10 xl:pb-[38px] xl:pt-[17px]">
+      <h1 className="text-center text-[20px] font-semibold leading-[28px] tracking-[-0.05em] text-[#334155] sm:text-left sm:text-[24px] sm:leading-[42px]">
+        Symptom Details
+      </h1>
 
-      <section className="mx-auto mt-5 flex w-full max-w-[703px] rounded-[12px] bg-[linear-gradient(90deg,#DB1313_0%,#8C0808_100%)] px-[18px] py-[18px]">
+      <section className="mx-auto mt-4 flex w-full max-w-[703px] rounded-[12px] bg-[linear-gradient(90deg,#DB1313_0%,#8C0808_100%)] px-3 py-4 sm:mt-5 sm:px-[18px] sm:py-[18px]">
         <div className="mx-auto flex w-full max-w-[693px] flex-col items-center gap-3">
-          <span className="inline-flex h-[43px] w-[44px] items-center justify-center rounded-full bg-[#F8FAFC] shadow-[0_0_25px_rgba(255,255,255,0.7)]">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#F8FAFC] shadow-[0_0_25px_rgba(255,255,255,0.7)] sm:h-[43px] sm:w-[44px]">
             <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" aria-hidden>
               <path
                 fill="#F20E0E"
@@ -59,24 +61,24 @@ export function PatientSymptomCheckerDetailsPage() {
               />
             </svg>
           </span>
-          <p className="text-center text-[18px] font-normal leading-[26px] tracking-[-0.05em] text-white">
+          <p className="text-center text-[14px] font-normal leading-[20px] tracking-[-0.05em] text-white sm:text-[18px] sm:leading-[26px]">
             If you are experiencing severe chest pain, difficulty breathing, loss of consciousness,
             or any life-threatening symptoms, seek emergency care immediately.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto mt-[31px] grid w-full max-w-[544px] grid-cols-1 gap-3 md:grid-cols-2">
+      <section className="mx-auto mt-5 grid w-full max-w-[544px] grid-cols-1 gap-3 sm:mt-[31px] md:grid-cols-2">
         {symptomCards.map((card) => (
           <div
             key={card.id}
-            className="h-[290px] rounded-[12px] border border-[#1E88E5] bg-[#F8FAFC] px-[10px] pb-[12px] pt-[20px] shadow-[0_0_30px_rgba(21,101,192,0.15)]"
+            className="rounded-[12px] border border-[#1E88E5] bg-[#F8FAFC] px-3 pb-3 pt-4 shadow-[0_0_30px_rgba(21,101,192,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_26px_rgba(21,101,192,0.18)] sm:min-h-[290px] sm:px-[10px] sm:pb-[12px] sm:pt-[20px]"
           >
-            <h2 className="min-h-[46px] text-[18px] font-normal leading-[23px] tracking-[-0.05em] text-[#334155]">
+            <h2 className="min-h-[38px] text-[16px] font-normal leading-[20px] tracking-[-0.05em] text-[#334155] sm:min-h-[46px] sm:text-[18px] sm:leading-[23px]">
               {card.title}
             </h2>
 
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 space-y-2 sm:space-y-1">
               {card.options.map((option, index) => {
                 const active = selections[card.id] === index;
                 return (
@@ -84,14 +86,16 @@ export function PatientSymptomCheckerDetailsPage() {
                     key={`${card.id}-${index}`}
                     type="button"
                     onClick={() => onSelect(card.id, index)}
-                    className="flex h-10 w-full cursor-pointer items-center gap-2 rounded-[12px] bg-[#E3F2FD] px-[7px] text-left"
+                    className={`flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-[12px] px-3 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(30,136,229,0.16)] active:translate-y-0 active:scale-[0.985] sm:h-10 sm:px-[7px] ${
+                      active ? "bg-[#d7ebff]" : "bg-[#E3F2FD]"
+                    }`}
                   >
                     <span
-                      className={`h-5 w-5 rounded-full border ${
+                      className={`h-5 w-5 shrink-0 rounded-full border transition-colors duration-200 ${
                         active ? "border-[#1565C0] bg-[#1565C0]" : "border-[#F8FAFC] bg-[#F8FAFC]"
                       }`}
                     />
-                    <span className="text-[15.0315px] font-light leading-[23px] tracking-[-0.05em] text-[#334155]">
+                    <span className="text-[14px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[15.0315px] sm:leading-[23px]">
                       {option}
                     </span>
                   </button>
@@ -102,11 +106,11 @@ export function PatientSymptomCheckerDetailsPage() {
         ))}
       </section>
 
-      <div className="mx-auto mt-[24px] flex w-full max-w-[544px] justify-center">
+      <div className="mx-auto mt-5 flex w-full max-w-[544px] justify-center sm:mt-[24px]">
         <button
           type="button"
           onClick={() => router.push("/patient-platform/symptom-checker/recommendation")}
-          className="inline-flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD]"
+          className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-[15px] font-normal leading-[20px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:h-[46px] sm:px-[14px] sm:py-0 sm:text-[18px] sm:leading-10"
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
             <path
