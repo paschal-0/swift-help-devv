@@ -1,143 +1,244 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
+const CONSULTATION_FEEDBACK_STORAGE_KEY = "patient-consultation-feedback";
+
+type StoredFeedback = {
+  rating: number;
+  ratingLabel: string;
+  comment: string;
+  submittedAt: string;
+};
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: "easeOut" as const },
+};
+
+function StarIcon({ filled, delay }: { filled: boolean; delay: number }) {
+  return (
+    <motion.svg
+      initial={{ scale: 0, rotate: -45 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 260,
+        damping: 20,
+        delay,
+      }}
+      viewBox="0 0 24 24"
+      className={`h-8 w-8 ${filled ? "text-[#FFB800]" : "text-[#E2E8F0]"}`}
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+    </motion.svg>
+  );
+}
 
 function SuccessBadgeIcon() {
   return (
-    <svg viewBox="0 0 160 160" className="h-[160px] w-[160px]" aria-hidden>
-      <g filter="url(#consultation-success-glow)">
-        <path
-          d="m80 10 20 14h24l7 23 20 14-7 23 7 23-20 14-7 23h-24l-20 14-20-14H36l-7-23L9 107l7-23-7-23 20-14 7-23h24L80 10Z"
-          fill="#2F88FF"
-          stroke="#0F172A"
-          strokeWidth="2"
-        />
-      </g>
-      <path d="m54 79 18 18 34-34" fill="none" stroke="#FFFFFF" strokeLinecap="round" strokeLinejoin="round" strokeWidth="7" />
-      <defs>
-        <filter id="consultation-success-glow" x="-20" y="-20" width="200" height="200" filterUnits="userSpaceOnUse">
-          <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="#1E88E5" floodOpacity="0.3" />
-        </filter>
-      </defs>
-    </svg>
+    <motion.div
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+      className="relative flex items-center justify-center"
+    >
+      <div className="absolute h-32 w-32 animate-pulse rounded-full bg-blue-400/20 blur-2xl" />
+      <svg viewBox="0 0 160 160" className="relative h-[120px] w-[120px] md:h-[160px] md:w-[160px]" aria-hidden>
+        <g filter="url(#consultation-success-glow)">
+          <path
+            d="m80 10 20 14h24l7 23 20 14-7 23 7 23-20 14-7 23h-24l-20 14-20-14H36l-7-23L9 107l7-23-7-23 20-14 7-23h24L80 10Z"
+            fill="#2F88FF"
+            stroke="#0F172A"
+            strokeWidth="2"
+          />
+        </g>
+        <path d="m54 79 18 18 34-34" fill="none" stroke="#FFFFFF" strokeLinecap="round" strokeLinejoin="round" strokeWidth="7" />
+        <defs>
+          <filter id="consultation-success-glow" x="-20" y="-20" width="200" height="200" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="#1E88E5" floodOpacity="0.3" />
+          </filter>
+        </defs>
+      </svg>
+    </motion.div>
   );
 }
 
 function Card({
   title,
   children,
+  delay = 0,
 }: {
   title: string;
   children: ReactNode;
+  delay?: number;
 }) {
   return (
-    <section className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-      <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.05em] text-[#334155]">{title}</h2>
+    <motion.section
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay }}
+      className="rounded-[18px] border border-[#E2E8F0] bg-[#F8FAFC] p-5 shadow-[0_8px_30px_rgba(30,136,229,0.04)]"
+    >
+      <h2 className="mb-3 text-[16px] font-semibold tracking-tight text-[#334155]">{title}</h2>
       {children}
-    </section>
+    </motion.section>
   );
 }
 
 export function PatientConsultationCompletePage() {
   const router = useRouter();
+  const [feedback, setFeedback] = useState<StoredFeedback | null>(null);
+
+  useEffect(() => {
+    const storedFeedback = window.localStorage.getItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+
+    if (!storedFeedback) {
+      return;
+    }
+
+    try {
+      const parsedFeedback = JSON.parse(storedFeedback) as StoredFeedback;
+      setFeedback(parsedFeedback);
+    } catch {
+      window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+    }
+  }, []);
 
   return (
-    <article className="mt-[26px] min-h-[1239px] rounded-[12px] bg-[#F8FAFC] px-4 pb-6 pt-8 md:px-6 xl:px-9">
-      <div className="mx-auto flex w-full max-w-[591px] flex-col items-center gap-3 text-center">
+    <article className="mx-auto max-w-[900px] px-4 pb-20 pt-8 md:pt-12">
+      <div className="flex flex-col items-center text-center">
         <SuccessBadgeIcon />
-        <h1 className="text-[48px] font-normal leading-[48px] tracking-[-0.05em] text-[#334155]">
+        <motion.h1
+          {...fadeInUp}
+          className="mt-6 text-[32px] font-bold leading-tight tracking-tight text-[#334155] md:text-[48px]"
+        >
           Consultation Complete
-        </h1>
-        <p className="text-[24px] font-light leading-[28px] tracking-[-0.05em] text-black">
-          Your session has ended. Here&apos;s a summary of your visit and the next steps recommended by your provider.
-        </p>
+        </motion.h1>
+        <motion.p
+          initial={fadeInUp.initial}
+          animate={fadeInUp.animate}
+          transition={{ ...fadeInUp.transition, delay: 0.1 }}
+          className="mt-3 max-w-[500px] text-[16px] font-light leading-relaxed text-[#64748B] md:text-[18px]"
+        >
+          Your session with <span className="font-medium text-[#1E88E5]">Dr. Sarah Johnson</span> has ended.
+          Here is your visit summary.
+        </motion.p>
       </div>
 
-      <div className="mx-auto mt-8 grid w-full max-w-[835px] grid-cols-1 gap-4 xl:grid-cols-[296px_523px]">
-        <Card title="Session Summary">
-          <div className="mt-[11px] rounded-[12px] bg-[#E3F2FD] p-[11px]">
-            <div className="space-y-4 text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#94A3B8]">
-              <p>Provider: Dr. Sarah Johnson</p>
-              <p>Specialty: General Practitioner</p>
-              <p>Date: Thursday, March 26</p>
-              <p>Time: 3:30 PM</p>
-              <p>Duration: 27 minutes</p>
+      <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
+        {feedback ? (
+          <Card title="Your Experience" delay={0.2}>
+            <div className="flex flex-col items-center rounded-2xl border border-blue-50 bg-white p-4 text-center shadow-sm">
+              <div className="mb-2 flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <StarIcon key={star} filled={star <= feedback.rating} delay={0.3 + star * 0.1} />
+                ))}
+              </div>
+              <p className="text-[14px] font-medium text-[#1565C0]">{feedback.ratingLabel}</p>
+              {feedback.comment ? (
+                <p className="mt-2 text-[13px] italic text-[#64748B]">&quot;{feedback.comment}&quot;</p>
+              ) : null}
             </div>
+          </Card>
+        ) : null}
 
-            <span className="mt-4 inline-flex h-[26px] items-center justify-center rounded-[12px] bg-[#04B749] px-[10px] text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#E3F2FD]">
-              Completed
-            </span>
+        <Card title="Session Details" delay={0.3}>
+          <div className="space-y-3 rounded-2xl bg-[#E3F2FD]/50 p-4">
+            {[
+              { label: "Date", value: "March 26, 2024" },
+              { label: "Duration", value: "27 Minutes" },
+              { label: "Status", value: "Completed", isBadge: true },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-[14px]">
+                <span className="text-[#64748B]">{item.label}</span>
+                {item.isBadge ? (
+                  <span className="rounded-full bg-[#04B749] px-3 py-1 text-[12px] font-bold text-white">
+                    {item.value}
+                  </span>
+                ) : (
+                  <span className="font-medium text-[#334155]">{item.value}</span>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
 
-        <Card title="Consultation Notes">
-          <p className="mt-[2px] text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#94A3B8]">
-            These notes summarize the key points discussed during your consultation.
-          </p>
-
-          <div className="mt-[13px] rounded-[12px] bg-[#E3F2FD] p-[10px]">
-            <div className="space-y-[6px] text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#94A3B8]">
-              <p>Symptoms reviewed: Headache, dizziness, fatigue</p>
-              <p>Symptoms reviewed: Headache, dizziness, fatigue</p>
-              <p>Initial assessment: Symptoms may be related to stress, dehydration, or blood pressure changes</p>
-              <p>Recommended action: Monitor symptoms, rest, hydrate, and begin prescribed medication</p>
-              <p className="text-[#334155]">Follow-up suggested if symptoms persist</p>
+        <div className="grid grid-cols-1 gap-5 md:col-span-2 md:grid-cols-2">
+          <Card title="Consultation Notes" delay={0.4}>
+            <div className="rounded-2xl border border-dashed border-[#CBD5E1] p-4">
+              <ul className="space-y-3 text-[14px] text-[#475569]">
+                <li className="flex gap-2">
+                  <span className="text-blue-500">-</span>
+                  <span>Symptoms: Headache, dizziness, fatigue</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-blue-500">-</span>
+                  <span>Assessment: Stress and potential dehydration</span>
+                </li>
+              </ul>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card title="Prescription">
-          <div className="mt-[19px] rounded-[12px] bg-[#E3F2FD] p-[10px]">
-            <div className="space-y-5 text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#334155]">
-              <p>Ibuprofen 200mg - <span className="text-[#94A3B8]">Take 1 tablet every 8 hours as needed</span></p>
-              <p>Hydration guidance - <span className="text-[#94A3B8]">Increase fluid intake over the next 24-48 hours</span></p>
+          <Card title="Prescription" delay={0.5}>
+            <div className="space-y-3">
+              <div className="rounded-xl border-l-4 border-blue-500 bg-white p-3 shadow-sm">
+                <p className="text-[14px] font-bold text-[#334155]">Ibuprofen 200mg</p>
+                <p className="text-[12px] text-[#64748B]">1 tablet every 8 hours</p>
+              </div>
+              <div className="rounded-xl border-l-4 border-blue-300 bg-white p-3 shadow-sm">
+                <p className="text-[14px] font-bold text-[#334155]">Hydration Plan</p>
+                <p className="text-[12px] text-[#64748B]">2.5L water daily for 48h</p>
+              </div>
             </div>
-          </div>
-        </Card>
-
-        <Card title="Session Summary">
-          <div className="mt-[21px] rounded-[12px] bg-[#E3F2FD] p-3">
-            <div className="space-y-4 text-[14px] font-normal leading-[23px] tracking-[-0.05em] text-[#334155]">
-              <p>Rest and monitor symptoms for 48 hours</p>
-              <p>Take medication as directed</p>
-              <p>Track any changes in severity</p>
-              <p>Book a follow-up if symptoms persist or worsen</p>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
 
-      <section className="mx-auto mt-[17px] w-full max-w-[835px] rounded-[12px] bg-[#0F172A] px-[31px] py-8">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[179px_299px_241px] xl:items-center xl:gap-[18px]">
-          <h3 className="text-[24px] font-normal leading-[28px] tracking-[-0.05em] text-white">
-            What would you like to do next?
-          </h3>
-
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => router.push("/patient-platform/appointments/book")}
-              className="inline-flex h-[46px] w-full items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC]"
-            >
-              Book Follow-Up Appointment
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/patient-platform/medical-records")}
-              className="inline-flex h-[46px] w-full items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155]"
-            >
-              View Medical Records
-            </button>
-          </div>
-
-          <div className="rounded-[12px] bg-[#E3F2FD] p-[26px]">
-            <p className="text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]">
-              Your consultation notes and any prescriptions have been added to your medical records.
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="relative mt-12 overflow-hidden rounded-[24px] bg-[#0F172A] p-6 shadow-2xl md:p-10"
+      >
+        <div className="relative z-10 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-center">
+          <div>
+            <h3 className="text-[24px] font-bold leading-tight text-white md:text-[28px]">
+              What would you like to do next?
+            </h3>
+            <p className="mt-2 text-[14px] text-slate-400">
+              All your records have been safely synced to your profile.
             </p>
           </div>
+
+          <div className="flex flex-col gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push("/patient-platform/appointments/book")}
+              className="h-[52px] rounded-full bg-blue-600 font-semibold text-white shadow-lg shadow-blue-500/20"
+            >
+              Book Follow-Up
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push("/patient-platform/medical-records")}
+              className="h-[52px] rounded-full border border-slate-700 bg-slate-800 font-semibold text-white"
+            >
+              View Medical Records
+            </motion.button>
+          </div>
         </div>
-      </section>
+
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl" />
+      </motion.section>
     </article>
   );
 }

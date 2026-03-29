@@ -1,18 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type ChatTab = "messages" | "summary" | "shared";
-
-function SendIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-      <path fill="#F8FAFC" d="M2 21 22 12 2 3v7l12 2-12 2v7Z" />
-    </svg>
-  );
-}
+const CONSULTATION_FEEDBACK_STORAGE_KEY = "patient-consultation-feedback";
 
 function StarIcon({ active }: { active: boolean }) {
   return (
@@ -35,11 +27,36 @@ const ratingLabels: Record<number, string> = {
 
 export function PatientConsultationRatingPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<ChatTab>("messages");
   const [rating, setRating] = useState(3);
   const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const ratingLabel = useMemo(() => ratingLabels[rating] ?? "Good", [rating]);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    const trimmedComment = comment.trim();
+
+    setIsSubmitting(true);
+
+    window.localStorage.setItem(
+      CONSULTATION_FEEDBACK_STORAGE_KEY,
+      JSON.stringify({
+        rating,
+        ratingLabel,
+        comment: trimmedComment,
+        submittedAt: new Date().toISOString(),
+      }),
+    );
+
+    toast.success("Feedback submitted.");
+    router.push("/patient-platform/consultations/complete");
+  };
 
   return (
     <article className="mt-[26px] min-h-[664px] rounded-[12px] bg-[#F8FAFC] px-4 pb-6 pt-[17px] md:px-6 xl:px-7">
@@ -47,15 +64,18 @@ export function PatientConsultationRatingPage() {
         Live Consultation
       </h1>
 
-      <div className="mt-3 grid grid-cols-1 gap-[15px] xl:grid-cols-[564px_274px]">
-        <section className="flex h-[554px] items-center justify-center rounded-[12px] bg-[#E2E8F0] p-5">
-          <div className="w-full max-w-[357px] rounded-[9.19313px] bg-[#F8FAFC] px-6 pb-3 pt-10 shadow-[0_0_22.9828px_rgba(30,136,229,0.15)]">
+      <div className="mt-3">
+        <section className="flex min-h-[460px] items-center justify-center rounded-[12px] bg-[#E2E8F0] p-4 md:h-[554px] md:p-5">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-[357px] rounded-[14px] bg-[#F8FAFC] px-5 pb-4 pt-8 shadow-[0_0_22.9828px_rgba(30,136,229,0.15)] md:rounded-[9.19313px] md:px-6 md:pb-3 md:pt-10"
+          >
             <div className="mx-auto flex w-full max-w-[308px] flex-col items-center gap-[9.19px]">
               <div className="flex w-full flex-col items-center gap-[6.13px]">
-                <h2 className="text-center text-[36.7725px] font-normal leading-[37px] tracking-[-0.05em] text-[#334155]">
+                <h2 className="text-center text-[30px] font-normal leading-[32px] tracking-[-0.05em] text-[#334155] md:text-[36.7725px] md:leading-[37px]">
                   Rate your provider
                 </h2>
-                <p className="max-w-[306px] text-center text-[18.3863px] font-light leading-[17px] tracking-[-0.05em] text-[#94A3B8]">
+                <p className="max-w-[306px] text-center text-[15px] font-light leading-[18px] tracking-[-0.05em] text-[#94A3B8] md:text-[18.3863px] md:leading-[17px]">
                   How would you rate your experience with this healthcare professional?
                 </p>
               </div>
@@ -84,77 +104,19 @@ export function PatientConsultationRatingPage() {
             <textarea
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              className="mt-6 h-[78.14px] w-full resize-none rounded-[6.12876px] border border-[#94A3B8] bg-transparent px-[6.9px] py-2 text-[12.2575px] font-normal leading-8 tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+              className="mt-6 h-[96px] w-full resize-none rounded-[10px] border border-[#94A3B8] bg-transparent px-3 py-2 text-[13px] font-normal leading-6 tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8] md:h-[78.14px] md:rounded-[6.12876px] md:px-[6.9px] md:text-[12.2575px] md:leading-8"
               placeholder="Add a comment"
             />
 
             <button
-              type="button"
-              onClick={() => {
-                toast.success("Feedback saved.");
-                router.push("/patient-platform/consultations/complete");
-              }}
-              className="mt-5 inline-flex h-[35.24px] w-full items-center justify-center rounded-[18.3863px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[10.8074px] text-[13.7897px] font-normal leading-[30px] tracking-[-0.05em] text-[#F8FAFC]"
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[14px] font-normal tracking-[-0.05em] text-[#F8FAFC] transition disabled:cursor-not-allowed disabled:opacity-70 md:h-[35.24px] md:rounded-[18.3863px] md:px-[10.8074px] md:text-[13.7897px] md:leading-[30px]"
             >
-              Book Follow-Up Appointment
+              {isSubmitting ? "Submitting..." : "Submit Feedback"}
             </button>
-          </div>
+          </form>
         </section>
-
-        <aside className="flex h-[619px] flex-col rounded-[12px] bg-[#E2E8F0] px-[10px] py-[15px]">
-          <div className="relative h-[37px] rounded-[12px] bg-[#F8FAFC] p-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab("messages")}
-              className={`absolute left-0.5 top-0.5 h-[33px] w-[90px] rounded-[12px] text-[14px] tracking-[-0.05em] ${
-                activeTab === "messages" ? "bg-[#1565C0] font-light text-[#F8FAFC]" : "font-normal text-[#94A3B8]"
-              }`}
-            >
-              Messages
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("summary")}
-              className={`absolute left-[95px] top-0.5 h-[33px] w-[73px] rounded-[12px] text-[14px] tracking-[-0.05em] ${
-                activeTab === "summary" ? "bg-[#1565C0] font-light text-[#F8FAFC]" : "font-normal text-[#94A3B8]"
-              }`}
-            >
-              Summary
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("shared")}
-              className={`absolute right-0.5 top-0.5 h-[33px] w-[78px] rounded-[12px] text-[14px] tracking-[-0.05em] ${
-                activeTab === "shared" ? "bg-[#1565C0] font-light text-[#F8FAFC]" : "font-normal text-[#94A3B8]"
-              }`}
-            >
-              Shared Info
-            </button>
-          </div>
-
-          <div className="mt-5 flex flex-1 items-center justify-center">
-            <p className="max-w-[162px] text-center text-[24px] font-light leading-7 tracking-[-0.05em] text-[#94A3B8]">
-              Session has ended
-            </p>
-          </div>
-
-          <div className="rounded-[12px] bg-[#F8FAFC] p-[7px]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="pl-1 text-[10px] font-light leading-4 tracking-[-0.05em] text-[#94A3B8]">
-                Write your message
-              </span>
-
-              <button
-                type="button"
-                onClick={() => toast.info("Session ended. Messaging is unavailable.")}
-                className="inline-flex h-[33px] w-[34px] cursor-pointer items-center justify-center rounded-[6px] bg-[#1565C0]"
-                aria-label="Send message"
-              >
-                <SendIcon />
-              </button>
-            </div>
-          </div>
-        </aside>
       </div>
     </article>
   );
