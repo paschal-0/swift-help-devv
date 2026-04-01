@@ -1,10 +1,5 @@
-import { PatientPlatformPlaceholderPage } from "../PatientPlatformPlaceholderPage";
+import { PatientMedicalRecordsPage } from "./PatientMedicalRecordsPage";
 
 export default function PatientMedicalRecordsRoute() {
-  return (
-    <PatientPlatformPlaceholderPage
-      title="Medical Records"
-      description="Patient medical records page is ready for implementation."
-    />
-  );
+  return <PatientMedicalRecordsPage />;
 }

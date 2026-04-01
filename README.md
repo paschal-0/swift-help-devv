@@ -41,6 +41,7 @@ npm run lint
 - `/` - Landing page
 - `/get-started` - Welcome page (entry point)
 - `/get-started/create-account`
+- `/get-started/login`
 - `/get-started/otp`
 - `/patient/onboarding/one`
 - `/patient/onboarding/two`
@@ -50,6 +51,37 @@ npm run lint
 - `/organisation/onboarding/one`
 - `/organisation/onboarding/two`
 - `/organisation/onboarding/three`
+- `/patient-platform` - Patient app shell entry
+- `/patient-platform/dashboard`
+- `/patient-platform/appointments`
+- `/patient-platform/appointments/book`
+- `/patient-platform/appointments/schedule`
+- `/patient-platform/appointments/details`
+- `/patient-platform/appointments/confirmed`
+- `/patient-platform/consultations`
+- `/patient-platform/consultations/live`
+- `/patient-platform/consultations/rate`
+- `/patient-platform/consultations/complete`
+- `/patient-platform/consultations/no-consultation`
+- `/patient-platform/symptom-checker`
+- `/patient-platform/symptom-checker/assessment`
+- `/patient-platform/symptom-checker/details`
+- `/patient-platform/symptom-checker/recommendation`
+- `/patient-platform/medical-records`
+- `/patient-platform/medical-records/list`
+- `/patient-platform/medical-records/summary`
+- `/patient-platform/medical-records/recommendation`
+- `/patient-platform/my-profile`
+- `/patient-platform/help`
+- `/patient-platform/settings`
+
+## Patient Platform Flows
+
+- Appointment flow: `/patient-platform/appointments` -> `book` -> `schedule` -> `details` -> `confirmed`
+- Consultation flow: `/patient-platform/consultations` -> `live` -> `rate` -> `complete`
+- Empty consultation state: `/patient-platform/consultations/no-consultation`
+- Symptom checker flow: `/patient-platform/symptom-checker` -> `assessment` -> `details` -> `recommendation`
+- Medical records flow: `/patient-platform/medical-records` -> `list` -> `summary` -> `recommendation`
 
 ## Deployment (Vercel)
 
