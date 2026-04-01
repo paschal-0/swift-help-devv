@@ -209,17 +209,17 @@ function MoreVerticalIcon() {
 
 function SummaryCardItem({ card }: { card: SummaryCard }) {
   return (
-    <div className="rounded-[12px] bg-[#F8FAFC] px-[11px] py-[8px] shadow-[0_0_12px_rgba(148,163,184,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(30,136,229,0.12)]">
-      <div className="flex items-center gap-[7px]">
-        <div className="flex h-[64px] w-[59px] items-center justify-center rounded-[12px] bg-[#E3F2FD]">
+    <div className="rounded-[12px] bg-[#F8FAFC] px-2.5 py-2 shadow-[0_0_12px_rgba(148,163,184,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(30,136,229,0.12)] sm:px-3 sm:py-[10px] xl:px-[11px] xl:py-[8px]">
+      <div className="flex items-center gap-2 xl:gap-[7px]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#E3F2FD] sm:h-12 sm:w-12 xl:h-[64px] xl:w-[59px]">
           <CalendarBadgeIcon />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-3">
-          <p className="line-clamp-2 text-[12px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
+        <div className="flex min-w-0 flex-col gap-1.5 xl:gap-3">
+          <p className="line-clamp-2 text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8] sm:text-[12px]">
             {card.title}
           </p>
-          <p className="text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155]">
+          <p className="text-[14px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[16px] sm:leading-5 xl:text-[18px] xl:leading-[22px]">
             {card.value}
           </p>
         </div>
@@ -245,31 +245,31 @@ function HealthRecordCard({ record }: { record: HealthRecord }) {
         <button
           type="button"
           onClick={() => toast.info("Record options are coming in the next page")}
-          className="inline-flex h-[19px] w-[19px] cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] transition hover:scale-105"
+          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] transition hover:scale-105"
           aria-label={`More actions for ${record.title}`}
         >
           <MoreVerticalIcon />
         </button>
       </div>
 
-      <h3 className="mb-3 line-clamp-2 min-h-[32px] text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155]">
+      <h3 className="mb-2 line-clamp-2 min-h-[28px] text-[13px] font-normal leading-4 tracking-[-0.05em] text-[#334155] sm:mb-3 sm:min-h-[32px] sm:text-[14px]">
         {record.title}
       </h3>
 
-      <div className="mb-3 flex flex-wrap gap-1">
-        <span className="inline-flex h-[22px] items-center rounded-[24px] bg-[#E3F2FD] px-[10px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0]">
+      <div className="mb-2 flex flex-wrap gap-1 sm:mb-3">
+        <span className="inline-flex h-5 items-center rounded-[24px] bg-[#E3F2FD] px-2 text-[10px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0] sm:h-[22px] sm:px-[10px] sm:text-[12px]">
           {record.date}
         </span>
-        <span className="inline-flex h-[22px] items-center rounded-[24px] bg-[#E3F2FD] px-[10px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0]">
+        <span className="inline-flex h-5 items-center rounded-[24px] bg-[#E3F2FD] px-2 text-[10px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0] sm:h-[22px] sm:px-[10px] sm:text-[12px]">
           {record.mode}
         </span>
-        <span className="inline-flex h-[22px] items-center rounded-[24px] bg-[#E3F2FD] px-[10px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0]">
+        <span className="inline-flex h-5 items-center rounded-[24px] bg-[#E3F2FD] px-2 text-[10px] font-normal leading-4 tracking-[-0.05em] text-[#1565C0] sm:h-[22px] sm:px-[10px] sm:text-[12px]">
           {record.duration}
         </span>
       </div>
 
-      <div className="min-h-[87px] rounded-[12px] border border-[#94A3B8] px-[10px] py-[8px]">
-        <p className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#94A3B8]">
+      <div className="rounded-[12px] border border-[#94A3B8] px-[10px] py-[8px] sm:min-h-[87px]">
+        <p className="line-clamp-3 text-[12px] font-light leading-4 tracking-[-0.05em] text-[#94A3B8] sm:line-clamp-none">
           {record.summary}
         </p>
       </div>
@@ -300,49 +300,59 @@ export function PatientMedicalRecordsPage() {
 
   return (
     <section className="pb-10 pt-5 sm:pt-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {summaryCards.map((card) => (
           <SummaryCardItem key={card.id} card={card} />
         ))}
       </div>
 
       <article className="mt-5 rounded-[12px] bg-[#F8FAFC] px-3 pb-5 pt-4 sm:mt-5 sm:px-5 sm:pb-6 xl:mt-5 xl:px-[33px] xl:pb-8 xl:pt-[17px]">
-        <header className="flex flex-col gap-3 xl:grid xl:grid-cols-[1fr_auto_1fr] xl:items-center">
-          <h1 className="text-[22px] font-medium leading-[30px] tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
+        <header className="flex flex-col gap-4 xl:grid xl:grid-cols-[1fr_auto_1fr] xl:items-center">
+          <h1 className="text-[18px] font-medium leading-[26px] tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
             Health Records
           </h1>
 
-          <div className="flex justify-start xl:justify-center">
-            <div className="flex h-[49px] w-full max-w-[253px] items-center gap-[9px] rounded-[12px] border border-[#94A3B8] p-[6px]">
-              <div className="relative h-[37px] w-[205px] rounded-[12px] bg-[#E2E8F0]">
-                <button
-                  type="button"
-                  onClick={() => setTab("upcoming")}
-                  className={`absolute left-0 top-0 h-[37px] w-[123px] cursor-pointer rounded-[12px] text-[16px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 active:translate-y-0 ${
-                    tab === "upcoming"
-                      ? "bg-[#1E88E5] font-light text-[#F8FAFC]"
-                      : "bg-transparent font-normal text-[#334155]"
-                  }`}
-                >
-                  Upcoming
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("past")}
-                  className={`absolute right-0 top-0 h-[37px] w-[82px] cursor-pointer rounded-[12px] text-[16px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 active:translate-y-0 ${
-                    tab === "past"
-                      ? "bg-[#1E88E5] font-light text-[#F8FAFC]"
-                      : "bg-transparent font-normal text-[#334155]"
-                  }`}
-                >
-                  Past
-                </button>
+          <div className="flex w-full justify-start xl:justify-center">
+            <div className="flex w-full items-center gap-2 xl:max-w-[253px]">
+              <div
+                role="tablist"
+                aria-label="Health records tabs"
+                className="flex flex-1 items-center gap-1 rounded-[12px] border border-[#94A3B8] bg-[#E2E8F0] p-1"
+              >
+                {([
+                  { id: "upcoming", label: "Upcoming" },
+                  { id: "past", label: "Past" },
+                ] as const).map((item) => {
+                  const isActive = tab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={isActive}
+                      type="button"
+                      onClick={() => setTab(item.id)}
+                      className={`relative inline-flex h-[38px] flex-1 cursor-pointer items-center justify-center rounded-[10px] px-2 text-[13px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 active:translate-y-0 sm:h-[40px] sm:px-3 sm:text-[16px] ${
+                        isActive ? "font-light text-[#F8FAFC]" : "font-normal text-[#334155]"
+                      }`}
+                    >
+                      {isActive ? (
+                        <motion.span
+                          layoutId="medical-records-tab"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                          className="absolute inset-0 rounded-[10px] bg-[#1E88E5]"
+                        />
+                      ) : null}
+                      <span className="relative z-10">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <button
                 type="button"
                 onClick={() => toast.info("Date filter options will appear in the next page")}
-                className="inline-flex h-6 w-6 cursor-pointer items-center justify-center transition hover:-translate-y-0.5"
+                className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-[#94A3B8] bg-[#F8FAFC] transition hover:-translate-y-0.5"
                 aria-label="Open date filter"
               >
                 <CalendarFilterIcon />
@@ -350,11 +360,11 @@ export function PatientMedicalRecordsPage() {
             </div>
           </div>
 
-          <div className="flex justify-start xl:justify-end">
+          <div className="flex w-full justify-start xl:justify-end">
             <button
               type="button"
               onClick={() => router.push("/patient-platform/appointments/book")}
-              className="inline-flex h-[46px] w-full max-w-[190px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985]"
+              className="inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[15px] font-normal tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:max-w-[190px] sm:text-[18px] sm:leading-10"
             >
               Book Appointment
             </button>

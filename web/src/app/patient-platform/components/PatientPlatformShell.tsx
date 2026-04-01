@@ -94,10 +94,13 @@ function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
 
   if (type === "records") {
     return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <svg viewBox="0 0 18 22" className="h-6 w-5" aria-hidden fill="none">
         <path
-          fill={color}
-          d="M7 2h8l5 5v15H7V2Zm7 1.5V8h4.5L14 3.5ZM9 11h6v1.8H9V11Zm0 3.6h6v1.8H9v-1.8Zm0 3.6h4v1.8H9v-1.8Z"
+          d="M6 12H12M6 16H9M1 3V19C1 19.5304 1.21071 20.0391 1.58579 20.4142C1.96086 20.7893 2.46957 21 3 21H15C15.5304 21 16.0391 20.7893 16.4142 20.4142C16.7893 20.0391 17 19.5304 17 19V7.342C17 7.07556 16.9467 6.81181 16.8433 6.56624C16.7399 6.32068 16.5885 6.09824 16.398 5.912L11.958 1.57C11.5844 1.20466 11.0826 1.00007 10.56 1H3C2.46957 1 1.96086 1.21071 1.58579 1.58579C1.21071 1.96086 1 2.46957 1 3Z"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     );

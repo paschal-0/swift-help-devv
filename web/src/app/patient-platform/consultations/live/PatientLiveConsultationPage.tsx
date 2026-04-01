@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type ChatTab = "messages" | "summary" | "shared";
@@ -122,6 +122,19 @@ export function PatientLiveConsultationPage() {
   const [speakerMuted, setSpeakerMuted] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const mobileChatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollMobileChatToBottom = useCallback(() => {
+    if (mobileChatScrollRef.current) {
+      mobileChatScrollRef.current.scrollTop = mobileChatScrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMobileChatOpen) {
+      requestAnimationFrame(scrollMobileChatToBottom);
+    }
+  }, [isMobileChatOpen, chatMessages.length, scrollMobileChatToBottom]);
 
   const videoStarted = callState === "connecting" || callState === "connected";
   const callDuration = `${String(Math.floor(callSeconds / 60)).padStart(2, "0")}:${String(callSeconds % 60).padStart(2, "0")}`;
@@ -241,7 +254,7 @@ export function PatientLiveConsultationPage() {
   return (
     <article className="mt-3 min-h-[664px] w-full rounded-[12px] bg-[#F8FAFC] px-0 pb-5 pt-3 sm:mt-[26px] sm:px-4 sm:pb-6 sm:pt-[17px] md:px-6 xl:max-w-[899px] xl:px-7">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="text-center md:text-left">
           <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
             Live Consultation
           </h1>
@@ -300,20 +313,26 @@ export function PatientLiveConsultationPage() {
 
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.52)_0%,rgba(15,23,42,0.16)_24%,rgba(15,23,42,0.18)_62%,rgba(15,23,42,0.68)_100%)]" />
 
-            <div className="absolute left-0 right-0 top-0 flex items-center justify-between px-4 pb-8 pt-5">
-              <div className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[rgba(15,23,42,0.34)] px-3 py-2 backdrop-blur-md">
-                <span className="relative h-10 w-10 overflow-hidden rounded-full border border-white/15">
-                  <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
-                </span>
-                <div>
-                  <p className="text-[15px] font-medium tracking-[-0.04em] text-white">Dr Clara Ken</p>
-                  <p className="text-[11px] font-light tracking-[-0.04em] text-white/70">General Consultant</p>
+            <div className="absolute left-0 right-0 top-0 z-10 px-4 pt-5 pb-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] border border-white/10 bg-[rgba(15,23,42,0.55)] px-3 py-2.5 backdrop-blur-lg">
+                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/20">
+                    <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold tracking-[-0.04em] text-white">Dr. Clara Ken</p>
+                    <p className="text-[11px] font-light tracking-[-0.04em] text-white/65">General Consultant</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(220,38,38,0.92)] px-3 py-1.5 text-[12px] font-semibold tracking-[-0.04em] text-white shadow-[0_10px_24px_rgba(220,38,38,0.22)]">
-                <span className="h-2 w-2 rounded-full bg-white" />
-                {callDuration}
+                <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-[rgba(220,38,38,0.92)] px-4 py-2 text-[13px] font-semibold tracking-[-0.04em] text-white shadow-[0_10px_24px_rgba(220,38,38,0.22)] backdrop-blur-lg">
+                  <motion.span
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-2 w-2 shrink-0 rounded-full bg-white"
+                  />
+                  {callDuration}
+                </div>
               </div>
             </div>
 
@@ -353,7 +372,7 @@ export function PatientLiveConsultationPage() {
               </div>
             ) : null}
 
-            <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-5 px-4">
+            <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-5 px-4">
               {chatMessages.length ? (
                 <motion.button
                   type="button"
@@ -361,9 +380,9 @@ export function PatientLiveConsultationPage() {
                   animate={{ opacity: 1, y: 0 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsMobileChatOpen(true)}
-                  className="max-w-[82%] rounded-[18px] border border-white/10 bg-[rgba(15,23,42,0.42)] px-4 py-2.5 text-left text-[13px] text-white backdrop-blur-md"
+                  className="max-w-[85%] rounded-[18px] border border-white/10 bg-[rgba(15,23,42,0.48)] px-4 py-2.5 text-left text-[13px] text-white backdrop-blur-lg"
                 >
-                  <span className="font-medium text-[#93C5FD]">Dr. Ken:</span>{" "}
+                  <span className="font-medium text-[#93C5FD]">Dr. Clara Ken:</span>{" "}
                   <span className="font-light text-white/85">
                     {chatMessages[chatMessages.length - 1]?.text}
                   </span>
@@ -435,37 +454,61 @@ export function PatientLiveConsultationPage() {
               </div>
             </div>
 
+            {isMobileChatOpen ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsMobileChatOpen(false)}
+                className="absolute inset-0 z-10 bg-black/40"
+              />
+            ) : null}
+
             <motion.div
               initial={false}
               animate={{
                 y: isMobileChatOpen ? 0 : "100%",
                 opacity: isMobileChatOpen ? 1 : 0,
               }}
+              drag={isMobileChatOpen ? "y" : false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.3}
+              onDragEnd={(_event, info) => {
+                if (info.offset.y > 80 || info.velocity.y > 300) {
+                  setIsMobileChatOpen(false);
+                }
+              }}
               transition={{ type: "spring", stiffness: 320, damping: 30 }}
               className="absolute inset-x-0 bottom-0 z-20"
             >
-              <div className="rounded-t-[28px] border-t border-white/10 bg-[rgba(15,23,42,0.72)] px-4 pb-4 pt-3 backdrop-blur-xl">
-                <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/25" />
+              <div className="rounded-t-[28px] border-t border-white/10 bg-[rgba(15,23,42,0.78)] px-4 pb-4 pt-3 backdrop-blur-2xl">
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/30" />
 
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[15px] font-medium tracking-[-0.04em] text-white">Messages</p>
-                    <p className="text-[11px] font-light tracking-[-0.04em] text-white/65">
-                      Keep chatting during the consultation.
+                    <p className="text-[15px] font-semibold tracking-[-0.04em] text-white">Messages</p>
+                    <p className="text-[11px] font-light tracking-[-0.04em] text-white/60">
+                      Chat with Dr. Clara Ken during session
                     </p>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => setIsMobileChatOpen(false)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
                     aria-label="Close chat"
                   >
-                    x
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                      <path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41Z" />
+                    </svg>
                   </button>
                 </div>
 
-                <div className="max-h-[32vh] overflow-y-auto pr-1 [scrollbar-color:#60A5FA_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#60A5FA] [&::-webkit-scrollbar-track]:bg-transparent">
+                <div
+                  ref={mobileChatScrollRef}
+                  className="max-h-[45vh] overflow-y-auto pr-1 [scrollbar-color:#60A5FA_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#60A5FA] [&::-webkit-scrollbar-track]:bg-transparent"
+                >
                   <div className="space-y-3 pb-3">
                     {chatMessages.map((message, index) => (
                       <motion.div
@@ -473,19 +516,19 @@ export function PatientLiveConsultationPage() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.18, delay: Math.min(index * 0.03, 0.2) }}
-                        className={`flex items-center gap-[6px] ${
+                        className={`flex items-end gap-[6px] ${
                           message.sender === "provider" ? "justify-start" : "justify-end"
                         }`}
                       >
                         {message.sender === "provider" ? (
-                          <span className="relative h-7 w-7 overflow-hidden rounded-full">
+                          <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full">
                             <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Provider avatar" fill className="object-cover" />
                           </span>
                         ) : null}
 
-                        <div className="relative">
+                        <div className="relative max-w-[70%]">
                           <span
-                            className={`relative z-[1] inline-flex min-h-[34px] max-w-[210px] items-center rounded-[14px] px-4 py-[8px] text-[13px] font-light leading-5 tracking-[-0.04em] ${
+                            className={`relative z-[1] inline-flex min-h-[34px] items-center rounded-[14px] px-4 py-[8px] text-[13px] font-light leading-5 tracking-[-0.04em] ${
                               message.sender === "provider"
                                 ? "bg-[#1565C0] text-[#F8FAFC]"
                                 : "bg-[#E3F2FD] text-[#1E88E5]"
@@ -503,7 +546,7 @@ export function PatientLiveConsultationPage() {
                         </div>
 
                         {message.sender === "patient" ? (
-                          <span className="relative h-7 w-7 overflow-hidden rounded-full">
+                          <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full">
                             <Image src="/doctor.jpg" alt="Patient avatar" fill className="object-cover" />
                           </span>
                         ) : null}
@@ -512,7 +555,7 @@ export function PatientLiveConsultationPage() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSendMessage} className="rounded-[16px] bg-white/8 p-2">
+                <form onSubmit={handleSendMessage} className="mt-2 rounded-[16px] bg-white/10 p-2">
                   <div className="flex items-center justify-between gap-2">
                     <input
                       type="text"
@@ -524,7 +567,7 @@ export function PatientLiveConsultationPage() {
 
                     <button
                       type="submit"
-                      className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1565C0]"
+                      className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#1565C0] transition hover:bg-[#1976D2]"
                       aria-label="Send message"
                     >
                       <SendIcon />
@@ -844,7 +887,7 @@ export function PatientLiveConsultationPage() {
           <div className="flex w-full min-w-0 flex-1 flex-col rounded-[16px] bg-[#E2E8F0] px-1.5 py-2.5 sm:px-[10px] sm:py-[15px]">
             <ConsultationTabs activeTab={activeTab} layoutId="consultation-tabs-chat" onChange={setActiveTab} />
 
-            <div className="mt-3 w-full min-h-[56vh] min-w-0 overflow-y-auto pr-0 [scrollbar-color:#1E88E5_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] [&::-webkit-scrollbar-thumb]:shadow-[0_0_0_1px_rgba(227,242,253,0.45)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(227,242,253,0.35)] sm:mt-4 sm:min-h-[250px] sm:pr-2 md:h-[360px]">
+            <div className="mt-3 w-full min-h-[38vh] min-w-0 flex-1 overflow-y-auto px-1 pr-0 [scrollbar-color:#1E88E5_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] [&::-webkit-scrollbar-thumb]:shadow-[0_0_0_1px_rgba(227,242,253,0.45)] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[rgba(227,242,253,0.35)] sm:mt-4 sm:min-h-[250px] sm:px-0 sm:pr-2 md:h-[360px]">
               {activeTab !== "messages" ? (
                 <div className="rounded-[12px] bg-[#F8FAFC] p-3 text-[12px] font-normal tracking-[-0.05em] text-[#334155]">
                   {activeTab === "summary"
@@ -852,14 +895,14 @@ export function PatientLiveConsultationPage() {
                     : "Shared info from the patient profile will appear here."}
                 </div>
               ) : (
-                <div className="w-full min-w-0 space-y-[13px] pr-0 sm:pr-[6px]">
+                <div className="w-full min-w-0 space-y-3 py-1 pr-0 sm:space-y-[13px] sm:py-0 sm:pr-[6px]">
                   {chatMessages.map((message, index) => (
                     <motion.div
                       key={message.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.18, delay: Math.min(index * 0.03, 0.2) }}
-                      className={`flex items-center gap-[6px] ${
+                      className={`flex items-end gap-[6px] sm:items-center ${
                         message.sender === "provider" ? "justify-start" : "justify-end"
                       }`}
                     >
@@ -869,9 +912,9 @@ export function PatientLiveConsultationPage() {
                         </span>
                       ) : null}
 
-                      <div className="relative min-w-0">
+                      <div className="relative min-w-0 max-w-[72%] sm:max-w-none">
                         <span
-                          className={`relative z-[1] inline-flex min-h-[38px] max-w-[300px] items-center rounded-[14px] px-5 py-[9px] text-[13px] font-light leading-5 tracking-[-0.04em] sm:min-h-[34px] sm:max-w-[240px] sm:py-[8px] ${
+                          className={`relative z-[1] inline-flex min-h-[38px] items-center rounded-[14px] px-4 py-[9px] text-[13px] font-light leading-5 tracking-[-0.04em] sm:min-h-[34px] sm:max-w-[240px] sm:px-5 sm:py-[8px] ${
                             message.sender === "provider"
                               ? "bg-[#1565C0] text-[#F8FAFC]"
                               : "bg-[#E3F2FD] text-[#1E88E5]"
@@ -901,7 +944,7 @@ export function PatientLiveConsultationPage() {
 
             <form
               onSubmit={handleSendMessage}
-              className="sticky bottom-1 z-20 mt-3 w-full rounded-[16px] bg-[#F8FAFC] p-2 shadow-[0_10px_35px_rgba(15,23,42,0.18)] sm:bottom-2 sm:mt-4 sm:p-2 md:static md:rounded-[12px] md:p-[10px] md:shadow-none"
+              className="sticky bottom-1 z-20 mt-auto w-full rounded-[16px] bg-[#F8FAFC] p-2 pt-3 shadow-[0_10px_35px_rgba(15,23,42,0.18)] sm:bottom-2 sm:mt-4 sm:p-2 md:static md:rounded-[12px] md:p-[10px] md:shadow-none"
             >
               <div className="flex items-center justify-between gap-2">
                 <input
