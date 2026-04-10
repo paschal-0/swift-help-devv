@@ -255,7 +255,7 @@ export function ProfessionalPlatformShell({
                 : "0 8px 24px rgba(148,163,184,0.18)",
             }}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
+            className="fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
           >
             {!isMobileNavExpanded ? (
               <button
