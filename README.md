@@ -1,13 +1,57 @@
 # Swift Help
 
-Monorepo for the Swift Help product.
+Swift Help is a healthcare product monorepo with:
 
-## Project Layout
+- a web experience built in Next.js
+- an Expo mobile workspace
 
-- `web/` - Next.js frontend (App Router, TypeScript, Sonner toasts)
-- `mobile-expo/` - mobile app workspace
+The current repo is primarily a frontend prototype with polished route flows, reusable platform shells, and static/sample data for patient, professional, and organisation journeys.
 
-## Run the Web App
+## Repository Layout
+
+- `web/` - main product surface, built with Next.js App Router, TypeScript, Tailwind CSS v4, Framer Motion, Sonner, and Chart.js
+- `mobile-expo/` - Expo React Native workspace for the early mobile onboarding flow
+
+## Current Product Areas
+
+### Web
+
+- Marketing landing page
+- Get started flow: welcome, create account, login, OTP
+- Patient onboarding
+- Professional onboarding
+- Organisation onboarding
+- Patient platform: dashboard, appointments, consultations, symptom checker, medical records, profile, help, settings
+- Professional platform: dashboard, schedule, requests, earnings, profile, help, settings
+
+### Mobile
+
+- Splash screen
+- Get started role selection
+- Create account screen
+
+## Current State
+
+What exists today:
+
+- detailed UI flows across the web app
+- responsive patient and professional dashboard shells
+- client-side form validation and toast feedback
+- local component state for interactions and mock workflows
+
+What does not appear to be wired yet:
+
+- backend/API integration
+- real authentication
+- database persistence
+- shared app-wide data layer
+- automated tests
+
+This means most screens currently behave like a high-fidelity frontend prototype rather than a connected production system.
+
+## Getting Started
+
+### Web App
 
 ```bash
 cd web
@@ -17,17 +61,7 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Run the Mobile App
-
-```bash
-cd mobile-expo
-npm install
-npm run start
-```
-
-## Web Scripts
-
-From `web/`:
+Available scripts from `web/`:
 
 ```bash
 npm run dev
@@ -36,13 +70,33 @@ npm run start
 npm run lint
 ```
 
-## Current Main Routes (Web)
+### Mobile App
 
-- `/` - Landing page
-- `/get-started` - Welcome page (entry point)
+```bash
+cd mobile-expo
+npm install
+npm run start
+```
+
+Other mobile scripts:
+
+```bash
+npm run android
+npm run ios
+```
+
+## Main Web Routes
+
+### Public
+
+- `/` - landing page
+- `/get-started`
 - `/get-started/create-account`
 - `/get-started/login`
 - `/get-started/otp`
+
+### Onboarding
+
 - `/patient/onboarding/one`
 - `/patient/onboarding/two`
 - `/professional/onboarding/one`
@@ -51,7 +105,10 @@ npm run lint
 - `/organisation/onboarding/one`
 - `/organisation/onboarding/two`
 - `/organisation/onboarding/three`
-- `/patient-platform` - Patient app shell entry
+
+### Patient Platform
+
+- `/patient-platform`
 - `/patient-platform/dashboard`
 - `/patient-platform/appointments`
 - `/patient-platform/appointments/book`
@@ -75,25 +132,37 @@ npm run lint
 - `/patient-platform/help`
 - `/patient-platform/settings`
 
-## Patient Platform Flows
+### Professional Platform
 
-- Appointment flow: `/patient-platform/appointments` -> `book` -> `schedule` -> `details` -> `confirmed`
-- Consultation flow: `/patient-platform/consultations` -> `live` -> `rate` -> `complete`
-- Empty consultation state: `/patient-platform/consultations/no-consultation`
-- Symptom checker flow: `/patient-platform/symptom-checker` -> `assessment` -> `details` -> `recommendation`
-- Medical records flow: `/patient-platform/medical-records` -> `list` -> `summary` -> `recommendation`
+- `/professional-platform`
+- `/professional-platform/dashboard`
+- `/professional-platform/schedule`
+- `/professional-platform/requests`
+- `/professional-platform/earnings`
+- `/professional-platform/my-profile`
+- `/professional-platform/help`
+- `/professional-platform/settings`
 
-## Deployment (Vercel)
+## Notable Web Flows
 
-If deploying the web app on Vercel, use:
+- Patient appointments: `/patient-platform/appointments` -> `book` -> `schedule` -> `details` -> `confirmed`
+- Patient consultations: `/patient-platform/consultations` -> `live` -> `rate` -> `complete`
+- Symptom checker: `/patient-platform/symptom-checker` -> `assessment` -> `details` -> `recommendation`
+- Medical records: `/patient-platform/medical-records` -> `list` -> `summary` -> `recommendation`
+- Professional onboarding: `/professional/onboarding/one` -> `two` -> `three` -> `/professional-platform`
 
-- **Root Directory:** `web`
-- **Build Command:** `npm run build`
-- **Output Directory:** `.next` (default)
+## Deployment
+
+For Vercel deployment of the web app:
+
+- Root Directory: `web`
+- Build Command: `npm run build`
+- Output Directory: `.next`
 
 ## Notes
 
-- Node.js 18+ is recommended.
-- Assets used by the landing and onboarding pages are in `web/public/`.
-- Phone inputs are implemented with `react-international-phone`.
-- Form validation feedback uses Sonner toasts.
+- Node.js 18+ works for the web app.
+- `mobile-expo/package.json` declares Node `20.x`.
+- Shared web assets are stored in `web/public/`.
+- Phone inputs on web use `react-international-phone`.
+- Toast notifications on web use `sonner`.
