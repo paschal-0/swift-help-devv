@@ -666,11 +666,13 @@ export function ProfessionalDashboardPage() {
           displayColors: true,
           callbacks: {
             label: (context) => {
+              const parsedY = typeof context.parsed.y === "number" ? context.parsed.y : 0;
+
               if (context.dataset.label === "Sessions") {
-                return `Sessions ${Math.round(context.parsed.y / 3000)}`;
+                return `Sessions ${Math.round(parsedY / 3000)}`;
               }
 
-              return `${context.dataset.label} ${formatNaira(context.parsed.y)}`;
+              return `${context.dataset.label} ${formatNaira(parsedY)}`;
             },
           },
         },
