@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 
@@ -155,6 +155,8 @@ export function ProfessionalEarningsPage() {
   const [payoutMethodIndex, setPayoutMethodIndex] = useState(0);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
+  const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
+  const mobileScrollbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const payoutMethods = ["GTBank - **** 2481", "Moniepoint - **** 9921", "Access Bank - **** 1014"];
   const showOverviewEmptyState = false;
 
@@ -197,8 +199,36 @@ export function ProfessionalEarningsPage() {
     transactionsData.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = transactionsData.find((transaction) => transaction.id === selectedPayoutId) ?? null;
 
+  const scheduleMobileScrollbarHide = (delay: number) => {
+    if (mobileScrollbarTimeoutRef.current) {
+      clearTimeout(mobileScrollbarTimeoutRef.current);
+    }
+
+    mobileScrollbarTimeoutRef.current = setTimeout(() => {
+      setMobileScrollbarsVisible(false);
+    }, delay);
+  };
+
+  const revealMobileScrollbars = () => {
+    setMobileScrollbarsVisible(true);
+    scheduleMobileScrollbarHide(1400);
+  };
+
+  useEffect(() => {
+    scheduleMobileScrollbarHide(2400);
+
+    return () => {
+      if (mobileScrollbarTimeoutRef.current) {
+        clearTimeout(mobileScrollbarTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <section className="mt-[14px] pb-6 xl:mt-[6px]">
+    <section
+      className="mt-[14px] pb-6 xl:mt-[6px]"
+      data-mobile-scrollbars={mobileScrollbarsVisible ? "visible" : "hidden"}
+    >
       <div className="border-b border-[#94A3B8] pb-[14px]">
         <div className="flex flex-wrap items-center justify-between gap-4 md:flex-nowrap md:items-center md:justify-between md:gap-3">
           <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Earnings</h1>
@@ -207,7 +237,7 @@ export function ProfessionalEarningsPage() {
             <button
               type="button"
               onClick={() => toast.success("Withdrawal request submitted.")}
-              className="inline-flex h-10 flex-1 items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15.4719px] font-normal tracking-[-0.05em] text-[#F8FAFC] shadow-sm md:flex-none md:shadow-none"
+              className="inline-flex h-10 flex-1 items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-normal leading-none tracking-[-0.05em] whitespace-nowrap text-[#F8FAFC] shadow-sm sm:px-6 sm:text-[15.4719px] md:flex-none md:shadow-none"
             >
               Withdraw funds
             </button>
@@ -224,7 +254,12 @@ export function ProfessionalEarningsPage() {
           </div>
         </div>
       </div>
-      <div className="mt-6 flex snap-x snap-mandatory gap-[14px] overflow-x-auto pb-4 earnings-scroll md:grid md:grid-cols-2 md:gap-[18px] md:overflow-visible md:pb-0 xl:grid-cols-3">
+      <div
+        className="mt-6 flex snap-x snap-mandatory gap-[14px] overflow-x-auto pb-4 earnings-scroll earnings-scroll-surface md:grid md:grid-cols-2 md:gap-[18px] md:overflow-visible md:pb-0 xl:grid-cols-3"
+        onPointerDown={revealMobileScrollbars}
+        onTouchStart={revealMobileScrollbars}
+        onScroll={revealMobileScrollbars}
+      >
         {summaryCards.map((item) => (
           <motion.article
             key={item.id}
@@ -264,7 +299,12 @@ export function ProfessionalEarningsPage() {
         </div>
       </article>
       <article className="mt-4 rounded-[12px] bg-[#0F172A] px-2 py-[13px] md:mt-3 md:px-4">
-        <div className="mx-auto flex w-full max-w-[517px] items-center justify-start gap-3 overflow-x-auto px-2 earnings-scroll md:justify-center md:gap-8 md:px-0 sm:gap-[95px]">
+        <div
+          className="mx-auto flex w-full max-w-[517px] items-center justify-start gap-3 overflow-x-auto px-2 earnings-scroll earnings-scroll-surface md:justify-center md:gap-8 md:px-0 sm:gap-[95px]"
+          onPointerDown={revealMobileScrollbars}
+          onTouchStart={revealMobileScrollbars}
+          onScroll={revealMobileScrollbars}
+        >
           {tabOptions.map((tab) => (
             <button
               key={tab.id}
@@ -665,11 +705,13 @@ export function ProfessionalEarningsPage() {
         .earnings-scroll {
           scrollbar-color: #1e88e5 rgba(15, 23, 42, 0.15);
           scrollbar-width: thin;
+          transition: scrollbar-color 0.25s ease;
         }
 
         .earnings-scroll::-webkit-scrollbar {
           width: 8px;
           height: 8px;
+          transition: opacity 0.25s ease;
         }
 
         .earnings-scroll::-webkit-scrollbar-track {
@@ -680,6 +722,17 @@ export function ProfessionalEarningsPage() {
         .earnings-scroll::-webkit-scrollbar-thumb {
           background: #1e88e5;
           border-radius: 999px;
+        }
+
+        @media (max-width: 767px) {
+          section[data-mobile-scrollbars="hidden"] .earnings-scroll-surface {
+            scrollbar-color: transparent transparent;
+            scrollbar-width: none;
+          }
+
+          section[data-mobile-scrollbars="hidden"] .earnings-scroll-surface::-webkit-scrollbar {
+            height: 0;
+          }
         }
       `}</style>
     </section>
