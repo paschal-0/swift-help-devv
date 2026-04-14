@@ -300,7 +300,7 @@ export function ProfessionalEarningsPage() {
       </article>
       <article className="mt-4 rounded-[12px] bg-[#0F172A] px-2 py-[13px] md:mt-3 md:px-4">
         <div
-          className="mx-auto flex w-full max-w-[517px] items-center justify-start gap-3 overflow-x-auto px-2 earnings-scroll earnings-scroll-surface md:justify-center md:gap-8 md:px-0 sm:gap-[95px]"
+          className="earnings-tabs-list mx-auto flex w-full max-w-[517px] items-center justify-start gap-3 overflow-x-auto px-2 earnings-scroll earnings-scroll-surface md:justify-center md:gap-8 md:px-0 sm:gap-[95px]"
           onPointerDown={revealMobileScrollbars}
           onTouchStart={revealMobileScrollbars}
           onScroll={revealMobileScrollbars}
@@ -724,7 +724,19 @@ export function ProfessionalEarningsPage() {
           border-radius: 999px;
         }
 
+        .earnings-tabs-list {
+          scrollbar-color: #1e88e5 #dbeafe;
+        }
+
+        .earnings-tabs-list::-webkit-scrollbar-track {
+          background: #dbeafe;
+        }
+
         @media (max-width: 767px) {
+          .earnings-tabs-list {
+            padding-bottom: 0.75rem;
+          }
+
           section[data-mobile-scrollbars="hidden"] .earnings-scroll-surface {
             scrollbar-color: transparent transparent;
             scrollbar-width: none;
