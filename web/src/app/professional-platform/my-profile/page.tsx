@@ -1,11 +1,6 @@
-import { ProfessionalPlatformPlaceholderPage } from "../ProfessionalPlatformPlaceholderPage";
+import { ProfessionalMyProfilePage } from "./ProfessionalMyProfilePage";
 
 export default function ProfessionalProfileRoute() {
-  return (
-    <ProfessionalPlatformPlaceholderPage
-      title="My Profile"
-      description="Update personal details, practice information, and consultation preferences."
-    />
-  );
+  return <ProfessionalMyProfilePage />;
 }
 

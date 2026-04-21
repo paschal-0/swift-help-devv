@@ -1,11 +1,6 @@
-import { ProfessionalPlatformPlaceholderPage } from "../ProfessionalPlatformPlaceholderPage";
+import { ProfessionalHelpPage } from "./ProfessionalHelpPage";
 
 export default function ProfessionalHelpRoute() {
-  return (
-    <ProfessionalPlatformPlaceholderPage
-      title="Help"
-      description="Access support guides and contact options for platform assistance."
-    />
-  );
+  return <ProfessionalHelpPage />;
 }
 
