@@ -138,64 +138,105 @@ export function PatientMyProfilePage() {
     <div className="mt-[22px] w-full">
       <h1 className="text-[24px] font-medium leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Profile</h1>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[286px_minmax(0,1fr)_286px]">
-        <motion.section
-          whileHover={{ y: -2 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC] p-6"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="relative h-[195px] w-full max-w-[186px] overflow-hidden rounded-[12px] bg-[#E2E8F0]">
-              <Image
-                src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
-                alt="Sara Johnson portrait"
-                fill
-                className="object-cover"
-              />
-            </div>
+      <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_286px]">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[286px_minmax(0,1fr)]">
+            <motion.section
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="rounded-[12px] bg-[#F8FAFC] p-6"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="relative h-[195px] w-full max-w-[186px] overflow-hidden rounded-[12px] bg-[#E2E8F0]">
+                  <Image
+                    src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
+                    alt="Sara Johnson portrait"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <button
-                  key={`profile-edit-${index + 1}`}
-                  type="button"
-                  onClick={() => handleEdit("Profile")}
-                  className="inline-flex cursor-pointer items-center justify-center"
-                  aria-label={`Edit profile section ${index + 1}`}
-                >
-                  <EditIcon />
-                </button>
-              ))}
-            </div>
+                <div className="flex flex-col gap-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <button
+                      key={`profile-edit-${index + 1}`}
+                      type="button"
+                      onClick={() => handleEdit("Profile")}
+                      className="inline-flex cursor-pointer items-center justify-center"
+                      aria-label={`Edit profile section ${index + 1}`}
+                    >
+                      <EditIcon />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="mt-[18px] text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Sara Johnson</p>
+
+              <motion.button
+                type="button"
+                onClick={() => handleEdit("Profile")}
+                className="mt-[18px] inline-flex h-[44px] w-full items-center justify-center rounded-[6px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-[19px] tracking-[-0.05em] text-[#E3F2FD]"
+                whileHover={{ y: -1, scale: 1.01 }}
+                whileTap={{ scale: 0.985 }}
+              >
+                Edit profile
+              </motion.button>
+            </motion.section>
+
+            <motion.div
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="rounded-[12px] bg-[#F8FAFC]"
+            >
+              <SectionCard title="Personal Information" onEdit={() => handleEdit("Personal Information")}>
+                <ProfileInfoRows rows={personalInformation} />
+              </SectionCard>
+            </motion.div>
           </div>
 
-          <p className="mt-[18px] text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Sara Johnson</p>
-
-          <motion.button
-            type="button"
-            onClick={() => handleEdit("Profile")}
-            className="mt-[18px] inline-flex h-[44px] w-full items-center justify-center rounded-[6px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-[19px] tracking-[-0.05em] text-[#E3F2FD]"
-            whileHover={{ y: -1, scale: 1.01 }}
-            whileTap={{ scale: 0.985 }}
+          <motion.section
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="rounded-[12px] bg-[#F8FAFC] px-[29px] pb-[30px] pt-5"
           >
-            Edit profile
-          </motion.button>
-        </motion.section>
+            <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
+
+            <div className="mt-[19px] overflow-x-auto">
+              <div className="min-w-[527px]">
+                <div className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1">
+                  <div className="relative pb-2 text-center">
+                    <span className="text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0]">Activity</span>
+                    <span className="absolute bottom-[-5px] left-0 h-1 w-20 bg-[#1565C0]" />
+                  </div>
+                  <div className="pb-2 text-center text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#94A3B8]">Date &amp; Time</div>
+                  <div className="pb-2 text-center text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#94A3B8]">Status</div>
+                </div>
+
+                <div className="space-y-[13px] pt-[17px]">
+                  {filteredActivities.length ? (
+                    filteredActivities.map((item) => (
+                      <div key={item.id} className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-center gap-6">
+                        <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
+                        <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
+                        <span className="inline-flex h-[23px] w-[83px] items-center justify-center rounded-[6px] border border-[#0D8C24] bg-[#E1FAE5] text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-[#0D8C24]">
+                          {item.status}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <SearchEmptyState />
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        </div>
 
         <motion.div
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC]"
-        >
-          <SectionCard title="Personal Information" onEdit={() => handleEdit("Personal Information")}>
-            <ProfileInfoRows rows={personalInformation} />
-          </SectionCard>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="space-y-4 xl:row-span-2"
+          className="space-y-4"
         >
           <SectionCard title="Medical Information" className="pb-5" onEdit={() => handleEdit("Medical Information")}>
             <div className="px-[15px] pb-1 pt-5">
@@ -275,43 +316,6 @@ export function PatientMyProfilePage() {
           </SectionCard>
         </motion.div>
       </div>
-
-      <motion.section
-        whileHover={{ y: -2 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-        className="mt-4 rounded-[12px] bg-[#F8FAFC] px-[29px] pb-[30px] pt-5 xl:mr-[302px]"
-      >
-        <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
-
-        <div className="mt-[19px] overflow-x-auto">
-          <div className="min-w-[527px]">
-            <div className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1">
-              <div className="relative pb-2 text-center">
-                <span className="text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0]">Activity</span>
-                <span className="absolute bottom-[-5px] left-0 h-1 w-20 bg-[#1565C0]" />
-              </div>
-              <div className="pb-2 text-center text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#94A3B8]">Date &amp; Time</div>
-              <div className="pb-2 text-center text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#94A3B8]">Status</div>
-            </div>
-
-            <div className="space-y-[13px] pt-[17px]">
-              {filteredActivities.length ? (
-                filteredActivities.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-center gap-6">
-                    <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
-                    <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
-                    <span className="inline-flex h-[23px] w-[83px] items-center justify-center rounded-[6px] border border-[#0D8C24] bg-[#E1FAE5] text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-[#0D8C24]">
-                      {item.status}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <SearchEmptyState />
-              )}
-            </div>
-          </div>
-        </div>
-      </motion.section>
     </div>
   );
 }
