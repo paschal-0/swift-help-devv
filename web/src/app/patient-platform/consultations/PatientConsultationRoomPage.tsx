@@ -80,6 +80,17 @@ function MessageIcon({ className }: { className?: string }) {
   );
 }
 
+function MapPinIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className ?? "h-5 w-5"} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"
+      />
+    </svg>
+  );
+}
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -148,12 +159,27 @@ export function PatientConsultationRoomPage() {
 
   return (
     <article className="mt-5 min-h-[760px] rounded-[16px] bg-[#F8FAFC] px-4 pb-[132px] pt-4 md:px-6 md:pb-8 xl:mt-[26px] xl:px-[28px] xl:pb-[18px] xl:pt-[18px]">
-      <h1 className="text-[22px] font-medium leading-[28px] tracking-[-0.05em] text-[#334155] md:text-[26px] md:leading-[32px] xl:text-[28px] xl:leading-[34px]">
-        Today&apos;s Consultations
-      </h1>
-      <p className="mt-2 max-w-[52ch] text-[13px] font-normal leading-5 tracking-[-0.05em] text-[#334155] md:text-[15px] md:leading-[22px]">
-        You have 3 scheduled consultations today. Your next appointment is highlighted below.
-      </p>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-[22px] font-medium leading-[28px] tracking-[-0.05em] text-[#334155] md:text-[26px] md:leading-[32px] xl:text-[28px] xl:leading-[34px]">
+            Today&apos;s Consultations
+          </h1>
+          <p className="mt-2 max-w-[52ch] text-[13px] font-normal leading-5 tracking-[-0.05em] text-[#334155] md:text-[15px] md:leading-[22px]">
+            You have 3 scheduled consultations today. Your next appointment is highlighted below.
+          </p>
+        </div>
+
+        <motion.button
+          type="button"
+          onClick={() => router.push("/patient-platform/consultations/in-person")}
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.985 }}
+          className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[15px] font-medium tracking-[-0.04em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)] xl:self-auto"
+        >
+          <MapPinIcon className="h-5 w-5" />
+          Open In-person Tracker
+        </motion.button>
+      </div>
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}

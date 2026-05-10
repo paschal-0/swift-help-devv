@@ -12,10 +12,9 @@ type NavItem = {
   href: string;
   icon:
     | "dashboard"
-    | "schedule"
-    | "shift-offers"
-    | "requests"
-    | "earnings"
+    | "shifts"
+    | "professionals"
+    | "reports"
     | "referrals"
     | "profile"
     | "help"
@@ -23,32 +22,32 @@ type NavItem = {
 };
 
 const mainNav: NavItem[] = [
-  { label: "Dashboard", href: "/professional-platform", icon: "dashboard" },
-  { label: "Schedule", href: "/professional-platform/schedule", icon: "schedule" },
-  { label: "Shift offers", href: "/professional-platform/shift-offers", icon: "shift-offers" },
-  { label: "Requests", href: "/professional-platform/requests", icon: "requests" },
-  { label: "Earnings", href: "/professional-platform/earnings", icon: "earnings" },
-  { label: "Referrals", href: "/professional-platform/referrals", icon: "referrals" },
+  { label: "Dashboard", href: "/organisation-platform", icon: "dashboard" },
+  { label: "Shifts", href: "/organisation-platform/shifts", icon: "shifts" },
+  { label: "Professionals", href: "/organisation-platform/professionals", icon: "professionals" },
+  { label: "Reports", href: "/organisation-platform/reports", icon: "reports" },
+  { label: "Referrals", href: "/organisation-platform/referrals", icon: "referrals" },
 ];
 
 const lowerNav: NavItem[] = [
-  { label: "My Profile", href: "/professional-platform/my-profile", icon: "profile" },
-  { label: "Help", href: "/professional-platform/help", icon: "help" },
-  { label: "Settings", href: "/professional-platform/settings", icon: "settings" },
+  { label: "My Profile", href: "/organisation-platform/my-profile", icon: "profile" },
+  { label: "Help", href: "/organisation-platform/help", icon: "help" },
+  { label: "Settings", href: "/organisation-platform/settings", icon: "settings" },
 ];
 
-type ProfessionalPlatformShellContextValue = {
+type OrganisationPlatformShellContextValue = {
   searchText: string;
   setSearchText: (value: string) => void;
 };
 
-const ProfessionalPlatformShellContext = createContext<ProfessionalPlatformShellContextValue | null>(null);
+const OrganisationPlatformShellContext =
+  createContext<OrganisationPlatformShellContextValue | null>(null);
 
-export function useProfessionalPlatformShell() {
-  const context = useContext(ProfessionalPlatformShellContext);
+export function useOrganisationPlatformShell() {
+  const context = useContext(OrganisationPlatformShellContext);
 
   if (!context) {
-    throw new Error("useProfessionalPlatformShell must be used within ProfessionalPlatformShell");
+    throw new Error("useOrganisationPlatformShell must be used within OrganisationPlatformShell");
   }
 
   return context;
@@ -74,7 +73,7 @@ function Icon({
     );
   }
 
-  if (type === "schedule") {
+  if (type === "shifts" || type === "professionals") {
     return (
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
         <path
@@ -87,36 +86,12 @@ function Icon({
     );
   }
 
-  if (type === "shift-offers") {
+  if (type === "reports") {
     return (
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
         <path
           fill={color}
-          d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v3H2V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm15 9v8a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-8h20Zm-5 3h-2v2h2v-2Zm-4 0h-2v2h2v-2Zm-4 0H7v2h2v-2Z"
-        />
-      </svg>
-    );
-  }
-
-  if (type === "requests") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-        <path
-          fill={color}
-          d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.2 3.5c-.7.6-1.8.1-1.8-.8V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4v2h12V8H6Zm0 4v2h8v-2H6Z"
-        />
-      </svg>
-    );
-  }
-
-  if (type === "earnings") {
-    return (
-      <svg viewBox="0 0 29 30" className="h-6 w-6" aria-hidden>
-        <path
-          fill={color}
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M14.3039 0C10.5398 0 7.1106 1.24333 5.08143 2.25917C4.8981 2.35083 4.72698 2.44028 4.5681 2.5275C4.2531 2.69917 3.98476 2.85917 3.77143 3L6.07976 6.39833L7.16643 6.83083C11.4131 8.97333 17.1081 8.97333 21.3556 6.83083L22.5889 6.19083L24.7714 3C24.3188 2.70592 23.8488 2.4396 23.3639 2.2025C21.3448 1.1975 17.9973 0 14.3048 0M8.93643 3.84667C8.11921 3.69287 7.31193 3.49029 6.51893 3.24C8.41976 2.39583 11.2523 1.5 14.3048 1.5C16.4189 1.5 18.4181 1.93 20.0714 2.475C18.1339 2.7475 16.0664 3.21 14.0964 3.77917C12.5464 4.2275 10.7348 4.17917 8.93643 3.84667ZM22.2364 8.06667L22.0314 8.17C17.3598 10.5267 11.1631 10.5267 6.49143 8.17L6.29726 8.07167C-0.721904 15.7725 -6.08024 29.9975 14.3039 29.9975C34.6881 29.9975 29.1998 15.5083 22.2364 8.06667ZM13.4381 15C12.9961 15 12.5721 15.1756 12.2596 15.4882C11.947 15.8007 11.7714 16.2246 11.7714 16.6667C11.7714 17.1087 11.947 17.5326 12.2596 17.8452C12.5721 18.1577 12.9961 18.3333 13.4381 18.3333V15ZM15.1048 13.3333V12.5H13.4381V13.3333C12.554 13.3333 11.7062 13.6845 11.0811 14.3096C10.456 14.9348 10.1048 15.7826 10.1048 16.6667C10.1048 17.5507 10.456 18.3986 11.0811 19.0237C11.7062 19.6488 12.554 20 13.4381 20V23.3333C12.7131 23.3333 12.0956 22.8708 11.8656 22.2225C11.8315 22.1164 11.7764 22.0183 11.7037 21.9339C11.631 21.8494 11.5421 21.7804 11.4422 21.731C11.3424 21.6815 11.2336 21.6526 11.1224 21.6459C11.0112 21.6392 10.8998 21.6549 10.7947 21.692C10.6896 21.7291 10.5931 21.7869 10.5108 21.862C10.4284 21.9371 10.362 22.0279 10.3154 22.1291C10.2688 22.2303 10.2429 22.3399 10.2394 22.4512C10.2358 22.5626 10.2547 22.6735 10.2948 22.7775C10.5245 23.4275 10.9502 23.9904 11.5132 24.3884C12.0761 24.7864 12.7486 25.0001 13.4381 25V25.8333H15.1048V25C15.9888 25 16.8367 24.6488 17.4618 24.0237C18.0869 23.3986 18.4381 22.5507 18.4381 21.6667C18.4381 20.7826 18.0869 19.9348 17.4618 19.3096C16.8367 18.6845 15.9888 18.3333 15.1048 18.3333V15C15.8298 15 16.4473 15.4625 16.6773 16.1108C16.7114 16.2169 16.7664 16.3151 16.8392 16.3995C16.9119 16.4839 17.0008 16.5529 17.1006 16.6023C17.2005 16.6518 17.3092 16.6807 17.4204 16.6874C17.5317 16.6941 17.6431 16.6785 17.7482 16.6414C17.8532 16.6042 17.9498 16.5464 18.0321 16.4713C18.1144 16.3963 18.1809 16.3054 18.2275 16.2042C18.2741 16.103 18.2999 15.9935 18.3035 15.8821C18.307 15.7707 18.2882 15.6598 18.2481 15.5558C18.0183 14.9058 17.5927 14.343 17.0297 13.9449C16.4667 13.5469 15.7942 13.3332 15.1048 13.3333ZM15.1048 20V23.3333C15.5468 23.3333 15.9707 23.1577 16.2833 22.8452C16.5958 22.5326 16.7714 22.1087 16.7714 21.6667C16.7714 21.2246 16.5958 20.8007 16.2833 20.4882C15.9707 20.1756 15.5468 20 15.1048 20Z"
+          d="M5 3h11l3 3v15H5V3Zm2 4v2h10V7H7Zm0 4v2h10v-2H7Zm0 4v2h7v-2H7Z"
         />
       </svg>
     );
@@ -127,7 +102,7 @@ function Icon({
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
         <path
           fill={color}
-          d="M13 2a4 4 0 0 1 3.8 5.2l2.2 1.3a3.5 3.5 0 1 1-1 1.7L15.8 9a4 4 0 0 1-7.6 0L6 10.2a3.5 3.5 0 1 1-1-1.7l2.2-1.3A4 4 0 1 1 13 2Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM4.5 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm15 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM13 14a5 5 0 0 1 5 5v1h-2v-1a3 3 0 0 0-6 0v1H8v-1a5 5 0 0 1 5-5Z"
+          d="M12 2.75 14.53 7.88l5.66.82-4.09 3.99.97 5.63L12 15.67 6.93 18.32l.97-5.63L3.81 8.7l5.66-.82L12 2.75Zm0 2.89-1.58 3.2-.33.67-.74.11-3.53.51 2.56 2.49.53.52-.13.74-.6 3.52 3.16-1.66.66-.34.66.34 3.16 1.66-.6-3.52-.13-.74.53-.52 2.56-2.49-3.53-.51-.74-.11-.33-.67L12 5.64Z"
         />
       </svg>
     );
@@ -149,7 +124,10 @@ function Icon({
   if (type === "help") {
     return (
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-        <path fill={color} d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm.2 16.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4ZM14.1 10c-.8.7-1.4 1.1-1.4 2.2h-2c0-2 .9-3 2-3.9.8-.6 1.2-.9 1.2-1.6a1.8 1.8 0 0 0-3.6.2h-2a3.8 3.8 0 1 1 7.6-.2c0 1.6-.8 2.5-1.8 3.3Z" />
+        <path
+          fill={color}
+          d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm.2 16.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4ZM14.1 10c-.8.7-1.4 1.1-1.4 2.2h-2c0-2 .9-3 2-3.9.8-.6 1.2-.9 1.2-1.6a1.8 1.8 0 0 0-3.6.2h-2a3.8 3.8 0 1 1 7.6-.2c0 1.6-.8 2.5-1.8 3.3Z"
+        />
       </svg>
     );
   }
@@ -157,7 +135,10 @@ function Icon({
   if (type === "settings") {
     return (
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-        <path fill={color} d="M19.4 13a7.9 7.9 0 0 0 .1-1 7.9 7.9 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a8.2 8.2 0 0 0-1.7-1l-.4-2.6H9.1l-.4 2.6a8.2 8.2 0 0 0-1.7 1l-2.5-1-2 3.4L4.6 11a7.9 7.9 0 0 0-.1 1 7.9 7.9 0 0 0 .1 1l-2.1 1.6 2 3.4 2.5-1a8.2 8.2 0 0 0 1.7 1l.4 2.6h5.8l.4-2.6a8.2 8.2 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6ZM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
+        <path
+          fill={color}
+          d="M19.4 13a7.9 7.9 0 0 0 .1-1 7.9 7.9 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a8.2 8.2 0 0 0-1.7-1l-.4-2.6H9.1l-.4 2.6a8.2 8.2 0 0 0-1.7 1l-2.5-1-2 3.4L4.6 11a7.9 7.9 0 0 0-.1 1 7.9 7.9 0 0 0 .1 1l-2.1 1.6 2 3.4 2.5-1a8.2 8.2 0 0 0 1.7 1l.4 2.6h5.8l.4-2.6a8.2 8.2 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6ZM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"
+        />
       </svg>
     );
   }
@@ -195,7 +176,7 @@ function SidebarNavItem({
       >
         {active ? (
           <motion.span
-            layoutId="professional-platform-active-nav"
+            layoutId="organisation-platform-active-nav"
             className="absolute inset-y-0 left-0 w-[11px] rounded-r-md bg-[#1565C0]"
           />
         ) : null}
@@ -230,7 +211,7 @@ function SidebarNavItem({
   );
 }
 
-export function ProfessionalPlatformShell({
+export function OrganisationPlatformShell({
   children,
 }: {
   children: ReactNode;
@@ -249,20 +230,21 @@ export function ProfessionalPlatformShell({
   );
 
   const isActiveNavItem = (href: string) => {
-    if (href === "/professional-platform") {
-      return pathname === "/professional-platform" || pathname === "/professional-platform/dashboard";
+    if (href === "/organisation-platform") {
+      return pathname === "/organisation-platform" || pathname === "/organisation-platform/dashboard";
     }
+
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   const logout = () => {
     toast.success("You have been logged out.");
-    router.push("/professional/onboarding/one");
+    router.push("/organisation/onboarding/one");
   };
 
   return (
-    <ProfessionalPlatformShellContext.Provider value={contextValue}>
-      <section className="min-h-screen bg-[#E2E8F0]">
+    <OrganisationPlatformShellContext.Provider value={contextValue}>
+      <section className="organisation-platform-scope min-h-screen bg-[#E2E8F0]">
         <AnimatePresence>
           {isMobileNavExpanded ? (
             <motion.button
@@ -299,12 +281,23 @@ export function ProfessionalPlatformShell({
               />
             ) : null}
 
-            <div className={`relative z-20 flex w-full items-center gap-1 ${isMobileNavExpanded ? "px-2" : "justify-center"} xl:mx-auto xl:max-w-[208px] xl:justify-start`}>
-              <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+            <div
+              className={`relative z-20 flex w-full items-center gap-1 ${
+                isMobileNavExpanded ? "px-2" : "justify-center"
+              } xl:mx-auto xl:max-w-[208px] xl:justify-start`}
+            >
+              <Image
+                src="/jam_medical.png"
+                alt="Swifthelp logo"
+                width={48}
+                height={48}
+                priority
+                className="min-w-[48px]"
+              />
               <AnimatePresence initial={false}>
                 {isMobileNavExpanded ? (
                   <motion.span
-                    key="professional-mobile-brand"
+                    key="organisation-mobile-brand"
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
@@ -320,7 +313,7 @@ export function ProfessionalPlatformShell({
               </span>
             </div>
 
-            <LayoutGroup id="professional-platform-nav-mobile">
+            <LayoutGroup id="organisation-platform-nav-mobile">
               <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
                 {mainNav.map((item) => (
                   <SidebarNavItem
@@ -350,7 +343,9 @@ export function ProfessionalPlatformShell({
                   whileTap={{ scale: 0.985 }}
                   type="button"
                   onClick={logout}
-                  className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] ${isMobileNavExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"}`}
+                  className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] ${
+                    isMobileNavExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"
+                  }`}
                 >
                   <span className={`inline-flex items-center ${isMobileNavExpanded ? "gap-3" : "gap-0 xl:gap-3"}`}>
                     <Icon type="logout" />
@@ -379,13 +374,20 @@ export function ProfessionalPlatformShell({
 
           <aside className="hidden xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4">
             <div className="relative z-20 mx-auto flex w-full max-w-[208px] items-center gap-1">
-              <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
+              <Image
+                src="/jam_medical.png"
+                alt="Swifthelp logo"
+                width={48}
+                height={48}
+                priority
+                className="min-w-[48px]"
+              />
               <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">
                 Swifthelp
               </span>
             </div>
 
-            <LayoutGroup id="professional-platform-nav-desktop">
+            <LayoutGroup id="organisation-platform-nav-desktop">
               <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
                 {mainNav.map((item) => (
                   <SidebarNavItem
@@ -430,15 +432,22 @@ export function ProfessionalPlatformShell({
             <div className="w-full">
               <div className="flex items-center justify-between gap-3">
                 <label className="relative block h-[42px] w-full max-w-[194px] rounded-[20px] bg-[#F8FAFC] shadow-[0_0_18px_rgba(148,163,184,0.14)] sm:h-[48px] sm:max-w-[250px] xl:h-[57px] xl:max-w-[344px] xl:rounded-[24px] xl:shadow-[0_0_25px_rgba(148,163,184,0.15)]">
-                  <svg viewBox="0 0 24 24" className="absolute left-[11px] top-[11px] h-5 w-5 sm:left-[12px] sm:top-[12px] sm:h-6 sm:w-6 xl:left-[13px] xl:top-[13px] xl:h-8 xl:w-8" aria-hidden>
-                    <path fill="#334155" d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="absolute left-[11px] top-[11px] h-5 w-5 sm:left-[12px] sm:top-[12px] sm:h-6 sm:w-6 xl:left-[13px] xl:top-[13px] xl:h-8 xl:w-8"
+                    aria-hidden
+                  >
+                    <path
+                      fill="#334155"
+                      d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
+                    />
                   </svg>
                   <input
                     value={searchText}
                     onChange={(event) => setSearchText(event.target.value)}
                     className="h-full w-full rounded-[20px] border-0 bg-transparent pl-10 pr-8 text-[12px] font-light tracking-[-0.04em] text-[#334155] outline-none placeholder:text-[#94A3B8] sm:rounded-[22px] sm:pl-11 sm:pr-9 sm:text-[13px] xl:rounded-[24px] xl:pl-[70px] xl:pr-10 xl:text-[16px] xl:tracking-[-0.05em]"
                     placeholder="Search for anything"
-                    aria-label="Search dashboard"
+                    aria-label="Search organization platform"
                   />
                   {searchText ? (
                     <button
@@ -462,41 +471,52 @@ export function ProfessionalPlatformShell({
                     whileTap={{ scale: 0.96 }}
                   >
                     <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-[22px] sm:w-[22px] xl:h-6 xl:w-6" aria-hidden>
-                      <path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z" />
+                      <path
+                        fill="currentColor"
+                        d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z"
+                      />
                     </svg>
                   </motion.button>
 
                   <motion.button
                     type="button"
-                    onClick={() => router.push("/professional-platform/my-profile")}
+                    onClick={() => router.push("/organisation-platform/my-profile")}
                     className="hidden h-[50px] cursor-pointer items-center rounded-[15px] bg-[#F8FAFC] pr-3 shadow-[0_8px_18px_rgba(148,163,184,0.14)] sm:flex"
                     whileHover={{ y: -1, scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                   >
                     <span className="mx-2 block h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt="Dr Precious avatar" width={34} height={34} className="h-full w-full object-cover" />
+                      <Image
+                        src="/doctor.jpg"
+                        alt="HelpCare Solutions avatar"
+                        width={34}
+                        height={34}
+                        className="h-full w-full object-cover"
+                      />
                     </span>
                     <span className="flex flex-col items-start">
                       <span className="text-[12px] font-normal leading-4 tracking-[-0.05em] text-black">
-                        Dr Precious
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-3 tracking-[-0.05em] text-[#1565C0]">
-                        <span className="h-[7px] w-[7px] rounded-full border border-[#1565C0] bg-[#1565C0]" />
-                        Available for bookings
+                        HelpCare Solutions
                       </span>
                     </span>
                   </motion.button>
 
                   <motion.button
                     type="button"
-                    onClick={() => router.push("/professional-platform/my-profile")}
+                    onClick={() => router.push("/organisation-platform/my-profile")}
                     className="shrink-0 cursor-pointer rounded-full sm:hidden"
-                    aria-label="Open profile"
+                    aria-label="Open organization profile"
                     whileHover={{ y: -1, scale: 1.03 }}
                     whileTap={{ scale: 0.96 }}
                   >
                     <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt="Doctor avatar" width={48} height={48} className="h-full w-full object-cover" />
+                      <Image
+                        src="/doctor.jpg"
+                        alt="Organization avatar"
+                        width={48}
+                        height={48}
+                        className="h-full w-full object-cover"
+                      />
                     </span>
                   </motion.button>
                 </div>
@@ -507,7 +527,6 @@ export function ProfessionalPlatformShell({
           </main>
         </div>
       </section>
-    </ProfessionalPlatformShellContext.Provider>
+    </OrganisationPlatformShellContext.Provider>
   );
 }
-

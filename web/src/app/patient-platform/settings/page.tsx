@@ -1,10 +1,5 @@
-import { PatientPlatformPlaceholderPage } from "../PatientPlatformPlaceholderPage";
+import { PatientSettingsPage } from "./PatientSettingsPage";
 
 export default function PatientSettingsRoute() {
-  return (
-    <PatientPlatformPlaceholderPage
-      title="Settings"
-      description="Patient settings page is ready for implementation."
-    />
-  );
+  return <PatientSettingsPage />;
 }

@@ -202,3 +202,49 @@ a {
 .swifthelp-date-input::-webkit-inner-spin-button {
   display: none;
 }
+
+.organisation-platform-scope .text-\[40px\] {
+  font-size: 2rem !important;
+}
+
+.organisation-platform-scope .text-\[32px\] {
+  font-size: 1.75rem !important;
+}
+
+.organisation-platform-scope .text-\[30px\] {
+  font-size: 1.625rem !important;
+}
+
+.organisation-platform-scope .text-\[24px\] {
+  font-size: 1.25rem !important;
+}
+
+.organisation-platform-scope .text-\[20px\] {
+  font-size: 1.125rem !important;
+}
+
+.organisation-platform-scope .text-\[18px\] {
+  font-size: 1rem !important;
+}
+
+@media (min-width: 1280px) {
+  .organisation-platform-scope .xl\:text-\[58px\] {
+    font-size: 3rem !important;
+  }
+
+  .organisation-platform-scope .xl\:text-\[52px\] {
+    font-size: 2.75rem !important;
+  }
+
+  .organisation-platform-scope .xl\:text-\[48px\] {
+    font-size: 2.5rem !important;
+  }
+
+  .organisation-platform-scope .xl\:text-\[24px\] {
+    font-size: 1.25rem !important;
+  }
+
+  .organisation-platform-scope .xl\:text-\[16px\] {
+    font-size: 0.95rem !important;
+  }
+}

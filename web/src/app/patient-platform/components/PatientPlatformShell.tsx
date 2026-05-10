@@ -14,6 +14,7 @@ type NavItem = {
     | "symptom"
     | "appointments"
     | "consultations"
+    | "referrals"
     | "records"
     | "profile"
     | "help"
@@ -26,6 +27,7 @@ const mainNav: NavItem[] = [
   { label: "Symptom Checker", icon: "symptom", href: "/patient-platform/symptom-checker" },
   { label: "Appointments", icon: "appointments", href: "/patient-platform/appointments" },
   { label: "Consultations", icon: "consultations", href: "/patient-platform/consultations" },
+  { label: "Referrals", icon: "referrals", href: "/patient-platform/referrals" },
   { label: "Medical Records", icon: "records", href: "/patient-platform/medical-records" },
 ];
 
@@ -87,6 +89,17 @@ function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
         <path
           d="M19.5 21H4.5C3.675 21 3 20.325 3 19.5V4.5C3 3.675 3.675 3 4.5 3H21V4.5H4.5V19.5H19.5V6H21V19.5C21 20.325 20.325 21 19.5 21ZM11.25 7.5H7.5V11.25H11.25V7.5ZM16.5 7.5H12.75V11.25H16.5V7.5ZM11.25 12.75H7.5V16.5H11.25V12.75ZM16.5 12.75H12.75V16.5H16.5V12.75Z"
           fill={color}
+        />
+      </svg>
+    );
+  }
+
+  if (type === "referrals") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+        <path
+          fill={color}
+          d="M16.5 2a3.5 3.5 0 0 0-3.37 4.46l-3.5 1.94a3.5 3.5 0 0 0-2.13-.72 3.5 3.5 0 1 0 2.13 6.28l3.5 1.94A3.5 3.5 0 1 0 14 18.5a3.4 3.4 0 0 0-.11-.87l3.55-1.97a3.5 3.5 0 1 0-.94-1.7l-3.61 2a3.48 3.48 0 0 0-1.78-1.61l3.55-1.97A3.5 3.5 0 1 0 16.5 2Zm0 2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM7.5 9.67a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm10.5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM16.5 17a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
         />
       </svg>
     );

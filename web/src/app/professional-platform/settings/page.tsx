@@ -1,11 +1,5 @@
-import { ProfessionalPlatformPlaceholderPage } from "../ProfessionalPlatformPlaceholderPage";
+import { ProfessionalSettingsPage } from "./ProfessionalSettingsPage";
 
 export default function ProfessionalSettingsRoute() {
-  return (
-    <ProfessionalPlatformPlaceholderPage
-      title="Settings"
-      description="Control preferences, notifications, and account configuration."
-    />
-  );
+  return <ProfessionalSettingsPage />;
 }
-
