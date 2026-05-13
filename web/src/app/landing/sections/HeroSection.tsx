@@ -57,7 +57,7 @@ export function HeroSection() {
             </p>
             <div className="flex flex-row items-center gap-3 md:flex-row md:gap-4">
               <Link
-                href="/get-started"
+                href="/get-started/login"
                 className={`${primaryCtaClass} !text-white max-[767px]:!h-[36px] max-[767px]:!w-[92px] max-[767px]:!min-w-0 max-[767px]:!px-4 max-[767px]:!text-[14px] leading-none transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(21,101,192,0.28)] active:scale-[0.98] md:h-[56px] md:min-w-[210px] md:flex-none md:px-5 md:text-[20px] md:leading-8 xl:h-[72px] xl:min-w-[295px] xl:px-[26px] xl:text-[26.53px] xl:leading-10`}
               >
                 <span className="md:hidden">Log in</span>
