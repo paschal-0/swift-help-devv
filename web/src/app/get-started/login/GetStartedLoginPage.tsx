@@ -318,7 +318,7 @@ export function GetStartedLoginPage() {
 
                 <div className="mt-6 flex justify-end">
                   <Link
-                    href="#"
+                    href="/get-started/forgot-password"
                     className="text-[14px] font-semibold leading-[17px] tracking-[-0.05em] text-[#1565C0] transition duration-300 hover:text-[#114B7F]"
                   >
                     Forgot password?

@@ -106,6 +106,23 @@ export async function resendVerification(payload: { email: string }) {
   });
 }
 
+export async function forgotPassword(payload: { email: string }) {
+  return apiRequest<MessageResponse>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resetPassword(payload: {
+  token: string;
+  newPassword: string;
+}) {
+  return apiRequest<MessageResponse>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 async function apiRequest<T>(path: string, init: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
