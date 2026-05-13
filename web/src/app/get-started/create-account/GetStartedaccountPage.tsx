@@ -17,6 +17,8 @@ import {
   type ReactNode,
 } from "react";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
+import { getApiErrorMessage, signup, toBackendRole } from "@/services/authApi";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const containerVariants: Variants = {
@@ -203,12 +205,14 @@ export function GetStartedaccountPage() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     fullName: "",
     email: "",
     phone: "+234",
     password: "",
+    referralCode: "",
   });
 
   const handleChange =
@@ -225,6 +229,7 @@ export function GetStartedaccountPage() {
   const trimmedEmail = formValues.email.trim();
   const normalizedPhone = formValues.phone.replace(/\s+/g, "");
   const trimmedPassword = formValues.password.trim();
+  const trimmedReferralCode = formValues.referralCode.trim();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
   const isPhoneValid = normalizedPhone.replace(/[^\d+]/g, "").length >= 10;
   const isPasswordValid = trimmedPassword.length >= 8;
@@ -254,7 +259,7 @@ export function GetStartedaccountPage() {
     showValidationToast("get-started-create-account", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (validationError) {
@@ -263,7 +268,27 @@ export function GetStartedaccountPage() {
       return;
     }
 
-    router.push(`/get-started/otp?role=${role}`);
+    setIsSubmitting(true);
+
+    try {
+      await signup({
+        fullName: trimmedFullName,
+        email: trimmedEmail,
+        phoneNumber: normalizedPhone,
+        password: trimmedPassword,
+        role: toBackendRole(role),
+        ...(trimmedReferralCode ? { referralCode: trimmedReferralCode } : {}),
+      });
+
+      toast.success("Account created. Please verify your details.");
+      router.push(
+        `/get-started/otp?role=${role}&email=${encodeURIComponent(trimmedEmail)}`
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -382,7 +407,7 @@ export function GetStartedaccountPage() {
                 variants={itemVariants}
                 onSubmit={handleSubmit}
                 onBlurCapture={() => setHasInteracted(true)}
-                className="mt-5 w-full rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:mt-6 sm:px-5 sm:py-6 xl:animate-form-panel-shadow xl:mt-9 xl:rounded-[32px] xl:px-[25px] xl:py-[34px] xl:shadow-[0_0_30px_rgba(0,0,0,0.05)] xl:h-[543px]"
+                className="mt-5 w-full rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-4 py-5 shadow-[0_18px_36px_rgba(15,23,42,0.06)] sm:mt-6 sm:px-5 sm:py-6 xl:animate-form-panel-shadow xl:mt-7 xl:rounded-[32px] xl:px-[25px] xl:py-[28px] xl:shadow-[0_0_30px_rgba(0,0,0,0.05)]"
               >
               <div className="flex w-full flex-col gap-4">
                 <div>
@@ -468,6 +493,22 @@ export function GetStartedaccountPage() {
                     </span>
                   </FormField>
                 </div>
+
+                <div className="rounded-[12px] bg-[#E3F2FD] px-4 py-4 sm:px-[18px]">
+                  <FormField label="Have a referral code? (optional)">
+                    <input
+                      type="text"
+                      placeholder="enter referral code"
+                      className="h-[47px] w-full rounded-[12px] border border-[#94A3B8] bg-[#F8FAFC] px-[18px] text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none transition duration-300 placeholder:text-[#94A3B8] hover:border-[#64748b] focus:border-[#1e88e5] focus:shadow-[0_0_0_4px_rgba(191,219,254,0.75)]"
+                      value={formValues.referralCode}
+                      onChange={handleChange("referralCode")}
+                      autoComplete="off"
+                    />
+                  </FormField>
+                  <p className="mt-3 text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#1565C0] sm:text-[14px] sm:leading-[19px]">
+                    Referred by a friend, doctor, or organization? Enter their code above.
+                  </p>
+                </div>
               </div>
 
               <p className="mt-5 w-full text-[12px] font-semibold leading-4 tracking-[-0.04em] text-black sm:text-[13px] sm:leading-4 xl:mt-7 xl:text-[14px] xl:leading-[17px] xl:tracking-[-0.05em]">
@@ -476,10 +517,10 @@ export function GetStartedaccountPage() {
 
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isSubmitting}
                 className="mt-5 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-7 tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none xl:mt-6 xl:text-[20.0088px] xl:leading-[30px]"
               >
-                {content.nextLabel}
+                {isSubmitting ? "Creating account..." : content.nextLabel}
               </button>
               </motion.form>
 

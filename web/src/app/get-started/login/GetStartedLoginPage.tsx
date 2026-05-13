@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
+import {
+  getApiErrorMessage,
+  login,
+  platformPathForRole,
+} from "@/services/authApi";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const containerVariants: Variants = {
@@ -103,6 +109,7 @@ export function GetStartedLoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     email: "",
@@ -137,7 +144,7 @@ export function GetStartedLoginPage() {
     showValidationToast("get-started-login", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (validationError) {
@@ -146,7 +153,21 @@ export function GetStartedLoginPage() {
       return;
     }
 
-    router.push("/");
+    setIsSubmitting(true);
+
+    try {
+      const data = await login({
+        email: trimmedEmail,
+        password: trimmedPassword,
+      });
+
+      toast.success("Signed in successfully.");
+      router.push(platformPathForRole(data.user.role));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -306,10 +327,10 @@ export function GetStartedLoginPage() {
 
                 <button
                   type="submit"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || isSubmitting}
                   className="mt-6 inline-flex h-[50px] w-full cursor-pointer items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[20.0088px] font-normal leading-[30px] tracking-[-0.05em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
                 >
-                  Continue
+                  {isSubmitting ? "Signing in..." : "Continue"}
                 </button>
 
                 <p className="mt-5 text-center text-[18px] font-light leading-[22px] tracking-[-0.05em] text-black">

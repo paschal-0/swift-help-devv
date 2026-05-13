@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, type ClipboardEvent, type KeyboardEvent } from "react";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
+import {
+  getApiErrorMessage,
+  resendVerification,
+  verifyEmail,
+} from "@/services/authApi";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const OTP_LENGTH = 6;
@@ -26,6 +32,17 @@ const roleCopy = {
     continuePath: "/organisation/onboarding/one",
   },
 } as const;
+
+function maskEmail(email: string | null) {
+  if (!email || !email.includes("@")) {
+    return "your email";
+  }
+
+  const [name, domain] = email.split("@");
+  const visiblePrefix = name.slice(0, Math.min(2, name.length));
+
+  return `${visiblePrefix}${"*".repeat(Math.max(2, name.length - visiblePrefix.length))}@${domain}`;
+}
 
 function ShieldLockIcon() {
   return (
@@ -79,6 +96,8 @@ export function GetStartedOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [otpValues, setOtpValues] = useState<string[]>(() => Array(OTP_LENGTH).fill(""));
   const [timeLeft, setTimeLeft] = useState(50);
@@ -88,6 +107,8 @@ export function GetStartedOtpPage() {
     roleParam === "professional" || roleParam === "organisation" || roleParam === "patient"
       ? roleParam
       : "patient";
+  const email = searchParams.get("email");
+  const maskedEmail = maskEmail(email);
   const content = roleCopy[role];
 
   useEffect(() => {
@@ -161,7 +182,9 @@ export function GetStartedOtpPage() {
 
   const isOtpComplete = otpValues.every(Boolean);
   const otpValidationError =
-    !isOtpComplete
+    !email
+      ? "Please return to signup so we can verify your email."
+      : !isOtpComplete
       ? "Please enter the 6-digit verification code."
       : timeLeft === 0
         ? "Your code has expired. Please request a new one."
@@ -174,11 +197,60 @@ export function GetStartedOtpPage() {
     showValidationToast("get-started-otp", otpValidationError);
   }, [hasInteracted, otpValidationError, showValidationToast]);
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setHasInteracted(true);
+
+    if (!email) {
+      showValidationToast(
+        "get-started-otp",
+        "Please return to signup so we can verify your email."
+      );
+      return;
+    }
+
+    setIsResending(true);
+
+    try {
+      await resendVerification({ email });
+      toast.success("A new verification code has been sent.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsResending(false);
+    }
+
     setTimeLeft(50);
     setOtpValues(Array(OTP_LENGTH).fill(""));
     focusInput(0);
+  };
+
+  const handleVerify = async () => {
+    setHasInteracted(true);
+
+    if (otpValidationError) {
+      showValidationToast("get-started-otp", otpValidationError);
+      return;
+    }
+
+    if (!email) {
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      await verifyEmail({
+        email,
+        code: otpValues.join(""),
+      });
+
+      toast.success("Email verified successfully.");
+      router.push(content.continuePath);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -273,7 +345,7 @@ export function GetStartedOtpPage() {
                   </h2>
                   <p className="m-0 mt-1 max-w-[260px] text-[12px] font-light leading-[16px] tracking-[-0.03em] text-[#475569] sm:max-w-[320px] sm:text-[13px] sm:leading-[18px] xl:max-w-[341px] xl:text-[15px] xl:leading-6">
                     Enter the verification code sent to <br className="sm:hidden" />
-                    <span className="font-semibold text-[#1565C0]">bi****@gmail.com</span>{" "}
+                    <span className="font-semibold text-[#1565C0]">{maskedEmail}</span>{" "}
                     {content.detailText}
                   </p>
                 </motion.div>
@@ -319,11 +391,11 @@ export function GetStartedOtpPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
                     type="button"
-                    onClick={() => router.push(content.continuePath)}
-                    disabled={!isOtpComplete || timeLeft === 0}
+                    onClick={handleVerify}
+                    disabled={!isOtpComplete || timeLeft === 0 || isVerifying}
                     className="inline-flex h-[44px] w-full items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-medium leading-4 tracking-[-0.04em] text-[#E3F2FD] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] sm:h-[50px] sm:rounded-[18px] sm:text-[16px] sm:leading-6 xl:h-[52px] xl:text-[16px]"
                   >
-                    Verify & Continue
+                    {isVerifying ? "Verifying..." : "Verify & Continue"}
                   </motion.button>
                 </motion.div>
 
@@ -332,9 +404,10 @@ export function GetStartedOtpPage() {
                   <button
                     type="button"
                     onClick={handleResend}
+                    disabled={isResending}
                     className="font-semibold text-[#1565C0] transition duration-300 hover:text-[#114B7F]"
                   >
-                    Resend code
+                    {isResending ? "Resending..." : "Resend code"}
                   </button>
                 </motion.p>
 
