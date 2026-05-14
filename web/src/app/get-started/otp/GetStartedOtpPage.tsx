@@ -14,6 +14,7 @@ import {
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
 const OTP_LENGTH = 6;
+const OTP_EXPIRY_SECONDS = 10 * 60;
 
 const roleCopy = {
   patient: {
@@ -42,6 +43,17 @@ function maskEmail(email: string | null) {
   const visiblePrefix = name.slice(0, Math.min(2, name.length));
 
   return `${visiblePrefix}${"*".repeat(Math.max(2, name.length - visiblePrefix.length))}@${domain}`;
+}
+
+function formatTimeLeft(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function getOtpExpiryStorageKey(email: string) {
+  return `swifthelp:email-verification-expires:${email}`;
 }
 
 function ShieldLockIcon() {
@@ -100,7 +112,8 @@ export function GetStartedOtpPage() {
   const [isResending, setIsResending] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [otpValues, setOtpValues] = useState<string[]>(() => Array(OTP_LENGTH).fill(""));
-  const [timeLeft, setTimeLeft] = useState(50);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(OTP_EXPIRY_SECONDS);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const roleParam = searchParams.get("role");
   const role =
@@ -112,12 +125,33 @@ export function GetStartedOtpPage() {
   const content = roleCopy[role];
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+    if (!email) {
+      return;
+    }
+
+    const storageKey = getOtpExpiryStorageKey(email);
+    const storedExpiry = Number(window.sessionStorage.getItem(storageKey));
+    const nextExpiry =
+      Number.isFinite(storedExpiry) && storedExpiry > Date.now()
+        ? storedExpiry
+        : Date.now() + OTP_EXPIRY_SECONDS * 1000;
+
+    window.sessionStorage.setItem(storageKey, String(nextExpiry));
+    setExpiresAt(nextExpiry);
+    setTimeLeft(Math.max(0, Math.ceil((nextExpiry - Date.now()) / 1000)));
+  }, [email]);
+
+  useEffect(() => {
+    if (!expiresAt) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setTimeLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
     }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+
+    return () => window.clearInterval(timer);
+  }, [expiresAt]);
 
   const focusInput = (index: number) => {
     inputRefs.current[index]?.focus();
@@ -219,7 +253,14 @@ export function GetStartedOtpPage() {
       setIsResending(false);
     }
 
-    setTimeLeft(50);
+    const nextExpiry = Date.now() + OTP_EXPIRY_SECONDS * 1000;
+
+    if (email) {
+      window.sessionStorage.setItem(getOtpExpiryStorageKey(email), String(nextExpiry));
+    }
+
+    setExpiresAt(nextExpiry);
+    setTimeLeft(OTP_EXPIRY_SECONDS);
     setOtpValues(Array(OTP_LENGTH).fill(""));
     focusInput(0);
   };
@@ -377,7 +418,7 @@ export function GetStartedOtpPage() {
                 <motion.div variants={itemVariants} className="mt-5 h-[16px]">
                   {timeLeft > 0 ? (
                     <p className="text-center text-[11px] font-semibold leading-3 tracking-[-0.03em] text-[#1565C0] sm:text-[13px] sm:leading-4 xl:text-[14px] xl:leading-5">
-                      Expiring in {timeLeft} secs
+                      Expiring in {formatTimeLeft(timeLeft)}
                     </p>
                   ) : (
                     <p className="text-center text-[11px] font-semibold leading-3 tracking-[-0.03em] text-red-500 sm:text-[13px] sm:leading-4 xl:text-[14px] xl:leading-5">
