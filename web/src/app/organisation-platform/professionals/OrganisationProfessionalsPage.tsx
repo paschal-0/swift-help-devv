@@ -13,6 +13,9 @@ import {
 
 type ProfessionalTab = "All" | "On shift" | "Available" | "Unavailable";
 
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
+
 function CalendarTileIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-8 w-8" aria-hidden>
@@ -106,7 +109,7 @@ export function OrganisationProfessionalsPage() {
   };
 
   return (
-    <div className="mt-8 xl:mt-[58px]">
+    <div className="mt-6 px-4 pb-8 sm:px-6 xl:mt-[58px] xl:px-0">
       <div className="flex flex-col gap-6 xl:gap-8">
         <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">
           Professionals
@@ -118,7 +121,7 @@ export function OrganisationProfessionalsPage() {
               key={card.title}
               whileHover={{ y: -2 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
+              className="rounded-[12px] bg-[#F8FAFC] px-5 py-5 shadow-[0_10px_24px_rgba(148,163,184,0.08)] transition duration-200 ease-out hover:shadow-[0_14px_28px_rgba(148,163,184,0.14)]"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-16 w-[59px] shrink-0 items-center justify-center rounded-[12px] bg-[#E3F2FD] xl:h-[88px] xl:w-[88px]">
@@ -137,7 +140,7 @@ export function OrganisationProfessionalsPage() {
           ))}
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-5 rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5 xl:p-6">
           <div className="grid grid-cols-2 gap-4 border-b-[3px] border-[#FFFFFF] pb-0 md:grid-cols-4 md:gap-8">
             {(["All", "On shift", "Available", "Unavailable"] as ProfessionalTab[]).map((tab) => {
               const isActive = activeTab === tab;
@@ -147,7 +150,7 @@ export function OrganisationProfessionalsPage() {
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`relative cursor-pointer pb-3 text-left text-[18px] font-medium tracking-[-0.05em] transition ${
+                  className={`relative cursor-pointer pb-3 text-left text-[18px] font-medium tracking-[-0.05em] transition ${microInteractionClass} ${
                     isActive ? "text-[#1565C0]" : "text-[#94A3B8]"
                   }`}
                 >
@@ -165,7 +168,7 @@ export function OrganisationProfessionalsPage() {
               <select
                 value={dateFilter}
                 onChange={(event) => setDateFilter(event.target.value)}
-                className="h-11 min-w-[120px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+                className="h-11 min-w-[120px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 {dateOptions.map((option) => (
                   <option key={option} value={option}>
@@ -182,7 +185,7 @@ export function OrganisationProfessionalsPage() {
               <select
                 value={departmentFilter}
                 onChange={(event) => setDepartmentFilter(event.target.value)}
-                className="h-11 min-w-[168px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+                className="h-11 min-w-[168px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 {departmentOptions.map((option) => (
                   <option key={option} value={option}>
@@ -201,7 +204,7 @@ export function OrganisationProfessionalsPage() {
                 onChange={(event) =>
                   setStatusFilter(event.target.value as "all" | ProfessionalStatus)
                 }
-                className="h-11 min-w-[140px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+                className="h-11 min-w-[140px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 <option value="all">Status</option>
                 <option value="Available">Available</option>
@@ -216,7 +219,7 @@ export function OrganisationProfessionalsPage() {
           </div>
         </section>
 
-        <section className="overflow-x-auto">
+        <section className="overflow-x-auto rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)] sm:p-5 xl:p-6">
           <div className="hidden xl:block">
             <table className="w-full table-fixed border-separate border-spacing-0 text-left">
               <thead>
@@ -232,7 +235,10 @@ export function OrganisationProfessionalsPage() {
               </thead>
               <tbody>
                 {visibleProfessionals.map((item) => (
-                  <tr key={item.id} className="text-[14px] text-[#334155]">
+                  <tr
+                    key={item.id}
+                    className="text-[14px] text-[#334155] transition duration-200 ease-out hover:bg-white"
+                  >
                     <td className="border-b-2 border-[#FFFFFF] px-5 py-4">
                       <div className="flex items-center gap-3">
                         <span className="relative h-10 w-10 overflow-hidden rounded-full">
@@ -267,7 +273,7 @@ export function OrganisationProfessionalsPage() {
                       <button
                         type="button"
                         onClick={() => openLinkedShift(item.linkedShiftId)}
-                        className="cursor-pointer font-medium text-[#1565C0] underline"
+                        className={`cursor-pointer font-medium text-[#1565C0] underline ${microInteractionClass}`}
                       >
                         {item.actionLabel}
                       </button>
@@ -280,9 +286,11 @@ export function OrganisationProfessionalsPage() {
 
           <div className="grid gap-4 xl:hidden">
             {visibleProfessionals.map((item) => (
-              <article
+              <motion.article
                 key={item.id}
-                className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="rounded-[12px] bg-white p-5 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -332,16 +340,16 @@ export function OrganisationProfessionalsPage() {
                 <button
                   type="button"
                   onClick={() => openLinkedShift(item.linkedShiftId)}
-                  className="mt-4 cursor-pointer font-medium text-[#1565C0] underline"
+                  className={`mt-4 cursor-pointer font-medium text-[#1565C0] underline ${microInteractionClass}`}
                 >
                   {item.actionLabel}
                 </button>
-              </article>
+              </motion.article>
             ))}
           </div>
 
           {visibleProfessionals.length === 0 ? (
-            <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-8 text-sm text-[#64748B]">
+            <div className="rounded-[12px] bg-white px-5 py-8 text-sm text-[#64748B]">
               No professionals match the current filters or search.
             </div>
           ) : null}

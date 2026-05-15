@@ -76,11 +76,11 @@ export function OrganisationReferralPeoplePage() {
 
   return (
     <section className="mt-[12px] pb-8 xl:pb-10">
-      <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
+      <h1 className="text-[22px] font-medium leading-[30px] tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
         Recent Referrals
       </h1>
 
-      <div className="mt-2 flex flex-wrap items-end gap-x-8 gap-y-3">
+      <div className="mt-2 flex flex-wrap items-end gap-x-5 gap-y-2 sm:gap-x-8 sm:gap-y-3">
         {filters.map((filter) => {
           const active = activeFilter === filter.key;
 
@@ -89,20 +89,20 @@ export function OrganisationReferralPeoplePage() {
               key={filter.key}
               type="button"
               onClick={() => setActiveFilter(filter.key)}
-              className={`relative pb-4 text-[18px] font-medium leading-[19px] tracking-[-0.05em] transition ${
+              className={`relative pb-3 text-[15px] font-medium leading-[18px] tracking-[-0.04em] transition sm:pb-4 sm:text-[18px] sm:leading-[19px] sm:tracking-[-0.05em] ${
                 active ? "text-[#1565C0]" : "text-[#94A3B8]"
               }`}
             >
               {filter.label}
               {active ? (
-                <span className="absolute bottom-0 left-1/2 h-[6px] w-[61px] -translate-x-1/2 rounded-[24px] bg-[#1565C0]" />
+                <span className="absolute bottom-0 left-1/2 h-1 w-[46px] -translate-x-1/2 rounded-[24px] bg-[#1565C0] sm:h-[6px] sm:w-[61px]" />
               ) : null}
             </button>
           );
         })}
       </div>
 
-      <section className="mt-8 overflow-hidden rounded-[12px] bg-[#F8FAFC]">
+      <section className="mt-6 overflow-hidden rounded-[12px] bg-[#F8FAFC] sm:mt-8">
         <div className="hidden border-b border-[#E2E8F0] px-8 py-7 text-[16px] font-light leading-[26px] tracking-[-0.07em] text-[#334155] md:grid md:grid-cols-[2.2fr_1.4fr_1.5fr_1.2fr_1fr]">
           <span>Nme</span>
           <span>Type</span>
@@ -117,44 +117,44 @@ export function OrganisationReferralPeoplePage() {
           </div>
         ) : (
           <>
-            <div className="hidden max-h-[640px] overflow-y-auto md:block">
+            <div className="hidden max-h-[640px] overflow-y-auto md:block [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0]">
               {filteredRecords.map((referral) => (
                 <ReferralTableRow key={referral.id} referral={referral} />
               ))}
             </div>
 
-            <div className="space-y-3 p-4 md:hidden">
+            <div className="space-y-3 p-3 md:hidden">
               {filteredRecords.map((referral) => (
-                <div key={referral.id} className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#E3F2FD] text-[13px] font-semibold tracking-[-0.05em] text-[#1565C0]">
+                <div key={referral.id} className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[12px] font-semibold tracking-[-0.05em] text-[#1565C0]">
                         {referral.initials}
                       </span>
-                      <div>
-                        <p className="text-[15px] font-semibold text-[#334155]">{referral.name}</p>
-                        <p className="text-[13px] text-[#94A3B8]">{referral.type}</p>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold leading-[18px] text-[#334155]">{referral.name}</p>
+                        <p className="text-[12px] leading-[16px] text-[#94A3B8]">{referral.type}</p>
                       </div>
                     </div>
                     <span
                       className={
                         referral.status === "Completed"
-                          ? "rounded-full bg-[#DCFCE7] px-3 py-1 text-[12px] font-medium text-[#19AA4A]"
-                          : "rounded-full bg-[#FEF3C7] px-3 py-1 text-[12px] font-medium text-[#AF8D11]"
+                          ? "shrink-0 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[11px] font-medium leading-[14px] text-[#19AA4A]"
+                          : "shrink-0 rounded-full bg-[#FEF3C7] px-2.5 py-1 text-[11px] font-medium leading-[14px] text-[#AF8D11]"
                       }
                     >
                       {referral.status}
                     </span>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#F1F5F9] pt-3">
+                  <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#F1F5F9] pt-3">
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Joined</p>
-                      <p className="mt-1 text-[13px] text-[#475569]">{referral.joined}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Joined</p>
+                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{referral.joined}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Earned</p>
-                      <p className="mt-1 text-[13px] text-[#475569]">{referral.earned}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Earned</p>
+                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{referral.earned}</p>
                     </div>
                   </div>
                 </div>

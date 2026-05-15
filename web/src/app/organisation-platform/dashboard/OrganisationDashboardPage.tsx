@@ -206,12 +206,12 @@ export function OrganisationDashboardPage() {
         {statCards.map((card) => (
           <motion.article
             key={card.title}
-            whileHover={{ y: -2 }}
+            whileHover={{ y: -3, scale: 1.01 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="flex h-[156px] flex-col justify-between rounded-[16px] bg-[#F8FAFC] px-[16px] py-[16px] shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
+            className="group flex h-[156px] flex-col justify-between rounded-[16px] bg-[#F8FAFC] px-[16px] py-[16px] shadow-[0_10px_24px_rgba(148,163,184,0.08)] transition-shadow duration-200 hover:shadow-[0_18px_34px_rgba(148,163,184,0.16)]"
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-[62px] w-[58px] shrink-0 items-center justify-center rounded-[14px] bg-[#E3F2FD]">
+              <div className="flex h-[62px] w-[58px] shrink-0 items-center justify-center rounded-[14px] bg-[#E3F2FD] transition duration-200 group-hover:scale-105 group-hover:bg-[#d7ecff]">
                 <CalendarTileIcon />
               </div>
               <div className="pt-1">
@@ -226,7 +226,7 @@ export function OrganisationDashboardPage() {
             <button
               type="button"
               onClick={() => openRoute(card.href)}
-              className="cursor-pointer text-left text-[14px] font-semibold leading-[18px] tracking-[-0.05em] text-[#1E88E5] underline"
+              className="cursor-pointer text-left text-[14px] font-semibold leading-[18px] tracking-[-0.05em] text-[#1E88E5] underline transition duration-200 hover:-translate-y-0.5 hover:text-[#1565C0]"
             >
               {card.subtitle}
             </button>
@@ -234,13 +234,17 @@ export function OrganisationDashboardPage() {
         ))}
       </section>
 
-      <section className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)]">
+      <motion.section
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)]"
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Today&apos;s Shifts</h2>
           <button
             type="button"
             onClick={() => openRoute("/organisation-platform/shifts")}
-            className="cursor-pointer text-[16px] font-medium tracking-[-0.05em] text-[#1565C0] underline"
+            className="cursor-pointer text-[16px] font-medium tracking-[-0.05em] text-[#1565C0] underline transition duration-200 hover:-translate-y-0.5 hover:text-[#0f5fa8]"
           >
             View All Shifts
           </button>
@@ -261,7 +265,7 @@ export function OrganisationDashboardPage() {
             </thead>
             <tbody>
               {visibleShiftRows.map((row) => (
-                <tr key={row.id} className="text-sm text-[#334155]">
+                <tr key={row.id} className="text-sm text-[#334155] transition-colors duration-200 hover:bg-[#f5f9ff]">
                   <td className="border-b border-[#334155] px-4 py-4 font-medium">{row.id}</td>
                   <td className="border-b border-[#334155] px-4 py-4 font-medium">{row.department}</td>
                   <td className="border-b border-[#334155] px-4 py-4 font-medium">{row.time}</td>
@@ -272,7 +276,7 @@ export function OrganisationDashboardPage() {
                     <button
                       type="button"
                       onClick={() => openRoute(row.href)}
-                      className="cursor-pointer font-semibold text-[#1565C0] underline"
+                      className="cursor-pointer font-semibold text-[#1565C0] underline transition duration-200 hover:-translate-y-0.5 hover:text-[#0f5fa8]"
                     >
                       {row.action}
                     </button>
@@ -285,15 +289,19 @@ export function OrganisationDashboardPage() {
             <div className="px-4 py-8 text-sm text-[#64748B]">No shifts match the current search.</div>
           ) : null}
         </div>
-      </section>
+      </motion.section>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[379px_minmax(0,1fr)]">
-        <article className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)]">
+        <motion.article
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)]"
+        >
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Staff Availability</h2>
           <div className="mt-4 rounded-[12px] bg-[#E3F2FD] p-4">
             <div className="space-y-4">
               {staffAvailability.map((item) => (
-                <div key={item.label} className="flex items-center justify-between gap-4">
+                <div key={item.label} className="flex items-center justify-between gap-4 transition-transform duration-200 hover:translate-x-1">
                   <span className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
                     {item.label}
                   </span>
@@ -307,19 +315,23 @@ export function OrganisationDashboardPage() {
           <button
             type="button"
             onClick={() => openRoute("/organisation-platform/professionals")}
-            className="mt-5 flex h-[44px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] text-sm font-medium text-[#F8FAFC]"
+            className="mt-5 flex h-[44px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#0f5fa8]"
           >
             Manage Staff
           </button>
-        </article>
+        </motion.article>
 
-        <article className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)]">
+        <motion.article
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)]"
+        >
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Recent Responses</h2>
           <div className="mt-5 space-y-5">
             {visibleResponses.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-4">
+              <div key={item.id} className="flex items-center justify-between gap-4 rounded-[10px] transition duration-200 hover:bg-[#f6faff] hover:px-2 hover:py-1">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
+                  <div className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] transition duration-200 hover:scale-105">
                     <img src="/doctor.jpg" alt={item.staff} className="h-full w-full object-cover" />
                   </div>
                   <p className="min-w-0 text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
@@ -340,20 +352,24 @@ export function OrganisationDashboardPage() {
           <button
             type="button"
             onClick={() => openRoute("/organisation-platform/reports")}
-            className="mt-6 flex h-[44px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] text-sm font-medium text-[#F8FAFC]"
+            className="mt-6 flex h-[44px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#0f5fa8]"
           >
             View Responses
           </button>
-        </article>
+        </motion.article>
       </section>
 
-      <section className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)]">
+      <motion.section
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)]"
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Attention Required</h2>
           <button
             type="button"
             onClick={() => openRoute("/organisation-platform/reports")}
-            className="cursor-pointer text-[16px] font-medium tracking-[-0.05em] text-[#1565C0] underline"
+            className="cursor-pointer text-[16px] font-medium tracking-[-0.05em] text-[#1565C0] underline transition duration-200 hover:-translate-y-0.5 hover:text-[#0f5fa8]"
           >
             View all notifications
           </button>
@@ -361,9 +377,11 @@ export function OrganisationDashboardPage() {
 
         <div className="mt-5 space-y-4">
           {visibleAttentionItems.map((item) => (
-            <div
+            <motion.div
               key={item.id}
-              className="rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4"
+              whileHover={{ y: -2, scale: 1.005 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4 transition-shadow duration-200 hover:shadow-[0_14px_30px_rgba(148,163,184,0.14)]"
             >
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
@@ -372,7 +390,7 @@ export function OrganisationDashboardPage() {
                     {item.tags.map((tag) => (
                       <span
                         key={`${item.id}-${tag}`}
-                        className="inline-flex items-center rounded-full bg-[#E3F2FD] px-4 py-2 text-[16px] font-light tracking-[-0.07em] text-[#334155]"
+                        className="inline-flex items-center rounded-full bg-[#E3F2FD] px-4 py-2 text-[16px] font-light tracking-[-0.07em] text-[#334155] transition duration-200 hover:-translate-y-0.5 hover:bg-[#d5ebff]"
                       >
                         {tag}
                       </span>
@@ -384,7 +402,7 @@ export function OrganisationDashboardPage() {
                   <button
                     type="button"
                     onClick={() => openRoute(item.primaryHref)}
-                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-5 text-sm font-medium text-[#F8FAFC]"
+                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#0f5fa8]"
                   >
                     {item.primaryLabel}
                   </button>
@@ -394,20 +412,20 @@ export function OrganisationDashboardPage() {
                       toast.info(`${item.secondaryLabel} placeholder opened.`);
                       openRoute(item.secondaryHref);
                     }}
-                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#94A3B8] px-5 text-sm font-medium text-[#F8FAFC]"
+                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#94A3B8] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#7f8ea3]"
                   >
                     {item.secondaryLabel}
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {visibleAttentionItems.length === 0 ? (
             <div className="py-8 text-sm text-[#64748B]">No alerts match the current search.</div>
           ) : null}
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

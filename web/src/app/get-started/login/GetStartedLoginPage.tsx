@@ -172,8 +172,8 @@ export function GetStartedLoginPage() {
 
   return (
     <section className="min-h-screen bg-[#E2E8F0]">
-      <div className="relative flex min-h-screen w-full flex-col bg-[#E2E8F0] xl:block xl:h-[957px] xl:min-h-0">
-        <div className="relative min-h-[248px] bg-black sm:min-h-[360px] xl:absolute xl:left-0 xl:top-0 xl:h-[957px] xl:min-h-0 xl:w-[calc(100%-629px)]">
+      <div className="relative flex min-h-screen w-full flex-col bg-[#E2E8F0] xl:block xl:h-screen xl:min-h-0 xl:overflow-hidden">
+        <div className="relative min-h-[248px] bg-black sm:min-h-[360px] xl:absolute xl:left-0 xl:top-0 xl:h-full xl:min-h-0 xl:w-[calc(100%-629px)]">
           <motion.div
             initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -242,13 +242,13 @@ export function GetStartedLoginPage() {
           </motion.div>
         </div>
 
-        <div className="relative -mt-5 flex-1 rounded-t-[36px] bg-[#F8FAFC] px-4 pb-6 pt-5 sm:-mt-6 sm:px-5 sm:py-7 xl:mt-0 xl:rounded-none xl:bg-[#F8FAFC] xl:px-0 xl:py-0 xl:absolute xl:right-0 xl:top-0 xl:h-[957px] xl:w-[693px] xl:rounded-l-[64px]">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden xl:rounded-l-[64px]">
+        <div className="relative -mt-5 flex-1 rounded-t-[28px] bg-[#F8FAFC] px-4 pb-6 pt-5 sm:-mt-6 sm:px-5 sm:py-7 xl:mt-0 xl:rounded-none xl:bg-[#F8FAFC] xl:px-0 xl:py-0 xl:absolute xl:right-0 xl:top-0 xl:h-full xl:w-[693px] xl:rounded-l-[40px] xl:overflow-y-auto xl:[scrollbar-width:thin] xl:[scrollbar-color:#1565C0_#DBEAFE] xl:[&::-webkit-scrollbar]:w-2 xl:[&::-webkit-scrollbar-track]:bg-[#E3F2FD] xl:[&::-webkit-scrollbar-thumb]:rounded-full xl:[&::-webkit-scrollbar-thumb]:bg-[#1565C0] xl:[&::-webkit-scrollbar-thumb:hover]:bg-[#114B7F]">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden xl:rounded-l-[40px]">
             <div className="absolute right-[12%] top-[16%] h-24 w-24 rounded-full bg-[#e0f2fe]/65 blur-3xl sm:h-28 sm:w-28 xl:h-36 xl:w-36 xl:animate-form-glow xl:bg-[#e0f2fe]/80" />
             <div className="absolute right-[10%] bottom-[20%] h-24 w-24 rounded-full bg-[#dbeafe]/55 blur-3xl sm:h-28 sm:w-28 xl:h-40 xl:w-40 xl:animate-form-glow-delayed xl:bg-[#dbeafe]/70" />
           </div>
 
-          <div className="relative mx-auto flex max-w-[491px] flex-col items-center xl:pt-[86px]">
+          <div className="relative mx-auto flex max-w-[491px] flex-col items-center xl:pt-[86px] xl:pb-[60px]">
             <motion.div
               variants={containerVariants}
               initial="hidden"

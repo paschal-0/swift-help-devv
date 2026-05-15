@@ -102,7 +102,7 @@ function Icon({
       <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
         <path
           fill={color}
-          d="M12 2.75 14.53 7.88l5.66.82-4.09 3.99.97 5.63L12 15.67 6.93 18.32l.97-5.63L3.81 8.7l5.66-.82L12 2.75Zm0 2.89-1.58 3.2-.33.67-.74.11-3.53.51 2.56 2.49.53.52-.13.74-.6 3.52 3.16-1.66.66-.34.66.34 3.16 1.66-.6-3.52-.13-.74.53-.52 2.56-2.49-3.53-.51-.74-.11-.33-.67L12 5.64Z"
+          d="M16.5 2a3.5 3.5 0 0 0-3.37 4.46l-3.5 1.94a3.5 3.5 0 0 0-2.13-.72 3.5 3.5 0 1 0 2.13 6.28l3.5 1.94A3.5 3.5 0 1 0 14 18.5a3.4 3.4 0 0 0-.11-.87l3.55-1.97a3.5 3.5 0 1 0-.94-1.7l-3.61 2a3.48 3.48 0 0 0-1.78-1.61l3.55-1.97A3.5 3.5 0 1 0 16.5 2Zm0 2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM7.5 9.67a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm10.5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM16.5 17a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
         />
       </svg>
     );
@@ -165,13 +165,13 @@ function SidebarNavItem({
   onClick?: () => void;
 }) {
   return (
-    <motion.div layout whileHover={{ x: 3 }} whileTap={{ scale: 0.985 }}>
+    <motion.div layout whileHover={{ x: 3, y: -1 }} whileTap={{ scale: 0.985 }}>
       <Link
         href={item.href}
         onClick={onClick}
         aria-current={active ? "page" : undefined}
         className={`relative flex h-[49px] w-full items-center rounded-[12px] text-left transition ${
-          active ? "bg-[#E3F2FD]" : "hover:bg-[#eef4fb]"
+          active ? "bg-[#E3F2FD] shadow-[0_10px_20px_rgba(30,136,229,0.08)]" : "hover:bg-[#eef4fb]"
         } cursor-pointer ${isExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"}`}
       >
         {active ? (
@@ -339,11 +339,11 @@ export function OrganisationPlatformShell({
 
                 <motion.button
                   layout
-                  whileHover={{ x: 3 }}
+                  whileHover={{ x: 3, y: -1 }}
                   whileTap={{ scale: 0.985 }}
                   type="button"
                   onClick={logout}
-                  className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] ${
+                  className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] hover:shadow-[0_10px_20px_rgba(148,163,184,0.12)] ${
                     isMobileNavExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"
                   }`}
                 >
@@ -411,11 +411,11 @@ export function OrganisationPlatformShell({
 
                 <motion.button
                   layout
-                  whileHover={{ x: 3 }}
+                  whileHover={{ x: 3, y: -1 }}
                   whileTap={{ scale: 0.985 }}
                   type="button"
                   onClick={logout}
-                  className="relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] pl-6 pr-2 text-left transition hover:bg-[#eef4fb]"
+                  className="relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] pl-6 pr-2 text-left transition hover:bg-[#eef4fb] hover:shadow-[0_10px_20px_rgba(148,163,184,0.12)]"
                 >
                   <span className="inline-flex items-center gap-3">
                     <Icon type="logout" />
@@ -431,7 +431,7 @@ export function OrganisationPlatformShell({
           <main className="ml-[72px] w-[calc(100%-72px)] px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12 xl:pb-12 xl:pt-9">
             <div className="w-full">
               <div className="flex items-center justify-between gap-3">
-                <label className="relative block h-[42px] w-full max-w-[194px] rounded-[20px] bg-[#F8FAFC] shadow-[0_0_18px_rgba(148,163,184,0.14)] sm:h-[48px] sm:max-w-[250px] xl:h-[57px] xl:max-w-[344px] xl:rounded-[24px] xl:shadow-[0_0_25px_rgba(148,163,184,0.15)]">
+                <label className="relative block h-[42px] w-full max-w-[194px] rounded-[20px] bg-[#F8FAFC] shadow-[0_0_18px_rgba(148,163,184,0.14)] transition duration-200 focus-within:-translate-y-0.5 focus-within:shadow-[0_10px_28px_rgba(30,136,229,0.16)] hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(148,163,184,0.18)] sm:h-[48px] sm:max-w-[250px] xl:h-[57px] xl:max-w-[344px] xl:rounded-[24px] xl:shadow-[0_0_25px_rgba(148,163,184,0.15)]">
                   <svg
                     viewBox="0 0 24 24"
                     className="absolute left-[11px] top-[11px] h-5 w-5 sm:left-[12px] sm:top-[12px] sm:h-6 sm:w-6 xl:left-[13px] xl:top-[13px] xl:h-8 xl:w-8"

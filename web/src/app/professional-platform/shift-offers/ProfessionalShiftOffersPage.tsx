@@ -32,7 +32,7 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-8 items-center justify-center gap-2 rounded-[6px] border px-4 text-[15px] font-normal leading-[19px] tracking-[-0.05em] transition ${
+      className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-[8px] border px-4 text-[14px] font-normal leading-[19px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 sm:h-8 sm:text-[15px] ${
         active
           ? "border-[#94A3B8] bg-[#E3F2FD] text-[#334155]"
           : "border-[#94A3B8] bg-transparent text-[#334155] hover:bg-[#edf3fb]"
@@ -60,15 +60,15 @@ function ShiftOfferDetailsModal({
   onDecline: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end bg-[rgba(51,65,85,0.6)] p-4 sm:p-6 xl:p-8">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-[rgba(51,65,85,0.6)] p-2 sm:justify-end sm:p-6 xl:p-8">
       <button type="button" aria-label="Close shift details" className="absolute inset-0 cursor-default" onClick={onClose} />
 
       <motion.aside
-        initial={{ opacity: 0, x: 48 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 48 }}
+        initial={{ opacity: 0, x: 48, y: 16 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        exit={{ opacity: 0, x: 48, y: 16 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="relative z-10 flex h-full max-h-[712px] w-full max-w-[495px] flex-col rounded-[24px] bg-[#F8FAFC] px-7 pb-5 pt-9 shadow-[0_24px_64px_rgba(15,23,42,0.24)]"
+        className="relative z-10 flex h-auto max-h-[calc(100vh-8px)] w-full max-w-[495px] flex-col overflow-y-auto rounded-[24px] rounded-b-none bg-[#F8FAFC] px-4 pb-4 pt-5 shadow-[0_24px_64px_rgba(15,23,42,0.24)] [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0] sm:max-h-[712px] sm:rounded-b-[24px] sm:px-7 sm:pb-5 sm:pt-9 sm:[scrollbar-color:auto_auto] sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-transparent"
       >
         <button
           type="button"
@@ -84,16 +84,18 @@ function ShiftOfferDetailsModal({
           </svg>
         </button>
 
-        <h2 className="mt-8 text-[24px] font-semibold leading-6 tracking-[-0.05em] text-[#334155]">Shift details</h2>
+        <h2 className="mt-5 text-[22px] font-semibold leading-6 tracking-[-0.05em] text-[#334155] sm:mt-8 sm:text-[24px]">
+          Shift details
+        </h2>
 
-        <div className="mt-8 flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full bg-[#D9D9D9]" />
+        <div className="mt-5 flex items-center gap-3 sm:mt-8">
+          <div className="h-12 w-12 shrink-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,#F8FAFC_0%,#DCE3EC_48%,#B8C2CF_100%)] shadow-inner" />
           <p className="text-[18px] font-medium leading-[22px] tracking-[-0.07em] text-[#334155]">
             {offer.organization}
           </p>
         </div>
 
-        <div className="mt-6 rounded-[12px] border-2 border-[#E2E8F0] px-[18px] py-4">
+        <div className="mt-5 rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4 sm:mt-6 sm:px-[18px]">
           <div className="grid gap-4 sm:grid-cols-[1fr_136px]">
             <div className="space-y-1">
               <div className="flex gap-3">
@@ -123,7 +125,7 @@ function ShiftOfferDetailsModal({
           </div>
         </div>
 
-        <div className="mt-8 rounded-[12px] border-2 border-[#E2E8F0] px-[18px] py-4">
+        <div className="mt-5 rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4 sm:mt-8 sm:px-[18px]">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3">
               <span className="min-w-[92px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
@@ -150,18 +152,18 @@ function ShiftOfferDetailsModal({
           </div>
         </div>
 
-        <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-3 pt-2 sm:mt-auto sm:flex-row sm:pt-6">
           <button
             type="button"
             onClick={onDecline}
-            className="inline-flex h-[39px] flex-1 items-center justify-center rounded-[24px] border border-[#9C0D0D] px-4 text-[16px] font-normal leading-[31px] tracking-[-0.05em] text-[#9C0D0D]"
+            className="inline-flex h-[42px] flex-1 items-center justify-center rounded-[24px] border border-[#9C0D0D] px-4 text-[15px] font-normal leading-[31px] tracking-[-0.05em] text-[#9C0D0D] transition duration-200 hover:-translate-y-0.5 hover:bg-[#fff5f5] sm:h-[39px] sm:text-[16px]"
           >
             Decline Shift
           </button>
           <button
             type="button"
             onClick={onAccept}
-            className="inline-flex h-[39px] flex-1 items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[16px] font-normal leading-[31px] tracking-[-0.05em] text-[#E3F2FD]"
+            className="inline-flex h-[42px] flex-1 items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[15px] font-normal leading-[31px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:brightness-105 sm:h-[39px] sm:text-[16px]"
           >
             Accept Shift
           </button>
@@ -219,13 +221,13 @@ export function ProfessionalShiftOffersPage() {
   };
 
   return (
-    <section className="mt-6 pb-10">
+    <section className="mt-4 pb-8 sm:mt-6 sm:pb-10">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">
           Shift offers
         </h1>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0] sm:mx-0 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 sm:[scrollbar-color:auto_auto] sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-transparent">
           <FilterButton label="All" active={dateFilter === "all" && payFilter === "all"} onClick={() => {
             setDateFilter("all");
             setPayFilter("all");
@@ -243,22 +245,22 @@ export function ProfessionalShiftOffersPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:mt-8 sm:gap-5 md:grid-cols-2 2xl:grid-cols-3">
         {visibleOffers.map((offer) => (
           <motion.div key={offer.id} layout>
             <motion.article
-              whileHover={{ y: -3 }}
+              whileHover={{ y: -3, scale: 1.01 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="rounded-[12px] bg-[#F8FAFC] px-[26px] pb-[18px] pt-4 shadow-[0_10px_30px_rgba(148,163,184,0.12)]"
+              className="group rounded-[12px] bg-[#F8FAFC] px-4 pb-4 pt-4 shadow-[0_10px_30px_rgba(148,163,184,0.12)] transition-shadow duration-200 hover:shadow-[0_16px_34px_rgba(148,163,184,0.18)] sm:px-[26px] sm:pb-[18px]"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-[#D9D9D9]" />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="h-12 w-12 shrink-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,#F8FAFC_0%,#DCE3EC_48%,#B8C2CF_100%)] shadow-inner transition duration-200 group-hover:scale-105" />
                   <h2 className="text-[18px] font-medium leading-[22px] tracking-[-0.07em] text-[#334155]">
                     {offer.organization}
                   </h2>
                 </div>
-                <span className="pt-1 text-[14px] font-normal leading-[19px] tracking-[-0.05em] text-[#1565C0]">
+                <span className="pl-[60px] text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#1565C0] sm:pt-1 sm:pl-0 sm:text-[14px] sm:leading-[19px]">
                   {offer.postedAt}
                 </span>
               </div>
@@ -290,7 +292,7 @@ export function ProfessionalShiftOffersPage() {
                 </div>
               </dl>
 
-              <div className="mt-[18px] grid grid-cols-2 gap-6">
+              <div className="mt-[18px] grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 <div className="space-y-1">
                   <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Location</p>
                   <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
@@ -306,7 +308,7 @@ export function ProfessionalShiftOffersPage() {
               <button
                 type="button"
                 onClick={() => setSelectedOfferId(offer.id)}
-                className="mt-7 inline-flex h-[33px] w-full items-center justify-center rounded-[6px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[12px] font-normal leading-5 tracking-[-0.05em] text-[#E3F2FD]"
+                className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[12px] font-normal leading-5 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:brightness-105 sm:mt-7 sm:h-[33px] sm:rounded-[6px]"
               >
                 View Details
               </button>

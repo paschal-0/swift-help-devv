@@ -1,9 +1,13 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buildOrganisationShiftDetail } from "../data";
+
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
 
 function BackIcon() {
   return (
@@ -28,9 +32,14 @@ function ProgressBar({
   return (
     <div className="space-y-3">
       <div className="h-[13px] rounded-full bg-[#E2E8F0]">
-        <div className="h-full rounded-full bg-[#1565C0]" style={{ width: `${percent}%` }} />
+        <motion.div
+          className="h-full rounded-full bg-[#1565C0]"
+          initial={{ width: 0 }}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        />
       </div>
-      <p className="text-center text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
+      <p className="text-center text-[14px] font-medium tracking-[-0.07em] text-[#94A3B8] sm:text-[16px]">
         {current}/{total} filled
       </p>
     </div>
@@ -59,14 +68,14 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
       : null;
 
   return (
-    <div className="mt-8 xl:mt-[72px]">
-      <div className="flex flex-col gap-4 xl:gap-6">
+    <div className="mt-6 px-4 pb-8 sm:px-6 xl:mt-[72px] xl:px-0">
+      <div className="flex flex-col gap-5 xl:gap-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => router.push("/organisation-platform/shifts")}
-              className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[#334155] transition hover:bg-[#d9e4f2]"
+              className={`inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#E2E8F0] text-[#334155] transition hover:bg-[#CBD5E1] ${microInteractionClass}`}
               aria-label="Back to shifts"
             >
               <BackIcon />
@@ -82,25 +91,25 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               onClick={() =>
                 router.push(`/organisation-platform/shifts/${encodeURIComponent(shiftId)}/updates`)
               }
-              className="inline-flex h-[39px] cursor-pointer items-center justify-center rounded-full bg-[#1565C0] px-6 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+              className={`inline-flex h-[42px] cursor-pointer items-center justify-center rounded-full bg-[#1565C0] px-5 text-[14px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] sm:px-6 sm:text-[16px] ${microInteractionClass}`}
             >
               Shift updates
             </button>
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}
-              className="inline-flex h-[39px] cursor-pointer items-center justify-center rounded-full bg-[#AA1717] px-6 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+              className={`inline-flex h-[42px] cursor-pointer items-center justify-center rounded-full bg-[#AA1717] px-5 text-[14px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(170,23,23,0.22)] sm:px-6 sm:text-[16px] ${microInteractionClass}`}
             >
               Cancel Shift
             </button>
           </div>
         </div>
 
-        <section className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)] xl:p-10">
+        <section className="rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)] sm:p-6 xl:p-10">
           <div className="grid gap-6 xl:grid-cols-[1.25fr_1.1fr]">
             <div className="space-y-4">
               <h2 className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">Shift Details</h2>
-              <div className="grid grid-cols-1 gap-6 rounded-[12px] border-2 border-[#E2E8F0] p-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 rounded-[14px] border-2 border-[#E2E8F0] bg-white p-4 sm:grid-cols-2 sm:gap-6 sm:p-6 xl:grid-cols-3">
                 <div className="space-y-2 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Shift ID</p>
                   <p className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">{detail.internalId}</p>
@@ -133,19 +142,21 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">Slot progess</h2>
-              <div className="space-y-12 rounded-[12px] border-2 border-[#E2E8F0] px-8 py-10">
+              <h2 className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">Slot progress</h2>
+              <div className="space-y-8 rounded-[14px] border-2 border-[#E2E8F0] bg-white px-4 py-6 sm:px-8 sm:py-10">
                 <ProgressBar current={detail.slotsFilled.current} total={detail.slotsFilled.total} />
                 <div className="space-y-3">
                   <div className="h-[13px] rounded-full bg-[#E2E8F0]">
-                    <div
+                    <motion.div
                       className="h-full rounded-full bg-[#1565C0]"
-                      style={{
+                      initial={{ width: 0 }}
+                      animate={{
                         width: `${detail.completedProgress.total > 0 ? (detail.completedProgress.current / detail.completedProgress.total) * 100 : 0}%`,
                       }}
+                      transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
                     />
                   </div>
-                  <p className="text-center text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
+                  <p className="text-center text-[14px] font-medium tracking-[-0.07em] text-[#94A3B8] sm:text-[16px]">
                     {detail.completedProgress.current}/{detail.completedProgress.total} completed
                   </p>
                 </div>
@@ -154,41 +165,43 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_240px]">
-            <div className="rounded-[12px] border-2 border-[#E2E8F0] p-4 xl:p-5">
+            <div className="rounded-[14px] border-2 border-[#E2E8F0] bg-white p-4 xl:p-5">
               <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Shift Activity</h2>
               <div className="mt-4 max-h-[260px] space-y-4 overflow-y-auto pr-2">
                 {detail.activities.map((activity) => (
-                  <div
+                  <motion.div
                     key={activity.text}
-                    className="flex items-center justify-between gap-4 rounded-[6px] border border-[#94A3B8] px-4 py-3"
+                    whileHover={{ y: -2 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="flex items-center justify-between gap-4 rounded-[10px] border border-[#94A3B8] px-4 py-3 transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF]"
                   >
-                    <p className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">{activity.text}</p>
+                    <p className="text-[14px] font-medium tracking-[-0.05em] text-[#334155] sm:text-[16px]">{activity.text}</p>
                     <p className="shrink-0 text-[14px] font-semibold tracking-[-0.07em] text-[#1565C0]">
                       {activity.timeAgo}
                     </p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-[12px] border-2 border-[#E2E8F0] p-4 xl:p-5">
+            <div className="rounded-[14px] border-2 border-[#E2E8F0] bg-white p-4 xl:p-5">
               <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Payment Summary</h2>
-              <div className="mt-8 space-y-7">
-                <div>
+              <div className="mt-6 space-y-4">
+                <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Funded</p>
-                  <p className="mt-2 text-[32px] font-medium leading-9 tracking-[-0.07em] text-[#334155]">
+                  <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     ${detail.funded}
                   </p>
                 </div>
-                <div>
+                <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Released</p>
-                  <p className="mt-2 text-[32px] font-medium leading-9 tracking-[-0.07em] text-[#334155]">
+                  <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     ${detail.released}
                   </p>
                 </div>
-                <div>
+                <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Remaining</p>
-                  <p className="mt-2 text-[32px] font-medium leading-9 tracking-[-0.07em] text-[#334155]">
+                  <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     ${detail.remaining}
                   </p>
                 </div>
@@ -199,7 +212,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
           <div className="mt-8">
             <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Accepted professionals</h2>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[760px] border-separate border-spacing-y-3 text-left">
                 <thead>
                   <tr className="rounded-[6px] bg-[#334155] text-[16px] text-[#F8FAFC]">
@@ -213,7 +226,10 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 </thead>
                 <tbody>
                   {detail.acceptedProfessionals.map((professional, index) => (
-                    <tr key={`${professional.name}-${index}`} className="text-[16px] text-[#334155]">
+                    <tr
+                      key={`${professional.name}-${index}`}
+                      className="text-[16px] text-[#334155] transition duration-200 ease-out hover:bg-white"
+                    >
                       <td className="px-4 py-2">{professional.name}</td>
                       <td className="px-4 py-2">{professional.role}</td>
                       <td className="px-4 py-2">
@@ -229,7 +245,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                             setSelectedProfessionalIndex(index);
                             setSelectedAttendanceStatus("Completed");
                           }}
-                          className="inline-flex h-6 w-6 cursor-pointer rounded-[6px] border border-[#94A3B8] bg-transparent"
+                          className={`inline-flex h-6 w-6 cursor-pointer rounded-[6px] border border-[#94A3B8] bg-transparent hover:border-[#1565C0] hover:bg-[#EFF6FF] ${microInteractionClass}`}
                         />
                       </td>
                     </tr>
@@ -238,27 +254,71 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               </table>
             </div>
 
+            <div className="mt-4 grid gap-4 lg:hidden">
+              {detail.acceptedProfessionals.map((professional, index) => (
+                <motion.article
+                  key={`${professional.name}-${index}`}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">
+                        {professional.name}
+                      </p>
+                      <p className="mt-1 text-[14px] text-[#1565C0]">{professional.role}</p>
+                    </div>
+                    <CompletedPill />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-[13px]">
+                    <div>
+                      <p className="text-[#94A3B8]">Check in</p>
+                      <p className="mt-1 font-medium text-[#334155]">{professional.checkInTime}</p>
+                    </div>
+                    <div>
+                      <p className="text-[#94A3B8]">Check out</p>
+                      <p className="mt-1 font-medium text-[#334155]">{professional.checkOutTime}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    aria-label={`Confirm ${professional.name}`}
+                    onClick={() => {
+                      setSelectedProfessionalIndex(index);
+                      setSelectedAttendanceStatus("Completed");
+                    }}
+                    className={`mt-4 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-full border border-[#1565C0] bg-[#EFF6FF] text-[14px] font-medium tracking-[-0.05em] text-[#1565C0] hover:bg-[#DBEEFF] ${microInteractionClass}`}
+                  >
+                    Confirm attendance
+                  </button>
+                </motion.article>
+              ))}
+            </div>
+
             <div className="mt-6 flex items-center justify-end gap-[6px]">
               <button
                 type="button"
                 onClick={() => toast.info("Already on the first page.")}
-                className="flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8]"
+                className={`flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
               >
                 <BackIcon />
               </button>
               <button type="button" className="h-[35px] w-[36px] rounded-[6px] bg-[#E3F2FD] text-[16px] text-[#94A3B8]">
                 1
               </button>
-              <button type="button" className="h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8]">
+              <button type="button" className={`h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}>
                 2
               </button>
-              <button type="button" className="h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8]">
+              <button type="button" className={`h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}>
                 3
               </button>
               <button
                 type="button"
                 onClick={() => toast.info("More pages are not available yet.")}
-                className="flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8]"
+                className={`flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
               >
                 <span className="rotate-180">
                   <BackIcon />
@@ -269,14 +329,26 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
         </section>
       </div>
 
-      {selectedProfessional ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(51,65,85,0.6)] px-4">
-          <div
-            className="absolute inset-0"
-            aria-hidden
-            onClick={() => setSelectedProfessionalIndex(null)}
-          />
-          <div className="relative w-full max-w-[441px] rounded-[12px] bg-[#FFFFFF] px-5 py-5 shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+      <AnimatePresence>
+        {selectedProfessional ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(51,65,85,0.6)] px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0"
+              aria-hidden
+              onClick={() => setSelectedProfessionalIndex(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="relative w-full max-w-[441px] rounded-[16px] bg-[#FFFFFF] px-5 py-5 shadow-[0_24px_60px_rgba(15,23,42,0.18)] sm:px-6 sm:py-6"
+            >
             <div className="flex items-start justify-between gap-4">
               <h2 className="text-[18px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155]">
                 Update Attendance
@@ -331,7 +403,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               <button
                 type="button"
                 onClick={() => setSelectedAttendanceStatus("Completed")}
-                className={`flex h-[47px] w-full items-center gap-4 rounded-[6px] px-4 text-left ${
+                className={`flex h-[47px] w-full items-center gap-4 rounded-[10px] px-4 text-left transition duration-200 ease-out ${
                   selectedAttendanceStatus === "Completed"
                     ? "bg-[#E3F2FD] text-[#1565C0]"
                     : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8]"
@@ -350,7 +422,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               <button
                 type="button"
                 onClick={() => setSelectedAttendanceStatus("Missed")}
-                className={`flex h-[47px] w-full items-center gap-4 rounded-[6px] px-4 text-left ${
+                className={`flex h-[47px] w-full items-center gap-4 rounded-[10px] px-4 text-left transition duration-200 ease-out ${
                   selectedAttendanceStatus === "Missed"
                     ? "bg-[#E3F2FD] text-[#1565C0]"
                     : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8]"
@@ -377,22 +449,35 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 );
                 setSelectedProfessionalIndex(null);
               }}
-              className="mt-10 inline-flex h-[49px] w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+              className={`mt-10 inline-flex h-[49px] w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] ${microInteractionClass}`}
             >
               Save Update
             </button>
-          </div>
-        </div>
-      ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      {showCancelModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(51,65,85,0.6)] px-4">
-          <div
-            className="absolute inset-0"
-            aria-hidden
-            onClick={() => setShowCancelModal(false)}
-          />
-          <div className="relative w-full max-w-[358px] rounded-[12px] bg-[#F8FAFC] px-6 py-8 shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+      <AnimatePresence>
+        {showCancelModal ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(51,65,85,0.6)] px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0"
+              aria-hidden
+              onClick={() => setShowCancelModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="relative w-full max-w-[358px] rounded-[16px] bg-[#F8FAFC] px-6 py-8 shadow-[0_24px_60px_rgba(15,23,42,0.18)]"
+            >
             <div className="space-y-4 text-center">
               <h2 className="text-[24px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">
                 Cancel Shift
@@ -407,7 +492,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               <button
                 type="button"
                 onClick={() => setShowCancelModal(false)}
-                className="inline-flex h-[33px] min-w-[127px] cursor-pointer items-center justify-center rounded-full bg-[#94A3B8] px-5 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+                className={`inline-flex h-[36px] min-w-[127px] cursor-pointer items-center justify-center rounded-full bg-[#94A3B8] px-5 text-[15px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:brightness-105 ${microInteractionClass}`}
               >
                 Keep Shift
               </button>
@@ -418,14 +503,15 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                   toast.success("Shift canceled.");
                   router.push("/organisation-platform/shifts");
                 }}
-                className="inline-flex h-[33px] min-w-[141px] cursor-pointer items-center justify-center rounded-full bg-[#AA1717] px-5 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+                className={`inline-flex h-[36px] min-w-[141px] cursor-pointer items-center justify-center rounded-full bg-[#AA1717] px-5 text-[15px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:brightness-105 ${microInteractionClass}`}
               >
                 Cancel Shift
               </button>
             </div>
-          </div>
-        </div>
-      ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

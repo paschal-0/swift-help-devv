@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 
 const availableBalance = 2000;
@@ -9,17 +10,29 @@ type BankAccount = {
   id: string;
   accountName: string;
   bankName: string;
-  maskedNumber: string;
+  accountNumber: string;
 };
 
-const bankAccounts: BankAccount[] = [
+type AddBankFormState = {
+  accountName: string;
+  bankName: string;
+  accountNumber: string;
+};
+
+const initialBankAccounts: BankAccount[] = [
   {
     id: "kuda-primary",
     accountName: "Sarah Johnson",
     bankName: "Kuda",
-    maskedNumber: "235****3622",
+    accountNumber: "23543622",
   },
 ];
+
+const emptyAddBankForm: AddBankFormState = {
+  accountName: "",
+  bankName: "",
+  accountNumber: "",
+};
 
 function formatNaira(value: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -27,6 +40,16 @@ function formatNaira(value: number) {
     currency: "NGN",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatMaskedNumber(accountNumber: string) {
+  if (accountNumber.length <= 4) {
+    return accountNumber;
+  }
+
+  const lastDigits = accountNumber.slice(-4);
+  const firstDigits = accountNumber.slice(0, Math.max(0, accountNumber.length - 8));
+  return `${firstDigits}****${lastDigits}`;
 }
 
 function BankIcon() {
@@ -55,10 +78,144 @@ function SuccessMark() {
   );
 }
 
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  inputMode,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  inputMode?: "text" | "numeric";
+  error?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[15px] tracking-[-0.05em] text-[#334155]">{label}</span>
+      <div className="mt-2 rounded-[10px] border border-[#D7E1ED] bg-[#F8FAFC] px-4 py-3">
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          className="w-full bg-transparent text-[15px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+        />
+      </div>
+      {error ? <p className="mt-2 text-[13px] tracking-[-0.05em] text-[#C2410C]">{error}</p> : null}
+    </label>
+  );
+}
+
+function AddBankModal({
+  open,
+  form,
+  errors,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  form: AddBankFormState;
+  errors: Partial<Record<keyof AddBankFormState, string>>;
+  onClose: () => void;
+  onChange: (field: keyof AddBankFormState, value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <button type="button" aria-label="Close add bank modal" className="absolute inset-0" onClick={onClose} />
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="relative z-10 w-full max-w-[460px] rounded-[20px] bg-white p-6 shadow-[0_28px_60px_rgba(15,23,42,0.18)] sm:p-7"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155]">Add bank account</h3>
+                <p className="mt-1 text-[14px] tracking-[-0.05em] text-[#94A3B8]">
+                  Enter the account details you want to use for withdrawals.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#F8FAFC] text-[#64748B] transition hover:bg-[#E2E8F0]"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path fill="currentColor" d="m18.3 5.71-1.41-1.41L12 9.17 7.11 4.3 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12l4.89 4.9 1.41-1.41-4.89-4.89 4.89-4.89Z" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <InputField
+                label="Account name"
+                value={form.accountName}
+                onChange={(value) => onChange("accountName", value)}
+                placeholder="Sarah Johnson"
+                error={errors.accountName}
+              />
+              <InputField
+                label="Bank name"
+                value={form.bankName}
+                onChange={(value) => onChange("bankName", value)}
+                placeholder="Kuda"
+                error={errors.bankName}
+              />
+              <InputField
+                label="Account number"
+                value={form.accountNumber}
+                onChange={(value) => onChange("accountNumber", value.replace(/[^\d]/g, ""))}
+                placeholder="0123456789"
+                inputMode="numeric"
+                error={errors.accountNumber}
+              />
+            </div>
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[#E2E8F0] px-5 text-[14px] font-medium tracking-[-0.05em] text-[#334155] transition hover:bg-[#CBD5E1]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSubmit}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[14px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_14px_28px_rgba(30,136,229,0.18)] transition hover:brightness-105"
+              >
+                Add bank
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 export function OrganisationReferralWithdrawPage() {
-  const [selectedBankId, setSelectedBankId] = useState(bankAccounts[0]?.id ?? "");
+  const [bankAccounts, setBankAccounts] = useState(initialBankAccounts);
+  const [selectedBankId, setSelectedBankId] = useState(initialBankAccounts[0]?.id ?? "");
   const [amountInput, setAmountInput] = useState("");
   const [password, setPassword] = useState("");
+  const [isAddBankOpen, setIsAddBankOpen] = useState(false);
+  const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
+  const [addBankErrors, setAddBankErrors] = useState<Partial<Record<keyof AddBankFormState, string>>>({});
 
   const selectedBank = bankAccounts.find((bank) => bank.id === selectedBankId) ?? bankAccounts[0];
   const parsedAmount = Number(amountInput.replace(/[^\d]/g, ""));
@@ -76,6 +233,52 @@ export function OrganisationReferralWithdrawPage() {
 
     return "";
   }, [amountInput, parsedAmount]);
+
+  const closeAddBankModal = () => {
+    setIsAddBankOpen(false);
+    setAddBankForm(emptyAddBankForm);
+    setAddBankErrors({});
+  };
+
+  const openAddBankModal = () => {
+    setAddBankErrors({});
+    setIsAddBankOpen(true);
+  };
+
+  const validateAddBankForm = () => {
+    const errors: Partial<Record<keyof AddBankFormState, string>> = {};
+
+    if (!addBankForm.accountName.trim()) {
+      errors.accountName = "Enter the account name.";
+    }
+    if (!addBankForm.bankName.trim()) {
+      errors.bankName = "Enter the bank name.";
+    }
+    if (!/^\d{10}$/.test(addBankForm.accountNumber.trim())) {
+      errors.accountNumber = "Enter a valid 10-digit account number.";
+    }
+
+    setAddBankErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleAddBank = () => {
+    if (!validateAddBankForm()) {
+      return;
+    }
+
+    const nextBank: BankAccount = {
+      id: `bank-${Date.now()}`,
+      accountName: addBankForm.accountName.trim(),
+      bankName: addBankForm.bankName.trim(),
+      accountNumber: addBankForm.accountNumber.trim(),
+    };
+
+    setBankAccounts((current) => [...current, nextBank]);
+    setSelectedBankId(nextBank.id);
+    closeAddBankModal();
+    toast.success("Bank account added.");
+  };
 
   const canWithdraw = Boolean(
     selectedBank &&
@@ -144,7 +347,7 @@ export function OrganisationReferralWithdrawPage() {
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[14px] tracking-[-0.05em] text-[#94A3B8]">
                       <span>{bank.bankName}</span>
                       <span className="h-[6px] w-[6px] rounded-full bg-[#94A3B8]" />
-                      <span>{bank.maskedNumber}</span>
+                      <span>{formatMaskedNumber(bank.accountNumber)}</span>
                     </div>
                   </div>
                   {active ? <SuccessMark /> : null}
@@ -155,8 +358,8 @@ export function OrganisationReferralWithdrawPage() {
 
           <button
             type="button"
-            onClick={() => toast.info("Bank account setup is not part of this screen yet")}
-            className="mt-4 inline-flex items-center gap-2 text-[16px] font-medium tracking-[-0.07em] text-[#1565C0] underline underline-offset-2"
+            onClick={openAddBankModal}
+            className="mt-4 inline-flex items-center gap-2 text-[16px] font-medium tracking-[-0.07em] text-[#1565C0] underline underline-offset-2 transition hover:text-[#114B7F]"
           >
             <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
               <path fill="currentColor" d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6z" />
@@ -210,6 +413,18 @@ export function OrganisationReferralWithdrawPage() {
           Withdraw
         </button>
       </div>
+
+      <AddBankModal
+        open={isAddBankOpen}
+        form={addBankForm}
+        errors={addBankErrors}
+        onClose={closeAddBankModal}
+        onChange={(field, value) => {
+          setAddBankForm((current) => ({ ...current, [field]: value }));
+          setAddBankErrors((current) => ({ ...current, [field]: "" }));
+        }}
+        onSubmit={handleAddBank}
+      />
     </section>
   );
 }

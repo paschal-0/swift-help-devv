@@ -12,6 +12,9 @@ import {
   type ReferralTier,
 } from "./data";
 
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
+
 function BadgeStar({ color = "#F8FAFC" }: { color?: string }) {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -74,7 +77,9 @@ function TierCard({ tier }: { tier: ReferralTier }) {
   const isCurrent = tier.id === "referrer";
 
   return (
-    <article className={`rounded-[16px] border px-8 py-7 ${styles.container}`}>
+    <article
+      className={`rounded-[16px] border px-8 py-7 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md ${styles.container}`}
+    >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-4">
@@ -204,30 +209,30 @@ export function OrganisationReferralsPage() {
           </span>
         </div>
 
-        <section className="relative overflow-hidden rounded-[16px] bg-[linear-gradient(86.99deg,#1565C0_-24.97%,#0F172A_99.72%)] px-6 py-6">
+        <section className="relative overflow-hidden rounded-[16px] bg-[linear-gradient(86.99deg,#1565C0_-24.97%,#0F172A_99.72%)] px-4 py-4 sm:px-6 sm:py-6">
           <div className="pointer-events-none absolute right-[-34px] top-[-56px] h-[150px] w-[150px] rounded-full bg-[rgba(31,102,179,0.42)]" />
           <div className="pointer-events-none absolute right-[50px] top-[-18px] h-[122px] w-[122px] rounded-full bg-[rgba(31,102,179,0.35)]" />
 
           <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_220px] xl:items-start">
             <div className="max-w-[610px]">
-              <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#F8FAFC]">
+              <h2 className="text-[15px] font-semibold tracking-[-0.04em] text-[#F8FAFC] sm:text-[16px] sm:tracking-[-0.05em]">
                 Your referral code
               </h2>
-              <p className="mt-3 max-w-[520px] text-[14px] leading-[1.35] tracking-[-0.05em] text-[#F8FAFC]">
+              <p className="mt-2 max-w-[520px] text-[12px] leading-[1.32] tracking-[-0.04em] text-[#F8FAFC] sm:mt-3 sm:text-[14px] sm:leading-[1.35] sm:tracking-[-0.05em]">
                 Share this code with other organizations, professionals, or patients. Earn ₦5,000 for each
                 organization, ₦2,000 for each professional, and ₦500 for each patient that signs up using
                 your code.
               </p>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex h-[50px] w-full max-w-[400px] items-center justify-between rounded-[14px] bg-[#E2E8F0] px-4">
-                  <span className="text-[14px] font-semibold tracking-[-0.05em] text-[#334155]">
+              <div className="mt-5 flex flex-col gap-2 sm:mt-7 sm:gap-3 sm:flex-row sm:items-center">
+                <div className="flex h-auto w-full max-w-[400px] items-center justify-between gap-2 rounded-[14px] bg-[#E2E8F0] px-3 py-2 sm:h-[50px] sm:px-4 sm:py-0">
+                  <span className="text-[12px] font-semibold leading-[16px] tracking-[-0.04em] text-[#334155] sm:text-[14px] sm:tracking-[-0.05em]">
                     {organisationReferralCode}
                   </span>
                   <button
                     type="button"
                     onClick={copyCode}
-                    className="inline-flex h-[36px] min-w-[114px] items-center justify-center rounded-[12px] border border-[#1565C0] px-4 text-[14px] tracking-[-0.05em] text-[#1565C0]"
+                    className={`inline-flex h-[34px] min-w-[96px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-3 text-[12px] tracking-[-0.04em] text-[#1565C0] hover:bg-[#dbeafe] sm:h-[36px] sm:min-w-[114px] sm:rounded-[12px] sm:px-4 sm:text-[14px] sm:tracking-[-0.05em] ${microInteractionClass}`}
                   >
                     Copy code
                   </button>
@@ -236,27 +241,27 @@ export function OrganisationReferralsPage() {
                 <button
                   type="button"
                   onClick={shareLink}
-                  className="inline-flex h-[50px] min-w-[106px] items-center justify-center rounded-[14px] border border-[#F8FAFC] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] tracking-[-0.05em] text-[#E3F2FD]"
+                  className={`inline-flex h-[42px] min-w-[96px] cursor-pointer items-center justify-center rounded-[12px] border border-[#F8FAFC] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[12px] tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_8px_18px_rgba(15,23,42,0.18)] sm:h-[50px] sm:min-w-[106px] sm:rounded-[14px] sm:px-5 sm:text-[14px] sm:tracking-[-0.05em] ${microInteractionClass}`}
                 >
                   Share link
                 </button>
               </div>
             </div>
 
-            <div className="flex w-full max-w-[190px] flex-col items-end gap-2 self-end xl:self-start">
-              <p className="w-full text-right text-[16px] font-semibold tracking-[-0.05em] text-[#F8FAFC]">
+            <div className="flex w-full max-w-[190px] flex-col items-start gap-1 self-start sm:gap-2 xl:items-end xl:self-start">
+              <p className="w-full text-left text-[14px] font-semibold tracking-[-0.04em] text-[#F8FAFC] sm:text-right sm:text-[16px] sm:tracking-[-0.05em]">
                 Total Earnings
               </p>
-              <p className="w-full text-right text-[34px] font-semibold leading-none tracking-[-0.05em] text-[#F8FAFC]">
+              <p className="w-full text-left text-[28px] font-semibold leading-none tracking-[-0.04em] text-[#F8FAFC] sm:text-right sm:text-[34px] sm:tracking-[-0.05em]">
                 $500
               </p>
-              <p className="w-full text-right text-[14px] tracking-[-0.05em] text-[#D4A017]">
+              <p className="w-full text-left text-[12px] tracking-[-0.04em] text-[#D4A017] sm:text-right sm:text-[14px] sm:tracking-[-0.05em]">
                 Pending: $300
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/organisation-platform/referrals/withdraw")}
-                className="mt-2 inline-flex h-[40px] w-full items-center justify-center rounded-[12px] border border-[#F8FAFC] px-4 text-[14px] tracking-[-0.05em] text-[#E3F2FD]"
+                className={`mt-2 inline-flex h-[38px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#F8FAFC] px-3 text-[12px] tracking-[-0.04em] text-[#E3F2FD] hover:bg-white/10 sm:h-[40px] sm:rounded-[12px] sm:px-4 sm:text-[14px] sm:tracking-[-0.05em] ${microInteractionClass}`}
               >
                 Withdraw Earnings
               </button>
@@ -266,7 +271,10 @@ export function OrganisationReferralsPage() {
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {organisationReferralSummaryCards.map((card) => (
-            <article key={card.title} className="rounded-[8px] bg-[#F8FAFC] px-7 py-4">
+            <article
+              key={card.title}
+              className="cursor-pointer rounded-[8px] bg-[#F8FAFC] px-7 py-4 transition duration-200 ease-out hover:-translate-y-1 hover:bg-white hover:shadow-md"
+            >
               <p className="text-[18px] font-semibold tracking-[-0.05em] text-[#0F172A]">{card.value}</p>
               <p className="mt-1 text-[14px] tracking-[-0.05em] text-[#0F172A]">{card.title}</p>
               <p
@@ -303,7 +311,7 @@ export function OrganisationReferralsPage() {
             <button
               type="button"
               onClick={() => router.push("/organisation-platform/referrals/people")}
-              className="w-fit text-[14px] font-semibold tracking-[-0.05em] text-[#1565C0]"
+              className={`w-fit cursor-pointer text-[14px] font-semibold tracking-[-0.05em] text-[#1565C0] hover:text-[#114B7F] ${microInteractionClass}`}
             >
               view all
             </button>
@@ -332,7 +340,10 @@ export function OrganisationReferralsPage() {
               </thead>
               <tbody>
                 {filteredReferrals.map((item) => (
-                  <tr key={item.id} className="border-b border-[#E2E8F0]">
+                  <tr
+                    key={item.id}
+                    className="cursor-pointer border-b border-[#E2E8F0] transition duration-200 ease-out hover:bg-white"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E3F2FD] text-[11px] font-medium tracking-[-0.03em] text-[#94A3B8]">

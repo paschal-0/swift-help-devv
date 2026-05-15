@@ -207,14 +207,16 @@ function SupportTile({
     <motion.button
       type="button"
       onClick={onClick}
-      className={`flex h-[115px] w-full flex-col items-center justify-center rounded-[12px] border bg-[#F8FAFC] px-3 text-center transition ${
+      className={`flex h-[104px] w-full flex-col items-center justify-center rounded-[12px] border bg-[#F8FAFC] px-2 text-center transition sm:h-[115px] sm:px-3 ${
         selected ? "border-[#1565C0] shadow-[0_10px_24px_rgba(21,101,192,0.08)]" : "border-[#94A3B8]"
       }`}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.985 }}
     >
       {icon}
-      <span className="mt-3 text-[16px] font-normal leading-[23px] tracking-[-0.07em] text-[#334155]">{tile.label}</span>
+      <span className="mt-2 text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155] sm:mt-3 sm:text-[16px] sm:leading-[23px] sm:tracking-[-0.07em]">
+        {tile.label}
+      </span>
     </motion.button>
   );
 }
@@ -260,16 +262,18 @@ export function ProfessionalHelpPage() {
   };
 
   return (
-    <div className="mt-8 w-full xl:mt-[52px]">
-      <p className="text-[24px] font-medium leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Help and support</p>
+    <div className="mt-5 w-full px-1 sm:mt-8 sm:px-0 xl:mt-[52px]">
+      <p className="text-[18px] font-medium leading-[20px] tracking-[-0.05em] text-[#94A3B8] sm:text-[24px] sm:leading-[23px] sm:tracking-[-0.07em]">
+        Help and support
+      </p>
 
-      <div className="mt-8 flex justify-center xl:mt-[42px]">
-        <h1 className="text-center text-[34px] font-medium leading-tight tracking-[-0.07em] text-[#334155] sm:text-[40px]">
+      <div className="mt-5 flex justify-center sm:mt-8 xl:mt-[42px]">
+        <h1 className="text-center text-[24px] font-medium leading-[30px] tracking-[-0.05em] text-[#334155] sm:text-[34px] sm:leading-tight sm:tracking-[-0.07em] xl:text-[40px]">
           How can we help you?
         </h1>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 xl:mt-[46px] xl:grid-cols-4 xl:gap-[18px] xl:px-[136px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 xl:mt-[46px] xl:grid-cols-4 xl:gap-[18px] xl:px-[136px]">
         {helpTiles.map((tile) => (
           <SupportTile
             key={tile.id}
@@ -280,15 +284,15 @@ export function ProfessionalHelpPage() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-5 xl:mt-[35px] xl:grid-cols-[329px_545px] xl:gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-5 xl:mt-[35px] xl:grid-cols-[329px_545px] xl:gap-4">
         <motion.section
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC] px-6 pb-6 pt-6 xl:px-[24px] xl:pb-[35px] xl:pt-6"
+          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6 xl:px-[24px] xl:pb-[35px] xl:pt-6"
         >
           <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Categories</h2>
 
-          <div className="mt-8 space-y-5">
+          <div className="mt-5 space-y-3 sm:mt-8 sm:space-y-5">
             {categoryList.map((category) => {
               const active = category.id === selectedCategory;
 
@@ -313,7 +317,7 @@ export function ProfessionalHelpPage() {
                     )}
                   </span>
                   <span
-                    className={`text-[18px] leading-[28px] tracking-[-0.07em] ${
+                    className={`text-[15px] leading-[22px] tracking-[-0.05em] sm:text-[18px] sm:leading-[28px] sm:tracking-[-0.07em] ${
                       active ? "font-medium text-[#1565C0]" : "font-light text-[#94A3B8]"
                     }`}
                   >
@@ -324,7 +328,7 @@ export function ProfessionalHelpPage() {
             })}
           </div>
 
-          <div className="mt-12 rounded-[6px] bg-[#E3F2FD] px-4 pb-5 pt-4">
+          <div className="mt-7 rounded-[10px] bg-[#E3F2FD] px-3 pb-4 pt-4 sm:mt-12 sm:rounded-[6px] sm:px-4 sm:pb-5">
             <div className="flex justify-center">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full">
                 <svg viewBox="0 0 24 24" className="h-10 w-10" aria-hidden>
@@ -337,17 +341,19 @@ export function ProfessionalHelpPage() {
             </div>
 
             <div className="mt-1 text-center">
-              <h3 className="text-[18px] font-medium leading-[28px] tracking-[-0.07em] text-[#334155]">Still need help?</h3>
-              <p className="mx-auto mt-1 max-w-[225px] text-[18px] font-light leading-[22px] tracking-[-0.07em] text-[#334155]">
+              <h3 className="text-[16px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[18px] sm:leading-[28px] sm:tracking-[-0.07em]">
+                Still need help?
+              </h3>
+              <p className="mx-auto mt-1 max-w-[200px] text-[14px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] sm:max-w-[225px] sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.07em]">
                 Contact our support team and we&apos;ll assist you.
               </p>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-[5px]">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-[5px]">
               <motion.button
                 type="button"
                 onClick={() => toast.info("Support phone line is unavailable right now")}
-                className="inline-flex h-[33px] items-center justify-center gap-2 rounded-[7px] bg-[#1565C0] text-[12.2097px] font-light tracking-[-0.07em] text-[#F8FAFC]"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
@@ -358,7 +364,7 @@ export function ProfessionalHelpPage() {
               <motion.button
                 type="button"
                 onClick={() => toast.info("Support email is unavailable right now")}
-                className="inline-flex h-[33px] items-center justify-center gap-2 rounded-[7px] bg-[#1565C0] text-[12.2097px] font-light tracking-[-0.07em] text-[#F8FAFC]"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
@@ -372,11 +378,11 @@ export function ProfessionalHelpPage() {
         <motion.section
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC] px-[22px] pb-6 pt-6 xl:px-[29px] xl:pb-8"
+          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-[22px] sm:pb-6 sm:pt-6 xl:px-[29px] xl:pb-8"
         >
           <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">FAQ&apos;s</h2>
 
-          <div className="mt-8 space-y-6">
+          <div className="mt-5 space-y-4 sm:mt-8 sm:space-y-6">
             {visibleFaqs.length ? (
               visibleFaqs.map((item) => {
                 const expanded = item.id === expandedFaqId;
@@ -386,18 +392,18 @@ export function ProfessionalHelpPage() {
                     key={item.id}
                     type="button"
                     onClick={() => setExpandedFaqId(expanded ? "" : item.id)}
-                    className={`flex w-full items-start gap-3 rounded-[12px] bg-[#E2E8F0] px-3 py-3 text-left ${
-                      expanded ? "min-h-[82px]" : "min-h-[52px]"
+                    className={`flex w-full items-start gap-2 rounded-[12px] bg-[#E2E8F0] px-3 py-3 text-left sm:gap-3 ${
+                      expanded ? "min-h-[72px] sm:min-h-[82px]" : "min-h-[52px]"
                     }`}
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.995 }}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-[24px] font-light leading-[28px] tracking-[-0.05em] text-[#0F172A]">
+                      <p className="text-[15px] font-light leading-[20px] tracking-[-0.03em] text-[#0F172A] sm:text-[24px] sm:leading-[28px] sm:tracking-[-0.05em]">
                         {item.question}
                       </p>
                       {expanded ? (
-                        <p className="mt-2 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8]">
+                        <p className="mt-2 text-[13px] font-light leading-[18px] tracking-[-0.03em] text-[#94A3B8] sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.05em]">
                           {item.answer}
                         </p>
                       ) : null}
@@ -407,7 +413,7 @@ export function ProfessionalHelpPage() {
                 );
               })
             ) : (
-              <div className="rounded-[12px] bg-[#E2E8F0] px-4 py-8 text-center text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#64748B]">
+              <div className="rounded-[12px] bg-[#E2E8F0] px-4 py-6 text-center text-[14px] font-light leading-[19px] tracking-[-0.03em] text-[#64748B] sm:py-8 sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.05em]">
                 No help topics match the current search.
               </div>
             )}
