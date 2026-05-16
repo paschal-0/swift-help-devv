@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
 
 type NavItem = {
   label: string;
@@ -216,6 +218,8 @@ export function OrganisationPlatformShell({
 }: {
   children: ReactNode;
 }) {
+  useRequireCompletedOnboarding("organization");
+
   const pathname = usePathname();
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
@@ -237,9 +241,16 @@ export function OrganisationPlatformShell({
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
-  const logout = () => {
-    toast.success("You have been logged out.");
-    router.push("/organisation/onboarding/one");
+  const logout = async () => {
+    try {
+      await logoutSession();
+      toast.success("You have been logged out.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      router.push("/get-started/login");
+      router.refresh();
+    }
   };
 
   return (

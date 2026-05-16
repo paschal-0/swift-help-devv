@@ -1,9 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import {
+  completeOrganizationTeamOnboarding,
+  createOrganizationInvite,
+  createOrganizationInviteLink,
+  getApiErrorMessage,
+  listOrganizationInvites,
+  type OrganizationInvite,
+  type OrganizationInviteRole,
+} from "@/services/authApi";
 
 type InviteRole = "Admin" | "Professional";
 type TeamFilter = "All" | "Admin" | "Professional";
@@ -45,6 +55,31 @@ const teamMembersSeed: TeamMember[] = [
       "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80",
   },
 ];
+
+function toBackendInviteRole(role: InviteRole): OrganizationInviteRole {
+  return role === "Admin" ? "admin" : "professional";
+}
+
+function toInviteRole(role: OrganizationInviteRole): InviteRole {
+  return role === "admin" ? "Admin" : "Professional";
+}
+
+function toInviteStatus(status: OrganizationInvite["status"]): InviteStatus {
+  return status === "accepted" ? "Accepted" : "Pending";
+}
+
+function inviteToTeamMember(invite: OrganizationInvite): TeamMember {
+  const emailName = invite.email?.split("@")[0] || "Invite link";
+
+  return {
+    id: invite.id,
+    name: emailName,
+    role: toInviteRole(invite.role),
+    status: toInviteStatus(invite.status),
+    avatar:
+      "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=120&q=80",
+  };
+}
 
 function CopyIcon() {
   return (
@@ -90,12 +125,16 @@ function DotsIcon() {
 }
 
 export function OrganisationOnboardingThreePage() {
+  const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<InviteRole>("Admin");
   const [shareLink, setShareLink] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [emailTags, setEmailTags] = useState<string[]>([]);
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("All");
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(teamMembersSeed);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredMembers = useMemo(() => {
     if (teamFilter === "All") {
@@ -105,12 +144,44 @@ export function OrganisationOnboardingThreePage() {
     return teamMembers.filter((member) => member.role === teamFilter);
   }, [teamFilter, teamMembers]);
 
-  const handleGenerateLink = () => {
-    const roleSegment = selectedRole.toLowerCase();
-    setShareLink(`https://swifthelp.app/invite/${roleSegment}/workspace-01`);
+  useEffect(() => {
+    let isMounted = true;
+
+    listOrganizationInvites()
+      .then((invites) => {
+        if (isMounted) {
+          setTeamMembers(invites.map(inviteToTeamMember));
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          toast.error(getApiErrorMessage(error));
+          setTeamMembers(teamMembersSeed);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleGenerateLink = async () => {
+    setIsGeneratingLink(true);
+
+    try {
+      const invite = await createOrganizationInviteLink({
+        role: toBackendInviteRole(selectedRole),
+      });
+      setShareLink(invite.inviteLink);
+      setTeamMembers((current) => [inviteToTeamMember(invite), ...current]);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsGeneratingLink(false);
+    }
   };
 
-  const handleSendInvite = () => {
+  const handleSendInvite = async () => {
     const trimmedValue = emailInput.trim();
     if (!trimmedValue) {
       toast.error("Please enter an email address before sending an invite.");
@@ -127,30 +198,42 @@ export function OrganisationOnboardingThreePage() {
       return;
     }
 
-    setEmailTags((current) =>
-      [...current, trimmedValue],
-    );
+    setIsSendingInvite(true);
 
-    setTeamMembers((current) => [
-      {
-        id: crypto.randomUUID(),
-        name: trimmedValue.split("@")[0] || "New member",
-        role: selectedRole,
-        status: "Pending",
-        avatar:
-          "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=120&q=80",
-      },
-      ...current,
-    ]);
-    setEmailInput("");
+    try {
+      const invite = await createOrganizationInvite({
+        email: trimmedValue,
+        role: toBackendInviteRole(selectedRole),
+      });
+
+      setEmailTags((current) => [...current, trimmedValue]);
+      setTeamMembers((current) => [inviteToTeamMember(invite), ...current]);
+      setEmailInput("");
+      toast.success("Invite sent.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSendingInvite(false);
+    }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!shareLink && emailTags.length === 0) {
+    if (!shareLink && emailTags.length === 0 && teamMembers.length === 0) {
       toast.error("Please generate a link or invite at least one team member before continuing.");
       return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await completeOrganizationTeamOnboarding();
+      router.push("/organisation-platform");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -268,11 +351,12 @@ export function OrganisationOnboardingThreePage() {
                         <motion.button
                           type="button"
                           onClick={handleGenerateLink}
+                          disabled={isGeneratingLink}
                           whileHover={{ y: -2, scale: 1.01 }}
                           whileTap={{ scale: 0.98 }}
                           className="inline-flex h-[48px] w-full items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-6 text-[16px] font-normal leading-[22px] tracking-[-0.05em] text-white transition-shadow duration-200 hover:shadow-[0_12px_22px_rgba(21,101,192,0.22)] md:w-auto md:text-[18px]"
                         >
-                          Get link
+                          {isGeneratingLink ? "Getting..." : "Get link"}
                         </motion.button>
 
                         <div className="relative h-[54px] w-full min-w-0 flex-1 rounded-[18px] border border-[#9eb1cf] bg-white">
@@ -341,11 +425,12 @@ export function OrganisationOnboardingThreePage() {
                     <motion.button
                       type="button"
                       onClick={handleSendInvite}
+                      disabled={isSendingInvite}
                       whileHover={{ y: -2, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       className="inline-flex h-[48px] w-full items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-6 text-[16px] font-normal leading-[22px] tracking-[-0.05em] text-white transition-shadow duration-200 hover:shadow-[0_12px_22px_rgba(21,101,192,0.22)] md:w-auto md:text-[18px]"
                     >
-                      Send Invite
+                      {isSendingInvite ? "Sending..." : "Send Invite"}
                     </motion.button>
                   </div>
                 </div>
@@ -404,7 +489,7 @@ export function OrganisationOnboardingThreePage() {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  {filteredMembers.map((member) => (
+                  {filteredMembers.length > 0 ? filteredMembers.map((member) => (
                     <motion.div
                       key={member.id}
                       layout
@@ -449,7 +534,11 @@ export function OrganisationOnboardingThreePage() {
                         </span>
                       </div>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <p className="rounded-[24px] bg-[#f8fafc] px-4 py-5 text-[16px] font-light leading-[22px] tracking-[-0.05em] text-[#94a3b8]">
+                      No invites yet.
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -457,9 +546,10 @@ export function OrganisationOnboardingThreePage() {
             <div className="w-full max-w-[444px]">
               <button
                 type="submit"
-                className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe]"
+                disabled={isSubmitting}
+                className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
               >
-                Save and Continue
+                {isSubmitting ? "Saving..." : "Save and Continue"}
               </button>
             </div>
           </motion.form>

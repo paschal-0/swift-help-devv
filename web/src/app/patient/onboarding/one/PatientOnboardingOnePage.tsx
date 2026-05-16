@@ -16,7 +16,9 @@ import {
   type FormEvent,
 } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
 
 const flagSvgMap = flagSvgs as Record<string, string>;
 
@@ -64,6 +66,7 @@ export function PatientOnboardingOnePage({
   const router = useRouter();
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [formValues, setFormValues] = useState({
     dateOfBirth: "2003-05-24",
@@ -106,7 +109,7 @@ export function PatientOnboardingOnePage({
     showValidationToast("patient-onboarding-one", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (validationError) {
@@ -115,7 +118,24 @@ export function PatientOnboardingOnePage({
       return;
     }
 
-    router.push(`${basePath}/two`);
+    setIsSubmitting(true);
+
+    try {
+      await updatePatientProfile({
+        dateOfBirth: formValues.dateOfBirth,
+        gender: formValues.gender,
+        phone: formValues.phone,
+        preferredLocation: formValues.preferredLocation,
+        consultationType: formValues.consultationType,
+        ...(formValues.bloodGroup ? { bloodGroup: formValues.bloodGroup } : {}),
+      });
+
+      router.push(`${basePath}/two`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openDatePicker = () => {
@@ -409,10 +429,10 @@ export function PatientOnboardingOnePage({
             <div className="w-full max-w-[444px]">
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isSubmitting}
                 className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
               >
-                Continue
+                {isSubmitting ? "Saving..." : "Continue"}
               </button>
             </div>
           </motion.form>

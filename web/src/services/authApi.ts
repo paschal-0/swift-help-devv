@@ -50,9 +50,103 @@ export type MessageResponse = {
   message: string;
 };
 
+export type MedicationPayload = {
+  name: string;
+  dateIssued: string;
+  duration: string;
+};
+
+export type PatientProfilePayload = {
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
+  preferredLocation?: string;
+  consultationType?: string;
+  bloodGroup?: string;
+  allergies?: string[];
+  medicalConditions?: string[];
+  medications?: MedicationPayload[];
+  supplements?: MedicationPayload[];
+  onboardingCompleted?: boolean;
+};
+
+export type ProfessionalAvailability = Record<
+  string,
+  {
+    enabled: boolean;
+    from: string;
+    to: string;
+  }
+>;
+
+export type ProfessionalProfilePayload = {
+  professionalName?: string;
+  licenseNumber?: string;
+  specialization?: string;
+  experienceYears?: number;
+  consultationType?: string;
+  primaryPracticeLocation?: string;
+  uploadedDocuments?: Array<{
+    name: string;
+    sizeLabel: string;
+    url?: string;
+  }>;
+  availability?: ProfessionalAvailability;
+  onboardingCompleted?: boolean;
+};
+
+export type OrganizationProfilePayload = {
+  organisationName?: string;
+  organisationType?: string;
+  address?: string;
+  companyEmail?: string;
+  phone?: string;
+  numberOfLocations?: number;
+};
+
+export type OrganizationInviteRole = "admin" | "staff" | "professional";
+export type OrganizationInviteStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export type OrganizationOperatingHours = Record<
+  string,
+  {
+    enabled: boolean;
+    from: string;
+    to: string;
+  }
+>;
+
+export type OrganizationFacilityPayload = {
+  facilityName?: string;
+  facilityAddress?: string;
+  timezone?: string;
+  operatingHours?: OrganizationOperatingHours;
+};
+
+export type OrganizationInvite = {
+  id: string;
+  organizationUserId: string;
+  email: string | null;
+  role: OrganizationInviteRole;
+  token: string;
+  inviteLink: string;
+  status: OrganizationInviteStatus;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingStatus = {
+  role: BackendRole;
+  onboardingCompleted: boolean;
+  nextPath: string;
+  missingFields: string[];
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:5000/api/v1";
+  "http://localhost:5000";
 
 export function toBackendRole(role: FrontendRole): BackendRole {
   return role === "organisation" ? "organization" : role;
@@ -68,6 +162,29 @@ export function platformPathForRole(role: BackendRole) {
   }
 
   return "/patient-platform";
+}
+
+export function onboardingStartPathForRole(role: BackendRole) {
+  if (role === "professional") {
+    return "/professional/onboarding/one";
+  }
+
+  if (role === "organization") {
+    return "/organisation/onboarding/one";
+  }
+
+  return "/patient/onboarding/one";
+}
+
+export async function getPostAuthRedirectPath(role: BackendRole) {
+  const fallbackPath = platformPathForRole(role);
+
+  try {
+    const status = await getOnboardingStatus();
+    return status.onboardingCompleted ? fallbackPath : status.nextPath;
+  } catch {
+    return onboardingStartPathForRole(role);
+  }
 }
 
 export function getApiErrorMessage(error: unknown) {
@@ -123,7 +240,102 @@ export async function resetPassword(payload: {
   });
 }
 
-async function apiRequest<T>(path: string, init: RequestInit) {
+export async function refreshSession() {
+  return apiRequest<MessageResponse>("/auth/refresh", {
+    method: "POST",
+  });
+}
+
+export async function logout() {
+  return apiRequest<MessageResponse>("/auth/logout", {
+    method: "POST",
+  });
+}
+
+export async function getProfile() {
+  return apiRequest<unknown>("/profile/me", {
+    method: "GET",
+  });
+}
+
+export async function getOnboardingStatus() {
+  return apiRequest<OnboardingStatus>("/profile/onboarding-status", {
+    method: "GET",
+  });
+}
+
+export async function updatePatientProfile(payload: PatientProfilePayload) {
+  return apiRequest<unknown>("/profile/patient", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateProfessionalProfile(
+  payload: ProfessionalProfilePayload,
+) {
+  return apiRequest<unknown>("/profile/professional", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateOrganizationProfile(
+  payload: OrganizationProfilePayload,
+) {
+  return apiRequest<unknown>("/profile/organization", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateOrganizationFacility(
+  payload: OrganizationFacilityPayload,
+) {
+  return apiRequest<unknown>("/profile/organization/facility", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createOrganizationInvite(payload: {
+  email: string;
+  role: OrganizationInviteRole;
+}) {
+  return apiRequest<OrganizationInvite>("/profile/organization/invites", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createOrganizationInviteLink(payload: {
+  role: OrganizationInviteRole;
+}) {
+  return apiRequest<OrganizationInvite>("/profile/organization/invites/link", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listOrganizationInvites(role?: OrganizationInviteRole) {
+  const query = role ? `?role=${encodeURIComponent(role)}` : "";
+
+  return apiRequest<OrganizationInvite[]>(`/profile/organization/invites${query}`, {
+    method: "GET",
+  });
+}
+
+export async function completeOrganizationTeamOnboarding() {
+  return apiRequest<unknown>("/profile/organization/team/complete", {
+    method: "POST",
+  });
+}
+
+async function apiRequest<T>(
+  path: string,
+  init: RequestInit,
+  hasRetriedAfterRefresh = false,
+) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -137,6 +349,25 @@ async function apiRequest<T>(path: string, init: RequestInit) {
     | ApiEnvelope<T>
     | ApiErrorBody
     | null;
+
+  if (
+    response.status === 401 &&
+    !hasRetriedAfterRefresh &&
+    path !== "/auth/login" &&
+    path !== "/auth/refresh"
+  ) {
+    const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (refreshResponse.ok) {
+      return apiRequest<T>(path, init, true);
+    }
+  }
 
   if (!response.ok) {
     throw new Error(extractErrorMessage(body) ?? "Request failed.");

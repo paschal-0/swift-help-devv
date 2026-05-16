@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { toast } from "sonner";
+import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
 
 type NavItem = {
   label: string;
@@ -37,7 +39,7 @@ const lowerNav: NavItem[] = [
   { label: "Settings", icon: "settings", href: "/patient-platform/settings" },
 ];
 
-function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
+function Icon({ type, active }: { type: NavItem["icon"] | "logout"; active?: boolean }) {
   const color = active ? "#1E88E5" : "#94A3B8";
 
   if (type === "dashboard") {
@@ -135,6 +137,17 @@ function Icon({ type, active }: { type: NavItem["icon"]; active?: boolean }) {
     );
   }
 
+  if (type === "logout") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+        <path
+          fill={color}
+          d="M17 3H10C8.9 3 8 3.9 8 5V8H10V5H17V19H10V16H8V19C8 20.1 8.9 21 10 21H17C18.1 21 19 20.1 19 19V5C19 3.9 18.1 3 17 3ZM13.08 15.59 15.67 13H3V11H15.67L13.08 8.41 14.5 7 19.5 12 14.5 17 13.08 15.59Z"
+        />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
       <path fill={color} d="M19.4 13a7.9 7.9 0 0 0 .1-1 7.9 7.9 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a8.2 8.2 0 0 0-1.7-1l-.4-2.6H9.1l-.4 2.6a8.2 8.2 0 0 0-1.7 1l-2.5-1-2 3.4L4.6 11a7.9 7.9 0 0 0-.1 1 7.9 7.9 0 0 0 .1 1l-2.1 1.6 2 3.4 2.5-1a8.2 8.2 0 0 0 1.7 1l.4 2.6h5.8l.4-2.6a8.2 8.2 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6ZM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
@@ -219,6 +232,8 @@ export function usePatientPlatformShell() {
 export function PatientPlatformShell({
   children,
 }: PatientPlatformShellProps) {
+  useRequireCompletedOnboarding("patient");
+
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
@@ -237,6 +252,18 @@ export function PatientPlatformShell({
       return pathname === "/patient-platform" || pathname === "/patient-platform/dashboard";
     }
     return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const logout = async () => {
+    try {
+      await logoutSession();
+      toast.success("You have been logged out.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      router.push("/get-started/login");
+      router.refresh();
+    }
   };
 
   return (
@@ -322,6 +349,37 @@ export function PatientPlatformShell({
                   onClick={() => setIsMobileNavExpanded(false)}
                 />
               ))}
+              <motion.button
+                layout
+                whileHover={{ x: 3 }}
+                whileTap={{ scale: 0.985 }}
+                type="button"
+                onClick={logout}
+                className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] ${
+                  isMobileNavExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"
+                }`}
+              >
+                <span className={`inline-flex items-center ${isMobileNavExpanded ? "gap-3" : "gap-0 xl:gap-3"}`}>
+                  <Icon type="logout" />
+                  <AnimatePresence initial={false}>
+                    {isMobileNavExpanded ? (
+                      <motion.span
+                        key="logout-mobile-label"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="overflow-hidden whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] text-[#94A3B8] xl:hidden"
+                      >
+                        Log out
+                      </motion.span>
+                    ) : null}
+                  </AnimatePresence>
+                  <span className="hidden overflow-hidden whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] text-[#94A3B8] xl:inline">
+                    Log out
+                  </span>
+                </span>
+              </motion.button>
             </div>
           </LayoutGroup>
         </motion.aside>
@@ -355,6 +413,21 @@ export function PatientPlatformShell({
                   isExpanded
                 />
               ))}
+              <motion.button
+                layout
+                whileHover={{ x: 3 }}
+                whileTap={{ scale: 0.985 }}
+                type="button"
+                onClick={logout}
+                className="relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] pl-6 pr-2 text-left transition hover:bg-[#eef4fb]"
+              >
+                <span className="inline-flex items-center gap-3">
+                  <Icon type="logout" />
+                  <span className="overflow-hidden whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] text-[#94A3B8]">
+                    Log out
+                  </span>
+                </span>
+              </motion.button>
             </div>
           </LayoutGroup>
         </aside>

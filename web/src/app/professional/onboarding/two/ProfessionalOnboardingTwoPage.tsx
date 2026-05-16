@@ -12,11 +12,13 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
 
 type UploadEntry = {
   id: string;
   name: string;
   sizeLabel: string;
+  url?: string;
 };
 
 const maxFileSizeInMb = 10;
@@ -43,6 +45,7 @@ function createUrlUpload(urlValue: string): UploadEntry | null {
       id: crypto.randomUUID(),
       name: lastSegment || "Document link",
       sizeLabel: "Imported from URL",
+      url: parsedUrl.href,
     };
   } catch {
     return null;
@@ -222,6 +225,7 @@ export function ProfessionalOnboardingTwoPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [uploads, setUploads] = useState<UploadEntry[]>(initialUploads);
   const [urlInput, setUrlInput] = useState("");
@@ -294,7 +298,7 @@ export function ProfessionalOnboardingTwoPage() {
     setUrlInput("");
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (validationError) {
@@ -303,7 +307,23 @@ export function ProfessionalOnboardingTwoPage() {
       return;
     }
 
-    router.push("/professional/onboarding/three");
+    setIsSubmitting(true);
+
+    try {
+      await updateProfessionalProfile({
+        uploadedDocuments: uploads.map(({ name, sizeLabel, url }) => ({
+          name,
+          sizeLabel,
+          ...(url ? { url } : {}),
+        })),
+      });
+
+      router.push("/professional/onboarding/three");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -461,10 +481,10 @@ export function ProfessionalOnboardingTwoPage() {
             <div className="w-full max-w-[444px]">
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isSubmitting}
                 className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
               >
-                Continue
+                {isSubmitting ? "Saving..." : "Continue"}
               </button>
             </div>
           </motion.form>

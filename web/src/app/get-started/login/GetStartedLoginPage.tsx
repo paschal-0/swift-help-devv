@@ -8,8 +8,8 @@ import { motion, type Variants } from "framer-motion";
 import { toast } from "sonner";
 import {
   getApiErrorMessage,
+  getPostAuthRedirectPath,
   login,
-  platformPathForRole,
 } from "@/services/authApi";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 
@@ -162,7 +162,7 @@ export function GetStartedLoginPage() {
       });
 
       toast.success("Signed in successfully.");
-      router.push(platformPathForRole(data.user.role));
+      router.push(await getPostAuthRedirectPath(data.user.role));
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {

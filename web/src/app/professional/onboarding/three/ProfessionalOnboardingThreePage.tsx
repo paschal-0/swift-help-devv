@@ -4,7 +4,9 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
+import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
 
 type DayKey =
   | "monday"
@@ -115,6 +117,7 @@ function TimeInput({
 export function ProfessionalOnboardingThreePage() {
   const router = useRouter();
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
   const [availability, setAvailability] =
     useState<Record<DayKey, DayAvailability>>(initialAvailability);
@@ -131,7 +134,7 @@ export function ProfessionalOnboardingThreePage() {
     showValidationToast("professional-onboarding-three", validationError);
   }, [hasInteracted, showValidationToast, validationError]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (validationError) {
@@ -140,7 +143,16 @@ export function ProfessionalOnboardingThreePage() {
       return;
     }
 
-    router.push("/professional-platform");
+    setIsSubmitting(true);
+
+    try {
+      await updateProfessionalProfile({ availability, onboardingCompleted: true });
+      router.push("/professional-platform");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -287,10 +299,10 @@ export function ProfessionalOnboardingThreePage() {
             <div className="w-full max-w-[444px]">
               <button
                 type="submit"
-                disabled={!hasAvailableDay}
+                disabled={!hasAvailableDay || isSubmitting}
                 className="inline-flex h-[50px] w-full items-center justify-center rounded-[18.0973px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-[10.6375px] text-[20px] font-normal leading-[30px] tracking-[-0.05em] text-[#e3f2fd] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_24px_rgba(21,101,192,0.28)] focus-visible:outline-0 focus-visible:ring-4 focus-visible:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100 disabled:hover:shadow-none"
               >
-                Submit for Review
+                {isSubmitting ? "Saving..." : "Submit for Review"}
               </button>
             </div>
           </motion.form>
