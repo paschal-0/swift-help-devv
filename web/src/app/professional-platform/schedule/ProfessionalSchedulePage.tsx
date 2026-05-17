@@ -2,10 +2,20 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import {
+  cancelProfessionalConsultation,
+  createProfessionalBlockedTime,
+  getProfessionalSchedule,
+  startProfessionalConsultation,
+  updateProfessionalAvailability,
+  type ProfessionalBlockedTime,
+  type ProfessionalConsultation,
+  type WeeklyAvailability,
+} from "@/services/professionalApi";
 
 type MetricItem = {
   id: string;
@@ -192,6 +202,47 @@ const getBlockDayLabel = (value: string) =>
     weekday: "long",
   }).format(new Date(`${value}T00:00:00`));
 
+const formatClock = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const mapWeeklyScheduleToDays = (schedule: WeeklyAvailability): DaySchedule[] =>
+  initialDaySchedule.map((day) => {
+    const value = schedule[day.id];
+    return value ? { ...day, enabled: value.enabled, from: value.from, to: value.to } : day;
+  });
+
+const mapDayScheduleToWeeklySchedule = (days: DaySchedule[]): WeeklyAvailability =>
+  days.reduce((accumulator, day) => {
+    accumulator[day.id] = {
+      enabled: day.enabled,
+      from: day.from,
+      to: day.to,
+    };
+    return accumulator;
+  }, {} as WeeklyAvailability);
+
+const mapConsultationToUpcoming = (consultation: ProfessionalConsultation): UpcomingConsultation => ({
+  id: consultation.id,
+  dayLabel: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(consultation.startsAt)),
+  timeLabel: formatClock(consultation.startsAt),
+  patient: consultation.patientName,
+  mode: consultation.mode,
+  duration: `${consultation.mode} - ${consultation.durationMinutes} mins`,
+  startsIn: consultation.status === "ongoing" ? "Ongoing" : "Upcoming",
+});
+
+const mapBlockedTime = (item: ProfessionalBlockedTime): BlockedItem => ({
+  id: item.id,
+  day: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(item.startsAt)),
+  start: item.entireDay ? "All day" : formatClock(item.startsAt),
+  end: item.entireDay ? "All day" : formatClock(item.endsAt),
+  reasonA: item.reason ?? "Blocked time",
+  reasonB: item.repeat,
+});
+
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6 sm:h-8 sm:w-8" aria-hidden>
@@ -268,9 +319,11 @@ export function ProfessionalSchedulePage() {
   const [selectedDate, setSelectedDate] = useState(18);
   const [isAddBlockTimeModalOpen, setIsAddBlockTimeModalOpen] = useState(false);
   const [isAppointmentDetailsModalOpen, setIsAppointmentDetailsModalOpen] = useState(false);
+  const [activeConsultationId, setActiveConsultationId] = useState<string | null>(null);
   const [blockEntireDay, setBlockEntireDay] = useState(false);
   const [calendarHeaderIndex, setCalendarHeaderIndex] = useState(0);
   const [blockedTimeItems, setBlockedTimeItems] = useState(blockedItems);
+  const [scheduleConsultations, setScheduleConsultations] = useState(upcomingConsultations);
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(
     Object.entries(ruleOptions).map(([label, values]) => ({ label, value: values[0] }))
   );
@@ -281,12 +334,40 @@ export function ProfessionalSchedulePage() {
 
   const query = searchText.trim().toLowerCase();
 
-  const visibleUpcoming = useMemo(() => {
-    if (!query) {
-      return upcomingConsultations;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSchedule() {
+      try {
+        const data = await getProfessionalSchedule();
+        if (cancelled) return;
+
+        setAvailabilityEnabled(data.availability.acceptingBookings);
+        setDaySchedule(mapWeeklyScheduleToDays(data.availability.weeklySchedule));
+        setScheduleConsultations(
+          data.consultations.length ? data.consultations.map(mapConsultationToUpcoming) : upcomingConsultations,
+        );
+        setBlockedTimeItems(data.blockedTimes.map(mapBlockedTime));
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load schedule");
+        }
+      }
     }
 
-    return upcomingConsultations.filter((consultation) =>
+    void loadSchedule();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleUpcoming = useMemo(() => {
+    if (!query) {
+      return scheduleConsultations;
+    }
+
+    return scheduleConsultations.filter((consultation) =>
       [
         consultation.patient,
         consultation.mode,
@@ -299,7 +380,7 @@ export function ProfessionalSchedulePage() {
         .toLowerCase()
         .includes(query)
     );
-  }, [query]);
+  }, [query, scheduleConsultations]);
 
   const visibleBlocked = useMemo(() => {
     if (!query) {
@@ -361,25 +442,31 @@ export function ProfessionalSchedulePage() {
 
   const dateCells = Array.from({ length: 31 }).map((_, index) => index + 1);
 
-  const openAppointmentDetails = () => {
+  const openAppointmentDetails = (consultationId?: string) => {
+    setActiveConsultationId(consultationId ?? scheduleConsultations[0]?.id ?? null);
     setIsAddBlockTimeModalOpen(false);
     setIsAppointmentDetailsModalOpen(true);
   };
 
-  const saveBlockedTime = () => {
-    setBlockedTimeItems((current) => [
-      {
-        id: `blocked-${current.length + 1}`,
-        day: getBlockDayLabel(blockDate),
-        start: blockEntireDay ? "All day" : blockTime.split(" - ")[0],
-        end: blockEntireDay ? "All day" : blockTime.split(" - ")[1],
-        reasonA: blockType,
-        reasonB: blockRepeat,
-      },
-      ...current,
-    ]);
-    setIsAddBlockTimeModalOpen(false);
-    toast.success("Block time added.");
+  const saveBlockedTime = async () => {
+    const [startLabel, endLabel] = blockTime.split(" - ");
+    const startsAt = new Date(`${blockDate} ${blockEntireDay ? "00:00" : startLabel}`);
+    const endsAt = new Date(`${blockDate} ${blockEntireDay ? "23:59" : endLabel}`);
+
+    try {
+      const blockedTime = await createProfessionalBlockedTime({
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        entireDay: blockEntireDay,
+        reason: blockType,
+        repeat: blockRepeat === "Daily" ? "daily" : blockRepeat === "Weekly" ? "weekly" : "none",
+      });
+      setBlockedTimeItems((current) => [mapBlockedTime(blockedTime), ...current]);
+      setIsAddBlockTimeModalOpen(false);
+      toast.success("Block time added.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add blocked time");
+    }
   };
 
   return (
@@ -454,7 +541,16 @@ export function ProfessionalSchedulePage() {
               <h3 className="text-[16px] font-normal leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[18px]">Availability Status</h3>
               <button
                 type="button"
-                onClick={() => setAvailabilityEnabled((current) => !current)}
+                onClick={async () => {
+                  const next = !availabilityEnabled;
+                  setAvailabilityEnabled(next);
+                  try {
+                    await updateProfessionalAvailability({ acceptingBookings: next });
+                  } catch (error) {
+                    setAvailabilityEnabled(!next);
+                    toast.error(error instanceof Error ? error.message : "Unable to update availability");
+                  }
+                }}
                 className={`mt-4 flex h-[40px] w-full items-center gap-3 rounded-lg bg-[#E3F2FD] px-3 sm:mt-5 sm:h-[36px] ${microInteractionClass}`}
               >
                 <span
@@ -480,7 +576,17 @@ export function ProfessionalSchedulePage() {
 
             <button
               type="button"
-              onClick={() => toast.success("Weekly hours updated.")}
+              onClick={async () => {
+                try {
+                  await updateProfessionalAvailability({
+                    acceptingBookings: availabilityEnabled,
+                    weeklySchedule: mapDayScheduleToWeeklySchedule(daySchedule),
+                  });
+                  toast.success("Weekly hours updated.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Unable to update weekly hours");
+                }
+              }}
               className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-[34px] tracking-[-0.05em] text-[#F8FAFC] sm:mt-7 sm:h-[40px] sm:text-[15px] ${microInteractionClass}`}
             >
               Edit weekly hours
@@ -571,7 +677,7 @@ export function ProfessionalSchedulePage() {
                   {session.status === "booked" ? (
                     <button
                       type="button"
-                      onClick={openAppointmentDetails}
+                      onClick={() => openAppointmentDetails(scheduleConsultations[0]?.id)}
                       className={`flex h-[51px] w-full cursor-pointer items-center justify-between rounded-lg border border-[#1E88E5] bg-[#F8FAFC] px-[11px] text-left hover:bg-[#EAF4FF] lg:w-[186px] ${microInteractionClass}`}
                     >
                       <span className="text-[10px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]">
@@ -632,7 +738,7 @@ export function ProfessionalSchedulePage() {
                 key={consultation.id}
                 whileHover={{ y: -2 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                onClick={openAppointmentDetails}
+                onClick={() => openAppointmentDetails(consultation.id)}
                 className="cursor-pointer rounded-lg bg-[#E3F2FD] px-3 pb-[14px] pt-[10px]"
               >
                 <div className="flex items-center gap-2 text-[10px] leading-[10px] tracking-[-0.05em] text-[#334155]">
@@ -964,7 +1070,7 @@ export function ProfessionalSchedulePage() {
               <div className="mt-8 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={openAppointmentDetails}
+                  onClick={() => openAppointmentDetails()}
                   className="inline-flex h-[44px] items-center justify-center rounded-[12px] border border-[#334155] bg-[#E2E8F0] text-[15px] font-medium leading-[15px] tracking-[-0.05em] text-[#334155] hover:bg-gray-200 transition"
                 >
                   View Details
@@ -1098,9 +1204,16 @@ export function ProfessionalSchedulePage() {
               <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsAppointmentDetailsModalOpen(false);
-                    toast.warning("Appointment cancelled.");
+                  onClick={async () => {
+                    if (!activeConsultationId) return;
+                    try {
+                      await cancelProfessionalConsultation(activeConsultationId);
+                      setScheduleConsultations((current) => current.filter((item) => item.id !== activeConsultationId));
+                      setIsAppointmentDetailsModalOpen(false);
+                      toast.warning("Appointment cancelled.");
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to cancel appointment");
+                    }
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] border border-[#334155] bg-[#F8FAFC] px-2 text-[13px] font-medium leading-[15px] tracking-[-0.05em] text-[#334155] sm:h-[32px] sm:rounded-[9.26984px] sm:text-[14px]"
                 >
@@ -1108,9 +1221,15 @@ export function ProfessionalSchedulePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsAppointmentDetailsModalOpen(false);
-                    toast.success("Joining appointment...");
+                  onClick={async () => {
+                    if (!activeConsultationId) return;
+                    try {
+                      await startProfessionalConsultation(activeConsultationId);
+                      setIsAppointmentDetailsModalOpen(false);
+                      toast.success("Joining appointment...");
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Unable to start appointment");
+                    }
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
                 >

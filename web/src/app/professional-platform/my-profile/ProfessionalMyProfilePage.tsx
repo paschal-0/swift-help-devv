@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import { getProfessionalProfile, type ProfessionalProfileResponse } from "@/services/professionalApi";
 
 type InfoRow = {
   label: string;
@@ -164,7 +165,73 @@ function ProfileInfoRows({ rows }: { rows: InfoRow[] }) {
 
 export function ProfessionalMyProfilePage() {
   const { searchText } = useProfessionalPlatformShell();
+  const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
   const query = searchText.trim().toLowerCase();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      try {
+        const data = await getProfessionalProfile();
+        if (!cancelled) {
+          setProfileData(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load profile");
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const backendPersonalInformation = useMemo<InfoRow[]>(() => {
+    if (!profileData) return personalInformation;
+
+    return [
+      { label: "Gender", value: profileData.profile.gender || "Not provided" },
+      { label: "Date of Birth", value: profileData.profile.dateOfBirth || "Not provided" },
+      { label: "Phone Number", value: profileData.account?.phoneNumber || "Not provided" },
+      { label: "Email", value: profileData.account?.email || "Not provided" },
+      { label: "Address", value: profileData.profile.address || "Not provided" },
+      { label: "Location", value: profileData.profile.primaryPracticeLocation || "Not provided" },
+    ];
+  }, [profileData]);
+
+  const backendProfessionalInformation = useMemo<InfoRow[]>(() => {
+    if (!profileData) return professionalInformation;
+
+    return [
+      { label: "License No", value: profileData.profile.licenseNumber || "Not provided" },
+      { label: "Speciality", value: profileData.profile.specialization || "Not provided" },
+      { label: "Consultation type", value: profileData.profile.consultationType || "Not provided" },
+      {
+        label: "Years of experience",
+        value:
+          typeof profileData.profile.experienceYears === "number"
+            ? `${profileData.profile.experienceYears} years`
+            : "Not provided",
+      },
+    ];
+  }, [profileData]);
+
+  const backendLicenseFiles = useMemo<LicenseFile[]>(() => {
+    const documents = profileData?.profile.uploadedDocuments ?? [];
+    return documents.length
+      ? documents.map((file, index) => ({
+          id: `${file.name}-${index}`,
+          name: file.name,
+          size: file.sizeLabel,
+          status: profileData?.profile.verificationStatus === "approved" ? "Completed" : "Pending",
+        }))
+      : licenseFiles;
+  }, [profileData]);
 
   const filteredActivities = useMemo(() => {
     if (!query) return recentActivities;
@@ -175,12 +242,12 @@ export function ProfessionalMyProfilePage() {
   }, [query]);
 
   const filteredLicenseFiles = useMemo(() => {
-    if (!query) return licenseFiles;
+    if (!query) return backendLicenseFiles;
 
-    return licenseFiles.filter((file) =>
+    return backendLicenseFiles.filter((file) =>
       `${file.name} ${file.size} ${file.status}`.toLowerCase().includes(query)
     );
-  }, [query]);
+  }, [backendLicenseFiles, query]);
 
   const handleEdit = (section: string) => toast.info(`${section} editing is not available yet`);
   const handleDelete = (name: string) => toast.info(`${name} cannot be removed right now`);
@@ -222,7 +289,9 @@ export function ProfessionalMyProfilePage() {
                 </div>
               </div>
 
-              <p className="mt-[18px] text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Dr Johnson</p>
+              <p className="mt-[18px] text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                {profileData?.profile.professionalName || profileData?.account?.fullName || "Professional"}
+              </p>
 
               <motion.button
                 type="button"
@@ -241,7 +310,7 @@ export function ProfessionalMyProfilePage() {
               className="rounded-[12px] bg-[#F8FAFC]"
             >
               <SectionCard title="Personal Information" onEdit={() => handleEdit("Personal Information")}>
-                <ProfileInfoRows rows={personalInformation} />
+                <ProfileInfoRows rows={backendPersonalInformation} />
               </SectionCard>
             </motion.div>
           </div>
@@ -287,7 +356,7 @@ export function ProfessionalMyProfilePage() {
         <div className="space-y-3">
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18, ease: "easeOut" }}>
             <SectionCard title="Profssional Information" className="pb-5" onEdit={() => handleEdit("Professional Information")}>
-              <ProfileInfoRows rows={professionalInformation} />
+              <ProfileInfoRows rows={backendProfessionalInformation} />
             </SectionCard>
           </motion.div>
 

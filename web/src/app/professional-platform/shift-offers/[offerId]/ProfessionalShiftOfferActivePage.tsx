@@ -4,7 +4,17 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { shiftOffers } from "../data";
+import { shiftOffers, type ShiftOffer } from "../data";
+import {
+  acceptProfessionalShiftOffer,
+  checkInProfessionalShift,
+  completeProfessionalShift,
+  formatApiMoney,
+  getProfessionalShiftOffer,
+  missProfessionalShift,
+  startProfessionalShift,
+  type ShiftOffer as BackendShiftOffer,
+} from "@/services/professionalApi";
 
 type PanelView = "updates" | "message";
 type PanelTab = "updates" | "message";
@@ -133,6 +143,36 @@ function formatElapsedTime(totalSeconds: number) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
+const formatShiftClock = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const mapBackendOffer = (offer: BackendShiftOffer): ShiftOffer => {
+  const startsAt = new Date(offer.startsAt);
+  const endsAt = new Date(offer.endsAt);
+  const dateBucket = startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000 ? "next-week" : "this-week";
+
+  return {
+    id: offer.id,
+    shiftCode: offer.shiftCode,
+    organization: offer.organizationName,
+    role: offer.role,
+    date: new Intl.DateTimeFormat("en-US", { weekday: "short", month: "long", day: "numeric" }).format(startsAt),
+    time: `${formatShiftClock(offer.startsAt)} - ${formatShiftClock(offer.endsAt)}`,
+    location: offer.location,
+    pay: formatApiMoney(offer.payAmountCents, offer.currency),
+    postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
+    facilityName: offer.facilityName,
+    address: offer.address,
+    notes: offer.notes ?? "No extra notes provided.",
+    etaLabel: "40 minutes",
+    dateBucket,
+    payTier: offer.payAmountCents / 100 >= 100 ? "100-plus" : "under-100",
+  };
+};
+
 function ThreadAvatar({ thread }: { thread: MessageThread }) {
   if (thread.badge) {
     return (
@@ -155,6 +195,8 @@ export function ProfessionalShiftOfferActivePage() {
   const [selectedThreadId, setSelectedThreadId] = useState("helpcare");
   const [draftMessage, setDraftMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [backendOffer, setBackendOffer] = useState<ShiftOffer | null>(null);
+  const [shiftId, setShiftId] = useState<string | null>(null);
 
   const basePath = `/professional-platform/shift-offers/${params.offerId}`;
   const stageParam = searchParams.get("stage");
@@ -170,9 +212,33 @@ export function ProfessionalShiftOfferActivePage() {
             ? "arrived"
             : "traveling";
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOffer() {
+      try {
+        const data = await getProfessionalShiftOffer(params.offerId);
+        if (!cancelled) {
+          setBackendOffer(mapBackendOffer(data.offer));
+          setShiftId(data.shift?.id ?? null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load shift");
+        }
+      }
+    }
+
+    void loadOffer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.offerId]);
+
   const offer = useMemo(
-    () => shiftOffers.find((item) => item.id === params.offerId) ?? null,
-    [params.offerId]
+    () => backendOffer ?? shiftOffers.find((item) => item.id === params.offerId) ?? null,
+    [backendOffer, params.offerId]
   );
 
   const selectedThread = useMemo(
@@ -229,6 +295,20 @@ export function ProfessionalShiftOfferActivePage() {
         next.delete("view");
       }
     });
+  };
+
+  const ensureShift = async () => {
+    if (shiftId) {
+      return shiftId;
+    }
+
+    if (!offer) {
+      throw new Error("Shift offer not found");
+    }
+
+    const data = await acceptProfessionalShiftOffer(offer.id);
+    setShiftId(data.shift.id);
+    return data.shift.id;
   };
 
   const handleSendMessage = () => {
@@ -594,11 +674,17 @@ export function ProfessionalShiftOfferActivePage() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      toast.success("Shift completed. Awaiting patient confirmation.");
-                      replaceRoute((next) => {
-                        next.set("stage", "waiting-confirmation");
-                      });
+                    onClick={async () => {
+                      try {
+                        const id = await ensureShift();
+                        await completeProfessionalShift(id);
+                        toast.success("Shift completed. Awaiting patient confirmation.");
+                        replaceRoute((next) => {
+                          next.set("stage", "waiting-confirmation");
+                        });
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Unable to complete shift");
+                      }
                     }}
                     className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
                   >
@@ -627,13 +713,20 @@ export function ProfessionalShiftOfferActivePage() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const startedAt = Date.now();
-                      toast.success("Checked in. Shift started successfully.");
-                      replaceRoute((next) => {
-                        next.set("stage", "in-progress");
-                        next.set("checkedInAt", String(startedAt));
-                      });
+                    onClick={async () => {
+                      try {
+                        const id = await ensureShift();
+                        await checkInProfessionalShift(id);
+                        await startProfessionalShift(id);
+                        const startedAt = Date.now();
+                        toast.success("Checked in. Shift started successfully.");
+                        replaceRoute((next) => {
+                          next.set("stage", "in-progress");
+                          next.set("checkedInAt", String(startedAt));
+                        });
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Unable to start shift");
+                      }
                     }}
                     className="inline-flex h-[39px] w-full items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
                   >
@@ -682,8 +775,14 @@ export function ProfessionalShiftOfferActivePage() {
                   <div className="mt-auto flex flex-col gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        toast.success("Trip started. Live updates enabled.");
+                      onClick={async () => {
+                        try {
+                          await ensureShift();
+                          toast.success("Trip started. Live updates enabled.");
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Unable to start trip");
+                          return;
+                        }
                         replaceRoute((next) => {
                           next.set("stage", "arrived");
                         });
@@ -694,7 +793,15 @@ export function ProfessionalShiftOfferActivePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => toast.error("Shift marked as missed.")}
+                      onClick={async () => {
+                        try {
+                          const id = await ensureShift();
+                          await missProfessionalShift(id);
+                          toast.error("Shift marked as missed.");
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Unable to mark shift missed");
+                        }
+                      }}
                       className="inline-flex h-[37px] items-center justify-center rounded-[12px] border border-[#9C0D0D] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#9C0D0D]"
                     >
                       Miss shift

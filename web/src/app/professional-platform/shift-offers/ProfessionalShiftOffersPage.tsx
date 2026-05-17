@@ -1,11 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import { shiftOffers, type DateFilter, type PayFilter, type ShiftOffer } from "./data";
+import {
+  acceptProfessionalShiftOffer,
+  declineProfessionalShiftOffer,
+  formatApiMoney,
+  listProfessionalShiftOffers,
+  type ShiftOffer as BackendShiftOffer,
+} from "@/services/professionalApi";
 
 const dateFilterLabels: Record<DateFilter, string> = {
   all: "Date",
@@ -17,6 +24,31 @@ const payFilterLabels: Record<PayFilter, string> = {
   all: "Pay",
   "under-100": "Under $100",
   "100-plus": "$100+",
+};
+
+const mapBackendShiftOffer = (offer: BackendShiftOffer): ShiftOffer => {
+  const startsAt = new Date(offer.startsAt);
+  const endsAt = new Date(offer.endsAt);
+  const dateBucket: Exclude<DateFilter, "all"> =
+    startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000 ? "next-week" : "this-week";
+
+  return {
+    id: offer.id,
+    shiftCode: offer.shiftCode,
+    organization: offer.organizationName,
+    role: offer.role,
+    date: new Intl.DateTimeFormat("en-US", { weekday: "short", month: "long", day: "numeric" }).format(startsAt),
+    time: `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(startsAt)} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(endsAt)}`,
+    location: offer.location,
+    pay: formatApiMoney(offer.payAmountCents, offer.currency),
+    postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
+    facilityName: offer.facilityName,
+    address: offer.address,
+    notes: offer.notes ?? "No extra notes provided.",
+    etaLabel: "40 minutes",
+    dateBucket,
+    payTier: offer.payAmountCents / 100 >= 100 ? "100-plus" : "under-100",
+  };
 };
 
 function FilterButton({
@@ -179,11 +211,35 @@ export function ProfessionalShiftOffersPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [payFilter, setPayFilter] = useState<PayFilter>("all");
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+  const [offers, setOffers] = useState<ShiftOffer[]>(shiftOffers);
 
   const query = searchText.trim().toLowerCase();
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOffers() {
+      try {
+        const data = await listProfessionalShiftOffers();
+        if (!cancelled) {
+          setOffers(data.offers.map(mapBackendShiftOffer));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load shift offers");
+        }
+      }
+    }
+
+    void loadOffers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const visibleOffers = useMemo(() => {
-    return shiftOffers.filter((offer) => {
+    return offers.filter((offer) => {
       if (dateFilter !== "all" && offer.dateBucket !== dateFilter) {
         return false;
       }
@@ -201,11 +257,11 @@ export function ProfessionalShiftOffersPage() {
         .toLowerCase()
         .includes(query);
     });
-  }, [dateFilter, payFilter, query]);
+  }, [dateFilter, offers, payFilter, query]);
 
   const selectedOffer = useMemo(
-    () => shiftOffers.find((offer) => offer.id === selectedOfferId) ?? null,
-    [selectedOfferId]
+    () => offers.find((offer) => offer.id === selectedOfferId) ?? null,
+    [offers, selectedOfferId]
   );
 
   const cycleDateFilter = () => {
@@ -332,14 +388,25 @@ export function ProfessionalShiftOffersPage() {
         <ShiftOfferDetailsModal
           offer={selectedOffer}
           onClose={() => setSelectedOfferId(null)}
-          onAccept={() => {
-            toast.success(`Accepted ${selectedOffer.organization} shift.`);
-            setSelectedOfferId(null);
-            router.push(`/professional-platform/shift-offers/${selectedOffer.id}`);
+          onAccept={async () => {
+            try {
+              await acceptProfessionalShiftOffer(selectedOffer.id);
+              toast.success(`Accepted ${selectedOffer.organization} shift.`);
+              setSelectedOfferId(null);
+              router.push(`/professional-platform/shift-offers/${selectedOffer.id}`);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Unable to accept shift");
+            }
           }}
-          onDecline={() => {
-            toast.error(`Declined ${selectedOffer.organization} shift.`);
-            setSelectedOfferId(null);
+          onDecline={async () => {
+            try {
+              await declineProfessionalShiftOffer(selectedOffer.id);
+              toast.error(`Declined ${selectedOffer.organization} shift.`);
+              setOffers((current) => current.filter((offer) => offer.id !== selectedOffer.id));
+              setSelectedOfferId(null);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Unable to decline shift");
+            }
           }}
         />
       ) : null}

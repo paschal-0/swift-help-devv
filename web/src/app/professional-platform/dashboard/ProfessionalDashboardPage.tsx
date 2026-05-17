@@ -14,10 +14,19 @@ import {
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import {
+  acceptProfessionalRequest,
+  declineProfessionalRequest,
+  formatApiMoney,
+  getProfessionalDashboard,
+  type ProfessionalConsultation,
+  type ProfessionalConsultationRequest,
+  type ProfessionalDashboard,
+} from "@/services/professionalApi";
 
 type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
 
@@ -194,6 +203,44 @@ const formatNaira = (value: number) =>
     currency: "NGN",
     maximumFractionDigits: 0,
   }).format(value);
+
+const formatDateLabel = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+
+const formatTime = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment => ({
+  id: session.id,
+  timeLabel: formatTime(session.startsAt),
+  patient: session.patientName,
+  timeRange: `${formatTime(session.startsAt)} - ${formatTime(session.endsAt)}`,
+  status:
+    session.status === "completed"
+      ? "Done"
+      : session.status === "ongoing"
+        ? "Ongoing"
+        : "Upcoming",
+  consultationType: session.mode,
+  reason: session.reason,
+});
+
+const mapRequestToIncomingRequest = (request: ProfessionalConsultationRequest): IncomingRequest => ({
+  id: request.id,
+  from: request.patientName,
+  requestedTime: `Requested for ${formatTime(request.requestedStartAt)}`,
+  date: formatDateLabel(request.requestedStartAt),
+  consultationType: request.consultationLabel,
+  duration: `${request.durationMinutes} mins`,
+  deadline: request.expiresAt ? `Respond before ${formatTime(request.expiresAt)}` : "Respond soon",
+});
 
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
@@ -554,15 +601,49 @@ export function ProfessionalDashboardPage() {
   const [earningsRange, setEarningsRange] = useState<EarningsRange>("today");
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [dashboardRequests, setDashboardRequests] = useState(incomingRequests);
+  const [dashboard, setDashboard] = useState<ProfessionalDashboard | null>(null);
+  const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
 
   const query = searchText.trim().toLowerCase();
 
-  const visibleAppointments = useMemo(() => {
-    if (!query) {
-      return appointments;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDashboard() {
+      try {
+        const data = await getProfessionalDashboard(earningsRange);
+        if (cancelled) return;
+
+        setDashboard(data);
+        const mappedAppointments = [data.activeSession, ...data.upcomingSessions]
+          .filter((session): session is ProfessionalConsultation => Boolean(session))
+          .map(mapSessionToAppointment);
+
+        setDashboardAppointments(mappedAppointments.length ? mappedAppointments : appointments);
+        setDashboardRequests(data.pendingRequests.map(mapRequestToIncomingRequest));
+        if (mappedAppointments[0]) {
+          setActiveAppointmentId(mappedAppointments[0].id);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load professional dashboard");
+        }
+      }
     }
 
-    return appointments.filter((appointment) =>
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [earningsRange]);
+
+  const visibleAppointments = useMemo(() => {
+    if (!query) {
+      return dashboardAppointments;
+    }
+
+    return dashboardAppointments.filter((appointment) =>
       [
         appointment.patient,
         appointment.timeRange,
@@ -575,7 +656,7 @@ export function ProfessionalDashboardPage() {
         .toLowerCase()
         .includes(query)
     );
-  }, [query]);
+  }, [dashboardAppointments, query]);
 
   const visibleRequests = useMemo(() => {
     if (!query) {
@@ -714,13 +795,14 @@ export function ProfessionalDashboardPage() {
   );
 
   const dashboardMetricCards = useMemo<MetricCard[]>(() => {
-    const doneCount = appointments.filter((appointment) => appointment.status === "Done").length;
-    const upcomingCount = appointments.filter((appointment) => appointment.status === "Upcoming").length;
+    const doneCount = dashboardAppointments.filter((appointment) => appointment.status === "Done").length;
+    const upcomingCount = dashboardAppointments.filter((appointment) => appointment.status === "Upcoming").length;
+    const weeklyEarningsLabel = dashboard ? formatApiMoney(dashboard.metrics.weeklyEarnings) : formatNaira(earningsDataByRange.week.reduce((sum, point) => sum + point.earned, 0));
 
     return [
       {
         ...metricCardMeta[0],
-        value: `${appointments.length} Consultations`,
+        value: `${dashboard?.metrics.consultations ?? dashboardAppointments.length} Consultations`,
         subtitle: `${doneCount} Completed. ${upcomingCount} Upcoming`,
       },
       {
@@ -731,29 +813,39 @@ export function ProfessionalDashboardPage() {
       {
         ...metricCardMeta[2],
         value: "9:00am-5:00pm",
-        subtitle: "Available for 8hrs today",
+        subtitle: `Available for ${dashboard?.metrics.availableHours ?? 8}hrs today`,
       },
       {
         ...metricCardMeta[3],
-        value: formatNaira(earningsDataByRange.week.reduce((sum, point) => sum + point.earned, 0)),
+        value: weeklyEarningsLabel,
         subtitle: `${earningsMetrics.completedSessions} sessions completed`,
       },
     ];
-  }, [dashboardRequests.length, earningsMetrics.completedSessions]);
+  }, [dashboard, dashboardAppointments, dashboardRequests.length, earningsMetrics.completedSessions]);
 
   const dashboardDayLabels = ["MARCH 17", "MARCH 18", "MARCH 19"];
 
-  const handleDashboardRequestAction = (id: string, action: "accept" | "decline") => {
+  const handleDashboardRequestAction = async (id: string, action: "accept" | "decline") => {
     const request = dashboardRequests.find((item) => item.id === id);
 
     if (!request) {
       return;
     }
 
-    setDashboardRequests((current) => current.filter((item) => item.id !== id));
-    toast[action === "accept" ? "success" : "warning"](
-      `${action === "accept" ? "Accepted" : "Declined"} request from ${request.from}`
-    );
+    try {
+      if (action === "accept") {
+        await acceptProfessionalRequest(id);
+      } else {
+        await declineProfessionalRequest(id);
+      }
+
+      setDashboardRequests((current) => current.filter((item) => item.id !== id));
+      toast[action === "accept" ? "success" : "warning"](
+        `${action === "accept" ? "Accepted" : "Declined"} request from ${request.from}`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update request");
+    }
   };
 
   const handleOpenSchedule = () => router.push("/professional-platform/schedule");

@@ -4,6 +4,17 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import {
+  createProfessionalWithdrawal,
+  formatApiMoney,
+  getProfessionalWallet,
+  listProfessionalEarnings,
+  listProfessionalPayouts,
+  type EarningsSummary,
+  type ProfessionalEarning,
+  type ProfessionalPayout,
+  type ProfessionalPayoutMethod,
+} from "@/services/professionalApi";
 
 type EarningsTab = "overview" | "transactions" | "payouts";
 
@@ -22,6 +33,58 @@ type TransactionItem = {
   date: string;
   amount: string;
   status: "Completed";
+};
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+
+const mapEarning = (earning: ProfessionalEarning): TransactionItem => ({
+  id: earning.id,
+  transactionId: earning.id.slice(0, 8),
+  consultation: earning.description,
+  patient: earning.counterpartyName ?? "Swifthelp",
+  date: formatDate(earning.createdAt),
+  amount: formatApiMoney(earning.amountCents, earning.currency),
+  status: "Completed",
+});
+
+const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
+  id: payout.id,
+  transactionId: payout.id.slice(0, 8),
+  consultation: "Withdrawal",
+  patient: payout.status,
+  date: formatDate(payout.createdAt),
+  amount: formatApiMoney(payout.amountCents, payout.currency),
+  status: "Completed",
+});
+
+const buildSummaryCards = (summary: EarningsSummary | null): EarningsSummaryCard[] => {
+  if (!summary) return earningsSummary;
+
+  return [
+    {
+      id: "total",
+      title: "Total Earnings",
+      value: formatApiMoney(summary.totalEarned, summary.currency),
+      note: "All completed consultations",
+    },
+    {
+      id: "available",
+      title: "Available Balance",
+      value: formatApiMoney(summary.availableBalance, summary.currency),
+      note: "Ready for withdrawal",
+    },
+    {
+      id: "pending",
+      title: "Pending Earnings",
+      value: formatApiMoney(summary.pendingEarnings, summary.currency),
+      note: "Awaiting payout release",
+    },
+  ];
 };
 
 const earningsSummary: EarningsSummaryCard[] = [
@@ -156,24 +219,30 @@ export function ProfessionalEarningsPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
   const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
+  const [walletSummary, setWalletSummary] = useState<EarningsSummary | null>(null);
+  const [transactionItems, setTransactionItems] = useState<TransactionItem[]>(transactionsData);
+  const [payoutItems, setPayoutItems] = useState<TransactionItem[]>(transactionsData);
+  const [payoutMethodItems, setPayoutMethodItems] = useState<ProfessionalPayoutMethod[]>([]);
   const mobileScrollbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const payoutMethods = ["GTBank - **** 2481", "Moniepoint - **** 9921", "Access Bank - **** 1014"];
+  const payoutMethods = payoutMethodItems.length
+    ? payoutMethodItems.map((method) => `${method.bankName} - **** ${method.accountNumberLast4}`)
+    : ["GTBank - **** 2481", "Moniepoint - **** 9921", "Access Bank - **** 1014"];
   const showOverviewEmptyState = false;
 
   const query = searchText.trim().toLowerCase();
 
   const searchedTransactions = useMemo(() => {
     if (!query) {
-      return transactionsData;
+      return transactionItems;
     }
 
-    return transactionsData.filter((transaction) =>
+    return transactionItems.filter((transaction) =>
       [transaction.consultation, transaction.patient, transaction.date, transaction.amount, transaction.status]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
-  }, [query]);
+  }, [query, transactionItems]);
 
   const transactionsForTab = useMemo(() => {
     if (transactionStatusFilter === "All Statuses") {
@@ -185,19 +254,19 @@ export function ProfessionalEarningsPage() {
 
   const payoutsForTab = useMemo(() => {
     if (payoutFilter === "All Payouts") {
-      return searchedTransactions;
+      return payoutItems;
     }
 
-    return searchedTransactions.filter((transaction) => transaction.status === payoutFilter);
-  }, [searchedTransactions, payoutFilter]);
+    return payoutItems.filter((transaction) => transaction.status === payoutFilter);
+  }, [payoutItems, payoutFilter]);
 
   const overviewTransactions = searchedTransactions.slice(0, 9);
   const summaryCards = showOverviewEmptyState
     ? earningsSummary.map((item) => ({ ...item, value: "N0" }))
-    : earningsSummary;
+    : buildSummaryCards(walletSummary);
   const selectedTransaction =
-    transactionsData.find((transaction) => transaction.id === selectedTransactionId) ?? null;
-  const selectedPayout = transactionsData.find((transaction) => transaction.id === selectedPayoutId) ?? null;
+    transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
+  const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
 
   const scheduleMobileScrollbarHide = (delay: number) => {
     if (mobileScrollbarTimeoutRef.current) {
@@ -224,6 +293,37 @@ export function ProfessionalEarningsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEarnings() {
+      try {
+        const [wallet, earnings, payouts] = await Promise.all([
+          getProfessionalWallet(),
+          listProfessionalEarnings(),
+          listProfessionalPayouts(),
+        ]);
+
+        if (cancelled) return;
+
+        setWalletSummary(wallet.summary);
+        setPayoutMethodItems(wallet.payoutMethods);
+        setTransactionItems(earnings.length ? earnings.map(mapEarning) : []);
+        setPayoutItems(payouts.length ? payouts.map(mapPayout) : []);
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load earnings");
+        }
+      }
+    }
+
+    void loadEarnings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section
       className="mt-[14px] pb-6 xl:mt-[6px]"
@@ -236,7 +336,31 @@ export function ProfessionalEarningsPage() {
           <div className="flex w-full items-center gap-3 md:w-auto">
             <button
               type="button"
-              onClick={() => toast.success("Withdrawal request submitted.")}
+              onClick={async () => {
+                const method = payoutMethodItems[payoutMethodIndex];
+                const availableBalance = walletSummary?.availableBalance ?? 0;
+
+                if (!method) {
+                  toast.error("Add a payout method before withdrawing.");
+                  return;
+                }
+
+                if (availableBalance <= 0) {
+                  toast.error("No available balance to withdraw.");
+                  return;
+                }
+
+                try {
+                  const payout = await createProfessionalWithdrawal({
+                    payoutMethodId: method.id,
+                    amountCents: availableBalance,
+                  });
+                  setPayoutItems((current) => [mapPayout(payout), ...current]);
+                  toast.success("Withdrawal request submitted.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Unable to submit withdrawal");
+                }
+              }}
               className="inline-flex h-10 flex-1 items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-normal leading-none tracking-[-0.05em] whitespace-nowrap text-[#F8FAFC] shadow-sm sm:px-6 sm:text-[15.4719px] md:flex-none md:shadow-none"
             >
               Withdraw funds

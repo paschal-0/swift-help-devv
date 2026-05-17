@@ -331,7 +331,7 @@ export async function completeOrganizationTeamOnboarding() {
   });
 }
 
-async function apiRequest<T>(
+export async function apiRequest<T>(
   path: string,
   init: RequestInit,
   hasRetriedAfterRefresh = false,
