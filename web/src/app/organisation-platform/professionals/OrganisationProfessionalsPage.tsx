@@ -15,6 +15,7 @@ type ProfessionalTab = "All" | "On shift" | "Available" | "Unavailable";
 
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
+const premiumEase = [0.32, 0.72, 0, 1] as const;
 
 function CalendarTileIcon() {
   return (
@@ -110,17 +111,40 @@ export function OrganisationProfessionalsPage() {
 
   return (
     <div className="mt-6 px-4 pb-8 sm:px-6 xl:mt-[58px] xl:px-0">
-      <div className="flex flex-col gap-6 xl:gap-8">
-        <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">
+      <motion.div
+        className="flex flex-col gap-6 xl:gap-8"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, ease: premiumEase }}
+      >
+        <motion.h1
+          className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.24, ease: premiumEase }}
+        >
           Professionals
-        </h1>
+        </motion.h1>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-3">
+        <motion.section
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-3"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.06 } },
+          }}
+        >
           {organisationProfessionalSummaryCards.map((card) => (
             <motion.article
               key={card.title}
-              whileHover={{ y: -2 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              variants={{
+                hidden: { opacity: 0, y: 14 },
+                visible: { opacity: 1, y: 0 },
+              }}
+              whileHover={{ y: -3, scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.22, ease: premiumEase }}
               className="rounded-[12px] bg-[#F8FAFC] px-5 py-5 shadow-[0_10px_24px_rgba(148,163,184,0.08)] transition duration-200 ease-out hover:shadow-[0_14px_28px_rgba(148,163,184,0.14)]"
             >
               <div className="flex items-start gap-3">
@@ -138,37 +162,53 @@ export function OrganisationProfessionalsPage() {
               </div>
             </motion.article>
           ))}
-        </section>
+        </motion.section>
 
-        <section className="space-y-5 rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5 xl:p-6">
+        <motion.section
+          className="space-y-5 rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5 xl:p-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: premiumEase, delay: 0.08 }}
+        >
           <div className="grid grid-cols-2 gap-4 border-b-[3px] border-[#FFFFFF] pb-0 md:grid-cols-4 md:gap-8">
             {(["All", "On shift", "Available", "Unavailable"] as ProfessionalTab[]).map((tab) => {
               const isActive = activeTab === tab;
 
               return (
-                <button
+                <motion.button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ duration: 0.2, ease: premiumEase }}
                   className={`relative cursor-pointer pb-3 text-left text-[18px] font-medium tracking-[-0.05em] transition ${microInteractionClass} ${
                     isActive ? "text-[#1565C0]" : "text-[#94A3B8]"
                   }`}
                 >
                   {tab}
                   {isActive ? (
-                    <span className="absolute bottom-[-3px] left-0 h-1 w-[118px] max-w-full bg-[#1565C0]" />
+                    <motion.span
+                      layoutId="organisation-professionals-active-tab"
+                      className="absolute bottom-[-3px] left-0 h-1 w-[118px] max-w-full rounded-full bg-[#1565C0] shadow-[0_4px_12px_rgba(21,101,192,0.22)]"
+                      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    />
                   ) : null}
-                </button>
+                </motion.button>
               );
             })}
           </div>
 
-          <div className="flex flex-col gap-4 xl:flex-row xl:justify-end">
-            <label className="relative">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <motion.label
+              className="relative w-full"
+              whileHover={{ y: -1 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+            >
               <select
                 value={dateFilter}
                 onChange={(event) => setDateFilter(event.target.value)}
-                className="h-11 min-w-[120px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
+                className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 {dateOptions.map((option) => (
                   <option key={option} value={option}>
@@ -179,13 +219,17 @@ export function OrganisationProfessionalsPage() {
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
               </span>
-            </label>
+            </motion.label>
 
-            <label className="relative">
+            <motion.label
+              className="relative w-full"
+              whileHover={{ y: -1 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+            >
               <select
                 value={departmentFilter}
                 onChange={(event) => setDepartmentFilter(event.target.value)}
-                className="h-11 min-w-[168px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
+                className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 {departmentOptions.map((option) => (
                   <option key={option} value={option}>
@@ -196,15 +240,19 @@ export function OrganisationProfessionalsPage() {
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
               </span>
-            </label>
+            </motion.label>
 
-            <label className="relative">
+            <motion.label
+              className="relative w-full"
+              whileHover={{ y: -1 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+            >
               <select
                 value={statusFilter}
                 onChange={(event) =>
                   setStatusFilter(event.target.value as "all" | ProfessionalStatus)
                 }
-                className="h-11 min-w-[140px] cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
+                className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0]"
               >
                 <option value="all">Status</option>
                 <option value="Available">Available</option>
@@ -215,11 +263,16 @@ export function OrganisationProfessionalsPage() {
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
               </span>
-            </label>
+            </motion.label>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="overflow-x-auto rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)] sm:p-5 xl:p-6">
+        <motion.section
+          className="overflow-x-auto rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)] sm:p-5 xl:p-6"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: premiumEase, delay: 0.12 }}
+        >
           <div className="hidden xl:block">
             <table className="w-full table-fixed border-separate border-spacing-0 text-left">
               <thead>
@@ -234,9 +287,13 @@ export function OrganisationProfessionalsPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleProfessionals.map((item) => (
-                  <tr
+                {visibleProfessionals.map((item, index) => (
+                  <motion.tr
                     key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -1 }}
+                    transition={{ duration: 0.2, ease: premiumEase, delay: index * 0.035 }}
                     className="text-[14px] text-[#334155] transition duration-200 ease-out hover:bg-white"
                   >
                     <td className="border-b-2 border-[#FFFFFF] px-5 py-4">
@@ -278,18 +335,21 @@ export function OrganisationProfessionalsPage() {
                         {item.actionLabel}
                       </button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
 
           <div className="grid gap-4 xl:hidden">
-            {visibleProfessionals.map((item) => (
+            {visibleProfessionals.map((item, index) => (
               <motion.article
                 key={item.id}
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -2, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.22, ease: premiumEase, delay: index * 0.04 }}
                 className="rounded-[12px] bg-white p-5 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -353,8 +413,8 @@ export function OrganisationProfessionalsPage() {
               No professionals match the current filters or search.
             </div>
           ) : null}
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
     </div>
   );
 }

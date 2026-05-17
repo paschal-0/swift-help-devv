@@ -1,8 +1,17 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
+const premiumEase = [0.32, 0.72, 0, 1] as const;
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97]";
+const fieldClass =
+  "transition duration-200 ease-out hover:border-[#1565C0] hover:bg-white focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/20";
+const inputFocusClass =
+  "transition duration-200 ease-out focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20";
 
 function ChevronDownIcon() {
   return (
@@ -81,22 +90,36 @@ export function OrganisationCreateShiftPage() {
   };
 
   return (
-    <div className="mt-8 xl:mt-[72px]">
-      <div className="flex flex-col gap-6">
-        <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Create Shift</h1>
+    <div className="mt-4 px-3 pb-6 sm:mt-6 sm:px-6 sm:pb-8 xl:mt-[72px] xl:px-0">
+      <motion.div
+        className="flex flex-col gap-4 sm:gap-6"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, ease: premiumEase }}
+      >
+        <h1 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[24px]">Create Shift</h1>
 
-        <section className="rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_10px_28px_rgba(148,163,184,0.08)] xl:p-10">
-          <div className="space-y-5 rounded-[12px] border-2 border-[#E2E8F0] p-6">
-            <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Shift Details</h2>
+        <motion.section
+          className="rounded-[16px] bg-[#F8FAFC] p-2.5 shadow-sm sm:p-5 sm:shadow-[0_10px_28px_rgba(148,163,184,0.08)] xl:p-10"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: premiumEase }}
+        >
+          <motion.div
+            className="space-y-4 rounded-[14px] border border-[#E2E8F0] bg-white/60 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-md sm:space-y-5 sm:border-2 sm:p-6"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.2, ease: premiumEase }}
+          >
+            <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">Shift Details</h2>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_343px]">
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_343px]">
               <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Department</span>
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Department</span>
                 <span className="relative">
                   <select
                     value={department}
                     onChange={(event) => setDepartment(event.target.value)}
-                    className="h-[56px] w-full appearance-none rounded-[12px] border border-[#94A3B8] bg-transparent px-6 pr-14 text-[18px] font-light tracking-[-0.05em] text-[#94A3B8] outline-none"
+                    className={`h-12 w-full cursor-pointer appearance-none rounded-[12px] border border-[#94A3B8] bg-white px-4 pr-12 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-6 sm:pr-14 sm:text-[18px] ${inputFocusClass}`}
                   >
                     <option>Medical</option>
                     <option>Emergency</option>
@@ -110,12 +133,12 @@ export function OrganisationCreateShiftPage() {
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Shift Role</span>
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Shift Role</span>
                 <span className="relative">
                   <select
                     value={shiftRole}
                     onChange={(event) => setShiftRole(event.target.value)}
-                    className="h-[56px] w-full appearance-none rounded-[12px] border border-[#94A3B8] bg-transparent px-6 pr-14 text-[18px] font-light tracking-[-0.05em] text-[#94A3B8] outline-none"
+                    className={`h-12 w-full cursor-pointer appearance-none rounded-[12px] border border-[#94A3B8] bg-white px-4 pr-12 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-6 sm:pr-14 sm:text-[18px] ${inputFocusClass}`}
                   >
                     <option>Lab Technician</option>
                     <option>Nurse</option>
@@ -129,68 +152,72 @@ export function OrganisationCreateShiftPage() {
               </label>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_343px]">
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_343px]">
               <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Shift Date</span>
-                <span className="flex h-[56px] items-center gap-3 rounded-[12px] border border-[#94A3B8] px-5">
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Shift Date</span>
+                <span className={`flex h-12 items-center gap-3 rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
                   <CalendarIcon />
                   <input
                     value={shiftDate}
                     onChange={(event) => setShiftDate(event.target.value)}
-                    className="w-full bg-transparent text-[18px] font-light tracking-[-0.05em] text-[#94A3B8] outline-none"
+                    className="w-full bg-transparent text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:text-[18px]"
                   />
                 </span>
               </label>
 
               <div className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Shift Time</span>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="flex h-[56px] items-center justify-between rounded-[12px] border border-[#94A3B8] px-5">
-                    <span className="text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">From</span>
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Shift Time</span>
+                <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+                  <label className={`flex h-12 items-center justify-between rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
+                    <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">From</span>
                     <input
                       value={fromTime}
                       onChange={(event) => setFromTime(event.target.value)}
-                      className="w-[90px] bg-transparent text-right text-[18px] font-semibold tracking-[-0.05em] text-[#0F172A] outline-none"
+                      className="w-[90px] bg-transparent text-right text-[15px] font-semibold tracking-[-0.04em] text-[#0F172A] outline-none sm:text-[18px]"
                     />
                   </label>
 
-                  <label className="flex h-[56px] items-center justify-between rounded-[12px] border border-[#94A3B8] px-5">
-                    <span className="text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">To</span>
+                  <label className={`flex h-12 items-center justify-between rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
+                    <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">To</span>
                     <input
                       value={toTime}
                       onChange={(event) => setToTime(event.target.value)}
-                      className="w-[90px] bg-transparent text-right text-[18px] font-semibold tracking-[-0.05em] text-[#0F172A] outline-none"
+                      className="w-[90px] bg-transparent text-right text-[15px] font-semibold tracking-[-0.04em] text-[#0F172A] outline-none sm:text-[18px]"
                     />
                   </label>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-5 space-y-5 rounded-[12px] border-2 border-[#E2E8F0] p-6">
-            <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">
+          <motion.div
+            className="mt-4 space-y-4 rounded-[14px] border border-[#E2E8F0] bg-white/60 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-md sm:mt-5 sm:space-y-5 sm:border-2 sm:p-6"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.2, ease: premiumEase }}
+          >
+            <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">
               Professional Requirements
             </h2>
 
-            <div className="grid gap-6 xl:grid-cols-[354px_1fr_183px]">
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[354px_1fr_183px]">
               <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">
                   Number of professionals required
                 </span>
                 <input
                   value={professionalsRequired}
                   onChange={(event) => setProfessionalsRequired(event.target.value)}
-                  className="h-[56px] rounded-[12px] border border-[#94A3B8] px-5 text-[18px] font-light tracking-[-0.05em] text-[#94A3B8] outline-none"
+                  className={`h-12 rounded-[12px] border border-[#94A3B8] bg-white px-4 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-5 sm:text-[18px] ${inputFocusClass}`}
                 />
               </label>
 
-              <div className="flex flex-col gap-4">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Priority level</span>
-                <div className="flex flex-wrap items-center gap-6">
+              <div className="flex flex-col gap-2 sm:gap-4">
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Priority level</span>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-6">
                   <button
                     type="button"
                     onClick={() => setPriority("Normal")}
-                    className="inline-flex cursor-pointer items-center gap-3 text-[18px] font-light tracking-[-0.05em] text-[#334155]"
+                    className={`inline-flex h-11 cursor-pointer items-center justify-between gap-3 rounded-[12px] border border-[#DBEAFE] bg-white px-3 text-[15px] font-light tracking-[-0.04em] text-[#334155] hover:bg-[#E3F2FD] sm:justify-start sm:rounded-full sm:border-transparent sm:bg-transparent sm:text-[18px] ${microInteractionClass}`}
                     aria-pressed={priority === "Normal"}
                   >
                     <span>Normal</span>
@@ -200,7 +227,7 @@ export function OrganisationCreateShiftPage() {
                   <button
                     type="button"
                     onClick={() => setPriority("Urgent")}
-                    className="inline-flex cursor-pointer items-center gap-3 text-[18px] font-light tracking-[-0.05em] text-[#334155]"
+                    className={`inline-flex h-11 cursor-pointer items-center justify-between gap-3 rounded-[12px] border border-[#FEE2E2] bg-white px-3 text-[15px] font-light tracking-[-0.04em] text-[#334155] hover:bg-[#FEE2E2] sm:justify-start sm:rounded-full sm:border-transparent sm:bg-transparent sm:text-[18px] ${microInteractionClass}`}
                     aria-pressed={priority === "Urgent"}
                   >
                     <span>urgent</span>
@@ -210,48 +237,58 @@ export function OrganisationCreateShiftPage() {
               </div>
 
               <label className="flex flex-col gap-2">
-                <span className="text-[18px] font-light tracking-[-0.05em] text-black">Pay per slot</span>
-                <span className="flex h-[56px] items-center rounded-[12px] border border-[#94A3B8] px-5">
-                  <span className="text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">$</span>
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Pay per slot</span>
+                <span className={`flex h-12 items-center rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
+                  <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">$</span>
                   <input
                     value={payPerSlot}
                     onChange={(event) => setPayPerSlot(event.target.value)}
-                    className="ml-6 w-full bg-transparent text-[18px] font-semibold tracking-[-0.05em] text-[#334155] outline-none"
+                    className="ml-4 w-full bg-transparent text-[15px] font-semibold tracking-[-0.04em] text-[#334155] outline-none sm:ml-6 sm:text-[18px]"
                   />
                 </span>
               </label>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-5 space-y-5 rounded-[12px] border-2 border-[#E2E8F0] p-6">
-            <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Instructions</h2>
+          <motion.div
+            className="mt-4 space-y-4 rounded-[14px] border border-[#E2E8F0] bg-white/60 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-md sm:mt-5 sm:space-y-5 sm:border-2 sm:p-6"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.2, ease: premiumEase }}
+          >
+            <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">Instructions</h2>
 
             <textarea
               value={instructions}
               onChange={(event) => setInstructions(event.target.value)}
-              className="min-h-[120px] w-full rounded-[12px] bg-[#E2E8F0] px-5 py-4 text-[18px] font-light tracking-[-0.05em] text-black outline-none"
+              className="min-h-[112px] w-full rounded-[12px] border border-transparent bg-[#E2E8F0] px-4 py-3.5 text-[15px] font-light leading-relaxed tracking-[-0.04em] text-black outline-none transition duration-200 ease-out hover:bg-white focus:border-[#1565C0] focus:bg-white focus:ring-2 focus:ring-[#1565C0]/20 sm:min-h-[132px] sm:px-5 sm:py-4 sm:text-[18px]"
             />
-          </div>
+          </motion.div>
 
-          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
-            <button
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:mt-8 sm:flex-row sm:justify-center sm:gap-4">
+            <motion.button
               type="button"
               onClick={() => router.push("/organisation-platform/shifts")}
-              className="h-[52px] min-w-[220px] cursor-pointer rounded-full bg-[#AA1717] px-8 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+              className={`h-11 w-full cursor-pointer rounded-full bg-[#AA1717] px-6 text-[15px] font-medium tracking-[-0.04em] text-[#E3F2FD] hover:bg-[#8F1212] hover:shadow-[0_12px_24px_rgba(170,23,23,0.18)] sm:h-[52px] sm:w-auto sm:min-w-[220px] sm:px-8 sm:text-[16px] ${microInteractionClass}`}
             >
               Cancel
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
               type="button"
               onClick={handleProceed}
-              className="h-[52px] min-w-[260px] cursor-pointer rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-8 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD]"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+              className={`h-11 w-full cursor-pointer rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15px] font-medium tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] sm:h-[52px] sm:w-auto sm:min-w-[260px] sm:px-8 sm:text-[16px] ${microInteractionClass}`}
             >
               Proceed to payments
-            </button>
+            </motion.button>
           </div>
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
     </div>
   );
 }

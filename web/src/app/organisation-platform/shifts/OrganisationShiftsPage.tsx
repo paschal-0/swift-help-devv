@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
@@ -17,6 +17,15 @@ type AvailabilityDay = {
   from: string;
   to: string;
 };
+
+const microInteractionClass =
+  "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97]";
+
+const premiumEase = [0.32, 0.72, 0, 1] as const;
+
+function formatShiftTime(time: string) {
+  return time.replace(/\s*-\s*/g, " - ");
+}
 
 function CalendarTileIcon() {
   return (
@@ -76,7 +85,7 @@ function StatusText({ status }: { status: ShiftStatus }) {
           : "#AA1717";
 
   return (
-    <span style={{ color }} className="font-medium">
+    <span style={{ color }} className="whitespace-nowrap text-[12px] font-medium sm:text-sm">
       {status}
     </span>
   );
@@ -158,16 +167,16 @@ export function OrganisationShiftsPage() {
   };
 
   return (
-    <div className="mt-8 xl:mt-[72px]">
-      <div className="flex flex-col gap-5 xl:gap-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Shifts</h1>
+    <div className="mt-4 px-3 pb-6 sm:mt-6 sm:px-6 sm:pb-8 xl:mt-[72px] xl:px-0">
+      <div className="flex flex-col gap-4 xl:gap-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[24px]">Shifts</h1>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <button
               type="button"
               onClick={() => router.push("/organisation-platform/shifts/create")}
-              className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15px] font-normal tracking-[-0.05em] text-[#F8FAFC]"
+              className={`inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium tracking-[-0.04em] text-[#F8FAFC] shadow-sm hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] sm:w-auto sm:px-6 sm:text-[15px] ${microInteractionClass}`}
             >
               <PlusIcon />
               <span>Create Shifts</span>
@@ -175,44 +184,51 @@ export function OrganisationShiftsPage() {
             <button
               type="button"
               onClick={() => setShowAvailabilityModal(true)}
-              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full border border-[#1565C0] px-6 text-[15px] font-normal tracking-[-0.05em] text-[#1565C0]"
+              className={`inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full border border-[#1565C0] px-5 text-[14px] font-medium tracking-[-0.04em] text-[#1565C0] hover:bg-[#E3F2FD] sm:w-auto sm:px-6 sm:text-[15px] ${microInteractionClass}`}
             >
               Team Availability
             </button>
           </div>
         </div>
 
-        <section className="space-y-3">
-          <div className="grid grid-cols-2 gap-4 border-b-[3px] border-[#FFFFFF] pb-0 md:grid-cols-5 md:gap-8">
+        <section className="rounded-[16px] bg-[#F8FAFC] px-3 py-2 sm:px-5 sm:py-2.5 xl:px-6">
+          <div className="flex w-full snap-x snap-mandatory gap-2 overflow-x-auto border-b-[3px] border-[#FFFFFF] pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-5 md:gap-5 [&::-webkit-scrollbar]:hidden">
             {(["All", "Upcoming", "Checked in", "Completed", "Missed"] as ShiftTab[]).map((tab) => {
               const isActive = activeTab === tab;
 
               return (
-                <button
+                <motion.button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`relative cursor-pointer pb-3 text-left text-[18px] font-medium tracking-[-0.05em] transition ${
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ duration: 0.2, ease: premiumEase }}
+                  className={`relative shrink-0 snap-start cursor-pointer rounded-t-[10px] px-3 py-2 text-left text-[14px] font-medium tracking-[-0.03em] transition duration-200 ease-out hover:bg-white/70 sm:px-2 sm:text-[16px] ${
                     isActive ? "text-[#1565C0]" : "text-[#94A3B8]"
                   }`}
                 >
                   {tab}
                   {isActive ? (
-                    <span className="absolute bottom-[-3px] left-0 h-1 w-20 bg-[#1565C0]" />
+                    <motion.span
+                      layoutId="organisation-shifts-active-tab"
+                      className="absolute bottom-[-3px] left-2 h-1 w-14 rounded-full bg-[#1565C0] shadow-[0_4px_12px_rgba(21,101,192,0.25)] sm:w-20"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
                   ) : null}
-                </button>
+                </motion.button>
               );
             })}
           </div>
         </section>
 
         {shouldShowEmptyState ? (
-          <section className="flex min-h-[420px] items-center justify-center">
+          <section className="flex min-h-[420px] items-center justify-center px-4">
             <div className="max-w-[463px] text-center">
-              <h2 className="text-[32px] font-medium tracking-[-0.05em] text-[#94A3B8]">
+              <h2 className="text-[28px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[32px]">
                 No shifts yet
               </h2>
-              <p className="mt-2 text-[18px] font-medium leading-[22px] tracking-[-0.05em] text-[#94A3B8]">
+              <p className="mt-2 text-[16px] font-medium leading-relaxed tracking-[-0.05em] text-[#94A3B8] sm:text-[18px]">
                 You haven&apos;t created any shifts yet. Create a shift to start assigning staff or
                 posting to professionals.
               </p>
@@ -222,23 +238,23 @@ export function OrganisationShiftsPage() {
 
         {!shouldShowEmptyState ? (
           <>
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-3">
+        <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           {organisationShiftSummaryCards.map((card) => (
             <motion.article
               key={card.title}
               whileHover={{ y: -2 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)] xl:min-h-[140px] xl:px-[18px] xl:py-[18px]"
+              transition={{ duration: 0.2, ease: premiumEase }}
+              className="rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm transition duration-200 ease-out hover:shadow-md sm:p-5 xl:min-h-[140px]"
             >
-              <div className="flex items-start gap-3 xl:gap-[10px]">
-                <div className="flex h-16 w-[59px] shrink-0 items-center justify-center rounded-[12px] bg-[#E3F2FD] xl:h-[88px] xl:w-[88px]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start xl:gap-[10px]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] sm:h-16 sm:w-[59px] xl:h-[88px] xl:w-[88px]">
                   <CalendarTileIcon />
                 </div>
-                <div className="min-w-0 pt-1 xl:pt-0">
-                  <p className="text-xs font-normal tracking-[-0.05em] text-[#94A3B8] xl:text-[12px] xl:leading-3">
+                <div className="min-w-0 flex-1 pt-1 xl:pt-0">
+                  <p className="truncate text-[12px] font-medium leading-tight tracking-[-0.04em] text-[#94A3B8] sm:whitespace-normal xl:text-[13px]">
                     {card.title}
                   </p>
-                  <p className="mt-4 text-[40px] font-semibold leading-none tracking-[-0.07em] text-[#334155] xl:mt-5 xl:text-[58px]">
+                  <p className="mt-1 text-[24px] font-semibold leading-none tracking-[-0.06em] text-[#334155] sm:mt-3 sm:text-[40px] xl:mt-5 xl:text-[58px]">
                     {card.value}
                   </p>
                 </div>
@@ -247,12 +263,12 @@ export function OrganisationShiftsPage() {
           ))}
         </section>
 
-        <section className="flex flex-col gap-4 xl:flex-row xl:items-center">
-          <label className="relative">
+        <section className="flex flex-col gap-3 rounded-[16px] bg-[#F8FAFC] p-3 sm:grid sm:grid-cols-3 sm:p-5 xl:flex xl:flex-row xl:items-center xl:p-6">
+          <label className="relative w-full">
             <select
               value={departmentFilter}
               onChange={(event) => setDepartmentFilter(event.target.value)}
-              className="h-11 min-w-[200px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+              className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-10 text-[14px] tracking-[-0.03em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 sm:text-[15px] xl:min-w-[200px]"
             >
               {departmentOptions.map((option) => (
                 <option key={option} value={option}>
@@ -265,11 +281,11 @@ export function OrganisationShiftsPage() {
             </span>
           </label>
 
-          <label className="relative">
+          <label className="relative w-full">
             <select
               value={dateFilter}
               onChange={(event) => setDateFilter(event.target.value)}
-              className="h-11 min-w-[160px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+              className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-10 text-[14px] tracking-[-0.03em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 sm:text-[15px] xl:min-w-[160px]"
             >
               {dateOptions.map((option) => (
                 <option key={option} value={option}>
@@ -282,11 +298,11 @@ export function OrganisationShiftsPage() {
             </span>
           </label>
 
-          <label className="relative">
+          <label className="relative w-full">
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as "all" | ShiftStatus)}
-              className="h-11 min-w-[160px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-12 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
+              className="h-11 w-full cursor-pointer appearance-none rounded-[10px] border border-[#94A3B8] bg-white px-4 pr-10 text-[14px] tracking-[-0.03em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#EFF6FF] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 sm:text-[15px] xl:min-w-[160px]"
             >
               <option value="all">Status</option>
               <option value="Completed">Completed</option>
@@ -300,42 +316,54 @@ export function OrganisationShiftsPage() {
           </label>
         </section>
 
-        <section className="overflow-x-auto">
+        <section className="rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm [scrollbar-color:#1565C0_#DCEAF8] [scrollbar-width:thin] sm:overflow-x-auto sm:p-5 xl:p-6 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0]">
           <div className="hidden xl:block">
             <table className="w-full table-fixed border-separate border-spacing-0 text-left">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[17%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[10%]" />
+                <col className="w-[8%]" />
+                <col className="w-[10%]" />
+                <col className="w-[6%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-[#F8FAFC] text-[14px] text-[#94A3B8] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
-                  <th className="px-3 py-3 font-normal">Shift</th>
-                  <th className="px-3 py-3 font-normal">Department</th>
-                  <th className="px-3 py-3 font-normal">Date</th>
-                  <th className="px-3 py-3 font-normal">Time</th>
-                  <th className="px-3 py-3 font-normal">Required</th>
-                  <th className="px-3 py-3 font-normal">Accepted</th>
-                  <th className="px-3 py-3 font-normal">Completed</th>
-                  <th className="px-3 py-3 font-normal">Missed</th>
-                  <th className="px-3 py-3 font-normal">Status</th>
-                  <th className="px-3 py-3 font-normal">Action</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Shift</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Department</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Date</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Time</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Required</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Accepted</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Completed</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Missed</th>
+                  <th className="py-4 pl-2 pr-4 font-normal whitespace-nowrap">Status</th>
+                  <th className="py-4 pl-2 pr-4 text-center font-normal whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row) => (
-                  <tr key={row.id} className="text-[14px] text-[#334155]">
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.id}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.department}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.date}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.time}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.required}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.accepted}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.completed}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium whitespace-nowrap">{row.missed}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4">
+                  <tr key={row.id} className="text-[14px] text-[#334155] transition duration-200 ease-out hover:bg-white">
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.id}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.department}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.date}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap tracking-normal">{formatShiftTime(row.time)}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.required}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.accepted}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.completed}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.missed}</td>
+                    <td className="border-b-2 border-[#F8FAFC] py-4 pl-2 pr-4 text-center whitespace-nowrap">
                       <StatusText status={row.status} />
                     </td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4">
+                    <td className="border-b-2 border-[#F8FAFC] py-4 pl-2 pr-4 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => openShiftDetails(row.id)}
-                        className="cursor-pointer font-semibold text-[#1565C0] underline"
+                        className={`cursor-pointer font-semibold text-[#1565C0] underline ${microInteractionClass}`}
                       >
                         View
                       </button>
@@ -348,35 +376,45 @@ export function OrganisationShiftsPage() {
 
           <div className="hidden md:block xl:hidden">
             <table className="w-full table-fixed border-separate border-spacing-0 text-left">
+              <colgroup>
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[12%]" />
+                <col className="w-[24%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-[#F8FAFC] text-[13px] text-[#94A3B8] shadow-[0_0_8px_rgba(21,101,192,0.1)]">
-                  <th className="px-3 py-3 font-normal">Shift</th>
-                  <th className="px-3 py-3 font-normal">Department</th>
-                  <th className="px-3 py-3 font-normal">Date</th>
-                  <th className="px-3 py-3 font-normal">Time</th>
-                  <th className="px-3 py-3 font-normal">Req.</th>
-                  <th className="px-3 py-3 font-normal">Acc.</th>
-                  <th className="px-3 py-3 font-normal">Status</th>
-                  <th className="px-3 py-3 font-normal text-right">Action</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Shift</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Department</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Date</th>
+                  <th className="px-4 py-4 font-normal whitespace-nowrap">Time</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Req.</th>
+                  <th className="px-4 py-4 text-center font-normal whitespace-nowrap">Acc.</th>
+                  <th className="py-4 pl-2 pr-4 font-normal whitespace-nowrap">Status</th>
+                  <th className="py-4 pl-2 pr-4 text-center font-normal whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row) => (
-                  <tr key={row.id} className="text-[13px] text-[#334155] lg:text-[14px]">
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.id}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.department}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.date}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.time}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.required}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 font-medium">{row.accepted}</td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4">
+                  <tr key={row.id} className="text-[13px] text-[#334155] transition duration-200 ease-out hover:bg-white lg:text-[14px]">
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.id}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.department}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap">{row.date}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 font-medium whitespace-nowrap tracking-normal">{formatShiftTime(row.time)}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.required}</td>
+                    <td className="border-b-2 border-[#F8FAFC] px-4 py-4 text-center font-medium whitespace-nowrap">{row.accepted}</td>
+                    <td className="border-b-2 border-[#F8FAFC] py-4 pl-2 pr-4 text-center whitespace-nowrap">
                       <StatusText status={row.status} />
                     </td>
-                    <td className="border-b-2 border-[#F8FAFC] px-3 py-4 text-right">
+                    <td className="border-b-2 border-[#F8FAFC] py-4 pl-2 pr-4 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => openShiftDetails(row.id)}
-                        className="cursor-pointer font-semibold text-[#1565C0] underline"
+                        className={`cursor-pointer font-semibold text-[#1565C0] underline ${microInteractionClass}`}
                       >
                         View
                       </button>
@@ -387,60 +425,63 @@ export function OrganisationShiftsPage() {
             </table>
           </div>
 
-          <div className="space-y-4 md:hidden">
+          <div className="space-y-3 md:hidden">
             {visibleRows.map((row) => (
-              <article
+              <motion.article
                 key={row.id}
-                className="rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)]"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2, ease: premiumEase }}
+                className="rounded-[16px] border border-slate-100 bg-white p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">{row.id}</p>
-                    <p className="mt-1 text-[14px] text-[#64748B]">{row.department}</p>
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-semibold tracking-[-0.04em] text-[#334155]">{row.id}</p>
+                    <p className="mt-0.5 truncate text-[14px] text-[#64748B] capitalize">{row.department}</p>
                   </div>
                   <StatusText status={row.status} />
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+                <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-[13px]">
                   <div>
                     <p className="text-[#94A3B8]">Date</p>
-                    <p className="font-medium text-[#334155]">{row.date}</p>
+                    <p className="mt-0.5 font-medium text-[#334155]">{row.date}</p>
                   </div>
                   <div>
                     <p className="text-[#94A3B8]">Time</p>
-                    <p className="font-medium text-[#334155]">{row.time}</p>
+                    <p className="mt-0.5 font-medium tracking-normal text-[#334155]">{formatShiftTime(row.time)}</p>
                   </div>
                   <div>
                     <p className="text-[#94A3B8]">Required</p>
-                    <p className="font-medium text-[#334155]">{row.required}</p>
+                    <p className="mt-0.5 font-medium text-[#334155]">{row.required}</p>
                   </div>
                   <div>
                     <p className="text-[#94A3B8]">Accepted</p>
-                    <p className="font-medium text-[#334155]">{row.accepted}</p>
+                    <p className="mt-0.5 font-medium text-[#334155]">{row.accepted}</p>
                   </div>
                   <div>
                     <p className="text-[#94A3B8]">Completed</p>
-                    <p className="font-medium text-[#334155]">{row.completed}</p>
+                    <p className="mt-0.5 font-medium text-[#334155]">{row.completed}</p>
                   </div>
                   <div>
                     <p className="text-[#94A3B8]">Missed</p>
-                    <p className="font-medium text-[#334155]">{row.missed}</p>
+                    <p className="mt-0.5 font-medium text-[#334155]">{row.missed}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => openShiftDetails(row.id)}
-                  className="mt-4 cursor-pointer font-semibold text-[#1565C0] underline"
+                  className={`mt-4 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1565C0] hover:bg-[#BFDBFE] ${microInteractionClass}`}
                 >
-                  View
+                  View Details
                 </button>
-              </article>
+              </motion.article>
             ))}
           </div>
 
           {visibleRows.length === 0 ? (
-            <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-8 text-sm text-[#64748B]">
+            <div className="rounded-[12px] border border-slate-100 bg-white px-4 py-8 text-center text-[15px] text-[#64748B]">
               No shifts match the current filters or search.
             </div>
           ) : null}
@@ -449,74 +490,92 @@ export function OrganisationShiftsPage() {
         ) : null}
       </div>
 
-      {showAvailabilityModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(51,65,85,0.6)] px-4 py-6">
-          <div
-            className="absolute inset-0"
-            aria-hidden
-            onClick={() => setShowAvailabilityModal(false)}
-          />
-          <div className="relative w-full max-w-[582px] rounded-[12px] bg-[#F8FAFC] px-5 py-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
-            <button
-              type="button"
+      <AnimatePresence>
+        {showAvailabilityModal ? (
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0"
+              aria-hidden
               onClick={() => setShowAvailabilityModal(false)}
-              aria-label="Close team availability"
-              className="absolute right-5 top-4 inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#94A3B8] text-black"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: premiumEase }}
+              className="relative flex max-h-[85dvh] w-full max-w-[582px] flex-col overflow-hidden rounded-[20px] bg-[#F8FAFC] shadow-2xl"
             >
-              <CloseIcon />
-            </button>
-
-            <div className="mt-8 space-y-4">
-              {availabilityDays.map((availabilityDay) => (
-                <div
-                  key={availabilityDay.day}
-                  className="grid gap-3 md:grid-cols-[157px_1fr] md:items-center md:gap-[30px]"
+              <div className="flex items-center justify-between border-b border-slate-200 bg-[#F8FAFC] px-5 py-4 sm:px-6">
+                <h3 className="text-lg font-semibold text-[#0F172A]">Team Availability</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAvailabilityModal(false)}
+                  aria-label="Close team availability"
+                  className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 ${microInteractionClass}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleAvailabilityDay(availabilityDay.day)}
-                    className="flex items-center gap-[10px] text-left"
-                  >
-                    <span
-                      className={`relative inline-flex h-[17px] w-[33px] rounded-full transition ${
-                        availabilityDay.enabled ? "bg-[#1565C0]" : "bg-[#CBD5E1]"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border border-[#1565C0] bg-[#F8FAFC] transition ${
-                          availabilityDay.enabled ? "left-[17px]" : "left-0"
-                        }`}
-                      />
-                    </span>
-                    <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#94A3B8]">
-                      {availabilityDay.day}
-                    </span>
-                  </button>
+                  <CloseIcon />
+                </button>
+              </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 sm:gap-[19px]">
-                    <div className="flex h-11 items-center justify-between rounded-[12px] border border-[#94A3B8] px-[17px]">
-                      <span className="text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">
-                        From
-                      </span>
-                      <span className="text-[18px] font-semibold tracking-[-0.05em] text-[#0F172A]">
-                        {availabilityDay.from}
-                      </span>
+              <div className="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                <div className="space-y-5">
+                  {availabilityDays.map((availabilityDay) => (
+                    <div
+                      key={availabilityDay.day}
+                      className="grid gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:grid-cols-[140px_1fr] md:items-center md:gap-[20px] md:border-none md:bg-transparent md:p-0 md:shadow-none"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleAvailabilityDay(availabilityDay.day)}
+                        className={`flex w-full cursor-pointer items-center justify-between gap-[12px] text-left md:justify-start ${microInteractionClass}`}
+                      >
+                        <span className="text-[16px] font-medium leading-5 tracking-[-0.03em] text-[#334155] md:font-light md:text-[#94A3B8]">
+                          {availabilityDay.day}
+                        </span>
+                        <span
+                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out ${
+                            availabilityDay.enabled ? "bg-[#1565C0]" : "bg-slate-200"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out ${
+                              availabilityDay.enabled ? "translate-x-[22px]" : "translate-x-[2px]"
+                            }`}
+                          />
+                        </span>
+                      </button>
+
+                      <div
+                        className={`grid gap-3 transition-opacity duration-200 sm:grid-cols-2 sm:gap-4 ${
+                          availabilityDay.enabled ? "opacity-100" : "pointer-events-none opacity-40"
+                        }`}
+                      >
+                        <div className="flex h-11 w-full items-center justify-between rounded-[12px] border border-[#CBD5E1] bg-white px-4 transition duration-200 ease-out hover:border-[#1565C0]">
+                          <span className="text-[14px] font-medium text-[#64748B]">From</span>
+                          <span className="text-[15px] font-semibold text-[#0F172A]">
+                            {availabilityDay.from}
+                          </span>
+                        </div>
+                        <div className="flex h-11 w-full items-center justify-between rounded-[12px] border border-[#CBD5E1] bg-white px-4 transition duration-200 ease-out hover:border-[#1565C0]">
+                          <span className="text-[14px] font-medium text-[#64748B]">To</span>
+                          <span className="text-[15px] font-semibold text-[#0F172A]">
+                            {availabilityDay.to}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex h-11 items-center justify-between rounded-[12px] border border-[#94A3B8] px-[17px]">
-                      <span className="text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">
-                        To
-                      </span>
-                      <span className="text-[18px] font-semibold tracking-[-0.05em] text-[#0F172A]">
-                        {availabilityDay.to}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

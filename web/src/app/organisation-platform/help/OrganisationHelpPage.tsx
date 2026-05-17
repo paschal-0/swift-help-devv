@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
@@ -198,12 +198,12 @@ function SupportTile({
     <motion.button
       type="button"
       onClick={onClick}
-      className={`group flex h-[112px] w-full cursor-pointer flex-col items-center justify-center rounded-[12px] border bg-[#F8FAFC] px-3 text-center transition sm:h-[115px] ${
+      className={`group flex h-[104px] w-full cursor-pointer flex-col items-center justify-center rounded-[12px] border bg-[#F8FAFC] px-2 text-center transition sm:h-[115px] sm:px-3 ${
         selected
           ? "border-[#1565C0] shadow-[0_10px_24px_rgba(21,101,192,0.08)]"
           : "border-[#94A3B8] hover:border-[#1565C0] hover:shadow-[0_8px_18px_rgba(21,101,192,0.08)]"
       }`}
-      whileHover={{ y: -3, scale: 1.01 }}
+      whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.985 }}
     >
       <motion.div className="group-hover:scale-105" transition={{ duration: 0.18, ease: "easeOut" }}>
@@ -235,30 +235,31 @@ export function OrganisationHelpPage() {
     );
   }, [normalizedQuery, selectedCategory]);
 
-  useEffect(() => {
+  const activeExpandedFaqId = useMemo(() => {
     if (!visibleFaqs.length) {
-      setExpandedFaqId("");
-      return;
+      return "";
     }
 
-    if (!visibleFaqs.some((item) => item.id === expandedFaqId)) {
-      setExpandedFaqId(visibleFaqs[visibleFaqs.length - 1]?.id ?? "");
+    if (visibleFaqs.some((item) => item.id === expandedFaqId)) {
+      return expandedFaqId;
     }
+
+    return visibleFaqs[visibleFaqs.length - 1]?.id ?? "";
   }, [expandedFaqId, visibleFaqs]);
 
   return (
-    <div className="mt-4 w-full px-4 pb-6 sm:px-6 lg:px-0 xl:mt-[40px]">
-      <p className="text-[20px] font-medium leading-[22px] tracking-[-0.07em] text-[#94A3B8] md:text-[22px] xl:text-[24px] xl:leading-[23px]">
+    <div className="mt-5 w-full px-1 pb-6 sm:mt-8 sm:px-0 xl:mt-[52px]">
+      <p className="text-[18px] font-medium leading-[20px] tracking-[-0.05em] text-[#94A3B8] sm:text-[24px] sm:leading-[23px] sm:tracking-[-0.07em]">
         Help and support
       </p>
 
-      <div className="mt-6 flex justify-center md:mt-8 xl:mt-[36px]">
-        <h1 className="text-center text-[28px] font-medium leading-tight tracking-[-0.07em] text-[#334155] sm:text-[34px] md:text-[38px] xl:text-[40px]">
+      <div className="mt-5 flex justify-center sm:mt-8 xl:mt-[42px]">
+        <h1 className="text-center text-[24px] font-medium leading-[30px] tracking-[-0.05em] text-[#334155] sm:text-[34px] sm:leading-tight sm:tracking-[-0.07em] xl:text-[40px]">
           How can we help you?
         </h1>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:mt-8 md:gap-4 xl:mt-[40px] xl:grid-cols-4 xl:gap-[18px] xl:px-[88px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 xl:mt-[46px] xl:grid-cols-4 xl:gap-[18px] xl:px-[136px]">
         {categories.map((category) => (
           <SupportTile
             key={category.id}
@@ -269,15 +270,15 @@ export function OrganisationHelpPage() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:gap-5 xl:mt-[32px] xl:grid-cols-[329px_minmax(0,545px)] xl:gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-5 xl:mt-[35px] xl:grid-cols-[329px_545px] xl:gap-4">
         <motion.section
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-5 pt-5 sm:px-5 md:px-6 md:pb-6 md:pt-6 xl:min-h-[842px] xl:px-[24px] xl:pb-[35px]"
+          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6 xl:px-[24px] xl:pb-[35px] xl:pt-6"
         >
           <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Categories</h2>
 
-          <div className="mt-6 space-y-3 md:mt-8 md:space-y-5">
+          <div className="mt-5 space-y-3 sm:mt-8 sm:space-y-5">
             {categories.map((category) => {
               const active = category.id === selectedCategory;
 
@@ -286,17 +287,17 @@ export function OrganisationHelpPage() {
                   key={category.id}
                   type="button"
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2 text-left transition md:gap-[14px] ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-2 text-left transition sm:gap-[14px] ${
                     active ? "bg-[#E3F2FD]" : "hover:bg-[#E2E8F0]"
                   }`}
-                  whileHover={{ x: 4 }}
+                  whileHover={{ x: 3 }}
                   whileTap={{ scale: 0.99 }}
                 >
                   <span className="shrink-0">
                     <CategoryIcon type={category.id} active={active} />
                   </span>
                   <span
-                    className={`text-[15px] leading-[22px] tracking-[-0.07em] sm:text-[16px] md:text-[18px] md:leading-[28px] ${
+                    className={`text-[15px] leading-[22px] tracking-[-0.05em] sm:text-[18px] sm:leading-[28px] sm:tracking-[-0.07em] ${
                       active ? "font-medium text-[#1565C0]" : "font-light text-[#94A3B8]"
                     }`}
                   >
@@ -310,11 +311,11 @@ export function OrganisationHelpPage() {
           <motion.div
             whileHover={{ y: -2 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="mt-8 rounded-[14px] bg-[#E3F2FD] px-5 pb-6 pt-5 md:mt-10 md:px-5 md:pb-7 xl:mt-[278px]"
+            className="mt-7 rounded-[10px] bg-[#E3F2FD] px-3 pb-4 pt-4 sm:mt-12 sm:rounded-[6px] sm:px-4 sm:pb-5"
           >
             <div className="flex justify-center">
-              <span className="inline-flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#1565C0] shadow-[0_10px_24px_rgba(21,101,192,0.18)] md:h-[52px] md:w-[52px]">
-                <svg viewBox="0 0 24 24" className="h-[28px] w-[28px]" aria-hidden>
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1565C0] shadow-[0_10px_24px_rgba(21,101,192,0.18)]">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
                   <path
                     d="M9.9 9.4a2.34 2.34 0 0 1 4.55.76c0 1.08-.53 1.63-1.22 2.18-.68.53-1.13.9-1.13 1.76v.27"
                     fill="none"
@@ -328,21 +329,21 @@ export function OrganisationHelpPage() {
               </span>
             </div>
 
-            <div className="mt-4 text-center">
-              <h3 className="text-[20px] font-medium leading-[26px] tracking-[-0.07em] text-[#334155] md:text-[21px] md:leading-[28px]">
+            <div className="mt-1 text-center">
+              <h3 className="text-[16px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[18px] sm:leading-[28px] sm:tracking-[-0.07em]">
                 Still need help?
               </h3>
-              <p className="mx-auto mt-3 max-w-[290px] text-[16px] font-light leading-[22px] tracking-[-0.07em] text-[#334155] md:max-w-[300px] md:text-[18px] md:leading-[24px]">
+              <p className="mx-auto mt-1 max-w-[200px] text-[14px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] sm:max-w-[225px] sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.07em]">
                 Contact our support team and we&apos;ll assist you.
               </p>
             </div>
 
-            <div className="mt-7 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-[5px]">
               <motion.button
                 type="button"
                 onClick={() => toast.info("Support phone line is unavailable right now")}
-                className="inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-[#1565C0] px-4 py-3 text-center text-[13px] font-light leading-[16px] tracking-[-0.05em] text-[#F8FAFC] transition hover:bg-[#0F5BAE] md:min-h-[48px] md:px-5 md:text-[14px]"
-                whileHover={{ y: -1, scale: 1.01 }}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] transition hover:bg-[#0F5BAE] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
+                whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
                 <span>Call us</span>
@@ -352,11 +353,11 @@ export function OrganisationHelpPage() {
               <motion.button
                 type="button"
                 onClick={() => toast.info("Support email is unavailable right now")}
-                className="inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-[10px] rounded-[10px] bg-[#1565C0] px-5 py-3 text-center text-[13px] font-light leading-[16px] tracking-[-0.05em] text-[#F8FAFC] transition hover:bg-[#0F5BAE] md:min-h-[48px] md:px-6 md:text-[14px]"
-                whileHover={{ y: -1, scale: 1.01 }}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] transition hover:bg-[#0F5BAE] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
+                whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
-                <span className="whitespace-nowrap">Send us a mail</span>
+                <span>Send us a mail</span>
                 <MailIcon />
               </motion.button>
             </div>
@@ -366,32 +367,32 @@ export function OrganisationHelpPage() {
         <motion.section
           whileHover={{ y: -2 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-5 pt-5 sm:px-5 md:px-[22px] md:pb-6 md:pt-6 xl:min-h-[842px] xl:px-[29px] xl:pb-8"
+          className="rounded-[12px] bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-[22px] sm:pb-6 sm:pt-6 xl:px-[29px] xl:pb-8"
         >
           <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">FAQ&apos;s</h2>
 
-          <div className="mt-6 space-y-4 md:mt-8 md:space-y-6">
+          <div className="mt-5 space-y-4 sm:mt-8 sm:space-y-6">
             {visibleFaqs.length ? (
               visibleFaqs.map((item) => {
-                const expanded = item.id === expandedFaqId;
+                const expanded = item.id === activeExpandedFaqId;
 
                 return (
                   <motion.button
                     key={item.id}
                     type="button"
                     onClick={() => setExpandedFaqId(expanded ? "" : item.id)}
-                    className={`flex w-full cursor-pointer items-start gap-3 rounded-[12px] border border-transparent bg-[#E2E8F0] px-3 py-3 text-left transition hover:border-[#BFDBFE] hover:bg-[#EFF6FF] md:px-4 ${
-                      expanded ? "min-h-[82px]" : "min-h-[52px]"
+                    className={`flex w-full cursor-pointer items-start gap-2 rounded-[12px] border border-transparent bg-[#E2E8F0] px-3 py-3 text-left transition hover:border-[#BFDBFE] hover:bg-[#EFF6FF] sm:gap-3 ${
+                      expanded ? "min-h-[72px] sm:min-h-[82px]" : "min-h-[52px]"
                     }`}
-                    whileHover={{ y: -2 }}
+                    whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.995 }}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-[18px] font-light leading-[23px] tracking-[-0.05em] text-[#0F172A] md:text-[24px] md:leading-[28px]">
+                      <p className="text-[15px] font-light leading-[20px] tracking-[-0.03em] text-[#0F172A] sm:text-[24px] sm:leading-[28px] sm:tracking-[-0.05em]">
                         {item.question}
                       </p>
                       {expanded ? (
-                        <p className="mt-2 text-[14px] font-light leading-[20px] tracking-[-0.05em] text-[#94A3B8] md:text-[18px] md:leading-[22px]">
+                        <p className="mt-2 text-[13px] font-light leading-[18px] tracking-[-0.03em] text-[#94A3B8] sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.05em]">
                           {item.answer}
                         </p>
                       ) : null}
@@ -401,7 +402,7 @@ export function OrganisationHelpPage() {
                 );
               })
             ) : (
-              <div className="rounded-[12px] bg-[#E2E8F0] px-4 py-8 text-center text-[15px] font-light leading-[21px] tracking-[-0.05em] text-[#64748B] md:text-[18px] md:leading-[22px]">
+              <div className="rounded-[12px] bg-[#E2E8F0] px-4 py-6 text-center text-[14px] font-light leading-[19px] tracking-[-0.03em] text-[#64748B] sm:py-8 sm:text-[18px] sm:leading-[22px] sm:tracking-[-0.05em]">
                 No help topics match the current search.
               </div>
             )}
