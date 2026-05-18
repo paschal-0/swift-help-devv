@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { createOrganizationShift } from "@/services/organizationApi";
 
 const premiumEase = [0.32, 0.72, 0, 1] as const;
 const microInteractionClass =
@@ -12,6 +13,51 @@ const fieldClass =
   "transition duration-200 ease-out hover:border-[#1565C0] hover:bg-white focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/20";
 const inputFocusClass =
   "transition duration-200 ease-out focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20";
+
+function defaultShiftDate() {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+    .format(new Date())
+    .replace(/\//g, " / ");
+}
+
+function parseTimeOnDate(date: Date, value: string) {
+  const match = value.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  const parsed = new Date(date);
+
+  if (!match) {
+    return parsed;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  const meridian = match[3]?.toUpperCase();
+
+  if (meridian === "PM" && hours < 12) {
+    hours += 12;
+  }
+
+  if (meridian === "AM" && hours === 12) {
+    hours = 0;
+  }
+
+  parsed.setHours(hours, minutes, 0, 0);
+  return parsed;
+}
+
+function parseShiftDate(value: string) {
+  const parts = value.match(/\d+/g)?.map(Number);
+
+  if (!parts || parts.length < 3) {
+    return new Date();
+  }
+
+  const [day, month, year] = parts;
+  return new Date(year, month - 1, day);
+}
 
 function ChevronDownIcon() {
   return (
@@ -58,35 +104,66 @@ export function OrganisationCreateShiftPage() {
   const router = useRouter();
   const [department, setDepartment] = useState("Medical");
   const [shiftRole, setShiftRole] = useState("Lab Technician");
-  const [shiftDate, setShiftDate] = useState("24 / 05 / 2003");
+  const [shiftDate, setShiftDate] = useState(defaultShiftDate());
   const [fromTime, setFromTime] = useState("9:00 AM");
   const [toTime, setToTime] = useState("6:00 PM");
   const [professionalsRequired, setProfessionalsRequired] = useState("10");
   const [priority, setPriority] = useState<"Normal" | "Urgent">("Normal");
   const [payPerSlot, setPayPerSlot] = useState("300");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [instructions, setInstructions] = useState(
     "Report at the front desk and ask for the shift supervisor"
   );
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (!department || !shiftRole || !shiftDate || !fromTime || !toTime || !professionalsRequired || !payPerSlot) {
       toast.error("Complete the shift details before proceeding.");
       return;
     }
 
-    const params = new URLSearchParams({
-      department,
-      shiftRole,
-      shiftDate,
-      fromTime,
-      toTime,
-      professionalsRequired,
-      priority,
-      payPerSlot,
-      instructions,
-    });
+    const requiredSlots = Number.parseInt(professionalsRequired, 10);
+    const payAmount = Number.parseFloat(payPerSlot.replace(/[^0-9.]/g, ""));
 
-    router.push(`/organisation-platform/shifts/fund?${params.toString()}`);
+    if (!Number.isFinite(requiredSlots) || requiredSlots < 1) {
+      toast.error("Enter a valid number of professionals required.");
+      return;
+    }
+
+    if (!Number.isFinite(payAmount) || payAmount <= 0) {
+      toast.error("Enter a valid pay per slot.");
+      return;
+    }
+
+    const baseDate = parseShiftDate(shiftDate);
+    const startsAt = parseTimeOnDate(baseDate, fromTime);
+    let endsAt = parseTimeOnDate(baseDate, toTime);
+
+    if (endsAt <= startsAt) {
+      endsAt = new Date(endsAt.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const shift = await createOrganizationShift({
+        department,
+        role: shiftRole,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        requiredSlots,
+        payAmountCents: Math.round(payAmount * 100),
+        currency: "NGN",
+        priority: priority.toLowerCase() as "normal" | "urgent",
+        notes: instructions,
+      });
+
+      toast.success("Shift draft created. Fund it to publish.");
+      router.push(`/organisation-platform/shifts/fund?shiftId=${encodeURIComponent(shift.id)}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create shift.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -279,12 +356,13 @@ export function OrganisationCreateShiftPage() {
             <motion.button
               type="button"
               onClick={handleProceed}
+              disabled={isSubmitting}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.97 }}
               transition={{ duration: 0.2, ease: premiumEase }}
-              className={`h-11 w-full cursor-pointer rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15px] font-medium tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] sm:h-[52px] sm:w-auto sm:min-w-[260px] sm:px-8 sm:text-[16px] ${microInteractionClass}`}
+              className={`h-11 w-full cursor-pointer rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15px] font-medium tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[52px] sm:w-auto sm:min-w-[260px] sm:px-8 sm:text-[16px] ${microInteractionClass}`}
             >
-              Proceed to payments
+              {isSubmitting ? "Creating..." : "Proceed to payments"}
             </motion.button>
           </div>
         </motion.section>

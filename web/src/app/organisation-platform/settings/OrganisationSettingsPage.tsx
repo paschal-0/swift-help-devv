@@ -1,8 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  changeOrganizationPassword,
+  exportOrganizationReports,
+  formatOrganizationMoney,
+  getOrganizationSettings,
+  updateOrganizationNotificationPreferences,
+  updateOrganizationOperatingPreference,
+  updateOrganizationPreferences,
+  updateOrganizationSecurityPreferences,
+} from "@/services/organizationApi";
 
 const settingTabs = ["General", "Notifications", "Security", "Billing and plan"] as const;
 const operatingDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -511,7 +521,53 @@ export function OrganisationSettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [sessions, setSessions] = useState(initialSessions);
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods);
-  const [billingHistory] = useState(initialBillingHistory);
+  const [billingHistory, setBillingHistory] = useState(initialBillingHistory);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationSettings()
+      .then((settings) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const preferences = settings.preferences;
+        const operatingPreference = settings.preferences.operatingPreference as
+          | Record<string, unknown>
+          | undefined;
+        const security = settings.securityPreferences;
+
+        setDefaultShiftDuration(String(preferences.defaultShiftDuration ?? "8 hours"));
+        setTimeZone(String(preferences.timeZone ?? "(PST) Pacific Standard Time"));
+        setDateFormat(String(preferences.dateFormat ?? "MM/DD/YYYY"));
+        setCurrency(String(preferences.currency ?? "NGN"));
+        setOperatingStartTime(String(operatingPreference?.startTime ?? "8:00 AM"));
+        setOperatingEndTime(String(operatingPreference?.endTime ?? "8:00 AM"));
+        setTwoFactorEnabled(Boolean(security.twoFactorEnabled));
+        setBillingHistory(
+          settings.billing.billingHistory.map((item) => ({
+            id: item.id,
+            transactionId: item.paymentReference ?? item.id,
+            date: new Intl.DateTimeFormat("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }).format(new Date(item.createdAt)),
+            amount: formatOrganizationMoney(item.amountCents, item.currency),
+            plan: item.description ?? "Organization",
+            status: "Completed" as const,
+          })),
+        );
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load organization settings.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const passwordError = useMemo(() => {
     if (!currentPassword && !newPassword && !confirmPassword) {
@@ -539,41 +595,85 @@ export function OrganisationSettingsPage() {
     setActiveTab(tab);
   };
 
-  const handlePreferencesSave = () => {
-    toast.success("Organization preferences saved.");
+  const handlePreferencesSave = async () => {
+    try {
+      await updateOrganizationPreferences({
+        defaultShiftDuration,
+        timeZone,
+        dateFormat,
+        currency,
+      });
+      toast.success("Organization preferences saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save preferences.");
+    }
   };
 
-  const handleOperatingHoursSave = () => {
-    toast.success(`Operating hours for ${activeDay} saved.`);
+  const handleOperatingHoursSave = async () => {
+    try {
+      await updateOrganizationOperatingPreference({
+        day: activeDay,
+        startTime: operatingStartTime,
+        endTime: operatingEndTime,
+      });
+      toast.success(`Operating hours for ${activeDay} saved.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save operating hours.");
+    }
   };
 
   const handleNotificationToggle = (itemId: string) => {
+    let nextEnabled = false;
+
     setNotificationSections((current) =>
       current.map((section) => ({
         ...section,
-        items: section.items.map((item) =>
-          item.id === itemId ? { ...item, enabled: !item.enabled } : item
-        ),
+        items: section.items.map((item) => {
+          if (item.id !== itemId) {
+            return item;
+          }
+
+          nextEnabled = !item.enabled;
+          return { ...item, enabled: nextEnabled };
+        }),
       }))
     );
+
+    updateOrganizationNotificationPreferences({ [itemId]: nextEnabled }).catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Unable to save notification setting.");
+    });
   };
 
-  const handlePasswordUpdate = () => {
+  const handlePasswordUpdate = async () => {
     if (!canUpdatePassword) {
       toast.error(passwordError || "Enter valid password details.");
       return;
     }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    toast.success("Password updated.");
+    try {
+      await changeOrganizationPassword({
+        currentPassword,
+        newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update password.");
+    }
   };
 
   const handleTwoFactorToggle = () => {
     setTwoFactorEnabled((current) => {
       const next = !current;
-      toast.success(next ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
+      updateOrganizationSecurityPreferences({ twoFactorEnabled: next })
+        .then(() => {
+          toast.success(next ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Unable to update security setting.");
+        });
       return next;
     });
   };
@@ -604,8 +704,13 @@ export function OrganisationSettingsPage() {
     });
   };
 
-  const handleExportBillingHistory = () => {
-    toast.success("Billing history export started.");
+  const handleExportBillingHistory = async () => {
+    try {
+      await exportOrganizationReports({ reportType: "billing", format: "csv" });
+      toast.success("Billing history export started.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to export billing history.");
+    }
   };
 
   const handleDownloadInvoice = (transactionId: string) => {

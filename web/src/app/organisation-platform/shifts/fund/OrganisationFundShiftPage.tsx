@@ -1,9 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  fundOrganizationShift,
+  getOrganizationShift,
+  publishOrganizationShift,
+  type OrganizationShift,
+} from "@/services/organizationApi";
 
 type OrganisationFundShiftPageProps = {
   searchParams: Record<string, string | string[] | undefined>;
@@ -106,6 +112,15 @@ function formatSlotCount(value: string) {
   return Number.isFinite(digits) ? digits : 0;
 }
 
+function formatBackendTimeRange(shift: OrganizationShift) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(new Date(shift.startsAt))} - ${formatter.format(new Date(shift.endsAt))}`;
+}
+
 export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShiftPageProps) {
   const router = useRouter();
   const [showBackModal, setShowBackModal] = useState(false);
@@ -117,7 +132,7 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
   });
   const [bankDraft, setBankDraft] = useState(bankAccount);
 
-  const shiftData = useMemo(() => {
+  const fallbackShiftData = useMemo(() => {
     const getValue = (key: string) => {
       const value = searchParams[key];
       return Array.isArray(value) ? value[0] : value;
@@ -140,10 +155,71 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
       total: pay * slots,
     };
   }, [searchParams]);
+  const [shiftData, setShiftData] = useState(fallbackShiftData);
+  const [backendShiftId, setBackendShiftId] = useState<string | null>(() => {
+    const value = searchParams.shiftId;
+    return Array.isArray(value) ? value[0] ?? null : value ?? null;
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePayAndCreate = () => {
-    toast.success("Shift funded and created successfully.");
-    router.push("/organisation-platform/shifts/success");
+  useEffect(() => {
+    const value = searchParams.shiftId;
+    const shiftId = Array.isArray(value) ? value[0] : value;
+
+    if (!shiftId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getOrganizationShift(shiftId)
+      .then(({ shift }) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setBackendShiftId(shift.id);
+        setShiftData({
+          shiftId: shift.shiftCode ?? shift.id,
+          department: shift.department ?? shift.role,
+          role: shift.role,
+          time: formatBackendTimeRange(shift),
+          totalRequired: shift.requiredSlots,
+          totalAccepted: shift.acceptedSlots,
+          slots: shift.requiredSlots,
+          payPerSlot: String(shift.payAmountCents / 100),
+          total: (shift.payAmountCents / 100) * shift.requiredSlots,
+        });
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load shift funding details.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams]);
+
+  const handlePayAndCreate = async () => {
+    if (!backendShiftId) {
+      toast.error("Create the shift before funding it.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await fundOrganizationShift(backendShiftId, {
+        paymentReference: `ui-${Date.now()}`,
+      });
+      await publishOrganizationShift(backendShiftId);
+      toast.success("Shift funded and published successfully.");
+      router.push("/organisation-platform/shifts/success");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to fund shift.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openBankModal = () => {
@@ -349,12 +425,13 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
                 <motion.button
                   type="button"
                   onClick={handlePayAndCreate}
+                  disabled={isSubmitting}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.2, ease: premiumEase }}
-                  className={`h-11 w-full cursor-pointer rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[15px] font-semibold tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] ${microInteractionClass}`}
+                  className={`h-11 w-full cursor-pointer rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[15px] font-semibold tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60 ${microInteractionClass}`}
                 >
-                  Pay & Create shift
+                  {isSubmitting ? "Publishing..." : "Pay & Create shift"}
                 </motion.button>
 
                 <p className="text-center text-[14px] font-medium leading-5 tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">

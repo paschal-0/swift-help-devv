@@ -2,12 +2,19 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  listOrganizationProfessionals,
+  type OrganizationProfessional,
+} from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import {
   organisationProfessionalRoster,
   organisationProfessionalSummaryCards,
+  type ProfessionalRosterItem,
+  type ProfessionalSummaryCard,
   type ProfessionalStatus,
 } from "./data";
 
@@ -53,6 +60,30 @@ function statusPillClass(status: ProfessionalStatus) {
   return "border border-[#1E88E5] bg-[#DBEEFF] text-[#1E88E5]";
 }
 
+function normalizeProfessionalStatus(status: string): ProfessionalStatus {
+  if (status === "On shift" || status === "On leave" || status === "On call") {
+    return status;
+  }
+
+  return "Available";
+}
+
+function mapProfessionalRow(professional: OrganizationProfessional): ProfessionalRosterItem {
+  return {
+    id: professional.id,
+    name: professional.name,
+    role: professional.role,
+    shiftsCompleted: professional.shiftsCompleted,
+    rating: professional.rating,
+    department: professional.department,
+    status: normalizeProfessionalStatus(professional.status),
+    actionLabel: "View",
+    date: "Today",
+    avatarSrc: "/doctor.jpg",
+    linkedShiftId: "",
+  };
+}
+
 export function OrganisationProfessionalsPage() {
   const router = useRouter();
   const { searchText } = useOrganisationPlatformShell();
@@ -60,23 +91,65 @@ export function OrganisationProfessionalsPage() {
   const [dateFilter, setDateFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | ProfessionalStatus>("all");
+  const [professionals, setProfessionals] = useState<ProfessionalRosterItem[]>(
+    organisationProfessionalRoster,
+  );
+  const [summaryCards, setSummaryCards] = useState<ProfessionalSummaryCard[]>(
+    organisationProfessionalSummaryCards,
+  );
 
   const normalizedQuery = searchText.trim().toLowerCase();
 
+  useEffect(() => {
+    let isMounted = true;
+
+    listOrganizationProfessionals()
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const nextProfessionals = data.map(mapProfessionalRow);
+        setProfessionals(nextProfessionals);
+        setSummaryCards([
+          { title: "Total professionals", value: String(nextProfessionals.length) },
+          {
+            title: "on shift now",
+            value: String(nextProfessionals.filter((item) => item.status === "On shift").length),
+          },
+          {
+            title: "Available today",
+            value: String(nextProfessionals.filter((item) => item.status === "Available").length),
+          },
+          {
+            title: "Unavailable",
+            value: String(nextProfessionals.filter((item) => item.status === "On leave").length),
+          },
+        ]);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load professionals.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const dateOptions = useMemo(
-    () => ["all", ...Array.from(new Set(organisationProfessionalRoster.map((item) => item.date)))],
-    [],
+    () => ["all", ...Array.from(new Set(professionals.map((item) => item.date)))],
+    [professionals],
   );
   const departmentOptions = useMemo(
     () => [
       "all",
-      ...Array.from(new Set(organisationProfessionalRoster.map((item) => item.department))),
+      ...Array.from(new Set(professionals.map((item) => item.department))),
     ],
-    [],
+    [professionals],
   );
 
   const visibleProfessionals = useMemo(() => {
-    return organisationProfessionalRoster.filter((item) => {
+    return professionals.filter((item) => {
       const matchesTab =
         activeTab === "All"
           ? true
@@ -103,9 +176,14 @@ export function OrganisationProfessionalsPage() {
         matchesSearch
       );
     });
-  }, [activeTab, dateFilter, departmentFilter, normalizedQuery, statusFilter]);
+  }, [activeTab, dateFilter, departmentFilter, normalizedQuery, professionals, statusFilter]);
 
   const openLinkedShift = (shiftId: string) => {
+    if (!shiftId) {
+      toast.info("Professional profile details are loaded from the roster.");
+      return;
+    }
+
     router.push(`/organisation-platform/shifts/${encodeURIComponent(shiftId)}`);
   };
 
@@ -135,7 +213,7 @@ export function OrganisationProfessionalsPage() {
             visible: { transition: { staggerChildren: 0.06 } },
           }}
         >
-          {organisationProfessionalSummaryCards.map((card) => (
+          {summaryCards.map((card) => (
             <motion.article
               key={card.title}
               variants={{

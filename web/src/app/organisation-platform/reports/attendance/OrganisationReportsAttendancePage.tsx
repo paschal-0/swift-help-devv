@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  listOrganizationAttendance,
+  markOrganizationAttendance,
+} from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../../components/OrganisationPlatformShell";
 import {
   organisationAttendanceRows,
@@ -15,6 +19,22 @@ import {
 type OrganisationReportsAttendancePageProps = {
   initialRows?: AttendanceRow[];
 };
+
+function normalizeAttendanceStatus(status: string): AttendanceStatus {
+  if (status === "Checked in" || status === "Completed" || status === "Missed") {
+    return status;
+  }
+
+  return "Upcoming";
+}
+
+function toBackendAttendanceStatus(status: "Checked in" | "Completed" | "Missed") {
+  if (status === "Checked in") {
+    return "checked_in";
+  }
+
+  return status === "Completed" ? "completed" : "missed";
+}
 
 export function OrganisationReportsAttendancePage({
   initialRows = organisationAttendanceRows,
@@ -37,6 +57,40 @@ export function OrganisationReportsAttendancePage({
 
   const normalizedQuery = searchText.trim().toLowerCase();
   const selectedRow = rows.find((row) => row.id === selectedRowId) ?? null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    listOrganizationAttendance()
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const nextRows = data.map((row) => ({
+          id: row.id,
+          staff: row.professional,
+          shiftId: row.shiftId,
+          department: row.department,
+          date: row.date,
+          time: `${row.checkIn} - ${row.checkOut}`,
+          status: normalizeAttendanceStatus(row.status),
+          checkInTime: row.checkIn,
+          checkOutTime: row.checkOut,
+          avatarSrc: "/doctor.jpg",
+        }));
+
+        setRows(nextRows);
+        setSelectedRowId(nextRows.find((row) => row.status === "Upcoming")?.id ?? null);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load attendance.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const visibleRows = useMemo(() => {
     const filteredRows = rows.filter((row) => {
@@ -68,18 +122,26 @@ export function OrganisationReportsAttendancePage({
 
   const shouldShowEmptyState = rows.length === 0 || (visibleRows.length === 0 && isDefaultAttendanceView);
 
-  const saveAttendanceUpdate = () => {
+  const saveAttendanceUpdate = async () => {
     if (!selectedRow) {
       return;
     }
 
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === selectedRow.id ? { ...row, status: selectedAttendanceStatus } : row,
-      ),
-    );
-    toast.success(`${selectedRow.staff} marked as ${selectedAttendanceStatus.toLowerCase()}.`);
-    setSelectedRowId(null);
+    try {
+      await markOrganizationAttendance(
+        selectedRow.id,
+        toBackendAttendanceStatus(selectedAttendanceStatus),
+      );
+      setRows((currentRows) =>
+        currentRows.map((row) =>
+          row.id === selectedRow.id ? { ...row, status: selectedAttendanceStatus } : row,
+        ),
+      );
+      toast.success(`${selectedRow.staff} marked as ${selectedAttendanceStatus.toLowerCase()}.`);
+      setSelectedRowId(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update attendance.");
+    }
   };
 
   function ChevronDownIcon() {

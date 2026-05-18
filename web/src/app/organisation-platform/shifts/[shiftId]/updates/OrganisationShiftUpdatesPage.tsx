@@ -1,9 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  getOrganizationLiveUrl,
+  getOrganizationShift,
+  sendOrganizationShiftMessage,
+  type OrganizationShiftMessage,
+  type OrganizationShiftUpdate,
+} from "@/services/organizationApi";
 import { buildOrganisationShiftDetail } from "../../data";
 
 type UpdatesTab = "All" | "Unread";
@@ -81,6 +88,59 @@ function PhotoAvatar() {
   );
 }
 
+function timeAgo(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(Math.round(diffMs / 60000), 1);
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m`;
+  }
+
+  return `${Math.round(diffMinutes / 60)}h`;
+}
+
+function updateToPreview(update: OrganizationShiftUpdate): ConversationPreview {
+  const text = update.description ?? update.message ?? "";
+
+  return {
+    id: update.id,
+    name: update.title,
+    preview: text,
+    time: timeAgo(update.createdAt),
+    avatarType: "initials",
+    initials: "SH",
+    unread: false,
+  };
+}
+
+function updateToMessage(update: OrganizationShiftUpdate): ChatMessage {
+  return {
+    id: update.id,
+    text: update.description ?? update.message ?? "",
+    sender: update.actorUserId ? "organization" : "professional",
+  };
+}
+
+function messageToChatMessage(message: OrganizationShiftMessage): ChatMessage {
+  return {
+    id: message.id,
+    text: message.body,
+    sender: message.senderType === "organization" ? "organization" : "professional",
+  };
+}
+
+function messageToPreview(message: OrganizationShiftMessage): ConversationPreview {
+  return {
+    id: message.id,
+    name: message.senderType === "organization" ? "Organization" : "Professional",
+    preview: message.body,
+    time: timeAgo(message.createdAt),
+    avatarType: message.senderType === "organization" ? "initials" : "photo",
+    initials: "SH",
+    unread: message.senderType !== "organization" && !message.readByOrganization,
+  };
+}
+
 export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
   const router = useRouter();
   const detail = buildOrganisationShiftDetail(shiftId);
@@ -93,7 +153,7 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
     { id: "m4", text: "Yeah i do, but........", sender: "professional" },
   ]);
 
-  const conversationPreviews: ConversationPreview[] = [
+  const [conversationPreviews, setConversationPreviews] = useState<ConversationPreview[]>([
     {
       id: "c1",
       name: "Shift 2234",
@@ -147,27 +207,116 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
       avatarType: "photo",
       unread: true,
     },
-  ];
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationShift(shiftId)
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        if (data.messages.length) {
+          setConversationPreviews(data.messages.map(messageToPreview));
+          setMessages(data.messages.map(messageToChatMessage));
+          return;
+        }
+
+        if (data.updates.length) {
+          setConversationPreviews(data.updates.map(updateToPreview));
+          setMessages(data.updates.map(updateToMessage));
+        }
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load shift updates.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shiftId]);
+
+  useEffect(() => {
+    const eventSource = new EventSource(getOrganizationLiveUrl(), {
+      withCredentials: true,
+    });
+
+    const handleMessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data) as OrganizationShiftMessage;
+      if (message.shiftOfferId !== shiftId) {
+        return;
+      }
+
+      setMessages((currentMessages) =>
+        currentMessages.some((item) => item.id === message.id)
+          ? currentMessages
+          : [...currentMessages, messageToChatMessage(message)],
+      );
+      setConversationPreviews((currentPreviews) =>
+        currentPreviews.some((item) => item.id === message.id)
+          ? currentPreviews
+          : [messageToPreview(message), ...currentPreviews],
+      );
+    };
+
+    const handleUpdate = (event: MessageEvent) => {
+      const update = JSON.parse(event.data) as OrganizationShiftUpdate;
+      const updateShiftId = update.shiftOfferId ?? update.shiftId;
+      if (updateShiftId !== shiftId) {
+        return;
+      }
+
+      setConversationPreviews((currentPreviews) =>
+        currentPreviews.some((item) => item.id === update.id)
+          ? currentPreviews
+          : [updateToPreview(update), ...currentPreviews],
+      );
+    };
+
+    eventSource.addEventListener("organization.shift_message.created", handleMessage);
+    eventSource.addEventListener("organization.shift_update.created", handleUpdate);
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.removeEventListener("organization.shift_message.created", handleMessage);
+      eventSource.removeEventListener("organization.shift_update.created", handleUpdate);
+      eventSource.close();
+    };
+  }, [shiftId]);
 
   const visiblePreviews = useMemo(() => {
     return activeTab === "Unread"
       ? conversationPreviews.filter((conversation) => conversation.unread)
       : conversationPreviews;
-  }, [activeTab]);
+  }, [activeTab, conversationPreviews]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const trimmedMessage = messageInput.trim();
     if (!trimmedMessage) return;
 
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: `m${currentMessages.length + 1}`,
-        text: trimmedMessage,
-        sender: "organization",
-      },
-    ]);
-    setMessageInput("");
+    try {
+      const message = await sendOrganizationShiftMessage(shiftId, {
+        body: trimmedMessage,
+      });
+      setMessages((currentMessages) =>
+        currentMessages.some((item) => item.id === message.id)
+          ? currentMessages
+          : [...currentMessages, messageToChatMessage(message)],
+      );
+      setConversationPreviews((currentPreviews) =>
+        currentPreviews.some((item) => item.id === message.id)
+          ? currentPreviews
+          : [messageToPreview(message), ...currentPreviews],
+      );
+      setMessageInput("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send message.");
+    }
   };
 
   return (

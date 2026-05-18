@@ -10,9 +10,12 @@ import {
   checkInProfessionalShift,
   completeProfessionalShift,
   formatApiMoney,
+  getProfessionalLiveUrl,
   getProfessionalShiftOffer,
   missProfessionalShift,
+  sendProfessionalShiftMessage,
   startProfessionalShift,
+  type ProfessionalShiftMessage,
   type ShiftOffer as BackendShiftOffer,
 } from "@/services/professionalApi";
 
@@ -34,32 +37,8 @@ type ChatMessage = {
   threadId: string;
   sender: ChatSender;
   text: string;
+  createdAt: string;
 };
-
-const messageThreads: MessageThread[] = [
-  {
-    id: "shift-2234",
-    title: "Shift 2234",
-    subtitle: "I'll be there in 10 minutes",
-    timeLabel: "3m",
-    badge: "SH",
-  },
-  {
-    id: "helpcare",
-    title: "Helpcare solutions",
-    subtitle: "Hii, i'm actually on my way",
-    timeLabel: "3m",
-  },
-];
-
-const initialMessages: ChatMessage[] = [
-  { id: "m1", threadId: "helpcare", sender: "self", text: "Hope you get me" },
-  { id: "m2", threadId: "helpcare", sender: "other", text: "Yeah i do, but........" },
-  { id: "m3", threadId: "helpcare", sender: "self", text: "Hope you get me" },
-  { id: "m4", threadId: "helpcare", sender: "other", text: "Yeah i do, but........" },
-  { id: "m5", threadId: "shift-2234", sender: "self", text: "I'll be there in 10 minutes" },
-  { id: "m6", threadId: "shift-2234", sender: "other", text: "Okay, noted." },
-];
 
 function CalendarIcon({ active }: { active: boolean }) {
   return (
@@ -187,14 +166,31 @@ function ThreadAvatar({ thread }: { thread: MessageThread }) {
   );
 }
 
+function messageToChatMessage(message: ProfessionalShiftMessage): ChatMessage {
+  return {
+    id: message.id,
+    threadId: message.shiftOfferId,
+    sender: message.senderType === "professional" ? "self" : "other",
+    text: message.body,
+    createdAt: message.createdAt,
+  };
+}
+
+function timeLabelFromIso(value?: string) {
+  if (!value) return "Live";
+  const elapsedMinutes = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
+  return `${Math.floor(elapsedMinutes / 60)}h`;
+}
+
 export function ProfessionalShiftOfferActivePage() {
   const params = useParams<{ offerId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [now, setNow] = useState(() => Date.now());
-  const [selectedThreadId, setSelectedThreadId] = useState("helpcare");
+  const [selectedThreadId, setSelectedThreadId] = useState(params.offerId);
   const [draftMessage, setDraftMessage] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [backendOffer, setBackendOffer] = useState<ShiftOffer | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
 
@@ -221,6 +217,7 @@ export function ProfessionalShiftOfferActivePage() {
         if (!cancelled) {
           setBackendOffer(mapBackendOffer(data.offer));
           setShiftId(data.shift?.id ?? null);
+          setMessages(data.messages.map(messageToChatMessage));
         }
       } catch (error) {
         if (!cancelled) {
@@ -241,9 +238,22 @@ export function ProfessionalShiftOfferActivePage() {
     [backendOffer, params.offerId]
   );
 
+  const messageThreads = useMemo<MessageThread[]>(() => {
+    const latest = messages.at(-1);
+    return [
+      {
+        id: params.offerId,
+        title: offer?.organization ?? "Shift chat",
+        subtitle: latest?.text ?? "Messages with the organization",
+        timeLabel: timeLabelFromIso(latest?.createdAt),
+        badge: "SH",
+      },
+    ];
+  }, [messages, offer?.organization, params.offerId]);
+
   const selectedThread = useMemo(
     () => messageThreads.find((thread) => thread.id === selectedThreadId) ?? messageThreads[0],
-    [selectedThreadId]
+    [messageThreads, selectedThreadId]
   );
 
   const checkedInAt = useMemo(() => {
@@ -267,6 +277,45 @@ export function ProfessionalShiftOfferActivePage() {
     () => messages.filter((message) => message.threadId === selectedThread.id),
     [messages, selectedThread.id]
   );
+
+  useEffect(() => {
+    setSelectedThreadId(params.offerId);
+  }, [params.offerId]);
+
+  useEffect(() => {
+    const eventSource = new EventSource(getProfessionalLiveUrl(), {
+      withCredentials: true,
+    });
+
+    const handleMessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data) as ProfessionalShiftMessage;
+      if (message.shiftOfferId !== params.offerId) return;
+
+      setMessages((current) =>
+        current.some((item) => item.id === message.id)
+          ? current
+          : [...current, messageToChatMessage(message)],
+      );
+    };
+
+    const handleUpdate = (event: MessageEvent) => {
+      const update = JSON.parse(event.data) as { shiftOfferId?: string; title?: string };
+      if (update.shiftOfferId !== params.offerId || !update.title) return;
+      toast.info(update.title);
+    };
+
+    eventSource.addEventListener("professional.shift_message.created", handleMessage);
+    eventSource.addEventListener("professional.shift_update.created", handleUpdate);
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.removeEventListener("professional.shift_message.created", handleMessage);
+      eventSource.removeEventListener("professional.shift_update.created", handleUpdate);
+      eventSource.close();
+    };
+  }, [params.offerId]);
 
   useEffect(() => {
     if (stage !== "in-progress") {
@@ -311,22 +360,24 @@ export function ProfessionalShiftOfferActivePage() {
     return data.shift.id;
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = draftMessage.trim();
     if (!text) {
       return;
     }
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: `message-${Date.now()}`,
-        threadId: selectedThread.id,
-        sender: "other",
-        text,
-      },
-    ]);
-    setDraftMessage("");
+    try {
+      await ensureShift();
+      const message = await sendProfessionalShiftMessage(params.offerId, { body: text });
+      setMessages((current) =>
+        current.some((item) => item.id === message.id)
+          ? current
+          : [...current, messageToChatMessage(message)],
+      );
+      setDraftMessage("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send message");
+    }
   };
 
   if (!offer) {

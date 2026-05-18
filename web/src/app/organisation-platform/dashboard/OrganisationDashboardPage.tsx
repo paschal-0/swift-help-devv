@@ -2,8 +2,13 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  getOrganizationDashboard,
+  type OrganizationDashboard,
+  type OrganizationShift,
+} from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 
 type StatCard = {
@@ -145,6 +150,90 @@ const attentionItems: AttentionItem[] = [
   },
 ];
 
+function formatShiftTimeRange(shift: OrganizationShift) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(new Date(shift.startsAt))} - ${formatter.format(new Date(shift.endsAt))}`;
+}
+
+function mapShiftStatus(shift: OrganizationShift): ShiftRow["status"] {
+  if (shift.acceptedSlots >= shift.requiredSlots || shift.status === "filled") {
+    return "Filled";
+  }
+
+  if (shift.acceptedSlots > 0 || shift.status === "partially_filled") {
+    return "Partially Filled";
+  }
+
+  return "Assigned";
+}
+
+function shiftRowsFromDashboard(dashboard: OrganizationDashboard | null) {
+  if (!dashboard?.todayShifts?.length) {
+    return shiftRows;
+  }
+
+  return dashboard.todayShifts.map((shift) => ({
+    id: shift.shiftCode ?? shift.id,
+    department: shift.department ?? shift.role,
+    time: formatShiftTimeRange(shift),
+    required: shift.requiredSlots,
+    assigned: shift.acceptedSlots,
+    status: mapShiftStatus(shift),
+    action: "View Details",
+    href: `/organisation-platform/shifts/${shift.id}`,
+  }));
+}
+
+function statCardsFromDashboard(dashboard: OrganizationDashboard | null) {
+  if (!dashboard) {
+    return statCards;
+  }
+
+  return [
+    {
+      title: "Active shifts",
+      value: dashboard.metrics.activeShifts,
+      subtitle: "Open or in progress",
+      href: "/organisation-platform/shifts",
+    },
+    {
+      title: "Unfilled Shifts",
+      value: dashboard.metrics.unfilledShifts,
+      subtitle: "Need attention",
+      href: "/organisation-platform/shifts",
+    },
+    {
+      title: "Available Staff",
+      value: dashboard.metrics.availableStaff,
+      subtitle: "Ready for assignment",
+      href: "/organisation-platform/professionals",
+    },
+    {
+      title: "Pending Responses",
+      value: dashboard.metrics.pendingResponses,
+      subtitle: "Awaiting staff response",
+      href: "/organisation-platform/reports",
+    },
+  ];
+}
+
+function staffAvailabilityFromDashboard(dashboard: OrganizationDashboard | null) {
+  if (!dashboard) {
+    return staffAvailability;
+  }
+
+  return [
+    { label: "Available Now", value: dashboard.staffAvailability.availableNow },
+    { label: "On Shift", value: dashboard.staffAvailability.onShift },
+    { label: "Off Duty", value: dashboard.staffAvailability.offDuty },
+    { label: "On leave", value: dashboard.staffAvailability.onLeave },
+  ];
+}
+
 function statCardTheme(title: string) {
   if (title === "Active shifts") {
     return {
@@ -222,45 +311,78 @@ function StatusText({ status }: { status: ShiftRow["status"] }) {
 export function OrganisationDashboardPage() {
   const router = useRouter();
   const { searchText } = useOrganisationPlatformShell();
+  const [dashboard, setDashboard] = useState<OrganizationDashboard | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationDashboard()
+      .then((data) => {
+        if (isMounted) {
+          setDashboard(data);
+        }
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load organization dashboard.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const normalizedQuery = searchText.trim().toLowerCase();
+  const dashboardStatCards = useMemo(() => statCardsFromDashboard(dashboard), [dashboard]);
+  const dashboardShiftRows = useMemo(() => shiftRowsFromDashboard(dashboard), [dashboard]);
+  const dashboardStaffAvailability = useMemo(
+    () => staffAvailabilityFromDashboard(dashboard),
+    [dashboard],
+  );
+  const dashboardResponses = dashboard?.recentResponses?.length
+    ? dashboard.recentResponses
+        .filter((item) => item.action === "accepted" || item.action === "declined")
+        .map((item) => ({ ...item, action: item.action as "accepted" | "declined" }))
+    : responseItems;
+  const dashboardAttentionItems = dashboard?.attentionItems?.length
+    ? dashboard.attentionItems
+    : attentionItems;
 
   const visibleShiftRows = useMemo(() => {
     if (!normalizedQuery) {
-      return shiftRows;
+      return dashboardShiftRows;
     }
 
-    return shiftRows.filter((row) =>
+    return dashboardShiftRows.filter((row) =>
       `${row.id} ${row.department} ${row.time} ${row.status}`.toLowerCase().includes(normalizedQuery)
     );
-  }, [normalizedQuery]);
+  }, [dashboardShiftRows, normalizedQuery]);
 
   const visibleResponses = useMemo(() => {
     if (!normalizedQuery) {
-      return responseItems;
+      return dashboardResponses;
     }
 
-    return responseItems.filter((item) =>
+    return dashboardResponses.filter((item) =>
       `${item.staff} ${item.action} ${item.shiftId}`.toLowerCase().includes(normalizedQuery)
     );
-  }, [normalizedQuery]);
+  }, [dashboardResponses, normalizedQuery]);
 
   const visibleAttentionItems = useMemo(() => {
     if (!normalizedQuery) {
-      return attentionItems;
+      return dashboardAttentionItems;
     }
 
-    return attentionItems.filter((item) =>
+    return dashboardAttentionItems.filter((item) =>
       `${item.title} ${item.tags.join(" ")}`.toLowerCase().includes(normalizedQuery)
     );
-  }, [normalizedQuery]);
+  }, [dashboardAttentionItems, normalizedQuery]);
 
   const openRoute = (href: string) => router.push(href);
 
   return (
     <div className="mt-8 flex flex-col gap-7 xl:mt-[72px] xl:gap-8">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((card) => {
+        {dashboardStatCards.map((card) => {
           const theme = statCardTheme(card.title);
 
           return (
@@ -363,7 +485,7 @@ export function OrganisationDashboardPage() {
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Staff Availability</h2>
           <div className="mt-4 rounded-[12px] bg-[#E3F2FD] p-4">
             <div className="space-y-4">
-              {staffAvailability.map((item) => (
+              {dashboardStaffAvailability.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-4 transition-transform duration-200 hover:translate-x-1">
                   <span className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
                     {item.label}

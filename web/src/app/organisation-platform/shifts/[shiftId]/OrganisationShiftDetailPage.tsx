@@ -1,10 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buildOrganisationShiftDetail } from "../data";
+import {
+  cancelOrganizationShift,
+  formatOrganizationMoney,
+  getOrganizationShift,
+  markOrganizationAttendance,
+  type OrganizationAssignment,
+  type OrganizationShiftDetail,
+} from "@/services/organizationApi";
 
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
@@ -54,9 +62,91 @@ function CompletedPill() {
   );
 }
 
+function formatShiftTimeRange(detail: OrganizationShiftDetail) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(new Date(detail.shift.startsAt))} - ${formatter.format(new Date(detail.shift.endsAt))}`;
+}
+
+function activityTimeAgo(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(Math.round(diffMs / 60000), 1);
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} mins ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  return `${diffHours} hours ago`;
+}
+
+function assignmentName(assignment: OrganizationAssignment) {
+  return assignment.professional?.name ?? "Assigned professional";
+}
+
+function mapShiftDetail(data: OrganizationShiftDetail) {
+  const payPerSlot = formatOrganizationMoney(data.shift.payAmountCents, data.shift.currency);
+
+  return {
+    headerId: data.shift.shiftCode ?? data.shift.id,
+    internalId: data.shift.shiftCode ?? data.shift.id,
+    department: data.shift.department ?? data.shift.role,
+    payPerSlot,
+    role: data.shift.role,
+    time: formatShiftTimeRange(data),
+    totalRequired: data.shift.requiredSlots,
+    totalAccepted: data.shift.acceptedSlots,
+    funded: formatOrganizationMoney(data.finance.funded, data.finance.currency),
+    released: formatOrganizationMoney(data.finance.released, data.finance.currency),
+    remaining: formatOrganizationMoney(data.finance.remaining, data.finance.currency),
+    slotsFilled: { current: data.shift.acceptedSlots, total: data.shift.requiredSlots },
+    completedProgress: { current: data.shift.completedSlots, total: data.shift.requiredSlots },
+    activities: data.updates.length
+      ? data.updates.map((update) => ({
+          text: update.title,
+          timeAgo: activityTimeAgo(update.createdAt),
+        }))
+      : buildOrganisationShiftDetail(data.shift.id).activities,
+    acceptedProfessionals: data.assignments.length
+      ? data.assignments.map((assignment) => ({
+          name: assignmentName(assignment),
+          role: assignment.professional?.role ?? data.shift.role,
+          checkInTime: assignment.checkedInAt
+            ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(
+                new Date(assignment.checkedInAt),
+              )
+            : "------",
+          checkOutTime: assignment.completedAt
+            ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(
+                new Date(assignment.completedAt),
+              )
+            : "------",
+          status: "Completed" as const,
+        }))
+      : buildOrganisationShiftDetail(data.shift.id).acceptedProfessionals,
+    assignmentIds: data.assignments.map((assignment) => assignment.id),
+  };
+}
+
+function fallbackShiftDetail(shiftId: string): ReturnType<typeof mapShiftDetail> {
+  const detail = buildOrganisationShiftDetail(shiftId);
+
+  return {
+    ...detail,
+    payPerSlot: `$${detail.payPerSlot}`,
+    funded: `$${detail.funded}`,
+    released: `$${detail.released}`,
+    remaining: `$${detail.remaining}`,
+    assignmentIds: [],
+  };
+}
+
 export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
   const router = useRouter();
-  const detail = buildOrganisationShiftDetail(shiftId);
+  const [detail, setDetail] = useState(() => fallbackShiftDetail(shiftId));
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedAttendanceStatus, setSelectedAttendanceStatus] = useState<
     "Completed" | "Missed"
@@ -66,6 +156,63 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
     selectedProfessionalIndex !== null
       ? detail.acceptedProfessionals[selectedProfessionalIndex] ?? null
       : null;
+  const selectedAssignmentId =
+    selectedProfessionalIndex !== null ? detail.assignmentIds[selectedProfessionalIndex] : null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationShift(shiftId)
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setDetail(mapShiftDetail(data));
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load shift details.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shiftId]);
+
+  const saveAttendanceUpdate = async () => {
+    if (!selectedProfessional || !selectedAssignmentId) {
+      toast.error("Unable to find this professional assignment.");
+      return;
+    }
+
+    try {
+      await markOrganizationAttendance(
+        selectedAssignmentId,
+        selectedAttendanceStatus === "Completed" ? "completed" : "missed",
+      );
+      const nextDetail = await getOrganizationShift(shiftId);
+      setDetail(mapShiftDetail(nextDetail));
+      toast.success(
+        `${selectedProfessional.name} marked as ${
+          selectedAttendanceStatus === "Completed" ? "completed" : "missed"
+        }.`,
+      );
+      setSelectedProfessionalIndex(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update attendance.");
+    }
+  };
+
+  const confirmCancelShift = async () => {
+    try {
+      await cancelOrganizationShift(shiftId, "Cancelled from organization dashboard.");
+      setShowCancelModal(false);
+      toast.success("Shift canceled.");
+      router.push("/organisation-platform/shifts");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to cancel shift.");
+    }
+  };
 
   return (
     <div className="mt-6 px-4 pb-8 sm:px-6 xl:mt-[72px] xl:px-0">
@@ -120,7 +267,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 </div>
                 <div className="space-y-2 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:pb-0">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Pay per slot</p>
-                  <p className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">${detail.payPerSlot}</p>
+                  <p className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">{detail.payPerSlot}</p>
                 </div>
                 <div className="space-y-2 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Role</p>
@@ -190,19 +337,19 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Funded</p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
-                    ${detail.funded}
+                    {detail.funded}
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Released</p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
-                    ${detail.released}
+                    {detail.released}
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">Remaining</p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
-                    ${detail.remaining}
+                    {detail.remaining}
                   </p>
                 </div>
               </div>
@@ -441,14 +588,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
 
             <button
               type="button"
-              onClick={() => {
-                toast.success(
-                  `${selectedProfessional.name} marked as ${
-                    selectedAttendanceStatus === "Completed" ? "completed" : "missed"
-                  }.`,
-                );
-                setSelectedProfessionalIndex(null);
-              }}
+              onClick={saveAttendanceUpdate}
               className={`mt-10 inline-flex h-[49px] w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] ${microInteractionClass}`}
             >
               Save Update
@@ -498,11 +638,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowCancelModal(false);
-                  toast.success("Shift canceled.");
-                  router.push("/organisation-platform/shifts");
-                }}
+                onClick={confirmCancelShift}
                 className={`inline-flex h-[36px] min-w-[141px] cursor-pointer items-center justify-center rounded-full bg-[#AA1717] px-5 text-[15px] font-normal tracking-[-0.05em] text-[#E3F2FD] hover:brightness-105 ${microInteractionClass}`}
               >
                 Cancel Shift

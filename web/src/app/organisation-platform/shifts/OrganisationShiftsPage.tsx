@@ -1,12 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  listOrganizationShifts,
+  type OrganizationShift,
+} from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import {
   organisationShiftRows,
   organisationShiftSummaryCards,
+  type ShiftRow,
   type ShiftStatus,
 } from "./data";
 
@@ -25,6 +31,52 @@ const premiumEase = [0.32, 0.72, 0, 1] as const;
 
 function formatShiftTime(time: string) {
   return time.replace(/\s*-\s*/g, " - ");
+}
+
+function formatBackendDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "long",
+  }).format(new Date(value));
+}
+
+function formatBackendTimeRange(shift: OrganizationShift) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(new Date(shift.startsAt))}-${formatter.format(new Date(shift.endsAt))}`;
+}
+
+function mapBackendShiftStatus(status: OrganizationShift["status"]): ShiftStatus {
+  if (status === "completed") {
+    return "Completed";
+  }
+
+  if (status === "in_progress") {
+    return "Ongoing";
+  }
+
+  if (status === "cancelled" || status === "expired") {
+    return "Canceled";
+  }
+
+  return "Upcoming";
+}
+
+function mapBackendShiftRow(shift: OrganizationShift): ShiftRow {
+  return {
+    id: shift.id,
+    department: shift.department ?? shift.role,
+    date: formatBackendDate(shift.startsAt),
+    time: formatBackendTimeRange(shift),
+    required: shift.requiredSlots,
+    accepted: shift.acceptedSlots,
+    completed: shift.completedSlots,
+    missed: shift.missedSlots,
+    status: mapBackendShiftStatus(shift.status),
+  };
 }
 
 function CalendarTileIcon() {
@@ -98,6 +150,8 @@ export function OrganisationShiftsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | ShiftStatus>("all");
+  const [shiftRows, setShiftRows] = useState<ShiftRow[]>(organisationShiftRows);
+  const [summaryCards, setSummaryCards] = useState(organisationShiftSummaryCards);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([
     { day: "Monday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
@@ -111,17 +165,43 @@ export function OrganisationShiftsPage() {
 
   const normalizedQuery = searchText.trim().toLowerCase();
 
+  useEffect(() => {
+    let isMounted = true;
+
+    listOrganizationShifts()
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setShiftRows(data.shifts.map(mapBackendShiftRow));
+        setSummaryCards([
+          { title: "Total Shift (This Month)", value: String(data.summary.total) },
+          { title: "Complete Shifts", value: String(data.summary.completed) },
+          { title: "Missed Shifts", value: String(data.summary.missed) },
+          { title: "Attendance rate", value: `${data.summary.attendanceRate}%` },
+        ]);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load organization shifts.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const departmentOptions = useMemo(
-    () => ["all", ...Array.from(new Set(organisationShiftRows.map((row) => row.department)))],
-    []
+    () => ["all", ...Array.from(new Set(shiftRows.map((row) => row.department)))],
+    [shiftRows]
   );
   const dateOptions = useMemo(
-    () => ["all", ...Array.from(new Set(organisationShiftRows.map((row) => row.date)))],
-    []
+    () => ["all", ...Array.from(new Set(shiftRows.map((row) => row.date)))],
+    [shiftRows]
   );
 
   const visibleRows = useMemo(() => {
-    return organisationShiftRows.filter((row) => {
+    return shiftRows.filter((row) => {
       const matchesTab =
         activeTab === "All"
           ? true
@@ -143,7 +223,7 @@ export function OrganisationShiftsPage() {
 
       return matchesTab && matchesDepartment && matchesDate && matchesStatus && matchesSearch;
     });
-  }, [activeTab, dateFilter, departmentFilter, normalizedQuery, statusFilter]);
+  }, [activeTab, dateFilter, departmentFilter, normalizedQuery, shiftRows, statusFilter]);
 
   const isDefaultFilters =
     activeTab === "All" &&
@@ -239,7 +319,7 @@ export function OrganisationShiftsPage() {
         {!shouldShowEmptyState ? (
           <>
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          {organisationShiftSummaryCards.map((card) => (
+          {summaryCards.map((card) => (
             <motion.article
               key={card.title}
               whileHover={{ y: -2 }}

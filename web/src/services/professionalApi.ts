@@ -2,6 +2,9 @@
 
 import { apiRequest, type AuthUser } from "./authApi";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:5000";
+
 export type ProfessionalDocument = {
   name: string;
   sizeLabel: string;
@@ -127,6 +130,45 @@ export type ProfessionalShift = {
   startedAt: string | null;
   completedAt: string | null;
   missedAt: string | null;
+};
+
+export type ProfessionalShiftMessage = {
+  id: string;
+  shiftOfferId: string;
+  organizationUserId: string;
+  professionalUserId: string | null;
+  senderUserId: string | null;
+  senderType: "organization" | "professional" | "system";
+  body: string;
+  readByOrganization: boolean;
+  readByProfessional: boolean;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ProfessionalShiftUpdate = {
+  id: string;
+  shiftOfferId: string;
+  organizationUserId: string | null;
+  type: string;
+  title: string;
+  description: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ProfessionalNotification = {
+  id: string;
+  professionalUserId: string;
+  type: string;
+  title: string;
+  message: string | null;
+  shiftOfferId: string | null;
+  organizationUserId: string | null;
+  read: boolean;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 export type EarningsSummary = {
@@ -325,9 +367,53 @@ export function listProfessionalShiftOffers() {
 }
 
 export function getProfessionalShiftOffer(offerId: string) {
-  return apiRequest<{ offer: ShiftOffer; shift: ProfessionalShift | null }>(`/professional/shift-offers/${offerId}`, {
+  return apiRequest<{
+    offer: ShiftOffer;
+    shift: ProfessionalShift | null;
+    messages: ProfessionalShiftMessage[];
+    updates: ProfessionalShiftUpdate[];
+  }>(`/professional/shift-offers/${offerId}`, {
     method: "GET",
   });
+}
+
+export function listProfessionalShiftMessages(offerId: string) {
+  return apiRequest<ProfessionalShiftMessage[]>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages`,
+    { method: "GET" },
+  );
+}
+
+export function sendProfessionalShiftMessage(offerId: string, payload: { body: string }) {
+  return apiRequest<ProfessionalShiftMessage>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function getProfessionalLiveUrl() {
+  return `${API_BASE_URL}/professional/live`;
+}
+
+export function listProfessionalNotifications(params?: { unreadOnly?: boolean; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.unreadOnly) query.set("unreadOnly", "true");
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<ProfessionalNotification[]>(`/professional/notifications${suffix}`, {
+    method: "GET",
+  });
+}
+
+export function markProfessionalNotificationRead(notificationId: string) {
+  return apiRequest<ProfessionalNotification>(
+    `/professional/notifications/${encodeURIComponent(notificationId)}/read`,
+    { method: "PATCH" },
+  );
 }
 
 export function acceptProfessionalShiftOffer(offerId: string) {

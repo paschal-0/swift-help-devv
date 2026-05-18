@@ -11,9 +11,15 @@ import {
   type ChartOptions,
 } from "chart.js";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { toast } from "sonner";
+import {
+  exportOrganizationReports,
+  formatOrganizationMoney,
+  getOrganizationReports,
+  type OrganizationReports,
+} from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import {
   organisationCancellationInsights,
@@ -160,8 +166,27 @@ export function OrganisationReportsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("Department");
   const [roleFilter, setRoleFilter] = useState("Role");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [reports, setReports] = useState<OrganizationReports | null>(null);
 
   const normalizedQuery = searchText.trim().toLowerCase();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationReports()
+      .then((data) => {
+        if (isMounted) {
+          setReports(data);
+        }
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Unable to load reports.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const departmentOptions = useMemo(
     () => ["Department", ...Array.from(new Set(organisationPaymentReports.map((row) => row.department)))],
@@ -224,6 +249,15 @@ export function OrganisationReportsPage() {
   }, [normalizedQuery]);
 
   const baselineMetrics = useMemo(() => {
+    if (reports) {
+      return {
+        totalShiftsPosted: reports.summary.totalShiftsPosted,
+        shiftsFilled: reports.summary.shiftsFilled,
+        totalHoursWorked: reports.summary.totalHoursWorked,
+        totalAmountPaid: reports.summary.totalAmountPaidCents / 100,
+      };
+    }
+
     const findMetric = (title: string) =>
       organisationReportsSummaryCards.find((item) => item.title === title)?.value ?? "0";
 
@@ -233,7 +267,7 @@ export function OrganisationReportsPage() {
       totalHoursWorked: Number(findMetric("Total hours worked")),
       totalAmountPaid: Number(findMetric("Total Amount Paid").replace(/[^0-9.-]+/g, "")),
     };
-  }, []);
+  }, [reports]);
 
   const filteredShare = useMemo(() => {
     if (!organisationPaymentReports.length) {
@@ -248,12 +282,12 @@ export function OrganisationReportsPage() {
   const totalHoursWorked = Math.round(baselineMetrics.totalHoursWorked * filteredShare);
   const totalAmountPaid = Math.round(baselineMetrics.totalAmountPaid * filteredShare);
   const cancelledShifts = Math.max(0, totalShiftsPosted - shiftsFilled);
-  const noShowRate = filteredPaymentReports.length
+  const noShowRate = reports?.cancellationInsights.noShowRate ?? (filteredPaymentReports.length
     ? organisationCancellationInsights.noShowRate
-    : "0%";
-  const lateCheckIns = filteredPaymentReports.length
+    : "0%");
+  const lateCheckIns = reports?.cancellationInsights.lateCheckIns ?? (filteredPaymentReports.length
     ? Math.max(1, Math.round(organisationCancellationInsights.lateCheckIns * filteredShare))
-    : 0;
+    : 0);
 
   const fillRate = totalShiftsPosted ? Math.round((shiftsFilled / totalShiftsPosted) * 100) : 0;
   const unfilledRate = Math.max(0, 100 - fillRate);
@@ -262,7 +296,11 @@ export function OrganisationReportsPage() {
     { title: "Total shifts posted", value: totalShiftsPosted.toString(), icon: "summary" as const },
     { title: "Shifts Filled", value: shiftsFilled.toString(), icon: "filled" as const },
     { title: "Total hours worked", value: totalHoursWorked.toString(), icon: "hours" as const },
-    { title: "Total Amount Paid", value: formatCurrency(totalAmountPaid), icon: "paid" as const },
+    {
+      title: "Total Amount Paid",
+      value: reports ? formatOrganizationMoney(reports.summary.totalAmountPaidCents) : formatCurrency(totalAmountPaid),
+      icon: "paid" as const,
+    },
   ];
 
   const shiftActivityData = useMemo(
@@ -346,9 +384,14 @@ export function OrganisationReportsPage() {
     []
   );
 
-  const confirmExport = () => {
-    setIsExportModalOpen(false);
-    toast.success("Report export queued.");
+  const confirmExport = async () => {
+    try {
+      await exportOrganizationReports({ reportType: "organization", format: "csv" });
+      setIsExportModalOpen(false);
+      toast.success("Report export queued.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to export report.");
+    }
   };
 
   return (
