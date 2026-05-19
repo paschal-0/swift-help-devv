@@ -111,11 +111,25 @@ export type OrganizationShiftMessage = {
   professionalUserId: string | null;
   senderUserId: string | null;
   senderType: "organization" | "professional" | "system";
-  body: string;
+  body: string | null;
+  attachments: Array<{
+    name: string;
+    url: string;
+    type?: string;
+    size?: number;
+  }>;
   readByOrganization: boolean;
   readByProfessional: boolean;
+  deliveredToOrganizationAt: string | null;
+  deliveredToProfessionalAt: string | null;
+  readByOrganizationAt: string | null;
+  readByProfessionalAt: string | null;
+  editedAt: string | null;
+  deletedAt: string | null;
+  deletedByUserId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type OrganizationBilling = {
@@ -300,9 +314,13 @@ export async function getOrganizationShift(shiftId: string) {
   });
 }
 
-export async function listOrganizationShiftMessages(shiftId: string) {
+export async function listOrganizationShiftMessages(
+  shiftId: string,
+  params?: { before?: string; limit?: number },
+) {
+  const query = buildQuery(params);
   return apiRequest<OrganizationShiftMessage[]>(
-    `/organization/shifts/${encodeURIComponent(shiftId)}/messages`,
+    `/organization/shifts/${encodeURIComponent(shiftId)}/messages${query}`,
     {
       method: "GET",
     },
@@ -311,13 +329,58 @@ export async function listOrganizationShiftMessages(shiftId: string) {
 
 export async function sendOrganizationShiftMessage(
   shiftId: string,
-  payload: { body: string; professionalUserId?: string },
+  payload: {
+    body?: string;
+    professionalUserId?: string;
+    attachments?: OrganizationShiftMessage["attachments"];
+  },
 ) {
   return apiRequest<OrganizationShiftMessage>(
     `/organization/shifts/${encodeURIComponent(shiftId)}/messages`,
     {
       method: "POST",
       body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function updateOrganizationShiftMessage(
+  shiftId: string,
+  messageId: string,
+  payload: {
+    body?: string;
+    attachments?: OrganizationShiftMessage["attachments"];
+  },
+) {
+  return apiRequest<OrganizationShiftMessage>(
+    `/organization/shifts/${encodeURIComponent(shiftId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function deleteOrganizationShiftMessage(shiftId: string, messageId: string) {
+  return apiRequest<OrganizationShiftMessage>(
+    `/organization/shifts/${encodeURIComponent(shiftId)}/messages/${encodeURIComponent(messageId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function markOrganizationShiftMessagesRead(shiftId: string) {
+  return apiRequest<{ updated: number }>(
+    `/organization/shifts/${encodeURIComponent(shiftId)}/messages/read`,
+    { method: "POST" },
+  );
+}
+
+export async function sendOrganizationShiftTyping(shiftId: string, typing: boolean) {
+  return apiRequest<{ sent: number }>(
+    `/organization/shifts/${encodeURIComponent(shiftId)}/typing`,
+    {
+      method: "POST",
+      body: JSON.stringify({ typing }),
     },
   );
 }

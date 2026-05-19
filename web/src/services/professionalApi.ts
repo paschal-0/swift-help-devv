@@ -3,7 +3,8 @@
 import { apiRequest, type AuthUser } from "./authApi";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:5000";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "http://localhost:5000";
 
 export type ProfessionalDocument = {
   name: string;
@@ -59,7 +60,12 @@ export type ProfessionalBlockedTime = {
   repeat: "none" | "daily" | "weekly";
 };
 
-export type ConsultationRequestStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled";
+export type ConsultationRequestStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "cancelled";
 
 export type ProfessionalConsultationRequest = {
   id: string;
@@ -72,6 +78,14 @@ export type ProfessionalConsultationRequest = {
   requestedStartAt: string;
   requestedEndAt: string;
   mode: string;
+  locationName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
   durationMinutes: number;
   patientNote: string | null;
   status: ConsultationRequestStatus;
@@ -81,7 +95,12 @@ export type ProfessionalConsultationRequest = {
   createdAt: string;
 };
 
-export type ConsultationSessionStatus = "scheduled" | "ongoing" | "completed" | "missed" | "cancelled";
+export type ConsultationSessionStatus =
+  | "scheduled"
+  | "ongoing"
+  | "completed"
+  | "missed"
+  | "cancelled";
 
 export type ProfessionalConsultation = {
   id: string;
@@ -92,6 +111,14 @@ export type ProfessionalConsultation = {
   consultationLabel: string;
   reason: string;
   mode: string;
+  locationName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
   startsAt: string;
   endsAt: string;
   durationMinutes: number;
@@ -101,6 +128,8 @@ export type ProfessionalConsultation = {
   earningsStatus: "pending" | "available" | "paid_out";
   startedAt: string | null;
   completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ShiftOffer = {
@@ -125,7 +154,13 @@ export type ProfessionalShift = {
   id: string;
   offerId: string;
   professionalUserId: string;
-  status: "accepted" | "checked_in" | "started" | "completed" | "missed" | "cancelled";
+  status:
+    | "accepted"
+    | "checked_in"
+    | "started"
+    | "completed"
+    | "missed"
+    | "cancelled";
   checkedInAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -139,11 +174,25 @@ export type ProfessionalShiftMessage = {
   professionalUserId: string | null;
   senderUserId: string | null;
   senderType: "organization" | "professional" | "system";
-  body: string;
+  body: string | null;
+  attachments: Array<{
+    name: string;
+    url: string;
+    type?: string;
+    size?: number;
+  }>;
   readByOrganization: boolean;
   readByProfessional: boolean;
+  deliveredToOrganizationAt: string | null;
+  deliveredToProfessionalAt: string | null;
+  readByOrganizationAt: string | null;
+  readByProfessionalAt: string | null;
+  editedAt: string | null;
+  deletedAt: string | null;
+  deletedByUserId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type ProfessionalShiftUpdate = {
@@ -263,14 +312,21 @@ export type ProfessionalProfileResponse = {
 };
 
 export function getProfessionalDashboard(range: "today" | "week" = "today") {
-  return apiRequest<ProfessionalDashboard>(`/professional/dashboard?range=${range}`, { method: "GET" });
+  return apiRequest<ProfessionalDashboard>(
+    `/professional/dashboard?range=${range}`,
+    { method: "GET" },
+  );
 }
 
 export function getProfessionalProfile() {
-  return apiRequest<ProfessionalProfileResponse>("/professional/profile", { method: "GET" });
+  return apiRequest<ProfessionalProfileResponse>("/professional/profile", {
+    method: "GET",
+  });
 }
 
-export function updateProfessionalPlatformProfile(payload: Partial<ProfessionalProfile>) {
+export function updateProfessionalPlatformProfile(
+  payload: Partial<ProfessionalProfile>,
+) {
   return apiRequest<ProfessionalProfile>("/professional/profile", {
     method: "PATCH",
     body: JSON.stringify(payload),
@@ -278,21 +334,32 @@ export function updateProfessionalPlatformProfile(payload: Partial<ProfessionalP
 }
 
 export function uploadProfessionalDocuments(documents: ProfessionalDocument[]) {
-  return apiRequest<ProfessionalProfile>("/professional/verification/documents", {
-    method: "POST",
-    body: JSON.stringify({ documents }),
-  });
+  return apiRequest<ProfessionalProfile>(
+    "/professional/verification/documents",
+    {
+      method: "POST",
+      body: JSON.stringify({ documents }),
+    },
+  );
 }
 
 export function getProfessionalAvailability() {
-  return apiRequest<ProfessionalAvailabilitySetting>("/professional/availability", { method: "GET" });
+  return apiRequest<ProfessionalAvailabilitySetting>(
+    "/professional/availability",
+    { method: "GET" },
+  );
 }
 
-export function updateProfessionalAvailability(payload: Partial<ProfessionalAvailabilitySetting>) {
-  return apiRequest<ProfessionalAvailabilitySetting>("/professional/availability", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+export function updateProfessionalAvailability(
+  payload: Partial<ProfessionalAvailabilitySetting>,
+) {
+  return apiRequest<ProfessionalAvailabilitySetting>(
+    "/professional/availability",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function createProfessionalBlockedTime(payload: {
@@ -309,59 +376,85 @@ export function createProfessionalBlockedTime(payload: {
 }
 
 export function deleteProfessionalBlockedTime(blockedTimeId: string) {
-  return apiRequest<{ deleted: boolean }>(`/professional/blocked-times/${blockedTimeId}`, {
-    method: "DELETE",
-  });
+  return apiRequest<{ deleted: boolean }>(
+    `/professional/blocked-times/${blockedTimeId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
-export function getProfessionalSchedule(params?: { from?: string; to?: string }) {
+export function getProfessionalSchedule(params?: {
+  from?: string;
+  to?: string;
+}) {
   const query = new URLSearchParams();
   if (params?.from) query.set("from", params.from);
   if (params?.to) query.set("to", params.to);
   const suffix = query.toString() ? `?${query}` : "";
 
-  return apiRequest<ProfessionalSchedule>(`/professional/schedule${suffix}`, { method: "GET" });
+  return apiRequest<ProfessionalSchedule>(`/professional/schedule${suffix}`, {
+    method: "GET",
+  });
 }
 
 export function listProfessionalRequests(status?: ConsultationRequestStatus) {
   const suffix = status ? `?status=${status}` : "";
-  return apiRequest<ProfessionalConsultationRequest[]>(`/professional/requests${suffix}`, { method: "GET" });
-}
-
-export function acceptProfessionalRequest(requestId: string) {
-  return apiRequest<{ request: ProfessionalConsultationRequest; session: ProfessionalConsultation }>(
-    `/professional/requests/${requestId}/accept`,
-    { method: "POST" },
+  return apiRequest<ProfessionalConsultationRequest[]>(
+    `/professional/requests${suffix}`,
+    { method: "GET" },
   );
 }
 
+export function acceptProfessionalRequest(requestId: string) {
+  return apiRequest<{
+    request: ProfessionalConsultationRequest;
+    session: ProfessionalConsultation;
+  }>(`/professional/requests/${requestId}/accept`, { method: "POST" });
+}
+
 export function declineProfessionalRequest(requestId: string, reason?: string) {
-  return apiRequest<ProfessionalConsultationRequest>(`/professional/requests/${requestId}/decline`, {
-    method: "POST",
-    body: JSON.stringify({ reason }),
-  });
+  return apiRequest<ProfessionalConsultationRequest>(
+    `/professional/requests/${requestId}/decline`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+  );
 }
 
 export function startProfessionalConsultation(consultationId: string) {
-  return apiRequest<ProfessionalConsultation>(`/professional/consultations/${consultationId}/start`, {
-    method: "POST",
-  });
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${consultationId}/start`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function completeProfessionalConsultation(consultationId: string) {
-  return apiRequest<ProfessionalConsultation>(`/professional/consultations/${consultationId}/complete`, {
-    method: "POST",
-  });
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${consultationId}/complete`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function cancelProfessionalConsultation(consultationId: string) {
-  return apiRequest<ProfessionalConsultation>(`/professional/consultations/${consultationId}/cancel`, {
-    method: "POST",
-  });
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${consultationId}/cancel`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function listProfessionalShiftOffers() {
-  return apiRequest<{ offers: ShiftOffer[]; acceptedShifts: ProfessionalShift[] }>("/professional/shift-offers", {
+  return apiRequest<{
+    offers: ShiftOffer[];
+    acceptedShifts: ProfessionalShift[];
+  }>("/professional/shift-offers", {
     method: "GET",
   });
 }
@@ -377,14 +470,28 @@ export function getProfessionalShiftOffer(offerId: string) {
   });
 }
 
-export function listProfessionalShiftMessages(offerId: string) {
+export function listProfessionalShiftMessages(
+  offerId: string,
+  params?: { before?: string; limit?: number },
+) {
+  const query = new URLSearchParams();
+  if (params?.before) query.set("before", params.before);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
   return apiRequest<ProfessionalShiftMessage[]>(
-    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages`,
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages${suffix}`,
     { method: "GET" },
   );
 }
 
-export function sendProfessionalShiftMessage(offerId: string, payload: { body: string }) {
+export function sendProfessionalShiftMessage(
+  offerId: string,
+  payload: {
+    body?: string;
+    attachments?: ProfessionalShiftMessage["attachments"];
+  },
+) {
   return apiRequest<ProfessionalShiftMessage>(
     `/professional/shift-offers/${encodeURIComponent(offerId)}/messages`,
     {
@@ -394,19 +501,69 @@ export function sendProfessionalShiftMessage(offerId: string, payload: { body: s
   );
 }
 
+export function updateProfessionalShiftMessage(
+  offerId: string,
+  messageId: string,
+  payload: {
+    body?: string;
+    attachments?: ProfessionalShiftMessage["attachments"];
+  },
+) {
+  return apiRequest<ProfessionalShiftMessage>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function deleteProfessionalShiftMessage(
+  offerId: string,
+  messageId: string,
+) {
+  return apiRequest<ProfessionalShiftMessage>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages/${encodeURIComponent(messageId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function markProfessionalShiftMessagesRead(offerId: string) {
+  return apiRequest<{ updated: number }>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/messages/read`,
+    { method: "POST" },
+  );
+}
+
+export function sendProfessionalShiftTyping(offerId: string, typing: boolean) {
+  return apiRequest<{ sent: boolean }>(
+    `/professional/shift-offers/${encodeURIComponent(offerId)}/typing`,
+    {
+      method: "POST",
+      body: JSON.stringify({ typing }),
+    },
+  );
+}
+
 export function getProfessionalLiveUrl() {
   return `${API_BASE_URL}/professional/live`;
 }
 
-export function listProfessionalNotifications(params?: { unreadOnly?: boolean; limit?: number }) {
+export function listProfessionalNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+}) {
   const query = new URLSearchParams();
   if (params?.unreadOnly) query.set("unreadOnly", "true");
   if (params?.limit) query.set("limit", String(params.limit));
   const suffix = query.toString() ? `?${query.toString()}` : "";
 
-  return apiRequest<ProfessionalNotification[]>(`/professional/notifications${suffix}`, {
-    method: "GET",
-  });
+  return apiRequest<ProfessionalNotification[]>(
+    `/professional/notifications${suffix}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function markProfessionalNotificationRead(notificationId: string) {
@@ -417,39 +574,61 @@ export function markProfessionalNotificationRead(notificationId: string) {
 }
 
 export function acceptProfessionalShiftOffer(offerId: string) {
-  return apiRequest<{ offer: ShiftOffer; shift: ProfessionalShift }>(`/professional/shift-offers/${offerId}/accept`, {
-    method: "POST",
-  });
+  return apiRequest<{ offer: ShiftOffer; shift: ProfessionalShift }>(
+    `/professional/shift-offers/${offerId}/accept`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function declineProfessionalShiftOffer(offerId: string) {
-  return apiRequest<{ declined: boolean; offerId: string }>(`/professional/shift-offers/${offerId}/decline`, {
+  return apiRequest<{ declined: boolean; offerId: string }>(
+    `/professional/shift-offers/${offerId}/decline`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export function checkInProfessionalShift(shiftId: string) {
+  return apiRequest<ProfessionalShift>(
+    `/professional/shifts/${shiftId}/check-in`,
+    { method: "POST" },
+  );
+}
+
+export function startProfessionalShift(shiftId: string) {
+  return apiRequest<ProfessionalShift>(
+    `/professional/shifts/${shiftId}/start`,
+    { method: "POST" },
+  );
+}
+
+export function completeProfessionalShift(shiftId: string) {
+  return apiRequest<ProfessionalShift>(
+    `/professional/shifts/${shiftId}/complete`,
+    { method: "POST" },
+  );
+}
+
+export function missProfessionalShift(shiftId: string) {
+  return apiRequest<ProfessionalShift>(`/professional/shifts/${shiftId}/miss`, {
     method: "POST",
   });
 }
 
-export function checkInProfessionalShift(shiftId: string) {
-  return apiRequest<ProfessionalShift>(`/professional/shifts/${shiftId}/check-in`, { method: "POST" });
-}
-
-export function startProfessionalShift(shiftId: string) {
-  return apiRequest<ProfessionalShift>(`/professional/shifts/${shiftId}/start`, { method: "POST" });
-}
-
-export function completeProfessionalShift(shiftId: string) {
-  return apiRequest<ProfessionalShift>(`/professional/shifts/${shiftId}/complete`, { method: "POST" });
-}
-
-export function missProfessionalShift(shiftId: string) {
-  return apiRequest<ProfessionalShift>(`/professional/shifts/${shiftId}/miss`, { method: "POST" });
-}
-
 export function getProfessionalEarningsSummary() {
-  return apiRequest<EarningsSummary>("/professional/earnings/summary", { method: "GET" });
+  return apiRequest<EarningsSummary>("/professional/earnings/summary", {
+    method: "GET",
+  });
 }
 
 export function listProfessionalEarnings() {
-  return apiRequest<ProfessionalEarning[]>("/professional/earnings/transactions", { method: "GET" });
+  return apiRequest<ProfessionalEarning[]>(
+    "/professional/earnings/transactions",
+    { method: "GET" },
+  );
 }
 
 export function getProfessionalWallet() {
@@ -460,7 +639,10 @@ export function getProfessionalWallet() {
   }>("/professional/wallet", { method: "GET" });
 }
 
-export function createProfessionalWithdrawal(payload: { payoutMethodId: string; amountCents: number }) {
+export function createProfessionalWithdrawal(payload: {
+  payoutMethodId: string;
+  amountCents: number;
+}) {
   return apiRequest<ProfessionalPayout>("/professional/wallet/withdrawals", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -468,11 +650,15 @@ export function createProfessionalWithdrawal(payload: { payoutMethodId: string; 
 }
 
 export function listProfessionalPayouts() {
-  return apiRequest<ProfessionalPayout[]>("/professional/earnings/payouts", { method: "GET" });
+  return apiRequest<ProfessionalPayout[]>("/professional/earnings/payouts", {
+    method: "GET",
+  });
 }
 
 export function getProfessionalSettings() {
-  return apiRequest<ProfessionalSettings>("/professional/settings", { method: "GET" });
+  return apiRequest<ProfessionalSettings>("/professional/settings", {
+    method: "GET",
+  });
 }
 
 export function updateProfessionalAccountSettings(payload: Partial<AuthUser>) {
@@ -482,14 +668,21 @@ export function updateProfessionalAccountSettings(payload: Partial<AuthUser>) {
   });
 }
 
-export function updateProfessionalNotificationSettings(payload: Record<string, boolean>) {
-  return apiRequest<ProfessionalSettings>("/professional/settings/notifications", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+export function updateProfessionalNotificationSettings(
+  payload: Record<string, boolean>,
+) {
+  return apiRequest<ProfessionalSettings>(
+    "/professional/settings/notifications",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
-export function updateProfessionalSecuritySettings(payload: Record<string, boolean>) {
+export function updateProfessionalSecuritySettings(
+  payload: Record<string, boolean>,
+) {
   return apiRequest<ProfessionalSettings>("/professional/settings/security", {
     method: "PATCH",
     body: JSON.stringify(payload),

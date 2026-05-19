@@ -11,6 +11,7 @@ import {
   listProfessionalRequests,
   type ProfessionalConsultationRequest,
 } from "@/services/professionalApi";
+import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 type RequestStatus = "needs-action" | "accepted" | "declined";
 
@@ -25,6 +26,13 @@ type ConsultationRequest = {
   dateLabel: string;
   duration: string;
   mode: string;
+  locationName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   bookedOn: string;
   note: string;
   status: RequestStatus;
@@ -42,6 +50,13 @@ const initialRequests: ConsultationRequest[] = [
     dateLabel: "Tue, Apr 16, 2026 - 10:00 AM - 10:30 AM",
     duration: "30 Mins",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     bookedOn: "April 13, 2026",
     note: "Patient reports headaches mostly in the evening for the past 5 days. No known fever.",
     status: "needs-action",
@@ -57,6 +72,13 @@ const initialRequests: ConsultationRequest[] = [
     dateLabel: "Tue, Apr 16, 2026 - 11:00 AM - 11:30 AM",
     duration: "30 Mins",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     bookedOn: "April 13, 2026",
     note: "Symptoms intensified after long screen sessions. Denies fever or recent trauma.",
     status: "needs-action",
@@ -72,6 +94,13 @@ const initialRequests: ConsultationRequest[] = [
     dateLabel: "Wed, Apr 17, 2026 - 10:00 AM - 10:30 AM",
     duration: "30 Mins",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     bookedOn: "April 14, 2026",
     note: "Patient is open to lab review and medication adjustment.",
     status: "accepted",
@@ -87,6 +116,13 @@ const initialRequests: ConsultationRequest[] = [
     dateLabel: "Wed, Apr 17, 2026 - 2:00 PM - 2:30 PM",
     duration: "30 Mins",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     bookedOn: "April 14, 2026",
     note: "Patient requested a later slot if possible.",
     status: "declined",
@@ -118,7 +154,9 @@ const formatShortTime = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
-const mapBackendRequest = (request: ProfessionalConsultationRequest): ConsultationRequest => ({
+const mapBackendRequest = (
+  request: ProfessionalConsultationRequest,
+): ConsultationRequest => ({
   id: request.id,
   patient: request.patientName,
   consultationLabel: request.consultationLabel,
@@ -134,6 +172,13 @@ const mapBackendRequest = (request: ProfessionalConsultationRequest): Consultati
   dateLabel: `${formatRequestDate(request.requestedStartAt)} - ${formatShortTime(request.requestedEndAt)}`,
   duration: `${request.durationMinutes} Mins`,
   mode: request.mode,
+  locationName: request.locationName,
+  address: request.address,
+  city: request.city,
+  state: request.state,
+  country: request.country,
+  latitude: request.latitude,
+  longitude: request.longitude,
   bookedOn: formatRequestDate(request.createdAt),
   note: request.patientNote ?? "No patient note provided.",
   status:
@@ -168,7 +213,9 @@ function EmptyDetailsPrompt({
           d="M10 10h16v44H10V10Zm4 6v6h8v-6h-8Zm0 10v6h8v-6h-8Zm0 10v6h8v-6h-8Zm16-20h24v4H30v-4Zm0 12h24v4H30v-4Zm0 12h24v4H30v-4Z"
         />
       </svg>
-      <p className="mt-4 text-[24px] font-medium leading-5 tracking-[-0.05em] text-[#94A3B8]">{title}</p>
+      <p className="mt-4 text-[24px] font-medium leading-5 tracking-[-0.05em] text-[#94A3B8]">
+        {title}
+      </p>
       <p className="mt-3 max-w-[261px] text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">
         {description}
       </p>
@@ -181,7 +228,9 @@ export function ProfessionalRequestsPage() {
   const [requests, setRequests] = useState(initialRequests);
   const [activeTab, setActiveTab] = useState<RequestStatus>("needs-action");
   const [panelSearch, setPanelSearch] = useState("");
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
+    null,
+  );
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [sortMode, setSortMode] = useState<"latest" | "patient">("latest");
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -199,7 +248,11 @@ export function ProfessionalRequestsPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load consultation requests");
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to load consultation requests",
+          );
         }
       }
     }
@@ -251,7 +304,7 @@ export function ProfessionalRequestsPage() {
 
   const activeTabRequestsCount = useMemo(
     () => requests.filter((request) => request.status === activeTab).length,
-    [requests, activeTab]
+    [requests, activeTab],
   );
 
   const counts = useMemo(() => {
@@ -260,12 +313,16 @@ export function ProfessionalRequestsPage() {
         accumulator[request.status] += 1;
         return accumulator;
       },
-      { "needs-action": 0, accepted: 0, declined: 0 } as Record<RequestStatus, number>
+      { "needs-action": 0, accepted: 0, declined: 0 } as Record<
+        RequestStatus,
+        number
+      >,
     );
   }, [requests]);
 
   const selectedRequest = selectedRequestId
-    ? filteredRequests.find((request) => request.id === selectedRequestId) ?? null
+    ? (filteredRequests.find((request) => request.id === selectedRequestId) ??
+      null)
     : null;
 
   const handleStatusChange = async (id: string, status: RequestStatus) => {
@@ -279,7 +336,9 @@ export function ProfessionalRequestsPage() {
         await declineProfessionalRequest(id);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update request");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update request",
+      );
       return;
     }
 
@@ -298,7 +357,7 @@ export function ProfessionalRequestsPage() {
                 ? "Declined just now"
                 : request.received,
         };
-      })
+      }),
     );
 
     if (selectedRequestId === id && previous && previous.status !== activeTab) {
@@ -327,36 +386,54 @@ export function ProfessionalRequestsPage() {
     <section className="mt-[14px] pb-9 xl:mt-[6px]">
       <div className="border-b border-[#94A3B8] pb-[18px]">
         <div className="requests-header flex items-center justify-between gap-3">
-          <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Requests</h1>
+          <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">
+            Requests
+          </h1>
           <div className="requests-header-controls flex items-center gap-2">
-            <label className={`requests-filter-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}>
+            <label
+              className={`requests-filter-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}
+            >
               <svg viewBox="0 0 11 12" className="h-4 w-4 shrink-0" aria-hidden>
                 <path fill="#334155" d={filterIconPath} />
               </svg>
               <select
                 value={filterValue}
-                onChange={(event) => setUrgentOnly(event.target.value === "urgent")}
+                onChange={(event) =>
+                  setUrgentOnly(event.target.value === "urgent")
+                }
                 className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                 aria-label="Filter requests"
               >
                 <option value="all">Filter</option>
                 <option value="urgent">Filter: Urgent</option>
               </select>
-              <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
+                aria-hidden
+              >
                 <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
               </svg>
             </label>
-            <label className={`requests-sort-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-4 pr-8 ${microInteractionClass}`}>
+            <label
+              className={`requests-sort-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-4 pr-8 ${microInteractionClass}`}
+            >
               <select
                 value={sortMode}
-                onChange={(event) => setSortMode(event.target.value as "latest" | "patient")}
+                onChange={(event) =>
+                  setSortMode(event.target.value as "latest" | "patient")
+                }
                 className="h-full appearance-none bg-transparent pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                 aria-label="Sort requests"
               >
                 <option value="latest">Sort by</option>
                 <option value="patient">Sort by: Patient</option>
               </select>
-              <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
+                aria-hidden
+              >
                 <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
               </svg>
             </label>
@@ -375,11 +452,15 @@ export function ProfessionalRequestsPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`requests-tab-button inline-flex h-[42px] min-w-[140px] items-center justify-center rounded-[12px] px-4 text-[16px] leading-[22px] tracking-[-0.05em] transition ${microInteractionClass} ${
-                  isActive ? "bg-[#F8FAFC] font-medium text-[#334155]" : "font-light text-[#F8FAFC]"
+                  isActive
+                    ? "bg-[#F8FAFC] font-medium text-[#334155]"
+                    : "font-light text-[#F8FAFC]"
                 }`}
               >
                 <span className="whitespace-nowrap">{tab.label}</span>
-                <span className={`ml-2 text-[12px] ${isActive ? "text-[#64748B]" : "text-[#CBD5E1]"}`}>
+                <span
+                  className={`ml-2 text-[12px] ${isActive ? "text-[#64748B]" : "text-[#CBD5E1]"}`}
+                >
                   {counts[tab.id]}
                 </span>
               </button>
@@ -393,8 +474,15 @@ export function ProfessionalRequestsPage() {
           {activeTabRequestsCount > 0 ? (
             <div className="requests-toolbar flex items-center justify-between gap-3">
               <label className="requests-search relative block h-[45px] w-full max-w-[315px] rounded-[24px] border border-[#94A3B8] bg-[#F8FAFC]">
-                <svg viewBox="0 0 24 24" className="absolute left-[13px] top-[9px] h-8 w-8" aria-hidden>
-                  <path fill="#334155" d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
+                <svg
+                  viewBox="0 0 24 24"
+                  className="absolute left-[13px] top-[9px] h-8 w-8"
+                  aria-hidden
+                >
+                  <path
+                    fill="#334155"
+                    d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
+                  />
                 </svg>
                 <input
                   value={panelSearch}
@@ -405,20 +493,32 @@ export function ProfessionalRequestsPage() {
                 />
               </label>
 
-              <label className={`requests-toolbar-filter relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}>
-                <svg viewBox="0 0 11 12" className="h-4 w-4 shrink-0" aria-hidden>
+              <label
+                className={`requests-toolbar-filter relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}
+              >
+                <svg
+                  viewBox="0 0 11 12"
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden
+                >
                   <path fill="#334155" d={filterIconPath} />
                 </svg>
                 <select
                   value={filterValue}
-                  onChange={(event) => setUrgentOnly(event.target.value === "urgent")}
+                  onChange={(event) =>
+                    setUrgentOnly(event.target.value === "urgent")
+                  }
                   className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                   aria-label="Filter requests in list"
                 >
                   <option value="all">Filter</option>
                   <option value="urgent">Filter: Urgent</option>
                 </select>
-                <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]" aria-hidden>
+                <svg
+                  viewBox="0 0 24 24"
+                  className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
+                  aria-hidden
+                >
                   <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
                 </svg>
               </label>
@@ -440,7 +540,10 @@ export function ProfessionalRequestsPage() {
           ) : (
             <div
               className="requests-scroll relative mt-[16px] max-h-[560px] space-y-5 overflow-y-auto pr-[10px]"
-              style={{ scrollbarWidth: "thin", scrollbarColor: "#1565C0 #DBEAFE" }}
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#1565C0 #DBEAFE",
+              }}
             >
               {filteredRequests.map((request) => {
                 const isSelected = request.id === selectedRequest?.id;
@@ -466,7 +569,9 @@ export function ProfessionalRequestsPage() {
                           className="h-[36px] w-[35px] shrink-0 rounded-full object-cover"
                         />
                         <div className="leading-none">
-                          <p className="text-[16px] font-normal leading-7 tracking-[-0.05em] text-black">{request.patient}</p>
+                          <p className="text-[16px] font-normal leading-7 tracking-[-0.05em] text-black">
+                            {request.patient}
+                          </p>
                           <p className="text-[12.403px] font-medium leading-[14px] tracking-[-0.05em] text-[#1565C0]">
                             {request.consultationLabel}
                           </p>
@@ -479,7 +584,9 @@ export function ProfessionalRequestsPage() {
                     </div>
 
                     <div className="request-card-reason mt-4 flex items-center gap-4">
-                      <span className="text-[16px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">Request reason</span>
+                      <span className="text-[16px] font-medium leading-4 tracking-[-0.05em] text-[#334155]">
+                        Request reason
+                      </span>
                       <span className="inline-flex min-h-[40px] min-w-0 flex-1 items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-3 py-2 text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">
                         {request.reason}
                       </span>
@@ -518,8 +625,15 @@ export function ProfessionalRequestsPage() {
                             className={`inline-flex h-8 items-center gap-1 rounded-[12px] bg-[#1565C0] px-[10px] text-[16px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD] hover:brightness-110 ${microInteractionClass}`}
                           >
                             Accept
-                            <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                              <path fill="#F8FAFC" d="m9.2 16.6-4.1-4.1 1.4-1.4 2.7 2.7 7.3-7.3 1.4 1.4-8.7 8.7Z" />
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-6 w-6"
+                              aria-hidden
+                            >
+                              <path
+                                fill="#F8FAFC"
+                                d="m9.2 16.6-4.1-4.1 1.4-1.4 2.7 2.7 7.3-7.3 1.4 1.4-8.7 8.7Z"
+                              />
                             </svg>
                           </button>
                           <button
@@ -531,8 +645,15 @@ export function ProfessionalRequestsPage() {
                             className={`inline-flex h-8 items-center gap-1 rounded-[12px] bg-[#810000] px-[10px] text-[16px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD] hover:brightness-110 ${microInteractionClass}`}
                           >
                             Decline
-                            <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                              <path fill="#F8FAFC" d="m18.3 7.1-1.4-1.4L12 10.6 7.1 5.7 5.7 7.1l4.9 4.9-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9 4.9-4.9Z" />
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-6 w-6"
+                              aria-hidden
+                            >
+                              <path
+                                fill="#F8FAFC"
+                                d="m18.3 7.1-1.4-1.4L12 10.6 7.1 5.7 5.7 7.1l4.9 4.9-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9 4.9-4.9Z"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -585,13 +706,17 @@ export function ProfessionalRequestsPage() {
               <div className="details-grid mt-3 grid grid-cols-1 gap-[12px] lg:mt-4 lg:gap-[14px]">
                 <div className="details-row details-row-top grid grid-cols-[169px_152px] gap-3">
                   <div className="details-item flex items-center gap-[6px]">
-                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">Type</span>
+                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                      Type
+                    </span>
                     <span className="inline-flex min-h-[30px] items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
                       General consultation
                     </span>
                   </div>
                   <div className="details-item flex items-center gap-[6px]">
-                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">Mode</span>
+                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                      Mode
+                    </span>
                     <span className="inline-flex min-h-[30px] items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
                       {selectedRequest.mode}
                     </span>
@@ -600,13 +725,17 @@ export function ProfessionalRequestsPage() {
 
                 <div className="details-row details-row-bottom grid grid-cols-[148px_178px] gap-3">
                   <div className="details-item flex items-center gap-[6px]">
-                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">Duration</span>
+                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                      Duration
+                    </span>
                     <span className="inline-flex min-h-[30px] items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
                       {selectedRequest.duration}
                     </span>
                   </div>
                   <div className="details-item flex items-center gap-[6px]">
-                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">Booked on</span>
+                    <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                      Booked on
+                    </span>
                     <span className="inline-flex min-h-[30px] items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
                       {selectedRequest.bookedOn}
                     </span>
@@ -614,7 +743,9 @@ export function ProfessionalRequestsPage() {
                 </div>
 
                 <div className="details-item details-reason-row flex items-center gap-[8px]">
-                  <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">Reason for visit</span>
+                  <span className="text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                    Reason for visit
+                  </span>
                   <span className="inline-flex min-h-[34px] min-w-0 flex-1 items-center rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
                     {selectedRequest.reason.replace(" for 3 days.", "")}
                   </span>
@@ -622,12 +753,18 @@ export function ProfessionalRequestsPage() {
               </div>
 
               <div className="details-note mt-4 lg:mt-5">
-                <h3 className="text-[12.403px] font-medium leading-7 tracking-[-0.05em] text-[#334155]">Patient&apos;s note</h3>
+                <h3 className="text-[12.403px] font-medium leading-7 tracking-[-0.05em] text-[#334155]">
+                  Patient&apos;s note
+                </h3>
                 <div className="mt-2 min-h-[120px] rounded-[14px] border border-[#94A3B8] px-3 py-4 lg:min-h-[132px] lg:px-4">
                   <p className="text-[12.403px] font-light leading-[15px] tracking-[-0.05em] text-black">
                     {selectedRequest.note}
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <InPersonConsultationMap location={selectedRequest} compact />
               </div>
 
               {detailsExpanded ? (
@@ -651,23 +788,41 @@ export function ProfessionalRequestsPage() {
                   <button
                     type="button"
                     disabled={selectedRequest.status !== "needs-action"}
-                    onClick={() => handleStatusChange(selectedRequest.id, "accepted")}
+                    onClick={() =>
+                      handleStatusChange(selectedRequest.id, "accepted")
+                    }
                     className="inline-flex h-[25.66px] items-center gap-1 rounded-[9.62376px] bg-[#1565C0] px-[10px] text-[12.8317px] font-normal leading-[13px] tracking-[-0.05em] text-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Accept
-                    <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" aria-hidden>
-                      <path fill="#F8FAFC" d="m9.2 16.6-4.1-4.1 1.4-1.4 2.7 2.7 7.3-7.3 1.4 1.4-8.7 8.7Z" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-[19px] w-[19px]"
+                      aria-hidden
+                    >
+                      <path
+                        fill="#F8FAFC"
+                        d="m9.2 16.6-4.1-4.1 1.4-1.4 2.7 2.7 7.3-7.3 1.4 1.4-8.7 8.7Z"
+                      />
                     </svg>
                   </button>
                   <button
                     type="button"
                     disabled={selectedRequest.status !== "needs-action"}
-                    onClick={() => handleStatusChange(selectedRequest.id, "declined")}
+                    onClick={() =>
+                      handleStatusChange(selectedRequest.id, "declined")
+                    }
                     className="inline-flex h-[25.66px] items-center gap-1 rounded-[9.62376px] bg-[#810000] px-[10px] text-[12.8317px] font-normal leading-[13px] tracking-[-0.05em] text-[#E3F2FD] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Decline
-                    <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" aria-hidden>
-                      <path fill="#F8FAFC" d="m18.3 7.1-1.4-1.4L12 10.6 7.1 5.7 5.7 7.1l4.9 4.9-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9 4.9-4.9Z" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-[19px] w-[19px]"
+                      aria-hidden
+                    >
+                      <path
+                        fill="#F8FAFC"
+                        d="m18.3 7.1-1.4-1.4L12 10.6 7.1 5.7 5.7 7.1l4.9 4.9-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9 4.9-4.9Z"
+                      />
                     </svg>
                   </button>
                 </div>

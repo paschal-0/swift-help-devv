@@ -16,6 +16,7 @@ import {
   type ProfessionalConsultation,
   type WeeklyAvailability,
 } from "@/services/professionalApi";
+import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 type MetricItem = {
   id: string;
@@ -47,6 +48,13 @@ type UpcomingConsultation = {
   timeLabel: string;
   patient: string;
   mode: string;
+  locationName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   duration: string;
   startsIn: string;
 };
@@ -66,6 +74,13 @@ type AppointmentDetails = {
   status: string;
   type: string;
   mode: string;
+  locationName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   duration: string;
   bookedOn: string;
   reasonForVisit: string;
@@ -80,25 +95,83 @@ type AvailabilityRule = {
 const metrics: MetricItem[] = [
   { id: "today-sessions", title: "Today's Sessions", value: "3 Sessions" },
   { id: "next-session", title: "Next Session", value: "11:30 AM" },
-  { id: "available-hours", title: "Available hours", value: "10 hrs this week" },
+  {
+    id: "available-hours",
+    title: "Available hours",
+    value: "10 hrs this week",
+  },
   { id: "blocked-time", title: "Blocked time", value: "2 slots this week" },
 ];
 
 const initialDaySchedule: DaySchedule[] = [
-  { id: "monday", day: "Monday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "tuesday", day: "Tuesday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "wednesday", day: "Wednesday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "thursday", day: "Thursday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "friday", day: "Friday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "saturday", day: "Saturday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  { id: "sunday", day: "Sunday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
+  {
+    id: "monday",
+    day: "Monday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "tuesday",
+    day: "Tuesday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "wednesday",
+    day: "Wednesday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "thursday",
+    day: "Thursday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "friday",
+    day: "Friday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "saturday",
+    day: "Saturday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
+  {
+    id: "sunday",
+    day: "Sunday",
+    enabled: true,
+    from: "9:00 AM",
+    to: "6:00 PM",
+  },
 ];
 
 const calendarSessions: CalendarSession[] = [
-  { id: "slot-1", time: "07:30 - 08:30", status: "booked", patient: "Sarah A.", mode: "Video consultation" },
+  {
+    id: "slot-1",
+    time: "07:30 - 08:30",
+    status: "booked",
+    patient: "Sarah A.",
+    mode: "Video consultation",
+  },
   { id: "slot-2", time: "08:30 - 09:30", status: "available" },
   { id: "slot-3", time: "07:30 - 08:30", status: "blocked" },
-  { id: "slot-4", time: "07:30 - 08:30", status: "booked", patient: "Sarah A.", mode: "Video consultation" },
+  {
+    id: "slot-4",
+    time: "07:30 - 08:30",
+    status: "booked",
+    patient: "Sarah A.",
+    mode: "Video consultation",
+  },
   { id: "slot-5", time: "07:30 - 08:30", status: "blocked" },
 ];
 
@@ -109,6 +182,13 @@ const upcomingConsultations: UpcomingConsultation[] = [
     timeLabel: "11:30 Am",
     patient: "Sarah A.",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     duration: "Video - 30 mins",
     startsIn: "Starts in 20 mins",
   },
@@ -118,6 +198,13 @@ const upcomingConsultations: UpcomingConsultation[] = [
     timeLabel: "11:30 Am",
     patient: "Sarah A.",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     duration: "Video - 30 mins",
     startsIn: "Starts in 20 mins",
   },
@@ -127,6 +214,13 @@ const upcomingConsultations: UpcomingConsultation[] = [
     timeLabel: "11:30 Am",
     patient: "Sarah A.",
     mode: "Video consultation",
+    locationName: null,
+    address: null,
+    city: null,
+    state: null,
+    country: null,
+    latitude: null,
+    longitude: null,
     duration: "Video - 30 mins",
     startsIn: "Starts in 20 mins",
   },
@@ -165,24 +259,53 @@ const appointmentDetails: AppointmentDetails = {
   status: "Confirmed",
   type: "General consultation",
   mode: "Video consultation",
+  locationName: null,
+  address: null,
+  city: null,
+  state: null,
+  country: null,
+  latitude: null,
+  longitude: null,
   duration: "30 Mins",
   bookedOn: "April 13, 2026",
   reasonForVisit: "Recurring headaches and fatigue",
-  patientNote: "Patient reports headaches mostly in the evening for the past 5 days. No known fever.",
+  patientNote:
+    "Patient reports headaches mostly in the evening for the past 5 days. No known fever.",
 };
 
-const timeOptions = ["8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "3:00 PM", "5:00 PM", "6:00 PM"];
+const timeOptions = [
+  "8:00 AM",
+  "9:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "1:00 PM",
+  "3:00 PM",
+  "5:00 PM",
+  "6:00 PM",
+];
 
 const blockTypeOptions = ["Break", "Meeting", "Time Off"];
 const blockDateOptions = ["2026-03-27", "2026-03-28", "2026-03-29"];
-const blockTimeOptions = ["10:30 AM - 12:30 PM", "1:00 PM - 2:00 PM", "3:00 PM - 5:00 PM"];
+const blockTimeOptions = [
+  "10:30 AM - 12:30 PM",
+  "1:00 PM - 2:00 PM",
+  "3:00 PM - 5:00 PM",
+];
 const repeatOptions = ["Does not repeat", "Daily", "Weekly"];
 const calendarHeaderOptions = ["MARCH 17", "MARCH 18", "MARCH 19"];
 
 const ruleOptions: Record<string, string[]> = {
   Available: ["Monday - Friday", "Monday - Saturday", "Tuesday - Saturday"],
-  "Working hours": ["9:00 AM - 5:00 PM", "8:00 AM - 4:00 PM", "10:00 AM - 6:00 PM"],
-  "Booking window": ["Up to 14 days ahead", "Up to 7 days ahead", "Up to 30 days ahead"],
+  "Working hours": [
+    "9:00 AM - 5:00 PM",
+    "8:00 AM - 4:00 PM",
+    "10:00 AM - 6:00 PM",
+  ],
+  "Booking window": [
+    "Up to 14 days ahead",
+    "Up to 7 days ahead",
+    "Up to 30 days ahead",
+  ],
   "Minimum notice": ["2 hours", "4 hours", "24 hours"],
   "Session Duration": ["30 Minutes", "45 Minutes", "60 Minutes"],
 };
@@ -211,10 +334,14 @@ const formatClock = (value: string) =>
 const mapWeeklyScheduleToDays = (schedule: WeeklyAvailability): DaySchedule[] =>
   initialDaySchedule.map((day) => {
     const value = schedule[day.id];
-    return value ? { ...day, enabled: value.enabled, from: value.from, to: value.to } : day;
+    return value
+      ? { ...day, enabled: value.enabled, from: value.from, to: value.to }
+      : day;
   });
 
-const mapDayScheduleToWeeklySchedule = (days: DaySchedule[]): WeeklyAvailability =>
+const mapDayScheduleToWeeklySchedule = (
+  days: DaySchedule[],
+): WeeklyAvailability =>
   days.reduce((accumulator, day) => {
     accumulator[day.id] = {
       enabled: day.enabled,
@@ -224,19 +351,73 @@ const mapDayScheduleToWeeklySchedule = (days: DaySchedule[]): WeeklyAvailability
     return accumulator;
   }, {} as WeeklyAvailability);
 
-const mapConsultationToUpcoming = (consultation: ProfessionalConsultation): UpcomingConsultation => ({
+const mapConsultationToUpcoming = (
+  consultation: ProfessionalConsultation,
+): UpcomingConsultation => ({
   id: consultation.id,
-  dayLabel: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(consultation.startsAt)),
+  dayLabel: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
+    new Date(consultation.startsAt),
+  ),
   timeLabel: formatClock(consultation.startsAt),
   patient: consultation.patientName,
   mode: consultation.mode,
+  locationName: consultation.locationName,
+  address: consultation.address,
+  city: consultation.city,
+  state: consultation.state,
+  country: consultation.country,
+  latitude: consultation.latitude,
+  longitude: consultation.longitude,
   duration: `${consultation.mode} - ${consultation.durationMinutes} mins`,
   startsIn: consultation.status === "ongoing" ? "Ongoing" : "Upcoming",
 });
 
+const mapConsultationToDetails = (
+  consultation: ProfessionalConsultation,
+): AppointmentDetails => ({
+  patient: consultation.patientName,
+  dateTimeLabel: `${new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(
+    new Date(consultation.startsAt),
+  )} - ${formatClock(consultation.endsAt)}`,
+  status:
+    consultation.status === "ongoing"
+      ? "Ongoing"
+      : consultation.status === "cancelled"
+        ? "Cancelled"
+        : consultation.status === "completed"
+          ? "Completed"
+          : "Confirmed",
+  type: consultation.consultationLabel,
+  mode: consultation.mode,
+  locationName: consultation.locationName,
+  address: consultation.address,
+  city: consultation.city,
+  state: consultation.state,
+  country: consultation.country,
+  latitude: consultation.latitude,
+  longitude: consultation.longitude,
+  duration: `${consultation.durationMinutes} Mins`,
+  bookedOn: new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(consultation.createdAt ?? consultation.startsAt)),
+  reasonForVisit: consultation.reason,
+  patientNote: consultation.reason,
+});
+
 const mapBlockedTime = (item: ProfessionalBlockedTime): BlockedItem => ({
   id: item.id,
-  day: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(item.startsAt)),
+  day: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+    new Date(item.startsAt),
+  ),
   start: item.entireDay ? "All day" : formatClock(item.startsAt),
   end: item.entireDay ? "All day" : formatClock(item.endsAt),
   reasonA: item.reason ?? "Blocked time",
@@ -318,14 +499,27 @@ export function ProfessionalSchedulePage() {
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
   const [selectedDate, setSelectedDate] = useState(18);
   const [isAddBlockTimeModalOpen, setIsAddBlockTimeModalOpen] = useState(false);
-  const [isAppointmentDetailsModalOpen, setIsAppointmentDetailsModalOpen] = useState(false);
-  const [activeConsultationId, setActiveConsultationId] = useState<string | null>(null);
+  const [isAppointmentDetailsModalOpen, setIsAppointmentDetailsModalOpen] =
+    useState(false);
+  const [activeConsultationId, setActiveConsultationId] = useState<
+    string | null
+  >(null);
   const [blockEntireDay, setBlockEntireDay] = useState(false);
   const [calendarHeaderIndex, setCalendarHeaderIndex] = useState(0);
   const [blockedTimeItems, setBlockedTimeItems] = useState(blockedItems);
-  const [scheduleConsultations, setScheduleConsultations] = useState(upcomingConsultations);
-  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(
-    Object.entries(ruleOptions).map(([label, values]) => ({ label, value: values[0] }))
+  const [scheduleConsultations, setScheduleConsultations] = useState(
+    upcomingConsultations,
+  );
+  const [consultationRecords, setConsultationRecords] = useState<
+    ProfessionalConsultation[]
+  >([]);
+  const [availabilityRules, setAvailabilityRules] = useState<
+    AvailabilityRule[]
+  >(
+    Object.entries(ruleOptions).map(([label, values]) => ({
+      label,
+      value: values[0],
+    })),
   );
   const [blockType, setBlockType] = useState(blockTypeOptions[0]);
   const [blockDate, setBlockDate] = useState(blockDateOptions[0]);
@@ -333,6 +527,35 @@ export function ProfessionalSchedulePage() {
   const [blockRepeat, setBlockRepeat] = useState(repeatOptions[0]);
 
   const query = searchText.trim().toLowerCase();
+  const activeAppointmentDetails = useMemo(() => {
+    const activeConsultation = consultationRecords.find(
+      (item) => item.id === activeConsultationId,
+    );
+    if (activeConsultation) {
+      return mapConsultationToDetails(activeConsultation);
+    }
+
+    const upcoming = scheduleConsultations.find(
+      (item) => item.id === activeConsultationId,
+    );
+    if (upcoming) {
+      return {
+        ...appointmentDetails,
+        patient: upcoming.patient,
+        mode: upcoming.mode,
+        locationName: upcoming.locationName,
+        address: upcoming.address,
+        city: upcoming.city,
+        state: upcoming.state,
+        country: upcoming.country,
+        latitude: upcoming.latitude,
+        longitude: upcoming.longitude,
+        duration: upcoming.duration,
+      };
+    }
+
+    return appointmentDetails;
+  }, [activeConsultationId, consultationRecords, scheduleConsultations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,14 +566,21 @@ export function ProfessionalSchedulePage() {
         if (cancelled) return;
 
         setAvailabilityEnabled(data.availability.acceptingBookings);
-        setDaySchedule(mapWeeklyScheduleToDays(data.availability.weeklySchedule));
-        setScheduleConsultations(
-          data.consultations.length ? data.consultations.map(mapConsultationToUpcoming) : upcomingConsultations,
+        setDaySchedule(
+          mapWeeklyScheduleToDays(data.availability.weeklySchedule),
         );
+        setScheduleConsultations(
+          data.consultations.length
+            ? data.consultations.map(mapConsultationToUpcoming)
+            : upcomingConsultations,
+        );
+        setConsultationRecords(data.consultations);
         setBlockedTimeItems(data.blockedTimes.map(mapBlockedTime));
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load schedule");
+          toast.error(
+            error instanceof Error ? error.message : "Unable to load schedule",
+          );
         }
       }
     }
@@ -378,7 +608,7 @@ export function ProfessionalSchedulePage() {
       ]
         .join(" ")
         .toLowerCase()
-        .includes(query)
+        .includes(query),
     );
   }, [query, scheduleConsultations]);
 
@@ -388,7 +618,10 @@ export function ProfessionalSchedulePage() {
     }
 
     return blockedTimeItems.filter((item) =>
-      [item.day, item.start, item.end, item.reasonA, item.reasonB].join(" ").toLowerCase().includes(query)
+      [item.day, item.start, item.end, item.reasonA, item.reasonB]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
     );
   }, [blockedTimeItems, query]);
 
@@ -399,7 +632,7 @@ export function ProfessionalSchedulePage() {
           return day;
         }
         return { ...day, enabled: !day.enabled };
-      })
+      }),
     );
   };
 
@@ -411,13 +644,14 @@ export function ProfessionalSchedulePage() {
         }
 
         const currentIndex = timeOptions.indexOf(day[field]);
-        const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % timeOptions.length : 0;
+        const nextIndex =
+          currentIndex >= 0 ? (currentIndex + 1) % timeOptions.length : 0;
 
         return {
           ...day,
           [field]: timeOptions[nextIndex],
         };
-      })
+      }),
     );
   };
 
@@ -430,28 +664,35 @@ export function ProfessionalSchedulePage() {
 
         const choices = ruleOptions[label];
         const currentIndex = choices.indexOf(rule.value);
-        const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % choices.length : 0;
+        const nextIndex =
+          currentIndex >= 0 ? (currentIndex + 1) % choices.length : 0;
 
         return {
           ...rule,
           value: choices[nextIndex],
         };
-      })
+      }),
     );
   };
 
   const dateCells = Array.from({ length: 31 }).map((_, index) => index + 1);
 
   const openAppointmentDetails = (consultationId?: string) => {
-    setActiveConsultationId(consultationId ?? scheduleConsultations[0]?.id ?? null);
+    setActiveConsultationId(
+      consultationId ?? scheduleConsultations[0]?.id ?? null,
+    );
     setIsAddBlockTimeModalOpen(false);
     setIsAppointmentDetailsModalOpen(true);
   };
 
   const saveBlockedTime = async () => {
     const [startLabel, endLabel] = blockTime.split(" - ");
-    const startsAt = new Date(`${blockDate} ${blockEntireDay ? "00:00" : startLabel}`);
-    const endsAt = new Date(`${blockDate} ${blockEntireDay ? "23:59" : endLabel}`);
+    const startsAt = new Date(
+      `${blockDate} ${blockEntireDay ? "00:00" : startLabel}`,
+    );
+    const endsAt = new Date(
+      `${blockDate} ${blockEntireDay ? "23:59" : endLabel}`,
+    );
 
     try {
       const blockedTime = await createProfessionalBlockedTime({
@@ -459,13 +700,23 @@ export function ProfessionalSchedulePage() {
         endsAt: endsAt.toISOString(),
         entireDay: blockEntireDay,
         reason: blockType,
-        repeat: blockRepeat === "Daily" ? "daily" : blockRepeat === "Weekly" ? "weekly" : "none",
+        repeat:
+          blockRepeat === "Daily"
+            ? "daily"
+            : blockRepeat === "Weekly"
+              ? "weekly"
+              : "none",
       });
-      setBlockedTimeItems((current) => [mapBlockedTime(blockedTime), ...current]);
+      setBlockedTimeItems((current) => [
+        mapBlockedTime(blockedTime),
+        ...current,
+      ]);
       setIsAddBlockTimeModalOpen(false);
       toast.success("Block time added.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to add blocked time");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to add blocked time",
+      );
     }
   };
 
@@ -496,7 +747,7 @@ export function ProfessionalSchedulePage() {
                 <button
                   type="button"
                   onClick={() => toggleDay(day.id)}
-                className={`flex w-full cursor-pointer items-center gap-[10px] rounded-md py-1 sm:w-[157px] sm:p-1 ${microInteractionClass}`}
+                  className={`flex w-full cursor-pointer items-center gap-[10px] rounded-md py-1 sm:w-[157px] sm:p-1 ${microInteractionClass}`}
                 >
                   <span
                     className={`relative h-[16.73px] w-[33px] rounded-[18px] transition ${
@@ -505,7 +756,9 @@ export function ProfessionalSchedulePage() {
                   >
                     <span
                       className={`absolute top-[0.4px] h-[15.79px] w-[16.57px] rounded-full border bg-[#F8FAFC] transition-all ${
-                        day.enabled ? "left-[16px] border-[#1565C0]" : "left-[0px] border-[#CBD5E1]"
+                        day.enabled
+                          ? "left-[16px] border-[#1565C0]"
+                          : "left-[0px] border-[#CBD5E1]"
                       }`}
                     />
                   </span>
@@ -520,16 +773,24 @@ export function ProfessionalSchedulePage() {
                     onClick={() => cycleDayTime(day.id, "from")}
                     className={`flex h-[36px] items-center justify-between rounded-[12px] border border-[#94A3B8] px-[10px] sm:px-[17px] ${microInteractionClass}`}
                   >
-                    <span className="text-[13px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">From</span>
-                    <span className="text-[13px] font-semibold leading-[22px] tracking-[-0.05em] text-[#0F172A] sm:text-[16px]">{day.from}</span>
+                    <span className="text-[13px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">
+                      From
+                    </span>
+                    <span className="text-[13px] font-semibold leading-[22px] tracking-[-0.05em] text-[#0F172A] sm:text-[16px]">
+                      {day.from}
+                    </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => cycleDayTime(day.id, "to")}
                     className={`flex h-[36px] items-center justify-between rounded-[12px] border border-[#94A3B8] px-[10px] sm:px-[17px] ${microInteractionClass}`}
                   >
-                    <span className="text-[13px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">To</span>
-                    <span className="text-[13px] font-semibold leading-[22px] tracking-[-0.05em] text-[#0F172A] sm:text-[16px]">{day.to}</span>
+                    <span className="text-[13px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">
+                      To
+                    </span>
+                    <span className="text-[13px] font-semibold leading-[22px] tracking-[-0.05em] text-[#0F172A] sm:text-[16px]">
+                      {day.to}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -538,17 +799,25 @@ export function ProfessionalSchedulePage() {
 
           <div>
             <div className="rounded-[12px] border border-[#94A3B8] bg-[#F8FAFC] px-3 pb-5 pt-[20px] sm:px-[15px] sm:pt-[23px]">
-              <h3 className="text-[16px] font-normal leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[18px]">Availability Status</h3>
+              <h3 className="text-[16px] font-normal leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[18px]">
+                Availability Status
+              </h3>
               <button
                 type="button"
                 onClick={async () => {
                   const next = !availabilityEnabled;
                   setAvailabilityEnabled(next);
                   try {
-                    await updateProfessionalAvailability({ acceptingBookings: next });
+                    await updateProfessionalAvailability({
+                      acceptingBookings: next,
+                    });
                   } catch (error) {
                     setAvailabilityEnabled(!next);
-                    toast.error(error instanceof Error ? error.message : "Unable to update availability");
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Unable to update availability",
+                    );
                   }
                 }}
                 className={`mt-4 flex h-[40px] w-full items-center gap-3 rounded-lg bg-[#E3F2FD] px-3 sm:mt-5 sm:h-[36px] ${microInteractionClass}`}
@@ -560,12 +829,16 @@ export function ProfessionalSchedulePage() {
                 >
                   <span
                     className={`absolute top-[0.4px] h-[15.79px] w-[16.57px] rounded-full border bg-[#F8FAFC] transition-all ${
-                      availabilityEnabled ? "left-[16px] border-[#1565C0]" : "left-[0px] border-[#CBD5E1]"
+                      availabilityEnabled
+                        ? "left-[16px] border-[#1565C0]"
+                        : "left-[0px] border-[#CBD5E1]"
                     }`}
                   />
                 </span>
                 <span className="min-w-0 whitespace-nowrap text-left text-[12px] font-medium leading-none tracking-[-0.05em] text-[#1565C0] sm:text-[14px] sm:font-light md:text-[13px]">
-                  {availabilityEnabled ? "Available for new bookings" : "Not available for new bookings"}
+                  {availabilityEnabled
+                    ? "Available for new bookings"
+                    : "Not available for new bookings"}
                 </span>
               </button>
 
@@ -584,7 +857,11 @@ export function ProfessionalSchedulePage() {
                   });
                   toast.success("Weekly hours updated.");
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Unable to update weekly hours");
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Unable to update weekly hours",
+                  );
                 }
               }}
               className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-[34px] tracking-[-0.05em] text-[#F8FAFC] sm:mt-7 sm:h-[40px] sm:text-[15px] ${microInteractionClass}`}
@@ -614,13 +891,24 @@ export function ProfessionalSchedulePage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setCalendarHeaderIndex((current) => (current === 0 ? calendarHeaderOptions.length - 1 : current - 1))
+                    setCalendarHeaderIndex((current) =>
+                      current === 0
+                        ? calendarHeaderOptions.length - 1
+                        : current - 1,
+                    )
                   }
                   className={`rounded-full p-1 text-[#334155] ${microInteractionClass}`}
                   aria-label="Previous month"
                 >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden>
-                    <path fill="currentColor" d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 sm:h-6 sm:w-6"
+                    aria-hidden
+                  >
+                    <path
+                      fill="currentColor"
+                      d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z"
+                    />
                   </svg>
                 </button>
                 <span className="text-[13px] font-medium leading-5 tracking-[-0.05em] text-[#334155] sm:text-[14px] sm:font-normal">
@@ -628,19 +916,33 @@ export function ProfessionalSchedulePage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCalendarHeaderIndex((current) => (current + 1) % calendarHeaderOptions.length)}
+                  onClick={() =>
+                    setCalendarHeaderIndex(
+                      (current) => (current + 1) % calendarHeaderOptions.length,
+                    )
+                  }
                   className={`rounded-full p-1 text-[#334155] ${microInteractionClass}`}
                   aria-label="Next month"
                 >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden>
-                    <path fill="currentColor" d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 sm:h-6 sm:w-6"
+                    aria-hidden
+                  >
+                    <path
+                      fill="currentColor"
+                      d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z"
+                    />
                   </svg>
                 </button>
               </div>
 
               <div className="mt-3 grid grid-cols-7 gap-1 sm:mt-1 sm:gap-0.5">
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((label) => (
-                  <span key={label} className="flex h-[33px] items-center justify-center text-[10px] text-[#94A3B8]">
+                  <span
+                    key={label}
+                    className="flex h-[33px] items-center justify-center text-[10px] text-[#94A3B8]"
+                  >
                     {label}
                   </span>
                 ))}
@@ -670,14 +972,19 @@ export function ProfessionalSchedulePage() {
 
             <div
               className="calendar-scroll relative h-[286px] w-full space-y-[6px] overflow-y-auto pr-1 sm:pr-[8px] lg:max-w-[186px]"
-              style={{ scrollbarWidth: "thin", scrollbarColor: "#1565C0 #DBEAFE" }}
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#1565C0 #DBEAFE",
+              }}
             >
               {calendarSessions.map((session) => (
                 <div key={session.id}>
                   {session.status === "booked" ? (
                     <button
                       type="button"
-                      onClick={() => openAppointmentDetails(scheduleConsultations[0]?.id)}
+                      onClick={() =>
+                        openAppointmentDetails(scheduleConsultations[0]?.id)
+                      }
                       className={`flex h-[51px] w-full cursor-pointer items-center justify-between rounded-lg border border-[#1E88E5] bg-[#F8FAFC] px-[11px] text-left hover:bg-[#EAF4FF] lg:w-[186px] ${microInteractionClass}`}
                     >
                       <span className="text-[10px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]">
@@ -688,12 +995,16 @@ export function ProfessionalSchedulePage() {
                   ) : (
                     <div
                       className={`flex h-[51px] w-full items-center justify-between rounded-lg border bg-[#F8FAFC] px-[11px] lg:w-[186px] ${
-                        session.status === "available" ? "border-[#1E88E5]" : "border-[#94A3B8]"
+                        session.status === "available"
+                          ? "border-[#1E88E5]"
+                          : "border-[#94A3B8]"
                       }`}
                     >
                       <span
                         className={`text-[10px] font-normal leading-5 tracking-[-0.05em] ${
-                          session.status === "blocked" ? "text-[#94A3B8]" : "text-[#1565C0]"
+                          session.status === "blocked"
+                            ? "text-[#94A3B8]"
+                            : "text-[#1565C0]"
                         }`}
                       >
                         {session.time}
@@ -731,7 +1042,10 @@ export function ProfessionalSchedulePage() {
 
           <div
             className="consultations-scroll mt-2 max-h-[286px] space-y-[10px] overflow-y-auto pr-1 sm:pr-[6px]"
-            style={{ scrollbarWidth: "thin", scrollbarColor: "#1565C0 #DBEAFE" }}
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#1565C0 #DBEAFE",
+            }}
           >
             {visibleUpcoming.map((consultation) => (
               <motion.article
@@ -767,24 +1081,24 @@ export function ProfessionalSchedulePage() {
 
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-col sm:items-end sm:justify-center">
                     <div className="flex flex-wrap gap-2 sm:flex-col sm:gap-[4px]">
-                    <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
-                      {consultation.duration}
-                    </span>
-                    <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
-                      {consultation.startsIn}
-                    </span>
+                      <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
+                        {consultation.duration}
+                      </span>
+                      <span className="inline-flex h-[18px] max-w-full items-center whitespace-nowrap rounded-xl border border-[#334155] px-[7px] text-[9px] leading-[10px] text-[#334155] sm:text-[10px]">
+                        {consultation.startsIn}
+                      </span>
                     </div>
 
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      router.push("/professional-platform/schedule");
-                    }}
-                    className={`inline-flex h-[30px] min-w-[74px] shrink-0 self-end items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#F8FAFC] sm:h-[28px] sm:self-auto ${microInteractionClass}`}
-                  >
-                    Join
-                  </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        router.push("/professional-platform/schedule");
+                      }}
+                      className={`inline-flex h-[30px] min-w-[74px] shrink-0 self-end items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#F8FAFC] sm:h-[28px] sm:self-auto ${microInteractionClass}`}
+                    >
+                      Join
+                    </button>
                   </div>
                 </div>
               </motion.article>
@@ -804,10 +1118,16 @@ export function ProfessionalSchedulePage() {
 
           <div
             className="consultations-scroll mt-2 max-h-[292px] space-y-[8px] overflow-y-auto pr-1 sm:mt-4 sm:pr-[8px]"
-            style={{ scrollbarWidth: "thin", scrollbarColor: "#1565C0 #DBEAFE" }}
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#1565C0 #DBEAFE",
+            }}
           >
             {visibleBlocked.map((item) => (
-              <div key={item.id} className="rounded-[12px] bg-[#E2E8F0] px-2 py-2 sm:px-[12px] sm:py-[10px]">
+              <div
+                key={item.id}
+                className="rounded-[12px] bg-[#E2E8F0] px-2 py-2 sm:px-[12px] sm:py-[10px]"
+              >
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[84px_44px_minmax(0,1fr)] sm:items-start sm:gap-[10px]">
                   <div className="flex items-center gap-3 sm:contents">
                     <span className="inline-flex h-[28px] w-[84px] shrink-0 items-center justify-center rounded-[10px] bg-[#F8FAFC] text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#0F172A] sm:text-[14px] sm:font-normal">
@@ -823,12 +1143,20 @@ export function ProfessionalSchedulePage() {
 
                   <div className="mt-1 w-full space-y-[6px] sm:mt-0">
                     <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
-                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">{item.reasonA}</p>
-                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">9:00am - 10:00 am</p>
+                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
+                        {item.reasonA}
+                      </p>
+                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
+                        9:00am - 10:00 am
+                      </p>
                     </div>
                     <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
-                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">{item.reasonB}</p>
-                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">9:00am - 10:00 am</p>
+                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
+                        {item.reasonB}
+                      </p>
+                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
+                        9:00am - 10:00 am
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -849,7 +1177,7 @@ export function ProfessionalSchedulePage() {
                   current.map((rule) => ({
                     ...rule,
                     value: ruleOptions[rule.label][0],
-                  }))
+                  })),
                 )
               }
               className={`text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] sm:text-[16px] ${microInteractionClass}`}
@@ -861,8 +1189,13 @@ export function ProfessionalSchedulePage() {
           <div className="mt-2 rounded-[12px] bg-[#E3F2FD] px-3 py-[16px] sm:mt-3 sm:px-[18px]">
             <div className="space-y-[12px] sm:space-y-[10px]">
               {availabilityRules.map((rule) => (
-                <div key={rule.label} className="grid grid-cols-1 gap-[4px] sm:grid-cols-[132px_minmax(0,1fr)] sm:items-center sm:gap-[8px]">
-                  <span className="pl-1 text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#334155] sm:pl-0 sm:text-[16px]">{rule.label}</span>
+                <div
+                  key={rule.label}
+                  className="grid grid-cols-1 gap-[4px] sm:grid-cols-[132px_minmax(0,1fr)] sm:items-center sm:gap-[8px]"
+                >
+                  <span className="pl-1 text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#334155] sm:pl-0 sm:text-[16px]">
+                    {rule.label}
+                  </span>
                   <button
                     type="button"
                     onClick={() => cycleRuleValue(rule.label)}
@@ -930,7 +1263,11 @@ export function ProfessionalSchedulePage() {
                         </option>
                       ))}
                     </select>
-                    <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2" aria-hidden>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2"
+                      aria-hidden
+                    >
                       <path
                         fill="none"
                         stroke="#94A3B8"
@@ -951,14 +1288,21 @@ export function ProfessionalSchedulePage() {
                     <button
                       type="button"
                       onClick={(event) => {
-                        const input = event.currentTarget.parentElement?.querySelector("input[type='date']") as HTMLInputElement | null;
+                        const input =
+                          event.currentTarget.parentElement?.querySelector(
+                            "input[type='date']",
+                          ) as HTMLInputElement | null;
                         input?.showPicker?.();
                         input?.focus();
                       }}
                       className="absolute left-[10px] top-1/2 z-[1] inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#64748B] transition hover:bg-[#EFF6FF]"
                       aria-label="Open calendar"
                     >
-                      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-[18px] w-[18px]"
+                        aria-hidden
+                      >
                         <path
                           fill="#64748B"
                           d="M7.75 2.5a.75.75 0 0 0-1.5 0v1.58C4.81 4.2 3.87 4.48 3.17 5.17c-.69.7-.97 1.64-1.09 3.08h19.84c-.12-1.44-.4-2.38-1.09-3.08-.7-.69-1.64-.97-3.08-1.09V2.5a.75.75 0 0 0-1.5 0V4.01A61.2 61.2 0 0 0 14 4h-4c-.84 0-1.58 0-2.25.01V2.5Z"
@@ -988,8 +1332,15 @@ export function ProfessionalSchedulePage() {
                     Time
                   </label>
                   <div className="relative mt-1">
-                    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-[13px] top-1/2 h-[18px] w-[18px] -translate-y-1/2" aria-hidden>
-                      <path fill="#64748B" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11H8v-2h3V6h2Z" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="pointer-events-none absolute left-[13px] top-1/2 h-[18px] w-[18px] -translate-y-1/2"
+                      aria-hidden
+                    >
+                      <path
+                        fill="#64748B"
+                        d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11H8v-2h3V6h2Z"
+                      />
                     </svg>
                     <select
                       value={blockTime}
@@ -1003,7 +1354,11 @@ export function ProfessionalSchedulePage() {
                         </option>
                       ))}
                     </select>
-                    <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2" aria-hidden>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2"
+                      aria-hidden
+                    >
                       <path
                         fill="none"
                         stroke="#94A3B8"
@@ -1053,7 +1408,11 @@ export function ProfessionalSchedulePage() {
                         </option>
                       ))}
                     </select>
-                    <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2" aria-hidden>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="pointer-events-none absolute right-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2"
+                      aria-hidden
+                    >
                       <path
                         fill="none"
                         stroke="#94A3B8"
@@ -1109,7 +1468,7 @@ export function ProfessionalSchedulePage() {
                     Appointment details
                   </h4>
                   <span className="inline-flex h-[22px] w-fit items-center rounded-[32px] bg-[#B3E5C6] px-[10px] text-[12px] font-medium leading-[22px] tracking-[-0.05em] text-[#1E6E0E]">
-                    {appointmentDetails.status}
+                    {activeAppointmentDetails.status}
                   </span>
                 </div>
 
@@ -1129,19 +1488,19 @@ export function ProfessionalSchedulePage() {
               </div>
 
               <p className="mt-2 text-[12px] font-medium leading-[18px] tracking-[-0.05em] text-[#1565C0] underline sm:mt-3 sm:text-[13px] sm:leading-[22px]">
-                {appointmentDetails.dateTimeLabel}
+                {activeAppointmentDetails.dateTimeLabel}
               </p>
 
               <div className="mt-4 flex items-center gap-3 rounded-[12px] bg-white py-2 sm:mt-5">
                 <Image
                   src="/doctor.jpg"
-                  alt={`${appointmentDetails.patient} avatar`}
+                  alt={`${activeAppointmentDetails.patient} avatar`}
                   width={40}
                   height={40}
                   className="h-[40px] w-[40px] rounded-full object-cover"
                 />
                 <span className="text-[15px] font-semibold leading-7 tracking-[-0.05em] text-black">
-                  {appointmentDetails.patient}
+                  {activeAppointmentDetails.patient}
                 </span>
               </div>
 
@@ -1153,52 +1512,68 @@ export function ProfessionalSchedulePage() {
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[169px_152px] sm:gap-[14px]">
                     <div className="flex items-center gap-[6px]">
-                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">Type</span>
+                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">
+                        Type
+                      </span>
                       <span className="inline-flex min-h-[26px] items-center rounded-lg border border-[#94A3B8] bg-[#F8FAFC] px-2 py-1 text-[11px] font-normal leading-[13px] tracking-[-0.05em] text-[#334155] sm:px-3 sm:text-[12px] sm:leading-4">
-                        {appointmentDetails.type}
+                        {activeAppointmentDetails.type}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-[6px]">
-                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">Mode</span>
+                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">
+                        Mode
+                      </span>
                       <span className="inline-flex min-h-[25px] items-center rounded-lg border border-[#94A3B8] bg-[#F8FAFC] px-2 py-1 text-[11px] font-normal leading-[13px] tracking-[-0.05em] text-[#334155] sm:px-3 sm:text-[12px] sm:leading-4">
-                        {appointmentDetails.mode}
+                        {activeAppointmentDetails.mode}
                       </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[148px_178px] sm:gap-[14px]">
                     <div className="flex items-center gap-[6px]">
-                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">Duration</span>
+                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">
+                        Duration
+                      </span>
                       <span className="inline-flex min-h-[26px] items-center rounded-lg border border-[#94A3B8] bg-[#F8FAFC] px-2 py-1 text-[11px] font-normal leading-[13px] tracking-[-0.05em] text-[#334155] sm:px-3 sm:text-[12px] sm:leading-4">
-                        {appointmentDetails.duration}
+                        {activeAppointmentDetails.duration}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-[6px]">
-                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">Booked on</span>
+                      <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">
+                        Booked on
+                      </span>
                       <span className="inline-flex min-h-[25px] items-center rounded-lg border border-[#94A3B8] bg-[#F8FAFC] px-2 py-1 text-[11px] font-normal leading-[13px] tracking-[-0.05em] text-[#334155] sm:px-3 sm:text-[12px] sm:leading-4">
-                        {appointmentDetails.bookedOn}
+                        {activeAppointmentDetails.bookedOn}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-[6px]">
-                    <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">Reason for visit</span>
+                    <span className="text-[11px] font-light leading-4 tracking-[-0.05em] text-[#334155] sm:text-[12px]">
+                      Reason for visit
+                    </span>
                     <span className="inline-flex min-h-[30px] min-w-0 flex-1 items-center rounded-lg border border-[#94A3B8] bg-[#F8FAFC] px-2 py-1 text-[11px] font-normal leading-[13px] tracking-[-0.05em] text-[#334155] sm:px-3 sm:text-[12px] sm:leading-4">
-                      {appointmentDetails.reasonForVisit}
+                      {activeAppointmentDetails.reasonForVisit}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-5 sm:mt-6">
-                <h5 className="text-[13px] font-medium leading-6 tracking-[-0.05em] text-[#334155] sm:text-[14px] sm:leading-7">Patient&apos;s note</h5>
+                <h5 className="text-[13px] font-medium leading-6 tracking-[-0.05em] text-[#334155] sm:text-[14px] sm:leading-7">
+                  Patient&apos;s note
+                </h5>
                 <div className="mt-2 rounded-[14px] border border-[#94A3B8] bg-white px-4 py-3 sm:px-5 sm:py-4">
                   <p className="text-[12px] font-light leading-[18px] tracking-[-0.05em] text-black sm:text-[13px]">
-                    {appointmentDetails.patientNote}
+                    {activeAppointmentDetails.patientNote}
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-5 sm:mt-6">
+                <InPersonConsultationMap location={activeAppointmentDetails} />
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7">
@@ -1207,12 +1582,22 @@ export function ProfessionalSchedulePage() {
                   onClick={async () => {
                     if (!activeConsultationId) return;
                     try {
-                      await cancelProfessionalConsultation(activeConsultationId);
-                      setScheduleConsultations((current) => current.filter((item) => item.id !== activeConsultationId));
+                      await cancelProfessionalConsultation(
+                        activeConsultationId,
+                      );
+                      setScheduleConsultations((current) =>
+                        current.filter(
+                          (item) => item.id !== activeConsultationId,
+                        ),
+                      );
                       setIsAppointmentDetailsModalOpen(false);
                       toast.warning("Appointment cancelled.");
                     } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Unable to cancel appointment");
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Unable to cancel appointment",
+                      );
                     }
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] border border-[#334155] bg-[#F8FAFC] px-2 text-[13px] font-medium leading-[15px] tracking-[-0.05em] text-[#334155] sm:h-[32px] sm:rounded-[9.26984px] sm:text-[14px]"
@@ -1228,7 +1613,11 @@ export function ProfessionalSchedulePage() {
                       setIsAppointmentDetailsModalOpen(false);
                       toast.success("Joining appointment...");
                     } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Unable to start appointment");
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Unable to start appointment",
+                      );
                     }
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
@@ -1275,4 +1664,3 @@ export function ProfessionalSchedulePage() {
     </section>
   );
 }
-

@@ -5,9 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  deleteOrganizationShiftMessage,
   getOrganizationLiveUrl,
   getOrganizationShift,
+  listOrganizationShiftMessages,
+  markOrganizationShiftMessagesRead,
   sendOrganizationShiftMessage,
+  sendOrganizationShiftTyping,
+  updateOrganizationShiftMessage,
   type OrganizationShiftMessage,
   type OrganizationShiftUpdate,
 } from "@/services/organizationApi";
@@ -29,6 +34,12 @@ type ChatMessage = {
   id: string;
   text: string;
   sender: "organization" | "professional";
+  createdAt: string;
+  attachments: OrganizationShiftMessage["attachments"];
+  editedAt: string | null;
+  deletedAt: string | null;
+  readByProfessionalAt: string | null;
+  deliveredToProfessionalAt: string | null;
 };
 
 function BackIcon() {
@@ -118,14 +129,26 @@ function updateToMessage(update: OrganizationShiftUpdate): ChatMessage {
     id: update.id,
     text: update.description ?? update.message ?? "",
     sender: update.actorUserId ? "organization" : "professional",
+    createdAt: update.createdAt,
+    attachments: [],
+    editedAt: null,
+    deletedAt: null,
+    readByProfessionalAt: null,
+    deliveredToProfessionalAt: null,
   };
 }
 
 function messageToChatMessage(message: OrganizationShiftMessage): ChatMessage {
   return {
     id: message.id,
-    text: message.body,
+    text: message.deletedAt ? "This message was deleted" : (message.body ?? ""),
     sender: message.senderType === "organization" ? "organization" : "professional",
+    createdAt: message.createdAt,
+    attachments: message.attachments ?? [],
+    editedAt: message.editedAt,
+    deletedAt: message.deletedAt,
+    readByProfessionalAt: message.readByProfessionalAt,
+    deliveredToProfessionalAt: message.deliveredToProfessionalAt,
   };
 }
 
@@ -133,7 +156,7 @@ function messageToPreview(message: OrganizationShiftMessage): ConversationPrevie
   return {
     id: message.id,
     name: message.senderType === "organization" ? "Organization" : "Professional",
-    preview: message.body,
+    preview: message.deletedAt ? "Message deleted" : (message.body ?? `${message.attachments?.length ?? 0} attachment(s)`),
     time: timeAgo(message.createdAt),
     avatarType: message.senderType === "organization" ? "initials" : "photo",
     initials: "SH",
@@ -146,12 +169,11 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
   const detail = buildOrganisationShiftDetail(shiftId);
   const [activeTab, setActiveTab] = useState<UpdatesTab>("All");
   const [messageInput, setMessageInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: "m1", text: "Hope you get me", sender: "organization" },
-    { id: "m2", text: "Yeah i do, but........", sender: "professional" },
-    { id: "m3", text: "Hope you get me", sender: "organization" },
-    { id: "m4", text: "Yeah i do, but........", sender: "professional" },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [attachmentDrafts, setAttachmentDrafts] = useState<OrganizationShiftMessage["attachments"]>([]);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [professionalTyping, setProfessionalTyping] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   const [conversationPreviews, setConversationPreviews] = useState<ConversationPreview[]>([
     {
@@ -221,6 +243,8 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
         if (data.messages.length) {
           setConversationPreviews(data.messages.map(messageToPreview));
           setMessages(data.messages.map(messageToChatMessage));
+          setHasMoreMessages(data.messages.length >= 50);
+          void markOrganizationShiftMessagesRead(shiftId);
           return;
         }
 
@@ -259,6 +283,41 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
           ? currentPreviews
           : [messageToPreview(message), ...currentPreviews],
       );
+      if (message.senderType === "professional") {
+        void markOrganizationShiftMessagesRead(shiftId);
+      }
+    };
+
+    const handleMutatedMessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data) as OrganizationShiftMessage;
+      if (message.shiftOfferId !== shiftId) return;
+      const mapped = messageToChatMessage(message);
+      setMessages((currentMessages) =>
+        currentMessages.some((item) => item.id === mapped.id)
+          ? currentMessages.map((item) => (item.id === mapped.id ? mapped : item))
+          : [...currentMessages, mapped],
+      );
+    };
+
+    const handleRead = (event: MessageEvent) => {
+      const payload = JSON.parse(event.data) as { messageIds?: string[]; readAt?: string };
+      if (!payload.messageIds?.length || !payload.readAt) return;
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          payload.messageIds?.includes(message.id)
+            ? { ...message, readByProfessionalAt: payload.readAt ?? message.readByProfessionalAt }
+            : message,
+        ),
+      );
+    };
+
+    const handleTyping = (event: MessageEvent) => {
+      const payload = JSON.parse(event.data) as { shiftOfferId?: string; typing?: boolean };
+      if (payload.shiftOfferId !== shiftId) return;
+      setProfessionalTyping(Boolean(payload.typing));
+      if (payload.typing) {
+        window.setTimeout(() => setProfessionalTyping(false), 3000);
+      }
     };
 
     const handleUpdate = (event: MessageEvent) => {
@@ -276,6 +335,10 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
     };
 
     eventSource.addEventListener("organization.shift_message.created", handleMessage);
+    eventSource.addEventListener("organization.shift_message.updated", handleMutatedMessage);
+    eventSource.addEventListener("organization.shift_message.deleted", handleMutatedMessage);
+    eventSource.addEventListener("organization.shift_messages.read", handleRead);
+    eventSource.addEventListener("organization.shift_typing", handleTyping);
     eventSource.addEventListener("organization.shift_update.created", handleUpdate);
 
     eventSource.onerror = () => {
@@ -284,6 +347,10 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
 
     return () => {
       eventSource.removeEventListener("organization.shift_message.created", handleMessage);
+      eventSource.removeEventListener("organization.shift_message.updated", handleMutatedMessage);
+      eventSource.removeEventListener("organization.shift_message.deleted", handleMutatedMessage);
+      eventSource.removeEventListener("organization.shift_messages.read", handleRead);
+      eventSource.removeEventListener("organization.shift_typing", handleTyping);
       eventSource.removeEventListener("organization.shift_update.created", handleUpdate);
       eventSource.close();
     };
@@ -297,15 +364,21 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
 
   const sendMessage = async () => {
     const trimmedMessage = messageInput.trim();
-    if (!trimmedMessage) return;
+    if (!trimmedMessage && attachmentDrafts.length === 0) return;
 
     try {
-      const message = await sendOrganizationShiftMessage(shiftId, {
-        body: trimmedMessage,
-      });
+      const message = editingMessageId
+        ? await updateOrganizationShiftMessage(shiftId, editingMessageId, {
+            body: trimmedMessage,
+            attachments: attachmentDrafts,
+          })
+        : await sendOrganizationShiftMessage(shiftId, {
+            body: trimmedMessage,
+            attachments: attachmentDrafts,
+          });
       setMessages((currentMessages) =>
         currentMessages.some((item) => item.id === message.id)
-          ? currentMessages
+          ? currentMessages.map((item) => (item.id === message.id ? messageToChatMessage(message) : item))
           : [...currentMessages, messageToChatMessage(message)],
       );
       setConversationPreviews((currentPreviews) =>
@@ -314,9 +387,61 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
           : [messageToPreview(message), ...currentPreviews],
       );
       setMessageInput("");
+      setAttachmentDrafts([]);
+      setEditingMessageId(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to send message.");
     }
+  };
+
+  const loadOlderMessages = async () => {
+    const oldest = messages[0];
+    if (!oldest) return;
+
+    try {
+      const older = await listOrganizationShiftMessages(shiftId, {
+        before: oldest.createdAt,
+        limit: 50,
+      });
+      const normalized = older.map(messageToChatMessage).reverse();
+      setMessages((current) => [
+        ...normalized.filter((message) => !current.some((item) => item.id === message.id)),
+        ...current,
+      ]);
+      setHasMoreMessages(older.length >= 50);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load older messages.");
+    }
+  };
+
+  const attachByUrl = () => {
+    const url = window.prompt("Paste attachment URL");
+    if (!url) return;
+    const name = window.prompt("Attachment name") || "Attachment";
+    setAttachmentDrafts((current) => [...current, { name, url }]);
+  };
+
+  const editMessage = (message: ChatMessage) => {
+    if (message.deletedAt) return;
+    setEditingMessageId(message.id);
+    setMessageInput(message.text);
+    setAttachmentDrafts(message.attachments);
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const message = await deleteOrganizationShiftMessage(shiftId, messageId);
+      setMessages((current) =>
+        current.map((item) => (item.id === message.id ? messageToChatMessage(message) : item)),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete message.");
+    }
+  };
+
+  const handleMessageInputChange = (value: string) => {
+    setMessageInput(value);
+    void sendOrganizationShiftTyping(shiftId, value.trim().length > 0);
   };
 
   return (
@@ -357,37 +482,125 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
               </button>
             </div>
 
-            <div className="min-h-[360px] space-y-16 px-1 py-8 xl:min-h-[430px]">
+            <div className="min-h-[360px] space-y-10 px-1 py-8 xl:min-h-[430px]">
+              {hasMoreMessages ? (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadOlderMessages}
+                    className="rounded-[10px] bg-[#E3F2FD] px-4 py-2 text-[12px] font-medium tracking-[-0.04em] text-[#1565C0]"
+                  >
+                    Load older messages
+                  </button>
+                </div>
+              ) : null}
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.sender === "organization" ? "justify-start" : "justify-end"}`}
                 >
-                  <div
-                    className={`relative max-w-[280px] rounded-[24px] px-6 py-4 text-[18px] font-light tracking-[-0.05em] ${
-                      message.sender === "organization"
-                        ? "bg-[#1565C0] text-[#F8FAFC]"
-                        : "bg-[#E3F2FD] text-[#1E88E5]"
-                    }`}
-                  >
-                    {message.text}
-                    <span
-                      className={`absolute bottom-0 h-5 w-5 ${
-                        message.sender === "organization"
-                          ? "left-0 -translate-x-1/2 rounded-br-[18px] bg-[#1565C0]"
-                          : "right-0 translate-x-1/2 rounded-bl-[18px] bg-[#E3F2FD]"
+                  <div className="max-w-[300px]">
+                    <div
+                      className={`relative rounded-[24px] px-6 py-4 text-[18px] font-light tracking-[-0.05em] ${
+                        message.deletedAt
+                          ? "bg-[#E2E8F0] text-[#64748B]"
+                          : message.sender === "organization"
+                            ? "bg-[#1565C0] text-[#F8FAFC]"
+                            : "bg-[#E3F2FD] text-[#1E88E5]"
                       }`}
-                    />
+                    >
+                      <p>{message.text}</p>
+                      {message.attachments.length ? (
+                        <div className="mt-3 space-y-2">
+                          {message.attachments.map((attachment) => (
+                            <a
+                              key={`${message.id}-${attachment.url}`}
+                              href={attachment.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block rounded-[10px] bg-white/80 px-3 py-2 text-[12px] font-medium text-[#1565C0]"
+                            >
+                              {attachment.name}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                      <span
+                        className={`absolute bottom-0 h-5 w-5 ${
+                          message.sender === "organization"
+                            ? "left-0 -translate-x-1/2 rounded-br-[18px] bg-inherit"
+                            : "right-0 translate-x-1/2 rounded-bl-[18px] bg-inherit"
+                        }`}
+                      />
+                    </div>
+                    <div className={`mt-2 flex items-center gap-3 text-[11px] text-[#94A3B8] ${message.sender === "organization" ? "justify-start" : "justify-end"}`}>
+                      <span>{message.editedAt ? "Edited" : timeAgo(message.createdAt)}</span>
+                      {message.sender === "organization" && !message.deletedAt ? (
+                        <>
+                          <span>{message.readByProfessionalAt ? "Read" : message.deliveredToProfessionalAt ? "Delivered" : "Sent"}</span>
+                          <button type="button" onClick={() => editMessage(message)} className="text-[#1565C0]">
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => deleteMessage(message.id)} className="text-[#B42318]">
+                            Delete
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               ))}
+              {professionalTyping ? (
+                <p className="text-[12px] font-light tracking-[-0.04em] text-[#94A3B8]">
+                  Professional is typing...
+                </p>
+              ) : null}
             </div>
 
+            {attachmentDrafts.length ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {attachmentDrafts.map((attachment) => (
+                  <span
+                    key={attachment.url}
+                    className="inline-flex items-center gap-2 rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-[12px] text-[#1565C0]"
+                  >
+                    {attachment.name}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAttachmentDrafts((current) =>
+                          current.filter((item) => item.url !== attachment.url),
+                        )
+                      }
+                      className="font-semibold"
+                    >
+                      X
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {editingMessageId ? (
+              <div className="mb-3 flex items-center justify-between rounded-[10px] bg-[#E2E8F0] px-3 py-2 text-[12px] text-[#334155]">
+                Editing message
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMessageId(null);
+                    setMessageInput("");
+                    setAttachmentDrafts([]);
+                  }}
+                  className="font-semibold text-[#1565C0]"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
             <div className="rounded-[16px] border border-[#1565C0] bg-[#F8FAFC] p-2">
               <div className="flex items-center gap-3">
                 <input
                   value={messageInput}
-                  onChange={(event) => setMessageInput(event.target.value)}
+                  onChange={(event) => handleMessageInputChange(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -397,6 +610,13 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
                   placeholder="Write your message"
                   className="h-[44px] flex-1 border-0 bg-transparent px-3 text-[14px] font-light tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
                 />
+                <button
+                  type="button"
+                  onClick={attachByUrl}
+                  className="inline-flex h-[45px] cursor-pointer items-center justify-center rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0]"
+                >
+                  Attach
+                </button>
                 <button
                   type="button"
                   onClick={sendMessage}
