@@ -121,6 +121,19 @@ function formatBackendTimeRange(shift: OrganizationShift) {
   return `${formatter.format(new Date(shift.startsAt))} - ${formatter.format(new Date(shift.endsAt))}`;
 }
 
+function getSearchParam(
+  searchParams: Record<string, string | string[] | undefined>,
+  key: string,
+) {
+  const value = searchParams[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function normalizeShiftId(value?: string) {
+  const shiftId = value?.trim();
+  return shiftId && shiftId !== "undefined" && shiftId !== "null" ? shiftId : null;
+}
+
 export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShiftPageProps) {
   const router = useRouter();
   const [showBackModal, setShowBackModal] = useState(false);
@@ -133,21 +146,18 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
   const [bankDraft, setBankDraft] = useState(bankAccount);
 
   const fallbackShiftData = useMemo(() => {
-    const getValue = (key: string) => {
-      const value = searchParams[key];
-      return Array.isArray(value) ? value[0] : value;
-    };
-
-    const payPerSlot = getValue("payPerSlot") ?? "300";
-    const professionalsRequired = getValue("professionalsRequired") ?? "10";
+    const payPerSlot = getSearchParam(searchParams, "payPerSlot") ?? "300";
+    const professionalsRequired = getSearchParam(searchParams, "professionalsRequired") ?? "10";
     const slots = formatSlotCount(professionalsRequired);
     const pay = Number.parseFloat(payPerSlot.replace(/[^0-9.]/g, "")) || 0;
 
     return {
       shiftId: "2A55D77",
-      department: getValue("department") ?? "Medical",
-      role: getValue("shiftRole") ?? "Lab Technician",
-      time: `${getValue("fromTime") ?? "9:00 AM"} - ${getValue("toTime") ?? "6:00 PM"}`,
+      department: getSearchParam(searchParams, "department") ?? "Medical",
+      role: getSearchParam(searchParams, "shiftRole") ?? "Lab Technician",
+      time: `${getSearchParam(searchParams, "fromTime") ?? "9:00 AM"} - ${
+        getSearchParam(searchParams, "toTime") ?? "6:00 PM"
+      }`,
       totalRequired: slots,
       totalAccepted: 0,
       slots,
@@ -157,16 +167,15 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
   }, [searchParams]);
   const [shiftData, setShiftData] = useState(fallbackShiftData);
   const [backendShiftId, setBackendShiftId] = useState<string | null>(() => {
-    const value = searchParams.shiftId;
-    return Array.isArray(value) ? value[0] ?? null : value ?? null;
+    return normalizeShiftId(getSearchParam(searchParams, "shiftId"));
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const value = searchParams.shiftId;
-    const shiftId = Array.isArray(value) ? value[0] : value;
+    const shiftId = normalizeShiftId(getSearchParam(searchParams, "shiftId"));
 
     if (!shiftId) {
+      setBackendShiftId(null);
       return;
     }
 
@@ -193,6 +202,9 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
       })
       .catch((error) => {
         toast.error(error instanceof Error ? error.message : "Unable to load shift funding details.");
+        if (isMounted) {
+          setBackendShiftId(null);
+        }
       });
 
     return () => {
@@ -214,7 +226,7 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
       });
       await publishOrganizationShift(backendShiftId);
       toast.success("Shift funded and published successfully.");
-      router.push("/organisation-platform/shifts/success");
+      router.push(`/organisation-platform/shifts/success?shiftId=${encodeURIComponent(backendShiftId)}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to fund shift.");
     } finally {

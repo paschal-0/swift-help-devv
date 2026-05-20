@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../../components/ProfessionalPlatformShell";
-import { recentReferrals, type RecentReferral, type ReferralRecordType } from "../data";
+import type { RecentReferral, ReferralRecordType } from "../data";
+import {
+  formatApiMoney,
+  getProfessionalReferrals,
+  type ProfessionalReferrals,
+} from "@/services/professionalApi";
 
 type FilterKey = "All" | ReferralRecordType;
 
@@ -49,14 +55,60 @@ function ReferralTableRow({ record }: { record: RecentReferral }) {
 export function ProfessionalReferralPeoplePage() {
   const { searchText } = useProfessionalPlatformShell();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("All");
+  const [referrals, setReferrals] = useState<ProfessionalReferrals | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReferrals() {
+      try {
+        const data = await getProfessionalReferrals();
+        if (!cancelled) {
+          setReferrals(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load referrals");
+          setReferrals(null);
+        }
+      }
+    }
+
+    void loadReferrals();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const referralRecords = useMemo<RecentReferral[]>(() => {
+    return (referrals?.records ?? []).map((record) => ({
+      id: record.id,
+      name: record.name,
+      initials: record.initials,
+      type:
+        record.type === "organization"
+          ? "Organization"
+          : record.type === "professional"
+            ? "Professional"
+            : "Patient",
+      joined: new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(record.joinedAt)),
+      earned: formatApiMoney(record.amountCents, record.currency),
+      status: record.status === "completed" ? "Completed" : "Pending",
+    }));
+  }, [referrals]);
 
   const filteredRecords = useMemo(() => {
     const query = searchText.trim().toLowerCase();
 
     const visibleRecords =
       activeFilter === "All"
-        ? recentReferrals
-        : recentReferrals.filter((record) => record.type === activeFilter);
+        ? referralRecords
+        : referralRecords.filter((record) => record.type === activeFilter);
 
     if (!query) {
       return visibleRecords;
@@ -68,7 +120,7 @@ export function ProfessionalReferralPeoplePage() {
         .toLowerCase()
         .includes(query)
     );
-  }, [activeFilter, searchText]);
+  }, [activeFilter, referralRecords, searchText]);
 
   return (
     <section className="mt-[12px] overflow-x-hidden px-4 pb-8 md:px-0 xl:pb-10">

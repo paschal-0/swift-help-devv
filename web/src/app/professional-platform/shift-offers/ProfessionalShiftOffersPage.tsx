@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
-import { shiftOffers, type DateFilter, type PayFilter, type ShiftOffer } from "./data";
+import type { DateFilter, PayFilter, ShiftOffer } from "./data";
 import {
   acceptProfessionalShiftOffer,
   declineProfessionalShiftOffer,
@@ -211,7 +211,7 @@ export function ProfessionalShiftOffersPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [payFilter, setPayFilter] = useState<PayFilter>("all");
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
-  const [offers, setOffers] = useState<ShiftOffer[]>(shiftOffers);
+  const [offers, setOffers] = useState<ShiftOffer[]>([]);
 
   const query = searchText.trim().toLowerCase();
 

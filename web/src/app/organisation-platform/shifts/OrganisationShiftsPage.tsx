@@ -10,8 +10,6 @@ import {
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import {
-  organisationShiftRows,
-  organisationShiftSummaryCards,
   type ShiftRow,
   type ShiftStatus,
 } from "./data";
@@ -28,6 +26,13 @@ const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97]";
 
 const premiumEase = [0.32, 0.72, 0, 1] as const;
+
+const emptySummaryCards = [
+  { title: "Total Shift (This Month)", value: "0" },
+  { title: "Complete Shifts", value: "0" },
+  { title: "Missed Shifts", value: "0" },
+  { title: "Attendance rate", value: "0%" },
+];
 
 function formatShiftTime(time: string) {
   return time.replace(/\s*-\s*/g, " - ");
@@ -150,8 +155,9 @@ export function OrganisationShiftsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | ShiftStatus>("all");
-  const [shiftRows, setShiftRows] = useState<ShiftRow[]>(organisationShiftRows);
-  const [summaryCards, setSummaryCards] = useState(organisationShiftSummaryCards);
+  const [shiftRows, setShiftRows] = useState<ShiftRow[]>([]);
+  const [summaryCards, setSummaryCards] = useState(emptySummaryCards);
+  const [isLoading, setIsLoading] = useState(true);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([
     { day: "Monday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
@@ -175,15 +181,34 @@ export function OrganisationShiftsPage() {
         }
 
         setShiftRows(data.shifts.map(mapBackendShiftRow));
+        const totalShifts = data.summary.totalShifts ?? data.shifts.length;
+        const completedShifts =
+          data.summary.completedShifts ??
+          data.shifts.filter((item) => item.status === "completed").length;
+        const missedShifts =
+          data.summary.missedShifts ??
+          data.shifts.reduce((total, item) => total + (item.missedSlots ?? 0), 0);
+        const attendanceRate = Number.isFinite(data.summary.attendanceRate)
+          ? data.summary.attendanceRate
+          : 0;
         setSummaryCards([
-          { title: "Total Shift (This Month)", value: String(data.summary.total) },
-          { title: "Complete Shifts", value: String(data.summary.completed) },
-          { title: "Missed Shifts", value: String(data.summary.missed) },
-          { title: "Attendance rate", value: `${data.summary.attendanceRate}%` },
+          { title: "Total Shift (This Month)", value: String(totalShifts) },
+          { title: "Complete Shifts", value: String(completedShifts) },
+          { title: "Missed Shifts", value: String(missedShifts) },
+          { title: "Attendance rate", value: `${attendanceRate}%` },
         ]);
       })
       .catch((error) => {
         toast.error(error instanceof Error ? error.message : "Unable to load organization shifts.");
+        if (isMounted) {
+          setShiftRows([]);
+          setSummaryCards(emptySummaryCards);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -232,7 +257,7 @@ export function OrganisationShiftsPage() {
     statusFilter === "all" &&
     !normalizedQuery;
 
-  const shouldShowEmptyState = visibleRows.length === 0 && isDefaultFilters;
+  const shouldShowEmptyState = !isLoading && visibleRows.length === 0 && isDefaultFilters;
 
   const openShiftDetails = (shiftId: string) => {
     router.push(`/organisation-platform/shifts/${encodeURIComponent(shiftId)}`);
@@ -302,6 +327,14 @@ export function OrganisationShiftsPage() {
           </div>
         </section>
 
+        {isLoading ? (
+          <section className="flex min-h-[320px] items-center justify-center rounded-[16px] bg-[#F8FAFC] px-4">
+            <p className="text-[16px] font-medium tracking-[-0.05em] text-[#94A3B8]">
+              Loading shifts...
+            </p>
+          </section>
+        ) : null}
+
         {shouldShowEmptyState ? (
           <section className="flex min-h-[420px] items-center justify-center px-4">
             <div className="max-w-[463px] text-center">
@@ -316,7 +349,7 @@ export function OrganisationShiftsPage() {
           </section>
         ) : null}
 
-        {!shouldShowEmptyState ? (
+        {!isLoading && !shouldShowEmptyState ? (
           <>
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           {summaryCards.map((card) => (

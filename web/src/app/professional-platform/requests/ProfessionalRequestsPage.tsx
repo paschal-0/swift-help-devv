@@ -38,97 +38,6 @@ type ConsultationRequest = {
   status: RequestStatus;
 };
 
-const initialRequests: ConsultationRequest[] = [
-  {
-    id: "req-1",
-    patient: "Mr Smith R.",
-    consultationLabel: "General Consultation",
-    urgency: "Urgent",
-    reason: "Recurring headaches and dizziness for 3 days.",
-    slot: "Today, 9:00 AM - 10:00 AM",
-    received: "Received 12 mins ago",
-    dateLabel: "Tue, Apr 16, 2026 - 10:00 AM - 10:30 AM",
-    duration: "30 Mins",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    bookedOn: "April 13, 2026",
-    note: "Patient reports headaches mostly in the evening for the past 5 days. No known fever.",
-    status: "needs-action",
-  },
-  {
-    id: "req-2",
-    patient: "Mr Smith R.",
-    consultationLabel: "General Consultation",
-    urgency: "Urgent",
-    reason: "Recurring headaches and dizziness for 3 days.",
-    slot: "Today, 11:00 AM - 12:00 PM",
-    received: "Received 21 mins ago",
-    dateLabel: "Tue, Apr 16, 2026 - 11:00 AM - 11:30 AM",
-    duration: "30 Mins",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    bookedOn: "April 13, 2026",
-    note: "Symptoms intensified after long screen sessions. Denies fever or recent trauma.",
-    status: "needs-action",
-  },
-  {
-    id: "req-3",
-    patient: "Daniel O.",
-    consultationLabel: "General Consultation",
-    urgency: "Standard",
-    reason: "Follow-up on previous fatigue and mild chest discomfort.",
-    slot: "Tomorrow, 10:00 AM - 10:30 AM",
-    received: "Accepted 1 hour ago",
-    dateLabel: "Wed, Apr 17, 2026 - 10:00 AM - 10:30 AM",
-    duration: "30 Mins",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    bookedOn: "April 14, 2026",
-    note: "Patient is open to lab review and medication adjustment.",
-    status: "accepted",
-  },
-  {
-    id: "req-4",
-    patient: "Janet K.",
-    consultationLabel: "General Consultation",
-    urgency: "Standard",
-    reason: "Recurring migraines with light sensitivity.",
-    slot: "Tomorrow, 2:00 PM - 2:30 PM",
-    received: "Declined 2 hours ago",
-    dateLabel: "Wed, Apr 17, 2026 - 2:00 PM - 2:30 PM",
-    duration: "30 Mins",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    bookedOn: "April 14, 2026",
-    note: "Patient requested a later slot if possible.",
-    status: "declined",
-  },
-];
-
 const tabs: Array<{ id: RequestStatus; label: string }> = [
   { id: "needs-action", label: "Needs Action" },
   { id: "accepted", label: "Accepted" },
@@ -225,7 +134,7 @@ function EmptyDetailsPrompt({
 
 export function ProfessionalRequestsPage() {
   const { searchText } = useProfessionalPlatformShell();
-  const [requests, setRequests] = useState(initialRequests);
+  const [requests, setRequests] = useState<ConsultationRequest[]>([]);
   const [activeTab, setActiveTab] = useState<RequestStatus>("needs-action");
   const [panelSearch, setPanelSearch] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(

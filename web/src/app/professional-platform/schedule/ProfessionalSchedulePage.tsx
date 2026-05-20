@@ -92,16 +92,7 @@ type AvailabilityRule = {
   value: string;
 };
 
-const metrics: MetricItem[] = [
-  { id: "today-sessions", title: "Today's Sessions", value: "3 Sessions" },
-  { id: "next-session", title: "Next Session", value: "11:30 AM" },
-  {
-    id: "available-hours",
-    title: "Available hours",
-    value: "10 hrs this week",
-  },
-  { id: "blocked-time", title: "Blocked time", value: "2 slots this week" },
-];
+type AvailabilityRuleMap = Record<string, string>;
 
 const initialDaySchedule: DaySchedule[] = [
   {
@@ -155,110 +146,12 @@ const initialDaySchedule: DaySchedule[] = [
   },
 ];
 
-const calendarSessions: CalendarSession[] = [
-  {
-    id: "slot-1",
-    time: "07:30 - 08:30",
-    status: "booked",
-    patient: "Sarah A.",
-    mode: "Video consultation",
-  },
-  { id: "slot-2", time: "08:30 - 09:30", status: "available" },
-  { id: "slot-3", time: "07:30 - 08:30", status: "blocked" },
-  {
-    id: "slot-4",
-    time: "07:30 - 08:30",
-    status: "booked",
-    patient: "Sarah A.",
-    mode: "Video consultation",
-  },
-  { id: "slot-5", time: "07:30 - 08:30", status: "blocked" },
-];
-
-const upcomingConsultations: UpcomingConsultation[] = [
-  {
-    id: "consult-1",
-    dayLabel: "Today",
-    timeLabel: "11:30 Am",
-    patient: "Sarah A.",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    duration: "Video - 30 mins",
-    startsIn: "Starts in 20 mins",
-  },
-  {
-    id: "consult-2",
-    dayLabel: "Today",
-    timeLabel: "11:30 Am",
-    patient: "Sarah A.",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    duration: "Video - 30 mins",
-    startsIn: "Starts in 20 mins",
-  },
-  {
-    id: "consult-3",
-    dayLabel: "Today",
-    timeLabel: "11:30 Am",
-    patient: "Sarah A.",
-    mode: "Video consultation",
-    locationName: null,
-    address: null,
-    city: null,
-    state: null,
-    country: null,
-    latitude: null,
-    longitude: null,
-    duration: "Video - 30 mins",
-    startsIn: "Starts in 20 mins",
-  },
-];
-
-const blockedItems: BlockedItem[] = [
-  {
-    id: "blocked-1",
-    day: "Wednesday",
-    start: "9:00",
-    end: "10:00",
-    reasonA: "Lunch break",
-    reasonB: "Lunch break",
-  },
-  {
-    id: "blocked-2",
-    day: "Wednesday",
-    start: "9:00",
-    end: "10:00",
-    reasonA: "Lunch break",
-    reasonB: "Lunch break",
-  },
-  {
-    id: "blocked-3",
-    day: "Wednesday",
-    start: "9:00",
-    end: "10:00",
-    reasonA: "Lunch break",
-    reasonB: "Lunch break",
-  },
-];
-
 const appointmentDetails: AppointmentDetails = {
-  patient: "Sarah Johnson",
-  dateTimeLabel: "Tue, Apr 16, 2026 - 10:00 AM - 10:30 AM",
-  status: "Confirmed",
-  type: "General consultation",
-  mode: "Video consultation",
+  patient: "No patient selected",
+  dateTimeLabel: "No appointment selected",
+  status: "Unavailable",
+  type: "Consultation",
+  mode: "Consultation",
   locationName: null,
   address: null,
   city: null,
@@ -266,11 +159,10 @@ const appointmentDetails: AppointmentDetails = {
   country: null,
   latitude: null,
   longitude: null,
-  duration: "30 Mins",
-  bookedOn: "April 13, 2026",
-  reasonForVisit: "Recurring headaches and fatigue",
-  patientNote:
-    "Patient reports headaches mostly in the evening for the past 5 days. No known fever.",
+  duration: "0 Mins",
+  bookedOn: "Unavailable",
+  reasonForVisit: "No consultation selected.",
+  patientNote: "Select a consultation to view appointment details.",
 };
 
 const timeOptions = [
@@ -310,6 +202,54 @@ const ruleOptions: Record<string, string[]> = {
   "Session Duration": ["30 Minutes", "45 Minutes", "60 Minutes"],
 };
 
+const getEnabledDayIdsFromRule = (value: string): string[] => {
+  if (value === "Monday - Friday") {
+    return ["monday", "tuesday", "wednesday", "thursday", "friday"];
+  }
+  if (value === "Monday - Saturday") {
+    return ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  }
+  if (value === "Tuesday - Saturday") {
+    return ["tuesday", "wednesday", "thursday", "friday", "saturday"];
+  }
+  return ["monday", "tuesday", "wednesday", "thursday", "friday"];
+};
+
+const parseWorkingHoursRule = (value: string): { from: string; to: string } => {
+  const [fromRaw, toRaw] = value.split("-").map((item) => item.trim());
+  return {
+    from: fromRaw || "9:00 AM",
+    to: toRaw || "5:00 PM",
+  };
+};
+
+const parseBookingWindowDays = (value: string) => {
+  const matched = value.match(/(\d+)/);
+  return matched ? Number(matched[1]) : 14;
+};
+
+const parseHoursToMinutes = (value: string) => {
+  const matched = value.match(/(\d+)/);
+  return matched ? Number(matched[1]) * 60 : 120;
+};
+
+const parseSessionDurationMinutes = (value: string) => {
+  const matched = value.match(/(\d+)/);
+  return matched ? Number(matched[1]) : 30;
+};
+
+const toRuleArray = (map: AvailabilityRuleMap): AvailabilityRule[] =>
+  Object.keys(ruleOptions).map((label) => ({
+    label,
+    value: map[label] ?? ruleOptions[label][0],
+  }));
+
+const toRuleMap = (rules: AvailabilityRule[]): AvailabilityRuleMap =>
+  rules.reduce<AvailabilityRuleMap>((accumulator, rule) => {
+    accumulator[rule.label] = rule.value;
+    return accumulator;
+  }, {});
+
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
 
@@ -330,6 +270,31 @@ const formatClock = (value: string) =>
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+
+const parseClockMinutes = (value: string) => {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridian = match[3].toUpperCase();
+  const normalizedHours =
+    meridian === "PM" && hours !== 12
+      ? hours + 12
+      : meridian === "AM" && hours === 12
+        ? 0
+        : hours;
+
+  return normalizedHours * 60 + minutes;
+};
+
+const formatDurationHours = (minutes: number) => {
+  if (minutes <= 0) return "0 hrs this week";
+
+  const hours = minutes / 60;
+  const rounded = Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1);
+  return `${rounded} ${hours === 1 ? "hr" : "hrs"} this week`;
+};
 
 const mapWeeklyScheduleToDays = (schedule: WeeklyAvailability): DaySchedule[] =>
   initialDaySchedule.map((day) => {
@@ -424,6 +389,16 @@ const mapBlockedTime = (item: ProfessionalBlockedTime): BlockedItem => ({
   reasonB: item.repeat,
 });
 
+const mapConsultationToCalendarSession = (
+  consultation: UpcomingConsultation,
+): CalendarSession => ({
+  id: consultation.id,
+  time: consultation.timeLabel,
+  status: "booked",
+  patient: consultation.patient,
+  mode: consultation.mode,
+});
+
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6 sm:h-8 sm:w-8" aria-hidden>
@@ -506,10 +481,10 @@ export function ProfessionalSchedulePage() {
   >(null);
   const [blockEntireDay, setBlockEntireDay] = useState(false);
   const [calendarHeaderIndex, setCalendarHeaderIndex] = useState(0);
-  const [blockedTimeItems, setBlockedTimeItems] = useState(blockedItems);
-  const [scheduleConsultations, setScheduleConsultations] = useState(
-    upcomingConsultations,
-  );
+  const [blockedTimeItems, setBlockedTimeItems] = useState<BlockedItem[]>([]);
+  const [scheduleConsultations, setScheduleConsultations] = useState<
+    UpcomingConsultation[]
+  >([]);
   const [consultationRecords, setConsultationRecords] = useState<
     ProfessionalConsultation[]
   >([]);
@@ -521,6 +496,9 @@ export function ProfessionalSchedulePage() {
       value: values[0],
     })),
   );
+  const [draftAvailabilityRules, setDraftAvailabilityRules] =
+    useState<AvailabilityRule[]>(availabilityRules);
+  const [isEditingRules, setIsEditingRules] = useState(false);
   const [blockType, setBlockType] = useState(blockTypeOptions[0]);
   const [blockDate, setBlockDate] = useState(blockDateOptions[0]);
   const [blockTime, setBlockTime] = useState(blockTimeOptions[0]);
@@ -566,14 +544,36 @@ export function ProfessionalSchedulePage() {
         if (cancelled) return;
 
         setAvailabilityEnabled(data.availability.acceptingBookings);
-        setDaySchedule(
-          mapWeeklyScheduleToDays(data.availability.weeklySchedule),
+        const nextDaySchedule = mapWeeklyScheduleToDays(
+          data.availability.weeklySchedule,
         );
-        setScheduleConsultations(
-          data.consultations.length
-            ? data.consultations.map(mapConsultationToUpcoming)
-            : upcomingConsultations,
-        );
+        setDaySchedule(nextDaySchedule);
+        const enabledDays = nextDaySchedule.filter((day) => day.enabled);
+        const sampleDay = enabledDays[0];
+        const availableRule =
+          enabledDays.length >= 6
+            ? "Monday - Saturday"
+            : enabledDays.length === 5 &&
+                enabledDays[0]?.id === "monday" &&
+                enabledDays[4]?.id === "friday"
+              ? "Monday - Friday"
+              : "Tuesday - Saturday";
+        const rulesFromBackend: AvailabilityRuleMap = {
+          Available: availableRule,
+          "Working hours": sampleDay
+            ? `${sampleDay.from} - ${sampleDay.to}`
+            : "9:00 AM - 5:00 PM",
+          "Booking window": `Up to ${data.availability.bookingWindowDays} days ahead`,
+          "Minimum notice": `${Math.max(
+            1,
+            Math.round(data.availability.minimumNoticeMinutes / 60),
+          )} hours`,
+          "Session Duration": `${data.availability.defaultSessionDurationMinutes} Minutes`,
+        };
+        const nextRules = toRuleArray(rulesFromBackend);
+        setAvailabilityRules(nextRules);
+        setDraftAvailabilityRules(nextRules);
+        setScheduleConsultations(data.consultations.map(mapConsultationToUpcoming));
         setConsultationRecords(data.consultations);
         setBlockedTimeItems(data.blockedTimes.map(mapBlockedTime));
       } catch (error) {
@@ -611,6 +611,57 @@ export function ProfessionalSchedulePage() {
         .includes(query),
     );
   }, [query, scheduleConsultations]);
+
+  const scheduleMetrics = useMemo<MetricItem[]>(() => {
+    const now = new Date();
+    const todayKey = now.toDateString();
+    const todayCount = consultationRecords.filter(
+      (consultation) => new Date(consultation.startsAt).toDateString() === todayKey,
+    ).length;
+    const nextConsultation = consultationRecords
+      .filter((consultation) => new Date(consultation.startsAt) >= now)
+      .sort(
+        (left, right) =>
+          new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+      )[0];
+    const availableMinutes = daySchedule.reduce((total, day) => {
+      if (!day.enabled) return total;
+      const from = parseClockMinutes(day.from);
+      const to = parseClockMinutes(day.to);
+      if (from === null || to === null || to <= from) return total;
+      return total + (to - from);
+    }, 0);
+
+    return [
+      {
+        id: "today-sessions",
+        title: "Today's Sessions",
+        value: `${todayCount} ${todayCount === 1 ? "Session" : "Sessions"}`,
+      },
+      {
+        id: "next-session",
+        title: "Next Session",
+        value: nextConsultation ? formatClock(nextConsultation.startsAt) : "No upcoming",
+      },
+      {
+        id: "available-hours",
+        title: "Available hours",
+        value: formatDurationHours(availableMinutes),
+      },
+      {
+        id: "blocked-time",
+        title: "Blocked time",
+        value: `${blockedTimeItems.length} ${
+          blockedTimeItems.length === 1 ? "slot" : "slots"
+        } this week`,
+      },
+    ];
+  }, [blockedTimeItems.length, consultationRecords, daySchedule]);
+
+  const calendarSessionItems = useMemo(
+    () => scheduleConsultations.slice(0, 8).map(mapConsultationToCalendarSession),
+    [scheduleConsultations],
+  );
 
   const visibleBlocked = useMemo(() => {
     if (!query) {
@@ -675,12 +726,86 @@ export function ProfessionalSchedulePage() {
     );
   };
 
+  const handleSaveWeeklyHours = async () => {
+    const invalidDay = daySchedule.find((day) => {
+      if (!day.enabled) return false;
+      const from = parseClockMinutes(day.from);
+      const to = parseClockMinutes(day.to);
+      return from === null || to === null || to <= from;
+    });
+
+    if (invalidDay) {
+      toast.error(`${invalidDay.day}: "To" time must be later than "From" time.`);
+      return;
+    }
+
+    try {
+      await updateProfessionalAvailability({
+        acceptingBookings: availabilityEnabled,
+        weeklySchedule: mapDayScheduleToWeeklySchedule(daySchedule),
+      });
+      toast.success("Weekly hours updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update weekly hours",
+      );
+    }
+  };
+
+  const handleEditRules = () => {
+    if (!isEditingRules) {
+      setDraftAvailabilityRules(availabilityRules);
+      setIsEditingRules(true);
+      return;
+    }
+    setIsEditingRules(false);
+  };
+
+  const handleDraftRuleChange = (label: string, value: string) => {
+    setDraftAvailabilityRules((current) =>
+      current.map((rule) => (rule.label === label ? { ...rule, value } : rule)),
+    );
+  };
+
+  const handleSaveRules = async () => {
+    const ruleMap = toRuleMap(draftAvailabilityRules);
+    const enabledDayIds = getEnabledDayIdsFromRule(ruleMap.Available);
+    const workingHours = parseWorkingHoursRule(ruleMap["Working hours"]);
+
+    const nextDaySchedule = daySchedule.map((day) => ({
+      ...day,
+      enabled: enabledDayIds.includes(day.id),
+      from: workingHours.from,
+      to: workingHours.to,
+    }));
+
+    try {
+      await updateProfessionalAvailability({
+        bookingWindowDays: parseBookingWindowDays(ruleMap["Booking window"]),
+        minimumNoticeMinutes: parseHoursToMinutes(ruleMap["Minimum notice"]),
+        defaultSessionDurationMinutes: parseSessionDurationMinutes(
+          ruleMap["Session Duration"],
+        ),
+        weeklySchedule: mapDayScheduleToWeeklySchedule(nextDaySchedule),
+      });
+      setDaySchedule(nextDaySchedule);
+      setAvailabilityRules(draftAvailabilityRules);
+      setIsEditingRules(false);
+      toast.success("Availability rules updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update rules");
+    }
+  };
+
   const dateCells = Array.from({ length: 31 }).map((_, index) => index + 1);
 
   const openAppointmentDetails = (consultationId?: string) => {
-    setActiveConsultationId(
-      consultationId ?? scheduleConsultations[0]?.id ?? null,
-    );
+    if (!consultationId) {
+      toast.info("No consultation selected.");
+      return;
+    }
+
+    setActiveConsultationId(consultationId);
     setIsAddBlockTimeModalOpen(false);
     setIsAppointmentDetailsModalOpen(true);
   };
@@ -727,7 +852,7 @@ export function ProfessionalSchedulePage() {
       </h1>
 
       <div className="mt-[14px] grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-        {metrics.map((metric) => (
+        {scheduleMetrics.map((metric) => (
           <MetricCard key={metric.id} item={metric} />
         ))}
       </div>
@@ -849,21 +974,7 @@ export function ProfessionalSchedulePage() {
 
             <button
               type="button"
-              onClick={async () => {
-                try {
-                  await updateProfessionalAvailability({
-                    acceptingBookings: availabilityEnabled,
-                    weeklySchedule: mapDayScheduleToWeeklySchedule(daySchedule),
-                  });
-                  toast.success("Weekly hours updated.");
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Unable to update weekly hours",
-                  );
-                }
-              }}
+              onClick={handleSaveWeeklyHours}
               className={`mt-5 inline-flex h-[44px] w-full items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-[34px] tracking-[-0.05em] text-[#F8FAFC] sm:mt-7 sm:h-[40px] sm:text-[15px] ${microInteractionClass}`}
             >
               Edit weekly hours
@@ -977,14 +1088,16 @@ export function ProfessionalSchedulePage() {
                 scrollbarColor: "#1565C0 #DBEAFE",
               }}
             >
-              {calendarSessions.map((session) => (
-                <div key={session.id}>
-                  {session.status === "booked" ? (
+              {calendarSessionItems.length === 0 ? (
+                <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-3 text-center text-[12px] tracking-[-0.05em] text-[#94A3B8]">
+                  No booked sessions on your calendar yet.
+                </div>
+              ) : (
+                calendarSessionItems.map((session) => (
+                  <div key={session.id}>
                     <button
                       type="button"
-                      onClick={() =>
-                        openAppointmentDetails(scheduleConsultations[0]?.id)
-                      }
+                      onClick={() => openAppointmentDetails(session.id)}
                       className={`flex h-[51px] w-full cursor-pointer items-center justify-between rounded-lg border border-[#1E88E5] bg-[#F8FAFC] px-[11px] text-left hover:bg-[#EAF4FF] lg:w-[186px] ${microInteractionClass}`}
                     >
                       <span className="text-[10px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]">
@@ -992,28 +1105,9 @@ export function ProfessionalSchedulePage() {
                       </span>
                       <SessionPill session={session} />
                     </button>
-                  ) : (
-                    <div
-                      className={`flex h-[51px] w-full items-center justify-between rounded-lg border bg-[#F8FAFC] px-[11px] lg:w-[186px] ${
-                        session.status === "available"
-                          ? "border-[#1E88E5]"
-                          : "border-[#94A3B8]"
-                      }`}
-                    >
-                      <span
-                        className={`text-[10px] font-normal leading-5 tracking-[-0.05em] ${
-                          session.status === "blocked"
-                            ? "text-[#94A3B8]"
-                            : "text-[#1565C0]"
-                        }`}
-                      >
-                        {session.time}
-                      </span>
-                      <SessionPill session={session} />
-                    </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </article>
@@ -1047,7 +1141,11 @@ export function ProfessionalSchedulePage() {
               scrollbarColor: "#1565C0 #DBEAFE",
             }}
           >
-            {visibleUpcoming.map((consultation) => (
+            {visibleUpcoming.length === 0 ? (
+              <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-4 text-center text-[13px] tracking-[-0.05em] text-[#94A3B8]">
+                No upcoming consultations found.
+              </div>
+            ) : visibleUpcoming.map((consultation) => (
               <motion.article
                 key={consultation.id}
                 whileHover={{ y: -2 }}
@@ -1123,7 +1221,11 @@ export function ProfessionalSchedulePage() {
               scrollbarColor: "#1565C0 #DBEAFE",
             }}
           >
-            {visibleBlocked.map((item) => (
+            {visibleBlocked.length === 0 ? (
+              <div className="flex h-[160px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-4 text-center text-[13px] tracking-[-0.05em] text-[#94A3B8]">
+                No blocked time has been added.
+              </div>
+            ) : visibleBlocked.map((item) => (
               <div
                 key={item.id}
                 className="rounded-[12px] bg-[#E2E8F0] px-2 py-2 sm:px-[12px] sm:py-[10px]"
@@ -1147,7 +1249,7 @@ export function ProfessionalSchedulePage() {
                         {item.reasonA}
                       </p>
                       <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
-                        9:00am - 10:00 am
+                        {item.start} - {item.end}
                       </p>
                     </div>
                     <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
@@ -1155,7 +1257,7 @@ export function ProfessionalSchedulePage() {
                         {item.reasonB}
                       </p>
                       <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
-                        9:00am - 10:00 am
+                        {item.start} - {item.end}
                       </p>
                     </div>
                   </div>
@@ -1172,23 +1274,17 @@ export function ProfessionalSchedulePage() {
             </h3>
             <button
               type="button"
-              onClick={() =>
-                setAvailabilityRules((current) =>
-                  current.map((rule) => ({
-                    ...rule,
-                    value: ruleOptions[rule.label][0],
-                  })),
-                )
-              }
+              onClick={handleEditRules}
               className={`text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] sm:text-[16px] ${microInteractionClass}`}
             >
-              Edit rules
+              {isEditingRules ? "Cancel" : "Edit rules"}
             </button>
           </div>
 
           <div className="mt-2 rounded-[12px] bg-[#E3F2FD] px-3 py-[16px] sm:mt-3 sm:px-[18px]">
             <div className="space-y-[12px] sm:space-y-[10px]">
-              {availabilityRules.map((rule) => (
+              {(isEditingRules ? draftAvailabilityRules : availabilityRules).map(
+                (rule) => (
                 <div
                   key={rule.label}
                   className="grid grid-cols-1 gap-[4px] sm:grid-cols-[132px_minmax(0,1fr)] sm:items-center sm:gap-[8px]"
@@ -1196,16 +1292,43 @@ export function ProfessionalSchedulePage() {
                   <span className="pl-1 text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#334155] sm:pl-0 sm:text-[16px]">
                     {rule.label}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => cycleRuleValue(rule.label)}
-                    className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] sm:text-[16px]"
-                  >
-                    {rule.value}
-                  </button>
+                  {isEditingRules ? (
+                    <select
+                      value={rule.value}
+                      onChange={(event) =>
+                        handleDraftRuleChange(rule.label, event.target.value)
+                      }
+                      className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#BFDBFE] sm:text-[16px]"
+                    >
+                      {(ruleOptions[rule.label] ?? [rule.value]).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => cycleRuleValue(rule.label)}
+                      className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] sm:text-[16px]"
+                    >
+                      {rule.value}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
+            {isEditingRules ? (
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveRules}
+                  className={`inline-flex h-[38px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium text-[#F8FAFC] ${microInteractionClass}`}
+                >
+                  Save rules
+                </button>
+              </div>
+            ) : null}
           </div>
         </article>
       </div>

@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
   partnerTiers,
-  recentReferrals,
-  referralCode,
-  referralMetrics,
-  referralShareUrl,
   type PartnerTier,
+  type RecentReferral,
+  type ReferralMetric,
 } from "./data";
+import {
+  formatApiMoney,
+  getProfessionalReferrals,
+  type ProfessionalReferrals,
+} from "@/services/professionalApi";
 
 function StarBadge({ tone }: { tone: PartnerTier["cardTone"] }) {
   const stroke = tone === "blue" ? "#F8FAFC" : "#F8FAFC";
@@ -144,6 +147,84 @@ function TierCard({ tier }: { tier: PartnerTier }) {
 export function ProfessionalReferralsPage() {
   const { searchText } = useProfessionalPlatformShell();
   const [copied, setCopied] = useState(false);
+  const [referrals, setReferrals] = useState<ProfessionalReferrals | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReferrals() {
+      try {
+        const data = await getProfessionalReferrals();
+        if (!cancelled) {
+          setReferrals(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load referrals");
+          setReferrals(null);
+        }
+      }
+    }
+
+    void loadReferrals();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const referralCode = referrals?.referralCode ?? "";
+  const referralShareUrl = referrals?.referralShareUrl ?? "";
+  const referralMetrics = useMemo<ReferralMetric[]>(() => {
+    const metrics = referrals?.metrics;
+    return [
+      {
+        id: "total",
+        value: String(metrics?.totalReferrals ?? 0),
+        label: "Total referrals",
+        note: "All time",
+      },
+      {
+        id: "organizations",
+        value: String(metrics?.organizationsReferred ?? 0),
+        label: "Organizations referred",
+        note: "Tracked from your referral code",
+      },
+      {
+        id: "professionals",
+        value: String(metrics?.professionalsReferred ?? 0),
+        label: "Professionals referred",
+        note: "Tracked from your referral code",
+      },
+      {
+        id: "patients",
+        value: String(metrics?.patientsReferred ?? 0),
+        label: "Patients Referred",
+        note: "Tracked from your referral code",
+      },
+    ];
+  }, [referrals]);
+
+  const recentReferrals = useMemo<RecentReferral[]>(() => {
+    return (referrals?.records ?? []).map((record) => ({
+      id: record.id,
+      name: record.name,
+      initials: record.initials,
+      type:
+        record.type === "organization"
+          ? "Organization"
+          : record.type === "professional"
+            ? "Professional"
+            : "Patient",
+      joined: new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(record.joinedAt)),
+      earned: formatApiMoney(record.amountCents, record.currency),
+      status: record.status === "completed" ? "Completed" : "Pending",
+    }));
+  }, [referrals]);
 
   const filteredReferrals = recentReferrals
     .filter((referral) =>
@@ -155,6 +236,11 @@ export function ProfessionalReferralsPage() {
     .slice(0, 3);
 
   const handleCopyCode = async () => {
+    if (!referralCode) {
+      toast.error("Referral code is not available yet");
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(referralCode);
       setCopied(true);
@@ -166,16 +252,25 @@ export function ProfessionalReferralsPage() {
   };
 
   const handleShareLink = async () => {
+    if (!referralShareUrl) {
+      toast.error("Referral link is not available yet");
+      return;
+    }
+
     try {
+      try {
+        await navigator.clipboard.writeText(referralShareUrl);
+        toast.success("Referral link copied");
+      } catch {
+        // Continue to native share even if clipboard copy fails.
+      }
+
       if (navigator.share) {
         await navigator.share({
           title: "Swifthelp referral link",
           text: "Join Swifthelp with my referral link.",
           url: referralShareUrl,
         });
-      } else {
-        await navigator.clipboard.writeText(referralShareUrl);
-        toast.success("Referral link copied");
       }
     } catch {
       toast.error("Unable to share referral link");
@@ -239,8 +334,12 @@ export function ProfessionalReferralsPage() {
 
           <div className="relative z-10 flex min-w-0 flex-col items-start gap-3 pr-0 xl:items-end xl:pt-3 xl:pr-2">
             <p className="text-[18px] font-semibold tracking-[-0.07em]">Total Earnings</p>
-            <p className="text-[40px] font-semibold leading-[1.1] tracking-[-0.07em]">$500</p>
-            <p className="text-[16px] tracking-[-0.07em] text-[#AF8D11]">Pending: $300</p>
+            <p className="text-[40px] font-semibold leading-[1.1] tracking-[-0.07em]">
+              {formatApiMoney(referrals?.metrics.totalEarnings ?? 0, referrals?.metrics.currency ?? "NGN")}
+            </p>
+            <p className="text-[16px] tracking-[-0.07em] text-[#AF8D11]">
+              Pending: {formatApiMoney(referrals?.metrics.pendingEarnings ?? 0, referrals?.metrics.currency ?? "NGN")}
+            </p>
             <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.18, ease: "easeOut" }}>
               <Link
                 href="/professional-platform/referrals/withdraw"
@@ -315,7 +414,11 @@ export function ProfessionalReferralsPage() {
         </div>
 
         <div>
-          {filteredReferrals.map((record) => (
+          {filteredReferrals.length === 0 ? (
+            <div className="px-6 py-10 text-center text-[15px] tracking-[-0.05em] text-[#94A3B8]">
+              No referrals found for this account yet.
+            </div>
+          ) : filteredReferrals.map((record) => (
             <div
               key={record.id}
               className="border-b border-[#E2E8F0] px-6 py-4 md:grid md:grid-cols-[2.1fr_1.2fr_1.5fr_1.2fr_1fr] md:items-center"

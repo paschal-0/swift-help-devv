@@ -179,9 +179,9 @@ export type OrganizationDashboard = {
 
 export type OrganizationShiftList = {
   summary: {
-    total: number;
-    completed: number;
-    missed: number;
+    totalShifts?: number;
+    completedShifts?: number;
+    missedShifts?: number;
     attendanceRate: number;
   };
   shifts: OrganizationShift[];
@@ -207,7 +207,9 @@ export type OrganizationReports = {
     totalShiftsPosted: number;
     shiftsFilled: number;
     totalHoursWorked: number;
-    totalAmountPaidCents: number;
+    totalAmountPaid?: number;
+    totalAmountPaidCents?: number;
+    currency?: string;
   };
   shiftActivity: Array<Record<string, unknown>>;
   fillRate: Record<string, unknown>;
@@ -247,7 +249,48 @@ export type OrganizationSettings = {
   };
 };
 
-function buildQuery(params?: Record<string, string | number | undefined>) {
+export type OrganizationNotification = {
+  id: string;
+  organizationUserId: string;
+  type: string;
+  title: string;
+  message: string;
+  shiftOfferId: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrganizationReferralRecord = {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  type: string;
+  joinedAt: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+};
+
+export type OrganizationReferrals = {
+  referralCode: string;
+  referralShareUrl: string;
+  metrics: {
+    totalReferrals: number;
+    organizationsReferred: number;
+    professionalsReferred: number;
+    patientsReferred: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+    currency: string;
+  };
+  records: OrganizationReferralRecord[];
+};
+
+function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
   if (!params) {
     return "";
   }
@@ -302,10 +345,12 @@ export async function createOrganizationShift(payload: {
   priority?: "normal" | "urgent";
   notes?: string;
 }) {
-  return apiRequest<OrganizationShift>("/organization/shifts", {
+  const detail = await apiRequest<OrganizationShiftDetail>("/organization/shifts", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  return detail.shift;
 }
 
 export async function getOrganizationShift(shiftId: string) {
@@ -535,5 +580,32 @@ export async function changeOrganizationPassword(payload: {
   return apiRequest<{ message: string }>("/organization/settings/password", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function listOrganizationNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+}) {
+  return apiRequest<OrganizationNotification[]>(
+    `/organization/notifications${buildQuery(params)}`,
+    {
+      method: "GET",
+    },
+  );
+}
+
+export async function markOrganizationNotificationRead(notificationId: string) {
+  return apiRequest<OrganizationNotification>(
+    `/organization/notifications/${encodeURIComponent(notificationId)}/read`,
+    {
+      method: "PATCH",
+    },
+  );
+}
+
+export async function getOrganizationReferrals() {
+  return apiRequest<OrganizationReferrals>("/organization/referrals", {
+    method: "GET",
   });
 }

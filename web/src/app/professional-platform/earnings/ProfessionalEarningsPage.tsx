@@ -63,143 +63,35 @@ const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
 });
 
 const buildSummaryCards = (summary: EarningsSummary | null): EarningsSummaryCard[] => {
-  if (!summary) return earningsSummary;
+  const currentSummary: EarningsSummary = summary ?? {
+    totalEarned: 0,
+    availableBalance: 0,
+    pendingEarnings: 0,
+    currency: "NGN",
+    transactionCount: 0,
+  };
 
   return [
     {
       id: "total",
       title: "Total Earnings",
-      value: formatApiMoney(summary.totalEarned, summary.currency),
+      value: formatApiMoney(currentSummary.totalEarned, currentSummary.currency),
       note: "All completed consultations",
     },
     {
       id: "available",
       title: "Available Balance",
-      value: formatApiMoney(summary.availableBalance, summary.currency),
+      value: formatApiMoney(currentSummary.availableBalance, currentSummary.currency),
       note: "Ready for withdrawal",
     },
     {
       id: "pending",
       title: "Pending Earnings",
-      value: formatApiMoney(summary.pendingEarnings, summary.currency),
+      value: formatApiMoney(currentSummary.pendingEarnings, currentSummary.currency),
       note: "Awaiting payout release",
     },
   ];
 };
-
-const earningsSummary: EarningsSummaryCard[] = [
-  {
-    id: "total",
-    title: "Total Earnings",
-    value: "N245,000",
-    note: "All completed consultations",
-  },
-  {
-    id: "available",
-    title: "Available Balance",
-    value: "N85,000",
-    note: "Ready for withdrawal",
-  },
-  {
-    id: "pending",
-    title: "Pending Earnings",
-    value: "N32,000",
-    note: "Awaiting payout release",
-  },
-];
-
-const transactionsData: TransactionItem[] = [
-  {
-    id: "txn-1",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-2",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-3",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-4",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-5",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-6",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-7",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-8",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-9",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 6, 2026",
-    amount: "N15,000",
-    status: "Completed",
-  },
-  {
-    id: "txn-10",
-    transactionId: "245537811",
-    consultation: "General Consultation",
-    patient: "Sarah J.",
-    date: "April 5, 2026",
-    amount: "N12,000",
-    status: "Completed",
-  },
-];
 
 const tabOptions: Array<{ id: EarningsTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -220,14 +112,14 @@ export function ProfessionalEarningsPage() {
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
   const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
   const [walletSummary, setWalletSummary] = useState<EarningsSummary | null>(null);
-  const [transactionItems, setTransactionItems] = useState<TransactionItem[]>(transactionsData);
-  const [payoutItems, setPayoutItems] = useState<TransactionItem[]>(transactionsData);
+  const [transactionItems, setTransactionItems] = useState<TransactionItem[]>([]);
+  const [payoutItems, setPayoutItems] = useState<TransactionItem[]>([]);
   const [payoutMethodItems, setPayoutMethodItems] = useState<ProfessionalPayoutMethod[]>([]);
   const mobileScrollbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const payoutMethods = payoutMethodItems.length
     ? payoutMethodItems.map((method) => `${method.bankName} - **** ${method.accountNumberLast4}`)
-    : ["GTBank - **** 2481", "Moniepoint - **** 9921", "Access Bank - **** 1014"];
-  const showOverviewEmptyState = false;
+    : [];
+  const showOverviewEmptyState = transactionItems.length === 0 && payoutItems.length === 0;
 
   const query = searchText.trim().toLowerCase();
 
@@ -261,12 +153,27 @@ export function ProfessionalEarningsPage() {
   }, [payoutItems, payoutFilter]);
 
   const overviewTransactions = searchedTransactions.slice(0, 9);
-  const summaryCards = showOverviewEmptyState
-    ? earningsSummary.map((item) => ({ ...item, value: "N0" }))
-    : buildSummaryCards(walletSummary);
+  const summaryCards = buildSummaryCards(walletSummary);
   const selectedTransaction =
     transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
+  const lastPayout = payoutItems[0] ?? null;
+  const activePayoutMethod = payoutMethods[payoutMethodIndex] ?? "No payout method added";
+  const [activePayoutBank, activePayoutAccount = ""] = activePayoutMethod.split(" - ");
+  const payoutSummaryItems = [
+    {
+      label: "Available for withdrawal",
+      value: formatApiMoney(walletSummary?.availableBalance ?? 0, walletSummary?.currency ?? "NGN"),
+    },
+    {
+      label: "Pending payouts",
+      value: formatApiMoney(walletSummary?.pendingEarnings ?? 0, walletSummary?.currency ?? "NGN"),
+    },
+    {
+      label: "Last Withdrawal",
+      value: lastPayout?.amount ?? "No withdrawals",
+    },
+  ];
 
   const scheduleMobileScrollbarHide = (delay: number) => {
     if (mobileScrollbarTimeoutRef.current) {
@@ -408,17 +315,21 @@ export function ProfessionalEarningsPage() {
           <p className="pb-3 text-[14px] font-semibold leading-[20px] tracking-[-0.05em] text-[#334155] md:pb-0 md:leading-[18px]">
             Last Payout
             <br />
-            <span className="font-normal text-[#64748B] md:text-[#334155]">N50,000 - Apr 12, 2026</span>
+            <span className="font-normal text-[#64748B] md:text-[#334155]">
+              {lastPayout ? `${lastPayout.amount} - ${lastPayout.date}` : "No payouts yet"}
+            </span>
           </p>
           <p className="py-3 text-[14px] font-semibold leading-[20px] tracking-[-0.05em] text-[#334155] md:py-0 md:leading-[18px]">
             Next Payout Window
             <br />
-            <span className="font-normal text-[#64748B] md:text-[#334155]">Apr 18, 2026</span>
+            <span className="font-normal text-[#64748B] md:text-[#334155]">
+              {walletSummary?.pendingEarnings ? "Pending payout review" : "No scheduled payout"}
+            </span>
           </p>
           <p className="pt-3 text-[14px] font-semibold leading-[20px] tracking-[-0.05em] text-[#334155] md:pt-0 md:leading-[18px]">
             Payout Method
             <br />
-            <span className="font-normal text-[#64748B] md:text-[#334155]">GTBank - **** 2481</span>
+            <span className="font-normal text-[#64748B] md:text-[#334155]">{activePayoutMethod}</span>
           </p>
         </div>
       </article>
@@ -525,11 +436,7 @@ export function ProfessionalEarningsPage() {
                   Payout Summary
                 </h3>
                 <div className="mt-4 space-y-[12px] md:mt-3 md:space-y-[9px]">
-                  {[
-                    { label: "Available for withdrawal", value: "N85,000" },
-                    { label: "Pending payouts", value: "N32,000" },
-                    { label: "Last Withdrawal", value: "N50,000" },
-                  ].map((item) => (
+                  {payoutSummaryItems.map((item) => (
                     <div key={item.label} className="flex items-center justify-between gap-[6px]">
                       <span className="text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#64748B] md:text-[12px] md:font-light md:text-[#334155]">
                         {item.label}
@@ -565,16 +472,20 @@ export function ProfessionalEarningsPage() {
                 </h3>
                 <p className="mt-3 text-[14px] font-normal leading-[26px] tracking-[-0.05em] text-[#64748B] md:mt-[10px] md:text-[12px] md:font-light md:leading-[22px] md:text-[#334155]">
                   Bank name:{" "}
-                  <span className="font-semibold text-[#334155]">{payoutMethods[payoutMethodIndex].split(" - ")[0]}</span>
+                  <span className="font-semibold text-[#334155]">{activePayoutBank}</span>
                   <br />
                   Account holder: <span className="font-semibold text-[#334155]">Ayeni Precious</span>
                   <br />
                   Account number:{" "}
-                  <span className="font-semibold text-[#334155]">{payoutMethods[payoutMethodIndex].split(" - ")[1]}</span>
+                  <span className="font-semibold text-[#334155]">{activePayoutAccount}</span>
                 </p>
                 <button
                   type="button"
-                  onClick={() => setPayoutMethodIndex((current) => (current + 1) % payoutMethods.length)}
+                  onClick={() =>
+                    setPayoutMethodIndex((current) =>
+                      payoutMethods.length ? (current + 1) % payoutMethods.length : 0,
+                    )
+                  }
                   className="mt-4 inline-flex h-[36px] w-full items-center justify-center rounded-[10px] bg-[#F1F5F9] text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] md:mt-[10px] md:h-[26px] md:rounded-[12px] md:bg-[#1565C0] md:text-[12px] md:font-normal md:text-[#E3F2FD]"
                 >
                   Manage Payout Method

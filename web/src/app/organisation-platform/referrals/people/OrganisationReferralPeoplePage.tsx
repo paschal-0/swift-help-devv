@@ -1,23 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useOrganisationPlatformShell } from "../../components/OrganisationPlatformShell";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
-  organisationRecentReferrals,
-  type RecentReferral,
-  type ReferralRecordType,
-} from "../data";
+  formatOrganizationMoney,
+  getOrganizationReferrals,
+  type OrganizationReferralRecord,
+} from "@/services/organizationApi";
+import { useOrganisationPlatformShell } from "../../components/OrganisationPlatformShell";
 
-type FilterKey = "All" | ReferralRecordType;
+type FilterKey = "All" | "patient" | "professional" | "organization";
 
 const filters: { key: FilterKey; label: string }[] = [
   { key: "All", label: "All" },
-  { key: "Patient", label: "Patients" },
-  { key: "Professional", label: "Professionals" },
-  { key: "Organization", label: "Organizations" },
+  { key: "patient", label: "Patients" },
+  { key: "professional", label: "Professionals" },
+  { key: "organization", label: "Organizations" },
 ];
 
-function ReferralTableRow({ referral }: { referral: RecentReferral }) {
+function ReferralTableRow({ referral }: { referral: OrganizationReferralRecord }) {
   return (
     <div className="grid gap-3 border-b border-[#E2E8F0] px-8 py-5 md:grid-cols-[2.2fr_1.4fr_1.5fr_1.2fr_1fr] md:items-center">
       <div className="flex items-center gap-3">
@@ -32,14 +33,14 @@ function ReferralTableRow({ referral }: { referral: RecentReferral }) {
         {referral.type}
       </div>
       <div className="text-[16px] font-light leading-[26px] tracking-[-0.07em] text-[#94A3B8]">
-        {referral.joined}
+        {new Date(referral.joinedAt).toLocaleDateString()}
       </div>
       <div className="text-[16px] font-light leading-[26px] tracking-[-0.07em] text-[#94A3B8]">
-        {referral.earned}
+        {formatOrganizationMoney(referral.amountCents, referral.currency)}
       </div>
       <div
         className={
-          referral.status === "Completed"
+          referral.status === "completed"
             ? "text-[16px] font-normal leading-[26px] tracking-[-0.07em] text-[#19AA4A]"
             : "text-[16px] font-normal leading-[26px] tracking-[-0.07em] text-[#AF8D11]"
         }
@@ -53,26 +54,43 @@ function ReferralTableRow({ referral }: { referral: RecentReferral }) {
 export function OrganisationReferralPeoplePage() {
   const { searchText } = useOrganisationPlatformShell();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("All");
+  const [records, setRecords] = useState<OrganizationReferralRecord[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getOrganizationReferrals()
+      .then((response) => {
+        if (mounted) setRecords(response.records);
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error ? error.message : "Unable to load referrals.",
+        );
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredRecords = useMemo(() => {
     const query = searchText.trim().toLowerCase();
 
-    const records =
+    const sourceRecords =
       activeFilter === "All"
-        ? organisationRecentReferrals
-        : organisationRecentReferrals.filter((record) => record.type === activeFilter);
+        ? records
+        : records.filter((record) => record.type === activeFilter);
 
     if (!query) {
-      return records;
+      return sourceRecords;
     }
 
-    return records.filter((record) =>
-      [record.name, record.type, record.joined, record.earned, record.status]
+    return sourceRecords.filter((record) =>
+      [record.name, record.type, record.email, record.status]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
-  }, [activeFilter, searchText]);
+  }, [activeFilter, records, searchText]);
 
   return (
     <section className="mt-[12px] pb-8 xl:pb-10">
@@ -118,7 +136,7 @@ export function OrganisationReferralPeoplePage() {
         ) : (
           <>
             <div className="hidden max-h-[640px] overflow-y-auto md:block [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0]">
-              {filteredRecords.map((referral) => (
+      {filteredRecords.map((referral) => (
                 <ReferralTableRow key={referral.id} referral={referral} />
               ))}
             </div>
@@ -138,7 +156,7 @@ export function OrganisationReferralPeoplePage() {
                     </div>
                     <span
                       className={
-                        referral.status === "Completed"
+                        referral.status === "completed"
                           ? "shrink-0 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[11px] font-medium leading-[14px] text-[#19AA4A]"
                           : "shrink-0 rounded-full bg-[#FEF3C7] px-2.5 py-1 text-[11px] font-medium leading-[14px] text-[#AF8D11]"
                       }
@@ -150,11 +168,11 @@ export function OrganisationReferralPeoplePage() {
                   <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#F1F5F9] pt-3">
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Joined</p>
-                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{referral.joined}</p>
+                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{new Date(referral.joinedAt).toLocaleDateString()}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#94A3B8]">Earned</p>
-                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{referral.earned}</p>
+                      <p className="mt-1 text-[12px] leading-[17px] text-[#475569]">{formatOrganizationMoney(referral.amountCents, referral.currency)}</p>
                     </div>
                   </div>
                 </div>

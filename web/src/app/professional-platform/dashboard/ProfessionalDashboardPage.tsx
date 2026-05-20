@@ -23,6 +23,7 @@ import {
   declineProfessionalRequest,
   formatApiMoney,
   getProfessionalDashboard,
+  getProfessionalProfile,
   type ProfessionalConsultation,
   type ProfessionalConsultationRequest,
   type ProfessionalDashboard,
@@ -102,101 +103,6 @@ const metricCardMeta: Omit<MetricCard, "value" | "subtitle">[] = [
   },
 ];
 
-const appointments: Appointment[] = [
-  {
-    id: "appt-1",
-    timeLabel: "9:00",
-    patient: "Martin Samuel",
-    timeRange: "9:00am - 10:00 am",
-    status: "Done",
-    consultationType: "Video consultation",
-    reason: "Routine checkup",
-  },
-  {
-    id: "appt-2",
-    timeLabel: "10:00",
-    patient: "Martin Samuel",
-    timeRange: "10:00am - 11:00 am",
-    status: "Done",
-    consultationType: "Video consultation",
-    reason: "Blood pressure follow-up",
-  },
-  {
-    id: "appt-3",
-    timeLabel: "11:00",
-    patient: "Michael A.",
-    timeRange: "10:30am - 11:00 am",
-    status: "Ongoing",
-    consultationType: "Video consultation",
-    reason: "Headache & Fatigue",
-  },
-  {
-    id: "appt-4",
-    timeLabel: "12:00",
-    patient: "Martin Samuel",
-    timeRange: "12:00pm - 1:00 pm",
-    status: "Upcoming",
-    consultationType: "Video consultation",
-    reason: "Medication review",
-  },
-  {
-    id: "appt-5",
-    timeLabel: "13:00",
-    patient: "Martin Samuel",
-    timeRange: "1:00pm - 2:00 pm",
-    status: "Upcoming",
-    consultationType: "Video consultation",
-    reason: "Follow-up care",
-  },
-];
-
-const incomingRequests: IncomingRequest[] = [
-  {
-    id: "request-1",
-    from: "Daniel O.",
-    requestedTime: "Requested for today, 4:30 PM",
-    date: "17.03.2026",
-    consultationType: "Video Consultation",
-    duration: "30 mins",
-    deadline: "Respond within 45 mins",
-  },
-  {
-    id: "request-2",
-    from: "Daniel O.",
-    requestedTime: "Requested for today, 4:30 PM",
-    date: "17.03.2026",
-    consultationType: "Video Consultation",
-    duration: "30 mins",
-    deadline: "Respond within 45 mins",
-  },
-];
-
-const earningsDataByRange: Record<EarningsRange, EarningsPoint[]> = {
-  today: [
-    { label: "8AM", earned: 3000, pending: 1200, sessions: 1 },
-    { label: "9AM", earned: 6200, pending: 2100, sessions: 2 },
-    { label: "10AM", earned: 4100, pending: 1500, sessions: 1 },
-    { label: "11AM", earned: 8900, pending: 2700, sessions: 2 },
-    { label: "12PM", earned: 7600, pending: 2200, sessions: 2 },
-    { label: "1PM", earned: 11200, pending: 3100, sessions: 3 },
-    { label: "2PM", earned: 5400, pending: 1800, sessions: 1 },
-    { label: "3PM", earned: 14800, pending: 4200, sessions: 3 },
-    { label: "4PM", earned: 9800, pending: 2600, sessions: 2 },
-    { label: "5PM", earned: 12100, pending: 3400, sessions: 2 },
-    { label: "6PM", earned: 8300, pending: 2100, sessions: 1 },
-    { label: "7PM", earned: 10400, pending: 2900, sessions: 2 },
-  ],
-  week: [
-    { label: "Mon", earned: 18500, pending: 4200, sessions: 4 },
-    { label: "Tue", earned: 22400, pending: 5100, sessions: 5 },
-    { label: "Wed", earned: 19800, pending: 4600, sessions: 4 },
-    { label: "Thu", earned: 24800, pending: 5800, sessions: 6 },
-    { label: "Fri", earned: 27100, pending: 6200, sessions: 6 },
-    { label: "Sat", earned: 16300, pending: 3400, sessions: 3 },
-    { label: "Sun", earned: 14100, pending: 2900, sessions: 3 },
-  ],
-};
-
 const formatNaira = (value: number) =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -248,6 +154,10 @@ const microInteractionClass =
 type MobileDashboardProps = {
   activeAppointment: Appointment | null;
   activeDayLabel: string;
+  heroDateLabel: string;
+  heroTimeLabel: string;
+  professionalName: string;
+  ratingLabel: string;
   earningsMetrics: {
     totalEarned: number;
     pendingPayout: number;
@@ -343,6 +253,10 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
 function MobileDashboardView({
   activeAppointment,
   activeDayLabel,
+  heroDateLabel,
+  heroTimeLabel,
+  professionalName,
+  ratingLabel,
   earningsMetrics,
   earningsRange,
   onAcceptRequest,
@@ -368,12 +282,12 @@ function MobileDashboardView({
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
             </svg>
-            March 17, 2026
-            <span className="font-semibold">10:20 am</span>
+            {heroDateLabel}
+            <span className="font-semibold">{heroTimeLabel}</span>
           </div>
           <div className="max-w-[250px] space-y-2">
             <h1 className="text-[2rem] font-semibold leading-8 tracking-[-0.06em] text-[#334155]">
-              Welcome back, Dr. Precious
+              Welcome back, {professionalName}
             </h1>
             <p className="text-[15px] font-light leading-[18px] tracking-[-0.04em] text-[#334155]">
               Manage your consultations, availability, records, and earnings from one place.
@@ -383,7 +297,7 @@ function MobileDashboardView({
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path fill="#ECBE18" d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z" />
             </svg>
-            <span className="text-xs font-medium tracking-[-0.04em] text-[#F8FAFC]">4.8 Average Rating</span>
+            <span className="text-xs font-medium tracking-[-0.04em] text-[#F8FAFC]">{ratingLabel}</span>
           </div>
         </div>
       </section>
@@ -597,32 +511,44 @@ function MobileDashboardView({
 export function ProfessionalDashboardPage() {
   const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
-  const [activeAppointmentId, setActiveAppointmentId] = useState("appt-3");
+  const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
   const [earningsRange, setEarningsRange] = useState<EarningsRange>("today");
   const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [dashboardRequests, setDashboardRequests] = useState(incomingRequests);
+  const [dashboardRequests, setDashboardRequests] = useState<IncomingRequest[]>([]);
   const [dashboard, setDashboard] = useState<ProfessionalDashboard | null>(null);
-  const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
+  const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>([]);
+  const [professionalName, setProfessionalName] = useState("Professional");
 
   const query = searchText.trim().toLowerCase();
+  const now = useMemo(() => new Date(), []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadDashboard() {
       try {
-        const data = await getProfessionalDashboard(earningsRange);
+        const [data, profileData] = await Promise.all([
+          getProfessionalDashboard(earningsRange),
+          getProfessionalProfile(),
+        ]);
         if (cancelled) return;
 
         setDashboard(data);
+        setProfessionalName(
+          profileData.profile.professionalName ||
+            profileData.account?.fullName ||
+            "Professional",
+        );
         const mappedAppointments = [data.activeSession, ...data.upcomingSessions]
           .filter((session): session is ProfessionalConsultation => Boolean(session))
           .map(mapSessionToAppointment);
 
-        setDashboardAppointments(mappedAppointments.length ? mappedAppointments : appointments);
+        setDashboardAppointments(mappedAppointments);
         setDashboardRequests(data.pendingRequests.map(mapRequestToIncomingRequest));
         if (mappedAppointments[0]) {
           setActiveAppointmentId(mappedAppointments[0].id);
+        } else {
+          setActiveAppointmentId(null);
         }
       } catch (error) {
         if (!cancelled) {
@@ -674,20 +600,33 @@ export function ProfessionalDashboardPage() {
   const activeAppointment =
     visibleAppointments.find((appointment) => appointment.id === activeAppointmentId) ?? visibleAppointments[0] ?? null;
 
-  const earningsSeries = earningsDataByRange[earningsRange];
+  const earningsSeries = useMemo<EarningsPoint[]>(() => {
+    const labels =
+      earningsRange === "today"
+        ? ["8AM", "10AM", "12PM", "2PM", "4PM", "6PM"]
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const totalEarned = dashboard?.earnings.totalEarned ?? 0;
+    const pending = dashboard?.earnings.pendingEarnings ?? 0;
+    const sessions = dashboard?.performance.completedSessions ?? 0;
+
+    return labels.map((label, index) => ({
+      label,
+      earned: index === labels.length - 1 ? totalEarned : 0,
+      pending: index === labels.length - 1 ? pending : 0,
+      sessions: index === labels.length - 1 ? sessions : 0,
+    }));
+  }, [dashboard, earningsRange]);
 
   const earningsMetrics = useMemo(() => {
-    const totalEarned = earningsSeries.reduce((sum, point) => sum + point.earned, 0);
-    const pendingPayout = earningsSeries.reduce((sum, point) => sum + point.pending, 0);
-    const completedSessions = earningsSeries.reduce((sum, point) => sum + point.sessions, 0);
-
     return {
-      totalEarned,
-      pendingPayout,
-      completedSessions,
-      nextPayoutLabel: earningsRange === "today" ? "Friday, 5 Apr" : "Monday, 8 Apr",
+      totalEarned: dashboard?.earnings.totalEarned ?? 0,
+      pendingPayout: dashboard?.earnings.pendingEarnings ?? 0,
+      completedSessions: dashboard?.performance.completedSessions ?? 0,
+      nextPayoutLabel: dashboard?.earnings.availableBalance
+        ? "Available now"
+        : "No payout scheduled",
     };
-  }, [earningsRange, earningsSeries]);
+  }, [dashboard]);
 
   const earningsChartData = useMemo(
     () => ({
@@ -797,7 +736,7 @@ export function ProfessionalDashboardPage() {
   const dashboardMetricCards = useMemo<MetricCard[]>(() => {
     const doneCount = dashboardAppointments.filter((appointment) => appointment.status === "Done").length;
     const upcomingCount = dashboardAppointments.filter((appointment) => appointment.status === "Upcoming").length;
-    const weeklyEarningsLabel = dashboard ? formatApiMoney(dashboard.metrics.weeklyEarnings) : formatNaira(earningsDataByRange.week.reduce((sum, point) => sum + point.earned, 0));
+    const weeklyEarningsLabel = dashboard ? formatApiMoney(dashboard.metrics.weeklyEarnings) : formatNaira(0);
 
     return [
       {
@@ -823,7 +762,27 @@ export function ProfessionalDashboardPage() {
     ];
   }, [dashboard, dashboardAppointments, dashboardRequests.length, earningsMetrics.completedSessions]);
 
-  const dashboardDayLabels = ["MARCH 17", "MARCH 18", "MARCH 19"];
+  const dashboardDayLabels = [0, 1, 2].map((offset) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() + offset);
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+    }).format(date).toUpperCase();
+  });
+  const heroDateLabel = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(now);
+  const heroTimeLabel = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(now);
+  const ratingLabel =
+    dashboard && dashboard.performance.reviewCount > 0
+      ? `${dashboard.performance.averageRating.toFixed(1)} Average Rating`
+      : "No ratings yet";
 
   const handleDashboardRequestAction = async (id: string, action: "accept" | "decline") => {
     const request = dashboardRequests.find((item) => item.id === id);
@@ -863,6 +822,10 @@ export function ProfessionalDashboardPage() {
         <MobileDashboardView
           activeAppointment={activeAppointment}
           activeDayLabel={dashboardDayLabels[activeDayIndex]}
+          heroDateLabel={heroDateLabel}
+          heroTimeLabel={heroTimeLabel}
+          professionalName={professionalName}
+          ratingLabel={ratingLabel}
           earningsMetrics={earningsMetrics}
           earningsRange={earningsRange}
           onAcceptRequest={(id) => handleDashboardRequestAction(id, "accept")}
@@ -893,13 +856,13 @@ export function ProfessionalDashboardPage() {
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
               <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
             </svg>
-            March 17,2026
-            <span className="font-medium">10;20 am</span>
+            {heroDateLabel}
+            <span className="font-medium">{heroTimeLabel}</span>
           </div>
 
           <div className="relative z-10 mt-8 max-w-[350px] space-y-3">
             <h1 className="text-[24px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">
-              Welcome back, Dr. Precious
+              Welcome back, {professionalName}
             </h1>
             <p className="text-[16px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
               Manage your consultations, availability, records, and earnings from one place.
@@ -910,7 +873,7 @@ export function ProfessionalDashboardPage() {
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path fill="#ECBE18" d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z" />
             </svg>
-            <span className="text-[12px] font-medium leading-3 tracking-[-0.05em] text-[#F8FAFC]">4.8 Average Rating</span>
+            <span className="text-[12px] font-medium leading-3 tracking-[-0.05em] text-[#F8FAFC]">{ratingLabel}</span>
           </div>
         </motion.article>
 

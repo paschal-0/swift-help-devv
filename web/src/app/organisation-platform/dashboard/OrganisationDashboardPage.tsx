@@ -47,109 +47,6 @@ type AttentionItem = {
   secondaryHref: string;
 };
 
-const statCards: StatCard[] = [
-  { title: "Active shifts", value: 18, subtitle: "Open or in progress", href: "/organisation-platform/shifts" },
-  { title: "Unfilled Shifts", value: 4, subtitle: "Need attention", href: "/organisation-platform/shifts" },
-  { title: "Available Staff", value: 20, subtitle: "Ready for assignment", href: "/organisation-platform/professionals" },
-  { title: "Pending Responses", value: 6, subtitle: "Awaiting staff response", href: "/organisation-platform/reports" },
-];
-
-const shiftRows: ShiftRow[] = [
-  {
-    id: "245537811",
-    department: "Emmergency Unit",
-    time: "8:00 AM-4:00 PM",
-    required: 4,
-    assigned: 4,
-    status: "Filled",
-    action: "View Details",
-    href: "/organisation-platform/shifts",
-  },
-  {
-    id: "245537812",
-    department: "ICU",
-    time: "8:00 AM-4:00 PM",
-    required: 4,
-    assigned: 4,
-    status: "Partially Filled",
-    action: "Assign",
-    href: "/organisation-platform/professionals",
-  },
-  {
-    id: "245537813",
-    department: "Radiology",
-    time: "8:00 AM-4:00 PM",
-    required: 4,
-    assigned: 4,
-    status: "Assigned",
-    action: "View Details",
-    href: "/organisation-platform/shifts",
-  },
-  {
-    id: "245537814",
-    department: "Radiology",
-    time: "8:00 AM-4:00 PM",
-    required: 4,
-    assigned: 4,
-    status: "Assigned",
-    action: "View Details",
-    href: "/organisation-platform/shifts",
-  },
-  {
-    id: "245537815",
-    department: "ICU",
-    time: "8:00 AM-4:00 PM",
-    required: 4,
-    assigned: 4,
-    status: "Partially Filled",
-    action: "Assign",
-    href: "/organisation-platform/professionals",
-  },
-];
-
-const staffAvailability = [
-  { label: "Available Now", value: 28 },
-  { label: "On Shift", value: 8 },
-  { label: "Off Duty", value: 6 },
-  { label: "On leave", value: 4 },
-];
-
-const responseItems: ResponseItem[] = [
-  { id: "response-1", staff: "Mr Smith R.", action: "accepted", shiftId: "SH-1048", ago: "7 mins ago" },
-  { id: "response-2", staff: "Mr Smith R.", action: "declined", shiftId: "SH-1048", ago: "7 mins ago" },
-  { id: "response-3", staff: "Mr Smith R.", action: "accepted", shiftId: "SH-1048", ago: "7 mins ago" },
-];
-
-const attentionItems: AttentionItem[] = [
-  {
-    id: "attention-1",
-    title: "Shift SH-1051 is still unfilled",
-    tags: ["Pediatrics", "Starts today at 6:00 PM", "2 roles needed"],
-    primaryLabel: "Assign Staff",
-    secondaryLabel: "Repost shift",
-    primaryHref: "/organisation-platform/professionals",
-    secondaryHref: "/organisation-platform/shifts",
-  },
-  {
-    id: "attention-2",
-    title: "Late cancellation received for Shift SH-1048",
-    tags: ["Pediatrics", "Starts today at 6:00 PM", "2 roles needed"],
-    primaryLabel: "View Details",
-    secondaryLabel: "Find Replacement",
-    primaryHref: "/organisation-platform/shifts",
-    secondaryHref: "/organisation-platform/professionals",
-  },
-  {
-    id: "attention-3",
-    title: "Shift SH-1051 is still unfilled",
-    tags: ["Pediatrics", "Starts today at 6:00 PM", "2 roles needed"],
-    primaryLabel: "Assign Staff",
-    secondaryLabel: "Repost shift",
-    primaryHref: "/organisation-platform/professionals",
-    secondaryHref: "/organisation-platform/shifts",
-  },
-];
-
 function formatShiftTimeRange(shift: OrganizationShift) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
@@ -173,7 +70,7 @@ function mapShiftStatus(shift: OrganizationShift): ShiftRow["status"] {
 
 function shiftRowsFromDashboard(dashboard: OrganizationDashboard | null) {
   if (!dashboard?.todayShifts?.length) {
-    return shiftRows;
+    return [];
   }
 
   return dashboard.todayShifts.map((shift) => ({
@@ -189,32 +86,34 @@ function shiftRowsFromDashboard(dashboard: OrganizationDashboard | null) {
 }
 
 function statCardsFromDashboard(dashboard: OrganizationDashboard | null) {
-  if (!dashboard) {
-    return statCards;
-  }
-
+  const metrics = dashboard?.metrics ?? {
+    activeShifts: 0,
+    unfilledShifts: 0,
+    availableStaff: 0,
+    pendingResponses: 0,
+  };
   return [
     {
       title: "Active shifts",
-      value: dashboard.metrics.activeShifts,
+      value: metrics.activeShifts,
       subtitle: "Open or in progress",
       href: "/organisation-platform/shifts",
     },
     {
       title: "Unfilled Shifts",
-      value: dashboard.metrics.unfilledShifts,
+      value: metrics.unfilledShifts,
       subtitle: "Need attention",
       href: "/organisation-platform/shifts",
     },
     {
       title: "Available Staff",
-      value: dashboard.metrics.availableStaff,
+      value: metrics.availableStaff,
       subtitle: "Ready for assignment",
       href: "/organisation-platform/professionals",
     },
     {
       title: "Pending Responses",
-      value: dashboard.metrics.pendingResponses,
+      value: metrics.pendingResponses,
       subtitle: "Awaiting staff response",
       href: "/organisation-platform/reports",
     },
@@ -222,15 +121,17 @@ function statCardsFromDashboard(dashboard: OrganizationDashboard | null) {
 }
 
 function staffAvailabilityFromDashboard(dashboard: OrganizationDashboard | null) {
-  if (!dashboard) {
-    return staffAvailability;
-  }
-
+  const metrics = dashboard?.staffAvailability ?? {
+    availableNow: 0,
+    onShift: 0,
+    offDuty: 0,
+    onLeave: 0,
+  };
   return [
-    { label: "Available Now", value: dashboard.staffAvailability.availableNow },
-    { label: "On Shift", value: dashboard.staffAvailability.onShift },
-    { label: "Off Duty", value: dashboard.staffAvailability.offDuty },
-    { label: "On leave", value: dashboard.staffAvailability.onLeave },
+    { label: "Available Now", value: metrics.availableNow },
+    { label: "On Shift", value: metrics.onShift },
+    { label: "Off Duty", value: metrics.offDuty },
+    { label: "On leave", value: metrics.onLeave },
   ];
 }
 
@@ -342,10 +243,10 @@ export function OrganisationDashboardPage() {
     ? dashboard.recentResponses
         .filter((item) => item.action === "accepted" || item.action === "declined")
         .map((item) => ({ ...item, action: item.action as "accepted" | "declined" }))
-    : responseItems;
+    : [];
   const dashboardAttentionItems = dashboard?.attentionItems?.length
     ? dashboard.attentionItems
-    : attentionItems;
+    : [];
 
   const visibleShiftRows = useMemo(() => {
     if (!normalizedQuery) {

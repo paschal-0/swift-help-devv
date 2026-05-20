@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const optionCards = [
   {
@@ -13,7 +13,7 @@ const optionCards = [
     buttonLabel: "Continue as patient",
     background:
       "linear-gradient(180deg, rgba(227,242,253,0.95) 0%, rgba(240,247,255,0.95) 100%)",
-    href: "/get-started/create-account?role=patient",
+    role: "patient",
     icon: <PatientIcon />,
   },
   {
@@ -23,7 +23,7 @@ const optionCards = [
     buttonLabel: "Continue as professional",
     background:
       "linear-gradient(180deg, rgba(220,252,231,0.95) 0%, rgba(240,253,244,0.98) 100%)",
-    href: "/get-started/create-account?role=professional",
+    role: "professional",
     icon: <ProfessionalIcon />,
   },
   {
@@ -33,7 +33,7 @@ const optionCards = [
     buttonLabel: "Continue as organisation",
     background:
       "linear-gradient(180deg, rgba(233,238,244,0.95) 0%, rgba(248,250,252,0.98) 100%)",
-    href: "/get-started/create-account?role=organisation",
+    role: "organisation",
     icon: <OrganisationIcon />,
   },
 ] satisfies OptionCardProps[];
@@ -44,6 +44,7 @@ type OptionCardProps = {
   description: string;
   buttonLabel: string;
   icon: ReactNode;
+  role?: "patient" | "professional" | "organisation";
   href?: string;
 };
 
@@ -168,6 +169,19 @@ function OrganisationIcon() {
 
 export function WelcomePage() {
   const [activeMobileTab, setActiveMobileTab] = useState(0);
+  const [refCode, setRefCode] = useState("");
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref")?.trim() ?? "";
+    setRefCode(ref);
+  }, []);
+
+  const cardsWithHref = optionCards.map((card) => {
+    if (!card.role) return card;
+    const query = new URLSearchParams({ role: card.role });
+    if (refCode) query.set("ref", refCode);
+    return { ...card, href: `/get-started/create-account?${query.toString()}` };
+  });
 
   return (
     <section className="relative min-h-[100svh] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#f4f8fc_45%,#edf4fb_100%)] px-4 py-6 sm:px-6 sm:py-8 lg:h-screen lg:min-h-[900px] lg:px-8 lg:py-8">
@@ -217,7 +231,7 @@ export function WelcomePage() {
 
           <div className="mt-10 space-y-5 md:hidden">
             <div className="relative grid grid-cols-3 gap-2 rounded-full border border-white/70 bg-white/60 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-md">
-              {optionCards.map((card, index) => {
+              {cardsWithHref.map((card, index) => {
                 const isActive = activeMobileTab === index;
 
                 return (
@@ -249,22 +263,22 @@ export function WelcomePage() {
 
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={optionCards[activeMobileTab].title}
+                key={cardsWithHref[activeMobileTab].title}
                 initial={{ opacity: 0, y: 18, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className="will-change-transform"
               >
-                <OptionCard {...optionCards[activeMobileTab]} />
+                <OptionCard {...cardsWithHref[activeMobileTab]} />
               </motion.div>
             </AnimatePresence>
           </div>
 
           <div className="mt-14 hidden gap-6 md:grid md:grid-cols-3">
-            {optionCards.map((card) => (
-              <OptionCard key={card.title} {...card} />
-            ))}
+              {cardsWithHref.map((card) => (
+                <OptionCard key={card.title} {...card} />
+              ))}
           </div>
         </div>
       </div>

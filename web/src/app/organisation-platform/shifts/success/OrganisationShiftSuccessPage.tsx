@@ -41,7 +41,7 @@ function SuccessBadgeIcon() {
   );
 }
 
-export function OrganisationShiftSuccessPage() {
+export function OrganisationShiftSuccessPage({ shiftId }: { shiftId?: string }) {
   const router = useRouter();
 
   return (
@@ -60,7 +60,13 @@ export function OrganisationShiftSuccessPage() {
 
           <button
             type="button"
-            onClick={() => router.push("/organisation-platform/shifts/SH77651")}
+            onClick={() =>
+              router.push(
+                shiftId
+                  ? `/organisation-platform/shifts/${encodeURIComponent(shiftId)}`
+                  : "/organisation-platform/shifts",
+              )
+            }
             className="mt-8 h-[46px] min-w-[299px] cursor-pointer rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-8 text-[18px] font-normal tracking-[-0.05em] text-[#F8FAFC]"
           >
             View Shift

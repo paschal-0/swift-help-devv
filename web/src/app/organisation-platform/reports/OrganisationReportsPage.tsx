@@ -21,17 +21,7 @@ import {
   type OrganizationReports,
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
-import {
-  organisationCancellationInsights,
-  organisationDepartmentBreakdown,
-  organisationMostActiveDepartments,
-  organisationPaymentReports,
-  organisationReportsSummaryCards,
-  organisationShiftActivityBars,
-  organisationTopPerformers,
-  type PaymentReportRow,
-  type PaymentReportStatus,
-} from "./data";
+import { type PaymentReportRow, type PaymentReportStatus } from "./data";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -46,6 +36,15 @@ function formatCurrency(value: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
 }
 
 function ChevronDownIcon() {
@@ -189,17 +188,62 @@ export function OrganisationReportsPage() {
   }, []);
 
   const departmentOptions = useMemo(
-    () => ["Department", ...Array.from(new Set(organisationPaymentReports.map((row) => row.department)))],
-    []
+    () => [
+      "Department",
+      ...Array.from(
+        new Set(
+          (reports?.paymentReports ?? []).map((row) =>
+            String(
+              ((row as Record<string, unknown>).professional as Record<string, unknown> | undefined)
+                ?.department ?? "General",
+            ),
+          ),
+        ),
+      ),
+    ],
+    [reports?.paymentReports]
   );
 
   const roleOptions = useMemo(
-    () => ["Role", ...Array.from(new Set(organisationPaymentReports.map((row) => row.role)))],
-    []
+    () => [
+      "Role",
+      ...Array.from(
+        new Set(
+          (reports?.paymentReports ?? []).map((row) =>
+            String(
+              ((row as Record<string, unknown>).professional as Record<string, unknown> | undefined)
+                ?.role ?? "Professional",
+            ),
+          ),
+        ),
+      ),
+    ],
+    [reports?.paymentReports]
   );
 
   const filteredPaymentReports = useMemo(() => {
-    return organisationPaymentReports.filter((row) => {
+    const sourceRows: PaymentReportRow[] = reports?.paymentReports?.length
+      ? reports.paymentReports.map((row, index) => {
+          const item = row as Record<string, unknown>;
+          const professional = (item.professional ?? null) as
+            | Record<string, unknown>
+            | null;
+          const amountPaidCents = toNumber(item.amountPaid, 0);
+          return {
+            id: String(item.professionalUserId ?? `PAY-${index + 1}`),
+            name: String(professional?.name ?? "Professional"),
+            totalShifts: toNumber(item.totalShifts, 0),
+            totalHours: toNumber(item.totalHours, 0),
+            amountPaid: formatOrganizationMoney(amountPaidCents),
+            status: "Successful",
+            avatarSrc: "/doctor.jpg",
+            department: String(professional?.department ?? "General"),
+            role: String(professional?.role ?? "Professional"),
+          };
+        })
+      : [];
+
+    return sourceRows.filter((row) => {
       const matchesDepartment =
         departmentFilter === "Department" || row.department === departmentFilter;
       const matchesRole = roleFilter === "Role" || row.role === roleFilter;
@@ -211,10 +255,28 @@ export function OrganisationReportsPage() {
 
       return matchesDepartment && matchesRole && matchesSearch;
     });
-  }, [departmentFilter, normalizedQuery, roleFilter]);
+  }, [departmentFilter, normalizedQuery, reports, roleFilter]);
 
   const filteredTopPerformers = useMemo(() => {
-    return organisationTopPerformers.filter((item) => {
+    const sourceRows = reports?.topProfessionals?.length
+      ? reports.topProfessionals.map((item, index) => {
+          const row = item as Record<string, unknown>;
+          const professional = (row.professional ?? null) as
+            | Record<string, unknown>
+            | null;
+          return {
+            id: String(row.professionalUserId ?? `TOP-${index + 1}`),
+            name: String(professional?.name ?? "Professional"),
+            rating: toNumber(row.rating, 0).toFixed(1),
+            shiftsCompleted: toNumber(row.shiftsCompleted, 0),
+            avatarSrc: "/doctor.jpg",
+            role: String(professional?.role ?? "Professional"),
+            department: String(professional?.department ?? "General"),
+          };
+        })
+      : [];
+
+    return sourceRows.filter((item) => {
       const matchesDepartment =
         departmentFilter === "Department" || item.department === departmentFilter;
       const matchesRole = roleFilter === "Role" || item.role === roleFilter;
@@ -224,29 +286,50 @@ export function OrganisationReportsPage() {
 
       return matchesDepartment && matchesRole && matchesSearch;
     });
-  }, [departmentFilter, normalizedQuery, roleFilter]);
+  }, [departmentFilter, normalizedQuery, reports, roleFilter]);
 
   const filteredActiveDepartments = useMemo(() => {
-    return organisationMostActiveDepartments.filter((item) => {
+    const sourceRows = reports?.activeDepartments?.length
+      ? reports.activeDepartments.map((item) => {
+          const row = item as Record<string, unknown>;
+          return {
+            name: String(row.name ?? "General"),
+          shifts: toNumber(row.shifts, 0),
+        };
+      })
+      : [];
+
+    return sourceRows.filter((item) => {
       const matchesDepartment =
         departmentFilter === "Department" || item.name === departmentFilter;
       const matchesSearch = !normalizedQuery || item.name.toLowerCase().includes(normalizedQuery);
 
       return matchesDepartment && matchesSearch;
     });
-  }, [departmentFilter, normalizedQuery]);
+  }, [departmentFilter, normalizedQuery, reports]);
 
   const filteredDepartmentBreakdown = useMemo(() => {
+    const sourceRows = reports?.departmentBreakdown?.length
+      ? reports.departmentBreakdown.map((item) => {
+          const row = item as Record<string, unknown>;
+          return {
+            label: String(row.label ?? "General"),
+            filled: toNumber(row.filled, 0),
+          unfilled: toNumber(row.unfilled, 0),
+        };
+      })
+      : [];
+
     if (!normalizedQuery) {
-      return organisationDepartmentBreakdown;
+      return sourceRows;
     }
 
-    const matches = organisationDepartmentBreakdown.filter((item) =>
+    const matches = sourceRows.filter((item) =>
       item.label.toLowerCase().includes(normalizedQuery)
     );
 
-    return matches.length ? matches : organisationDepartmentBreakdown;
-  }, [normalizedQuery]);
+    return matches.length ? matches : sourceRows;
+  }, [normalizedQuery, reports]);
 
   const baselineMetrics = useMemo(() => {
     if (reports) {
@@ -254,40 +337,41 @@ export function OrganisationReportsPage() {
         totalShiftsPosted: reports.summary.totalShiftsPosted,
         shiftsFilled: reports.summary.shiftsFilled,
         totalHoursWorked: reports.summary.totalHoursWorked,
-        totalAmountPaid: reports.summary.totalAmountPaidCents / 100,
+        totalAmountPaid:
+          toNumber(
+            reports.summary.totalAmountPaidCents,
+            toNumber(reports.summary.totalAmountPaid, 0),
+          ) / 100,
       };
     }
 
-    const findMetric = (title: string) =>
-      organisationReportsSummaryCards.find((item) => item.title === title)?.value ?? "0";
-
     return {
-      totalShiftsPosted: Number(findMetric("Total shifts posted")),
-      shiftsFilled: Number(findMetric("Shifts Filled")),
-      totalHoursWorked: Number(findMetric("Total hours worked")),
-      totalAmountPaid: Number(findMetric("Total Amount Paid").replace(/[^0-9.-]+/g, "")),
+      totalShiftsPosted: 0,
+      shiftsFilled: 0,
+      totalHoursWorked: 0,
+      totalAmountPaid: 0,
     };
   }, [reports]);
 
+  const sourcePaymentRows = reports?.paymentReports?.length
+    ? reports.paymentReports
+    : [];
+
   const filteredShare = useMemo(() => {
-    if (!organisationPaymentReports.length) {
+    if (!sourcePaymentRows.length) {
       return 0;
     }
 
-    return filteredPaymentReports.length / organisationPaymentReports.length;
-  }, [filteredPaymentReports.length]);
+    return filteredPaymentReports.length / sourcePaymentRows.length;
+  }, [filteredPaymentReports.length, sourcePaymentRows.length]);
 
   const totalShiftsPosted = Math.round(baselineMetrics.totalShiftsPosted * filteredShare);
   const shiftsFilled = Math.round(baselineMetrics.shiftsFilled * filteredShare);
   const totalHoursWorked = Math.round(baselineMetrics.totalHoursWorked * filteredShare);
   const totalAmountPaid = Math.round(baselineMetrics.totalAmountPaid * filteredShare);
   const cancelledShifts = Math.max(0, totalShiftsPosted - shiftsFilled);
-  const noShowRate = reports?.cancellationInsights.noShowRate ?? (filteredPaymentReports.length
-    ? organisationCancellationInsights.noShowRate
-    : "0%");
-  const lateCheckIns = reports?.cancellationInsights.lateCheckIns ?? (filteredPaymentReports.length
-    ? Math.max(1, Math.round(organisationCancellationInsights.lateCheckIns * filteredShare))
-    : 0);
+  const noShowRate = reports?.cancellationInsights?.noShowRate ?? "0%";
+  const lateCheckIns = reports?.cancellationInsights?.lateCheckIns ?? 0;
 
   const fillRate = totalShiftsPosted ? Math.round((shiftsFilled / totalShiftsPosted) * 100) : 0;
   const unfilledRate = Math.max(0, 100 - fillRate);
@@ -298,32 +382,46 @@ export function OrganisationReportsPage() {
     { title: "Total hours worked", value: totalHoursWorked.toString(), icon: "hours" as const },
     {
       title: "Total Amount Paid",
-      value: reports ? formatOrganizationMoney(reports.summary.totalAmountPaidCents) : formatCurrency(totalAmountPaid),
+      value: reports
+        ? formatOrganizationMoney(
+            toNumber(
+              reports.summary.totalAmountPaidCents,
+              toNumber(reports.summary.totalAmountPaid, 0),
+            ),
+            reports.summary.currency ?? "NGN",
+          )
+        : formatCurrency(totalAmountPaid),
       icon: "paid" as const,
     },
   ];
 
   const shiftActivityData = useMemo(
     () => ({
-      labels: organisationShiftActivityBars.map((bar) => bar.label),
+      labels: reports?.shiftActivity?.length
+        ? reports.shiftActivity.map((bar) => String((bar as Record<string, unknown>).label ?? "Week"))
+        : [],
       datasets: [
         {
           label: "Filled",
-          data: organisationShiftActivityBars.map((bar) => bar.filledHeight),
+          data: reports?.shiftActivity?.length
+            ? reports.shiftActivity.map((bar) => toNumber((bar as Record<string, unknown>).filled, 0))
+            : [],
           backgroundColor: "#1E88E5",
           borderRadius: 8,
           barThickness: 24,
         },
         {
           label: "Unfilled",
-          data: organisationShiftActivityBars.map((bar) => bar.unfilledHeight),
+          data: reports?.shiftActivity?.length
+            ? reports.shiftActivity.map((bar) => toNumber((bar as Record<string, unknown>).unfilled, 0))
+            : [],
           backgroundColor: "#E3F2FD",
           borderRadius: 8,
           barThickness: 24,
         },
       ],
     }),
-    []
+    [reports]
   );
 
   const shiftActivityOptions = useMemo<ChartOptions<"bar">>(

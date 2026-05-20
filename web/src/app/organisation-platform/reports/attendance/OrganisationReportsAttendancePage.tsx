@@ -36,6 +36,51 @@ function toBackendAttendanceStatus(status: "Checked in" | "Completed" | "Missed"
   return status === "Completed" ? "completed" : "missed";
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="none"
+        stroke="#334155"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="m6 9 6 6 6-6"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.4 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3 1.42 1.42Z"
+      />
+    </svg>
+  );
+}
+
+function StatusPill({ status }: { status: AttendanceStatus }) {
+  const styles =
+    status === "Completed"
+      ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
+      : status === "Missed"
+        ? "border-[#A5150B] bg-[#FFECE9] text-[#9C0D0D]"
+        : status === "Checked in"
+          ? "border-[#1565C0] bg-[#D1E2F1] text-[#1565C0]"
+          : "border-[#A29D0F] bg-[#FEFEF4] text-[#AF8D11]";
+
+  return (
+    <span
+      className={`inline-flex min-w-[83px] items-center justify-center rounded-[6px] border px-3 py-1 text-[12.403px] leading-[14px] tracking-[-0.05em] ${styles}`}
+    >
+      {status}
+    </span>
+  );
+}
+
 export function OrganisationReportsAttendancePage({
   initialRows = organisationAttendanceRows,
 }: OrganisationReportsAttendancePageProps) {
@@ -143,51 +188,6 @@ export function OrganisationReportsAttendancePage({
       toast.error(error instanceof Error ? error.message : "Unable to update attendance.");
     }
   };
-
-  function ChevronDownIcon() {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        <path
-          fill="none"
-          stroke="#334155"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="m6 9 6 6 6-6"
-        />
-      </svg>
-    );
-  }
-
-  function CloseIcon() {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        <path
-          fill="currentColor"
-          d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.4 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3 1.42 1.42Z"
-        />
-      </svg>
-    );
-  }
-
-  function StatusPill({ status }: { status: AttendanceStatus }) {
-    const styles =
-      status === "Completed"
-        ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
-        : status === "Missed"
-          ? "border-[#A5150B] bg-[#FFECE9] text-[#9C0D0D]"
-          : status === "Checked in"
-            ? "border-[#1565C0] bg-[#D1E2F1] text-[#1565C0]"
-            : "border-[#A29D0F] bg-[#FEFEF4] text-[#AF8D11]";
-
-    return (
-      <span
-        className={`inline-flex min-w-[83px] items-center justify-center rounded-[6px] border px-3 py-1 text-[12.403px] leading-[14px] tracking-[-0.05em] ${styles}`}
-      >
-        {status}
-      </span>
-    );
-  }
 
   return (
     <div className="mt-8 xl:mt-[58px]">

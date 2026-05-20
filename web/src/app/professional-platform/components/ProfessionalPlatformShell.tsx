@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { toast } from "sonner";
 import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import {
+  getProfessionalProfile,
   getProfessionalLiveUrl,
   listProfessionalNotifications,
   markProfessionalNotificationRead,
@@ -251,6 +252,11 @@ export function ProfessionalPlatformShell({
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
   const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profileSummary, setProfileSummary] = useState({
+    name: "Professional",
+    availabilityLabel: "Availability not set",
+    acceptingBookings: false,
+  });
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
@@ -287,10 +293,23 @@ export function ProfessionalPlatformShell({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadNotifications() {
+    async function loadShellData() {
       try {
-        const data = await listProfessionalNotifications({ limit: 20 });
+        const [profile, data] = await Promise.all([
+          getProfessionalProfile(),
+          listProfessionalNotifications({ limit: 20 }),
+        ]);
         if (!cancelled) {
+          setProfileSummary({
+            name:
+              profile.profile.professionalName ||
+              profile.account?.fullName ||
+              "Professional",
+            availabilityLabel: profile.availability.acceptingBookings
+              ? "Available for bookings"
+              : "Not accepting bookings",
+            acceptingBookings: profile.availability.acceptingBookings,
+          });
           setNotifications(data);
         }
       } catch {
@@ -300,7 +319,7 @@ export function ProfessionalPlatformShell({
       }
     }
 
-    void loadNotifications();
+    void loadShellData();
 
     const eventSource = new EventSource(getProfessionalLiveUrl(), {
       withCredentials: true,
@@ -600,15 +619,21 @@ export function ProfessionalPlatformShell({
                     whileTap={{ scale: 0.98 }}
                   >
                     <span className="mx-2 block h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt="Dr Precious avatar" width={34} height={34} className="h-full w-full object-cover" />
+                      <Image src="/doctor.jpg" alt={`${profileSummary.name} avatar`} width={34} height={34} className="h-full w-full object-cover" />
                     </span>
                     <span className="flex flex-col items-start">
                       <span className="text-[12px] font-normal leading-4 tracking-[-0.05em] text-black">
-                        Dr Precious
+                        {profileSummary.name}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-3 tracking-[-0.05em] text-[#1565C0]">
-                        <span className="h-[7px] w-[7px] rounded-full border border-[#1565C0] bg-[#1565C0]" />
-                        Available for bookings
+                        <span
+                          className={`h-[7px] w-[7px] rounded-full border ${
+                            profileSummary.acceptingBookings
+                              ? "border-[#1565C0] bg-[#1565C0]"
+                              : "border-[#94A3B8] bg-[#94A3B8]"
+                          }`}
+                        />
+                        {profileSummary.availabilityLabel}
                       </span>
                     </span>
                   </motion.button>
@@ -622,7 +647,7 @@ export function ProfessionalPlatformShell({
                     whileTap={{ scale: 0.96 }}
                   >
                     <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt="Doctor avatar" width={48} height={48} className="h-full w-full object-cover" />
+                      <Image src="/doctor.jpg" alt={`${profileSummary.name} avatar`} width={48} height={48} className="h-full w-full object-cover" />
                     </span>
                   </motion.button>
                 </div>

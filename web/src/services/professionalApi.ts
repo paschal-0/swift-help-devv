@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest, type AuthUser } from "./authApi";
+import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
@@ -260,6 +260,33 @@ export type ProfessionalPayout = {
   status: "requested" | "processing" | "completed" | "failed" | "cancelled";
   processedAt: string | null;
   createdAt: string;
+};
+
+export type ProfessionalReferralRecord = {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  type: BackendRole;
+  joinedAt: string;
+  amountCents: number;
+  currency: string;
+  status: "completed" | "pending";
+};
+
+export type ProfessionalReferrals = {
+  referralCode: string;
+  referralShareUrl: string;
+  metrics: {
+    totalReferrals: number;
+    organizationsReferred: number;
+    professionalsReferred: number;
+    patientsReferred: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+    currency: string;
+  };
+  records: ProfessionalReferralRecord[];
 };
 
 export type ProfessionalSettings = {
@@ -639,6 +666,21 @@ export function getProfessionalWallet() {
   }>("/professional/wallet", { method: "GET" });
 }
 
+export function createProfessionalPayoutMethod(payload: {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  defaultMethod?: boolean;
+}) {
+  return apiRequest<ProfessionalPayoutMethod>(
+    "/professional/wallet/payout-methods",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export function createProfessionalWithdrawal(payload: {
   payoutMethodId: string;
   amountCents: number;
@@ -651,6 +693,12 @@ export function createProfessionalWithdrawal(payload: {
 
 export function listProfessionalPayouts() {
   return apiRequest<ProfessionalPayout[]>("/professional/earnings/payouts", {
+    method: "GET",
+  });
+}
+
+export function getProfessionalReferrals() {
+  return apiRequest<ProfessionalReferrals>("/professional/referrals", {
     method: "GET",
   });
 }

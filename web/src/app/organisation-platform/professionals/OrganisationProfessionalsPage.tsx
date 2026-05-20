@@ -11,8 +11,6 @@ import {
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import {
-  organisationProfessionalRoster,
-  organisationProfessionalSummaryCards,
   type ProfessionalRosterItem,
   type ProfessionalSummaryCard,
   type ProfessionalStatus,
@@ -23,6 +21,13 @@ type ProfessionalTab = "All" | "On shift" | "Available" | "Unavailable";
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
 const premiumEase = [0.32, 0.72, 0, 1] as const;
+
+const emptySummaryCards: ProfessionalSummaryCard[] = [
+  { title: "Total professionals", value: "0" },
+  { title: "on shift now", value: "0" },
+  { title: "Available today", value: "0" },
+  { title: "Unavailable", value: "0" },
+];
 
 function CalendarTileIcon() {
   return (
@@ -91,12 +96,9 @@ export function OrganisationProfessionalsPage() {
   const [dateFilter, setDateFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | ProfessionalStatus>("all");
-  const [professionals, setProfessionals] = useState<ProfessionalRosterItem[]>(
-    organisationProfessionalRoster,
-  );
-  const [summaryCards, setSummaryCards] = useState<ProfessionalSummaryCard[]>(
-    organisationProfessionalSummaryCards,
-  );
+  const [professionals, setProfessionals] = useState<ProfessionalRosterItem[]>([]);
+  const [summaryCards, setSummaryCards] = useState<ProfessionalSummaryCard[]>(emptySummaryCards);
+  const [isLoading, setIsLoading] = useState(true);
 
   const normalizedQuery = searchText.trim().toLowerCase();
 
@@ -129,6 +131,15 @@ export function OrganisationProfessionalsPage() {
       })
       .catch((error) => {
         toast.error(error instanceof Error ? error.message : "Unable to load professionals.");
+        if (isMounted) {
+          setProfessionals([]);
+          setSummaryCards(emptySummaryCards);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -204,6 +215,15 @@ export function OrganisationProfessionalsPage() {
           Professionals
         </motion.h1>
 
+        {isLoading ? (
+          <section className="flex min-h-[320px] items-center justify-center rounded-[16px] bg-[#F8FAFC] px-4">
+            <p className="text-[16px] font-medium tracking-[-0.05em] text-[#94A3B8]">
+              Loading professionals...
+            </p>
+          </section>
+        ) : null}
+
+        {!isLoading ? (
         <motion.section
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-3"
           initial="hidden"
@@ -241,7 +261,9 @@ export function OrganisationProfessionalsPage() {
             </motion.article>
           ))}
         </motion.section>
+        ) : null}
 
+        {!isLoading ? (
         <motion.section
           className="space-y-5 rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5 xl:p-6"
           initial={{ opacity: 0, y: 16 }}
@@ -344,7 +366,9 @@ export function OrganisationProfessionalsPage() {
             </motion.label>
           </div>
         </motion.section>
+        ) : null}
 
+        {!isLoading ? (
         <motion.section
           className="overflow-x-auto rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_10px_24px_rgba(148,163,184,0.08)] sm:p-5 xl:p-6"
           initial={{ opacity: 0, y: 18 }}
@@ -492,6 +516,7 @@ export function OrganisationProfessionalsPage() {
             </div>
           ) : null}
         </motion.section>
+        ) : null}
       </motion.div>
     </div>
   );

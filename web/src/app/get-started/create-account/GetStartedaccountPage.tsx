@@ -245,12 +245,20 @@ export function GetStartedaccountPage() {
             : null;
   const isFormValid = validationError === null;
   const roleParam = searchParams.get("role");
+  const refParam = searchParams.get("ref")?.trim() ?? "";
   const role =
     roleParam === "professional" || roleParam === "organisation" || roleParam === "patient"
       ? roleParam
       : "patient";
   const content = roleContent[role];
   const hasLongAccountTitle = role !== "patient";
+
+  useEffect(() => {
+    if (!refParam) return;
+    setFormValues((current) =>
+      current.referralCode ? current : { ...current, referralCode: refParam },
+    );
+  }, [refParam]);
 
   useEffect(() => {
     if (!hasInteracted) {

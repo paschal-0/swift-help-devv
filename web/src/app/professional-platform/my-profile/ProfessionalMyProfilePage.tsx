@@ -4,9 +4,15 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
-import { getProfessionalProfile, type ProfessionalProfileResponse } from "@/services/professionalApi";
+import {
+  getProfessionalProfile,
+  listProfessionalNotifications,
+  type ProfessionalNotification,
+  type ProfessionalProfileResponse,
+} from "@/services/professionalApi";
 
 type InfoRow = {
   label: string;
@@ -17,7 +23,7 @@ type ActivityItem = {
   id: string;
   activity: string;
   dateTime: string;
-  status: "Completed";
+  status: "Completed" | "Unread";
 };
 
 type LicenseFile = {
@@ -49,12 +55,7 @@ const licenseFiles: LicenseFile[] = [
   { id: "license-3", name: "Certificate.pdf", size: "8MB / 8MB", status: "Completed" },
 ];
 
-const recentActivities: ActivityItem[] = Array.from({ length: 6 }, (_, index) => ({
-  id: `activity-${index + 1}`,
-  activity: "Symptom Accessment",
-  dateTime: "10 March, 10:00 AM",
-  status: "Completed",
-}));
+const fallbackActivities: ActivityItem[] = [];
 
 function EditIcon({ subtle = false }: { subtle?: boolean }) {
   return (
@@ -164,8 +165,10 @@ function ProfileInfoRows({ rows }: { rows: InfoRow[] }) {
 }
 
 export function ProfessionalMyProfilePage() {
+  const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
   const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
+  const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
   const query = searchText.trim().toLowerCase();
 
   useEffect(() => {
@@ -173,9 +176,13 @@ export function ProfessionalMyProfilePage() {
 
     async function loadProfile() {
       try {
-        const data = await getProfessionalProfile();
+        const [data, notificationsData] = await Promise.all([
+          getProfessionalProfile(),
+          listProfessionalNotifications({ limit: 20 }),
+        ]);
         if (!cancelled) {
           setProfileData(data);
+          setNotifications(notificationsData);
         }
       } catch (error) {
         if (!cancelled) {
@@ -234,12 +241,26 @@ export function ProfessionalMyProfilePage() {
   }, [profileData]);
 
   const filteredActivities = useMemo(() => {
-    if (!query) return recentActivities;
+    const activities: ActivityItem[] = notifications.length
+      ? notifications.map((item) => ({
+          id: item.id,
+          activity: item.title,
+          dateTime: new Intl.DateTimeFormat("en-US", {
+            day: "numeric",
+            month: "long",
+            hour: "numeric",
+            minute: "2-digit",
+          }).format(new Date(item.createdAt)),
+          status: item.read ? "Completed" : "Unread",
+        }))
+      : fallbackActivities;
 
-    return recentActivities.filter((item) =>
+    if (!query) return activities;
+
+    return activities.filter((item) =>
       `${item.activity} ${item.dateTime} ${item.status}`.toLowerCase().includes(query)
     );
-  }, [query]);
+  }, [notifications, query]);
 
   const filteredLicenseFiles = useMemo(() => {
     if (!query) return backendLicenseFiles;
@@ -249,7 +270,7 @@ export function ProfessionalMyProfilePage() {
     );
   }, [backendLicenseFiles, query]);
 
-  const handleEdit = (section: string) => toast.info(`${section} editing is not available yet`);
+  const handleEdit = () => router.push("/professional-platform/settings");
   const handleDelete = (name: string) => toast.info(`${name} cannot be removed right now`);
 
   return (
@@ -279,7 +300,7 @@ export function ProfessionalMyProfilePage() {
                     <button
                       key={`professional-edit-${index + 1}`}
                       type="button"
-                      onClick={() => handleEdit("Profile")}
+                      onClick={handleEdit}
                       className="inline-flex cursor-pointer items-center justify-center"
                       aria-label={`Edit profile section ${index + 1}`}
                     >
@@ -295,7 +316,7 @@ export function ProfessionalMyProfilePage() {
 
               <motion.button
                 type="button"
-                onClick={() => handleEdit("Profile")}
+                onClick={handleEdit}
                 className="mt-[18px] inline-flex h-[44px] w-full items-center justify-center rounded-[6px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-[19px] tracking-[-0.05em] text-[#E3F2FD]"
                 whileHover={{ y: -1, scale: 1.01 }}
                 whileTap={{ scale: 0.985 }}
@@ -309,7 +330,7 @@ export function ProfessionalMyProfilePage() {
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="rounded-[12px] bg-[#F8FAFC]"
             >
-              <SectionCard title="Personal Information" onEdit={() => handleEdit("Personal Information")}>
+              <SectionCard title="Personal Information" onEdit={handleEdit}>
                 <ProfileInfoRows rows={backendPersonalInformation} />
               </SectionCard>
             </motion.div>
@@ -339,7 +360,13 @@ export function ProfessionalMyProfilePage() {
                       <div key={item.id} className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-center gap-6">
                         <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
                         <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
-                        <span className="inline-flex h-[23px] w-[83px] items-center justify-center rounded-[6px] border border-[#0D8C24] bg-[#E1FAE5] text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-[#0D8C24]">
+                        <span
+                          className={`inline-flex h-[23px] w-[83px] items-center justify-center rounded-[6px] border text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] ${
+                            item.status === "Completed"
+                              ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
+                              : "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
+                          }`}
+                        >
                           {item.status}
                         </span>
                       </div>
@@ -355,7 +382,7 @@ export function ProfessionalMyProfilePage() {
 
         <div className="space-y-3">
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18, ease: "easeOut" }}>
-            <SectionCard title="Profssional Information" className="pb-5" onEdit={() => handleEdit("Professional Information")}>
+            <SectionCard title="Profssional Information" className="pb-5" onEdit={handleEdit}>
               <ProfileInfoRows rows={backendProfessionalInformation} />
             </SectionCard>
           </motion.div>
@@ -369,7 +396,7 @@ export function ProfessionalMyProfilePage() {
               <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Medical license</h2>
               <button
                 type="button"
-                onClick={() => handleEdit("Medical license")}
+                onClick={handleEdit}
                 className="inline-flex cursor-pointer items-center justify-center"
                 aria-label="Edit medical license"
               >
