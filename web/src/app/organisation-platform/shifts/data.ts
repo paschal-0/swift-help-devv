@@ -1,4 +1,9 @@
-export type ShiftStatus = "Completed" | "Ongoing" | "Upcoming" | "Canceled";
+export type ShiftStatus =
+  | "Completed"
+  | "Ongoing"
+  | "Upcoming"
+  | "Funding Required"
+  | "Canceled";
 
 export type ShiftSummaryCard = {
   title: string;
@@ -7,6 +12,7 @@ export type ShiftSummaryCard = {
 
 export type ShiftRow = {
   id: string;
+  routeId?: string;
   department: string;
   date: string;
   time: string;
@@ -146,11 +152,41 @@ export const defaultShiftActivities: ShiftActivityItem[] = [
 ];
 
 export const defaultAcceptedProfessionals: AcceptedProfessional[] = [
-  { name: "Sarah J.", role: "Doctor", checkInTime: "10:00 AM", checkOutTime: "------", status: "Completed" },
-  { name: "Sarah J.", role: "Doctor", checkInTime: "10:00 AM", checkOutTime: "------", status: "Completed" },
-  { name: "Sarah J.", role: "Doctor", checkInTime: "10:00 AM", checkOutTime: "------", status: "Completed" },
-  { name: "Sarah J.", role: "Doctor", checkInTime: "10:00 AM", checkOutTime: "------", status: "Completed" },
-  { name: "Sarah J.", role: "Doctor", checkInTime: "10:00 AM", checkOutTime: "------", status: "Completed" },
+  {
+    name: "Sarah J.",
+    role: "Doctor",
+    checkInTime: "10:00 AM",
+    checkOutTime: "------",
+    status: "Completed",
+  },
+  {
+    name: "Sarah J.",
+    role: "Doctor",
+    checkInTime: "10:00 AM",
+    checkOutTime: "------",
+    status: "Completed",
+  },
+  {
+    name: "Sarah J.",
+    role: "Doctor",
+    checkInTime: "10:00 AM",
+    checkOutTime: "------",
+    status: "Completed",
+  },
+  {
+    name: "Sarah J.",
+    role: "Doctor",
+    checkInTime: "10:00 AM",
+    checkOutTime: "------",
+    status: "Completed",
+  },
+  {
+    name: "Sarah J.",
+    role: "Doctor",
+    checkInTime: "10:00 AM",
+    checkOutTime: "------",
+    status: "Completed",
+  },
 ];
 
 function titleCase(value: string) {
@@ -162,7 +198,9 @@ function titleCase(value: string) {
 }
 
 export function getOrganisationShiftById(shiftId: string) {
-  return organisationShiftRows.find((row) => row.id.toLowerCase() === shiftId.toLowerCase());
+  return organisationShiftRows.find(
+    (row) => row.id.toLowerCase() === shiftId.toLowerCase(),
+  );
 }
 
 export function buildOrganisationShiftDetail(shiftId: string) {

@@ -10,8 +10,6 @@ import {
   containerClass,
   ctaIconClass,
   ctaIconDarkClass,
-  primaryCtaClass,
-  secondaryCtaClass,
 } from "../classes";
 
 export function HeroSection() {
@@ -58,15 +56,15 @@ export function HeroSection() {
             <div className="flex flex-row items-center gap-3 md:flex-row md:gap-4">
               <Link
                 href="/get-started/login"
-                className={`${primaryCtaClass} !text-white max-[767px]:!inline-flex max-[767px]:!h-[36px] max-[767px]:!w-[92px] max-[767px]:!min-w-0 max-[767px]:!px-4 max-[767px]:!text-[14px] hidden leading-none transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(21,101,192,0.28)] active:scale-[0.98] md:!hidden`}
+                className="inline-flex h-[36px] w-[92px] shrink-0 items-center justify-center rounded-[45.14px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] px-4 text-[14px] leading-none tracking-[-0.05em] !text-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(21,101,192,0.28)] active:scale-[0.98] md:hidden"
               >
                 Log in
               </Link>
               <Link
                 href="/get-started"
-                className={`${primaryCtaClass} !text-white hidden leading-none transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(21,101,192,0.28)] active:scale-[0.98] md:inline-flex md:h-[56px] md:min-w-[210px] md:flex-none md:px-5 md:text-[20px] md:leading-8 xl:h-[72px] xl:min-w-[295px] xl:px-[26px] xl:text-[26.53px] xl:leading-10`}
+                className="hidden shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-[45.14px] bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] !text-white transition duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_4px_15px_rgba(21,101,192,0.4)] active:scale-[0.98] md:inline-flex md:h-[56px] md:min-w-[210px] md:flex-none md:px-5 md:text-[20px] md:leading-8 md:tracking-[-0.05em] xl:h-[72px] xl:min-w-[295px] xl:px-[26px] xl:text-[26.53px] xl:leading-10"
               >
-                <span>Get early access</span>
+                <span className="!text-white">Get early access</span>
                 <Image
                   src="/fluent_arrow-up-12-filled.png"
                   alt=""
@@ -78,7 +76,7 @@ export function HeroSection() {
               </Link>
               <Link
                 href="/get-started"
-                className={`${secondaryCtaClass} max-[767px]:!h-[36px] max-[767px]:!w-[104px] max-[767px]:!min-w-0 max-[767px]:!px-4 max-[767px]:!text-[14px] leading-none transition duration-300 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-white/60 active:scale-[0.98] md:h-[56px] md:min-w-[180px] md:flex-none md:px-5 md:text-[20px] md:leading-8 xl:h-[66px] xl:min-w-[255px] xl:px-[26px] xl:text-[26.53px] xl:leading-10`}
+                className="inline-flex h-[36px] w-[104px] shrink-0 items-center justify-center rounded-[45.14px] border border-black bg-transparent px-4 text-[14px] leading-none tracking-[-0.05em] text-slate-900 transition duration-300 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-white/60 active:scale-[0.98] md:h-[56px] md:min-w-[180px] md:flex-none md:px-5 md:text-[20px] md:leading-8 xl:h-[66px] xl:min-w-[255px] xl:px-[26px] xl:text-[26.53px] xl:leading-10"
               >
                 <span className="md:hidden">Sign Up</span>
                 <span className="hidden md:inline">Book a demo</span>
