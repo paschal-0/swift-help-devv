@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { getOrganizationSettings, type OrganizationSettings } from "@/services/organizationApi";
 import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
 
 type NavItem = {
@@ -224,6 +225,7 @@ export function OrganisationPlatformShell({
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
+  const [settings, setSettings] = useState<OrganizationSettings | null>(null);
 
   const contextValue = useMemo(
     () => ({
@@ -240,6 +242,37 @@ export function OrganisationPlatformShell({
 
     return pathname === href || pathname.startsWith(`${href}/`);
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    getOrganizationSettings()
+      .then((data) => {
+        if (mounted) {
+          setSettings(data);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setSettings(null);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const profile = toRecord(settings?.profile);
+  const organizationName = displayValue(
+    firstValue(
+      profile.organisationName,
+      profile.organizationName,
+      profile.facilityName,
+      settings?.account?.fullName,
+    ),
+    "Organization",
+  );
 
   const logout = async () => {
     try {
@@ -499,15 +532,15 @@ export function OrganisationPlatformShell({
                     <span className="mx-2 block h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm">
                       <Image
                         src="/doctor.jpg"
-                        alt="HelpCare Solutions avatar"
+                        alt={`${organizationName} avatar`}
                         width={34}
                         height={34}
                         className="h-full w-full object-cover"
                       />
                     </span>
                     <span className="flex flex-col items-start">
-                      <span className="text-[12px] font-normal leading-4 tracking-[-0.05em] text-black">
-                        HelpCare Solutions
+                      <span className="max-w-[108px] truncate text-[12px] font-normal leading-4 tracking-[-0.05em] text-black">
+                        {organizationName}
                       </span>
                     </span>
                   </motion.button>
@@ -540,4 +573,27 @@ export function OrganisationPlatformShell({
       </section>
     </OrganisationPlatformShellContext.Provider>
   );
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function firstValue(...values: unknown[]) {
+  return values.find((value) => {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    return String(value).trim().length > 0;
+  });
+}
+
+function displayValue(value: unknown, fallback = "-") {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const text = String(value).trim();
+  return text ? text : fallback;
 }
