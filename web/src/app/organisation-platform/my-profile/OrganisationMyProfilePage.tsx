@@ -13,8 +13,6 @@ import {
 } from "@/services/authApi";
 import {
   getOrganizationSettings,
-  listOrganizationProfessionals,
-  type OrganizationProfessional,
   type OrganizationSettings,
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
@@ -145,7 +143,6 @@ export function OrganisationMyProfilePage() {
   const router = useRouter();
   const { searchText } = useOrganisationPlatformShell();
   const [settings, setSettings] = useState<OrganizationSettings | null>(null);
-  const [professionals, setProfessionals] = useState<OrganizationProfessional[]>([]);
   const [invites, setInvites] = useState<OrganizationInvite[]>([]);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState<OrganizationInviteRole>("admin");
@@ -158,14 +155,13 @@ export function OrganisationMyProfilePage() {
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([getOrganizationSettings(), listOrganizationProfessionals(), listOrganizationInvites()])
-      .then(([settingsData, professionalsData, inviteData]) => {
+    Promise.all([getOrganizationSettings(), listOrganizationInvites()])
+      .then(([settingsData, inviteData]) => {
         if (!mounted) {
           return;
         }
 
         setSettings(settingsData);
-        setProfessionals(professionalsData);
         setInvites(inviteData);
       })
       .catch((error) => {
@@ -208,7 +204,7 @@ export function OrganisationMyProfilePage() {
     { label: "Primary Mail", value: displayValue(firstValue(profile.companyEmail, account?.email)) },
     { label: "Primary Phone", value: displayValue(firstValue(profile.phone, account?.phoneNumber)) },
     { label: "Member since", value: formatMonthYear(account?.createdAt) },
-    { label: "Total Staff", value: `${professionals.length} professionals` },
+    { label: "Total Staff", value: String(countDirectTeamMembers(invites)) },
   ];
 
   const teamMembers = useMemo<TeamMember[]>(() => {
@@ -225,7 +221,7 @@ export function OrganisationMyProfilePage() {
         }
       : null;
 
-    const inviteMembers = invites.map((invite) => {
+    const inviteMembers = invites.filter(isDisplayableInvite).map((invite) => {
       const email = invite.email ?? "Share link generated";
       const name = invite.email ? nameFromEmail(invite.email) : roleLabel(invite.role);
 
@@ -239,25 +235,8 @@ export function OrganisationMyProfilePage() {
       };
     });
 
-    const knownEmails = new Set(
-      [owner?.email, ...inviteMembers.map((member) => member.email)]
-        .map((email) => email?.toLowerCase())
-        .filter(Boolean),
-    );
-
-    const professionalMembers = professionals
-      .filter((professional) => !knownEmails.has(professional.email.toLowerCase()))
-      .map((professional) => ({
-        id: `professional-${professional.id}`,
-        name: professional.name,
-        email: professional.email,
-        initials: getInitials(professional.name, professional.email),
-        role: "professional" as OrganizationInviteRole,
-        status: professional.status,
-      }));
-
-    return owner ? [owner, ...inviteMembers, ...professionalMembers] : [...inviteMembers, ...professionalMembers];
-  }, [account, invites, organizationName, professionals]);
+    return owner ? [owner, ...inviteMembers] : inviteMembers;
+  }, [account, invites, organizationName]);
 
   const filteredTeamMembers = useMemo(() => {
     if (!query) {
@@ -272,20 +251,12 @@ export function OrganisationMyProfilePage() {
   const departments = useMemo(() => {
     const values = new Set<string>();
 
-    professionals.forEach((professional) => {
-      const department = displayValue(professional.department, "").trim();
-      if (department) {
-        values.add(department);
-      }
-    });
-
-    const profileDepartment = displayValue(firstValue(profile.department, profile.organisationType), "").trim();
-    if (!values.size && profileDepartment) {
-      values.add(profileDepartment);
-    }
+    readStringArray(firstValue(profile.departments, profile.departmentList, profile.units)).forEach((department) =>
+      values.add(department),
+    );
 
     return Array.from(values);
-  }, [professionals, profile.department, profile.organisationType]);
+  }, [profile.departments, profile.departmentList, profile.units]);
 
   const filteredDepartments = useMemo(() => {
     if (!query) {
@@ -460,7 +431,7 @@ export function OrganisationMyProfilePage() {
 
           <DepartmentsCard
             departments={filteredDepartments}
-            onAdd={() => toast.info("Departments are generated from your backend staff data.")}
+            onAdd={() => toast.info("Department management is not available yet.")}
           />
         </div>
       </div>
@@ -603,7 +574,7 @@ function DepartmentsCard({ departments, onAdd }: { departments: string[]; onAdd:
 
         {!departments.length ? (
           <p className="py-6 text-[14px] tracking-[-0.05em] text-[#94A3B8]">
-            No departments found from staff data.
+            No departments configured yet.
           </p>
         ) : null}
       </div>
@@ -811,6 +782,31 @@ function roleLabel(role: OrganizationInviteRole) {
   }
 
   return "Professional";
+}
+
+function isDisplayableInvite(invite: OrganizationInvite) {
+  return Boolean(invite.email) && !["revoked", "expired"].includes(invite.status);
+}
+
+function countDirectTeamMembers(invites: OrganizationInvite[]) {
+  return invites.filter(isDisplayableInvite).length;
+}
+
+function readStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .split(/[,\n]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 function formatMonthYear(value: unknown) {
