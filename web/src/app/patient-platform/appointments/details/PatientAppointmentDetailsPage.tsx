@@ -143,6 +143,7 @@ export function PatientAppointmentDetailsPage() {
         scheduledDate: draft.scheduledDate,
         startTime: draft.startTime,
         endTime: draft.endTime,
+        meetingMode: draft.meetingMode,
       });
       window.sessionStorage.setItem("patientConfirmedAppointmentId", appointment.id);
       window.sessionStorage.removeItem("patientAppointmentDraft");

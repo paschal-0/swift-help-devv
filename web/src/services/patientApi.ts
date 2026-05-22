@@ -1,6 +1,11 @@
 "use client";
 
-import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
+import {
+  API_BASE_URL,
+  apiRequest,
+  type AuthUser,
+  type BackendRole,
+} from "./authApi";
 
 function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
   if (!params) return "";
@@ -29,6 +34,7 @@ export type PatientAppointment = {
 
 export type PatientConsultation = {
   id: string;
+  appointmentId?: string | null;
   professionalUserId: string;
   patientUserId: string | null;
   patientName: string;
@@ -310,7 +316,9 @@ export type PatientConsultationRoom = {
   room: {
     id: string;
     meetingUrl: string;
-    token: string;
+    token: string | null;
+    provider?: "twilio" | string;
+    roomName?: string;
   };
 };
 
@@ -344,6 +352,7 @@ export function createPatientAppointment(payload: {
   scheduledDate: string;
   startTime: string;
   endTime: string;
+  meetingMode?: string;
 }) {
   return apiRequest<PatientAppointment>("/patient/appointments", {
     method: "POST",
@@ -355,6 +364,13 @@ export function listPatientConsultations(params?: { from?: string; to?: string }
   return apiRequest<PatientConsultation[]>(`/patient/consultations${buildQuery(params)}`, {
     method: "GET",
   });
+}
+
+export function getPatientConsultation(consultationId: string) {
+  return apiRequest<PatientConsultation>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}`,
+    { method: "GET" },
+  );
 }
 
 export function listPatientProviders(params?: {
@@ -470,6 +486,51 @@ export function getPatientConsultationRoom(consultationId: string) {
   );
 }
 
+export function joinPatientConsultation(consultationId: string) {
+  return apiRequest<{
+    provider: "twilio";
+    roomName: string;
+    identity: string;
+    displayName: string;
+    meetingUrl: string;
+    roomToken: string;
+    expiresInSeconds: number;
+  }>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/join`,
+    { method: "POST" },
+  );
+}
+
+export function completePatientConsultation(consultationId: string) {
+  return apiRequest<PatientConsultation>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/complete`,
+    { method: "POST" },
+  );
+}
+
+export function cancelPatientConsultation(consultationId: string) {
+  return apiRequest<PatientConsultation>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/cancel`,
+    { method: "POST" },
+  );
+}
+
+export function ratePatientConsultation(
+  consultationId: string,
+  payload: {
+    rating: number;
+    comment?: string;
+  },
+) {
+  return apiRequest<unknown>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/rate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export function listPatientConsultationMessages(consultationId: string) {
   return apiRequest<PatientConsultationMessage[]>(
     `/patient/consultations/${encodeURIComponent(consultationId)}/messages`,
@@ -509,6 +570,10 @@ export function updatePatientConsultationPresence(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export function getPatientLiveUrl() {
+  return `${API_BASE_URL}/patient/live`;
 }
 
 export function listPatientNotifications(params?: { unreadOnly?: boolean }) {

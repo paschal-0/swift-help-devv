@@ -23,6 +23,7 @@ import {
   declineProfessionalRequest,
   formatApiMoney,
   getProfessionalDashboard,
+  getProfessionalLiveUrl,
   getProfessionalProfile,
   type ProfessionalConsultation,
   type ProfessionalConsultationRequest,
@@ -33,6 +34,7 @@ type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
 
 type Appointment = {
   id: string;
+  startsAt: string;
   timeLabel: string;
   patient: string;
   timeRange: string;
@@ -125,6 +127,7 @@ const formatTime = (value: string) =>
 
 const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment => ({
   id: session.id,
+  startsAt: session.startsAt,
   timeLabel: formatTime(session.startsAt),
   patient: session.patientName,
   timeRange: `${formatTime(session.startsAt)} - ${formatTime(session.endsAt)}`,
@@ -563,6 +566,41 @@ export function ProfessionalDashboardPage() {
       cancelled = true;
     };
   }, [earningsRange]);
+
+  useEffect(() => {
+    const eventSource = new EventSource(getProfessionalLiveUrl(), {
+      withCredentials: true,
+    });
+
+    const handleSessionCreated = (event: MessageEvent) => {
+      const session = JSON.parse(event.data) as ProfessionalConsultation;
+      const appointment = mapSessionToAppointment(session);
+      setDashboardAppointments((current) => {
+        if (current.some((item) => item.id === appointment.id)) {
+          return current;
+        }
+        return [...current, appointment].sort(
+          (left, right) =>
+            new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+        );
+      });
+      setActiveAppointmentId((current) => current ?? appointment.id);
+      toast.info("New appointment booked");
+    };
+
+    eventSource.addEventListener(
+      "professional.consultation_session.created",
+      handleSessionCreated,
+    );
+
+    return () => {
+      eventSource.removeEventListener(
+        "professional.consultation_session.created",
+        handleSessionCreated,
+      );
+      eventSource.close();
+    };
+  }, []);
 
   const visibleAppointments = useMemo(() => {
     if (!query) {

@@ -106,6 +106,7 @@ export type ConsultationSessionStatus =
 export type ProfessionalConsultation = {
   id: string;
   requestId: string | null;
+  appointmentId?: string | null;
   professionalUserId: string;
   patientUserId: string | null;
   patientName: string;
@@ -131,6 +132,80 @@ export type ProfessionalConsultation = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProfessionalConsultationMessage = {
+  id: string;
+  consultationId: string;
+  senderUserId: string;
+  senderType: "patient" | "provider" | "system";
+  body: string;
+  attachments: Array<{
+    name: string;
+    url: string;
+    type?: string;
+    size?: number;
+  }>;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfessionalConsultationPresence = {
+  id: string;
+  consultationId: string;
+  userId: string;
+  role: string;
+  online: boolean;
+  cameraEnabled: boolean;
+  microphoneEnabled: boolean;
+  inCall: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfessionalConsultationRoom = {
+  consultation: ProfessionalConsultation;
+  patient: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  messages: ProfessionalConsultationMessage[];
+  presence: ProfessionalConsultationPresence[];
+  room: {
+    id: string;
+    meetingUrl: string;
+    token: string | null;
+    provider?: "twilio" | string;
+    roomName?: string;
+  };
+};
+
+export type ProfessionalConsultationCompletionPayload = {
+  summary?: string;
+  consultationNotes?: string[];
+  prescriptions?: Array<{
+    name: string;
+    dosage?: string;
+    instructions?: string;
+    duration?: string;
+  }>;
+  labResults?: Array<{
+    name: string;
+    result?: string;
+    fileId?: string;
+    fileUrl?: string;
+  }>;
+  files?: Array<{
+    fileId?: string;
+    name: string;
+    url?: string;
+    type?: string;
+    size?: number;
+  }>;
+  nextSteps?: string[];
 };
 
 export type ShiftOffer = {
@@ -434,6 +509,28 @@ export function listProfessionalRequests(status?: ConsultationRequestStatus) {
   );
 }
 
+export function listProfessionalConsultations(params?: {
+  from?: string;
+  to?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const suffix = query.toString() ? `?${query}` : "";
+
+  return apiRequest<ProfessionalConsultation[]>(
+    `/professional/consultations${suffix}`,
+    { method: "GET" },
+  );
+}
+
+export function getProfessionalConsultation(consultationId: string) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}`,
+    { method: "GET" },
+  );
+}
+
 export function acceptProfessionalRequest(requestId: string) {
   return apiRequest<{
     request: ProfessionalConsultationRequest;
@@ -460,11 +557,78 @@ export function startProfessionalConsultation(consultationId: string) {
   );
 }
 
-export function completeProfessionalConsultation(consultationId: string) {
+export function joinProfessionalConsultation(consultationId: string) {
+  return apiRequest<{
+    provider: "twilio";
+    roomName: string;
+    identity: string;
+    displayName: string;
+    meetingUrl: string;
+    roomToken: string;
+    expiresInSeconds: number;
+  }>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/join`,
+    { method: "POST" },
+  );
+}
+
+export function getProfessionalConsultationRoom(consultationId: string) {
+  return apiRequest<ProfessionalConsultationRoom>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/room`,
+    { method: "GET" },
+  );
+}
+
+export function listProfessionalConsultationMessages(consultationId: string) {
+  return apiRequest<ProfessionalConsultationMessage[]>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/messages`,
+    { method: "GET" },
+  );
+}
+
+export function sendProfessionalConsultationMessage(
+  consultationId: string,
+  payload: {
+    body: string;
+    attachments?: ProfessionalConsultationMessage["attachments"];
+  },
+) {
+  return apiRequest<ProfessionalConsultationMessage>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function updateProfessionalConsultationPresence(
+  consultationId: string,
+  payload: Partial<
+    Pick<
+      ProfessionalConsultationPresence,
+      "online" | "cameraEnabled" | "microphoneEnabled" | "inCall"
+    >
+  >,
+) {
+  return apiRequest<ProfessionalConsultationPresence>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/presence`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function completeProfessionalConsultation(
+  consultationId: string,
+  payload: ProfessionalConsultationCompletionPayload = {},
+) {
   return apiRequest<ProfessionalConsultation>(
     `/professional/consultations/${consultationId}/complete`,
     {
       method: "POST",
+      body: JSON.stringify(payload),
     },
   );
 }

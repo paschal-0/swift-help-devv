@@ -10,7 +10,6 @@ import {
   cancelProfessionalConsultation,
   createProfessionalBlockedTime,
   getProfessionalSchedule,
-  startProfessionalConsultation,
   updateProfessionalAvailability,
   type ProfessionalBlockedTime,
   type ProfessionalConsultation,
@@ -1731,17 +1730,12 @@ export function ProfessionalSchedulePage() {
                   type="button"
                   onClick={async () => {
                     if (!activeConsultationId) return;
-                    try {
-                      await startProfessionalConsultation(activeConsultationId);
-                      setIsAppointmentDetailsModalOpen(false);
-                      toast.success("Joining appointment...");
-                    } catch (error) {
-                      toast.error(
-                        error instanceof Error
-                          ? error.message
-                          : "Unable to start appointment",
-                      );
-                    }
+                    window.sessionStorage.setItem(
+                      "professionalActiveConsultationId",
+                      activeConsultationId,
+                    );
+                    setIsAppointmentDetailsModalOpen(false);
+                    router.push("/professional-platform/consultations/live");
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
                 >

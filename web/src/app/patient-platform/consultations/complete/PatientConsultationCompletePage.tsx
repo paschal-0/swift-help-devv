@@ -3,8 +3,15 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  getPatientConsultationRoom,
+  type PatientConsultationRoom,
+} from "@/services/patientApi";
 
 const CONSULTATION_FEEDBACK_STORAGE_KEY = "patient-consultation-feedback";
+const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
 type StoredFeedback = {
   rating: number;
@@ -95,6 +102,7 @@ function Card({
 export function PatientConsultationCompletePage() {
   const router = useRouter();
   const [feedback, setFeedback] = useState<StoredFeedback | null>(null);
+  const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
 
   useEffect(() => {
     const storedFeedback = window.localStorage.getItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
@@ -109,7 +117,24 @@ export function PatientConsultationCompletePage() {
     } catch {
       window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
     }
+
+    const consultationId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+    if (!consultationId) return;
+
+    getPatientConsultationRoom(consultationId)
+      .then(setRoom)
+      .catch((error) => toast.error(getApiErrorMessage(error)));
   }, []);
+
+  const consultation = room?.consultation;
+  const providerName = room?.provider?.name ?? "your provider";
+  const consultationDate = consultation?.startsAt
+    ? new Date(consultation.startsAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "-";
 
   return (
     <article className="mx-auto max-w-[900px] px-4 pb-20 pt-8 md:pt-12">
@@ -127,7 +152,7 @@ export function PatientConsultationCompletePage() {
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
           className="mt-3 max-w-[500px] text-[16px] font-light leading-relaxed text-[#64748B] md:text-[18px]"
         >
-          Your session with <span className="font-medium text-[#1E88E5]">Dr. Sarah Johnson</span> has ended.
+          Your session with <span className="font-medium text-[#1E88E5]">{providerName}</span> has ended.
           Here is your visit summary.
         </motion.p>
       </div>
@@ -152,9 +177,9 @@ export function PatientConsultationCompletePage() {
         <Card title="Session Details" delay={0.3}>
           <div className="space-y-3 rounded-2xl bg-[#E3F2FD]/50 p-4">
             {[
-              { label: "Date", value: "March 26, 2024" },
-              { label: "Duration", value: "27 Minutes" },
-              { label: "Status", value: "Completed", isBadge: true },
+              { label: "Date", value: consultationDate },
+              { label: "Duration", value: `${consultation?.durationMinutes ?? 0} Minutes` },
+              { label: "Status", value: consultation?.status ?? "Completed", isBadge: true },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between text-[14px]">
                 <span className="text-[#64748B]">{item.label}</span>
@@ -180,7 +205,7 @@ export function PatientConsultationCompletePage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-blue-500">-</span>
-                  <span>Assessment: Stress and potential dehydration</span>
+                  <span>{consultation?.reason ?? "Consultation notes will appear here once the provider submits them."}</span>
                 </li>
               </ul>
             </div>

@@ -439,7 +439,7 @@ export function ProfessionalRequestsPage() {
               <span className="empty-details-rail absolute right-[8px] top-[31px] h-[468px] w-[7px] rounded-[20px] bg-[#334155]" />
               <EmptyDetailsPrompt
                 title="No requests waiting"
-                description="New consultation requests will appear here when patients book with you."
+                description="Requests that need your approval appear here. Confirmed patient bookings appear on your Dashboard and Schedule."
               />
             </div>
           ) : filteredRequests.length === 0 ? (

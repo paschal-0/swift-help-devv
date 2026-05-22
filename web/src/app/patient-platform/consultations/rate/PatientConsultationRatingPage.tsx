@@ -3,8 +3,14 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  completePatientConsultation,
+  ratePatientConsultation,
+} from "@/services/patientApi";
 
 const CONSULTATION_FEEDBACK_STORAGE_KEY = "patient-consultation-feedback";
+const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
 function StarIcon({ active }: { active: boolean }) {
   return (
@@ -33,7 +39,7 @@ export function PatientConsultationRatingPage() {
 
   const ratingLabel = useMemo(() => ratingLabels[rating] ?? "Good", [rating]);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     if (isSubmitting) {
@@ -41,21 +47,38 @@ export function PatientConsultationRatingPage() {
     }
 
     const trimmedComment = comment.trim();
+    const consultationId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+    if (!consultationId) {
+      toast.error("No consultation is selected for feedback.");
+      return;
+    }
 
     setIsSubmitting(true);
 
-    window.localStorage.setItem(
-      CONSULTATION_FEEDBACK_STORAGE_KEY,
-      JSON.stringify({
+    try {
+      await completePatientConsultation(consultationId);
+      await ratePatientConsultation(consultationId, {
         rating,
-        ratingLabel,
-        comment: trimmedComment,
-        submittedAt: new Date().toISOString(),
-      }),
-    );
+        comment: trimmedComment || undefined,
+      });
 
-    toast.success("Feedback submitted.");
-    router.push("/patient-platform/consultations/complete");
+      window.localStorage.setItem(
+        CONSULTATION_FEEDBACK_STORAGE_KEY,
+        JSON.stringify({
+          rating,
+          ratingLabel,
+          comment: trimmedComment,
+          submittedAt: new Date().toISOString(),
+        }),
+      );
+
+      toast.success("Feedback submitted.");
+      router.push("/patient-platform/consultations/complete");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
