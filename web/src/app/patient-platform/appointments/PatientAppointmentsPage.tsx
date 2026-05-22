@@ -19,13 +19,29 @@ type AppointmentItem = {
 };
 
 function formatAppointmentDate(value: string) {
-  const date = new Date(value);
+  const date = parseAppointmentDate(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+}
+
+function parseAppointmentDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return new Date(value);
+
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function combineAppointmentDateAndTime(dateValue: string, timeValue: string) {
+  const date = parseAppointmentDate(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const [hourText, minuteText = "00"] = timeValue.split(":");
+  date.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
+  return date;
 }
 
 function formatAppointmentTime(value: string) {
@@ -40,10 +56,10 @@ function formatAppointmentTime(value: string) {
 
 function mapAppointment(appointment: PatientAppointment): AppointmentItem {
   const professional = appointment.professional;
-  const scheduled = new Date(appointment.scheduledDate);
+  const endAt = combineAppointmentDateAndTime(appointment.scheduledDate, appointment.endTime);
   const isCompleted =
     appointment.status === "completed" ||
-    (!Number.isNaN(scheduled.getTime()) && scheduled < new Date());
+    (endAt !== null && endAt < new Date());
 
   return {
     id: appointment.id,

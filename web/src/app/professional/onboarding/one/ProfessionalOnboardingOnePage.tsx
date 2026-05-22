@@ -24,6 +24,7 @@ const specialityOptions = [
 const locationOptions = Array.from(
   new Set(defaultCountries.map((country) => country[0] as string)),
 ).sort((left, right) => left.localeCompare(right));
+const licenseNumberPattern = /^[A-Za-z0-9][A-Za-z0-9 ./-]*$/;
 
 function SelectedRadio() {
   return (
@@ -76,15 +77,17 @@ export function ProfessionalOnboardingOnePage() {
       ? "Please enter your professional name."
       : formValues.licenseNumber.trim().length === 0
         ? "Please enter your license number."
-        : formValues.speciality.trim().length === 0
-          ? "Please select your speciality."
-          : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
-            ? "Please enter a valid years of experience value."
-            : formValues.consultationType.trim().length === 0
-              ? "Please select consultation type offered."
-              : formValues.primaryPracticeLocation.trim().length === 0
-                ? "Please select your primary practice location."
-                : null;
+        : !licenseNumberPattern.test(formValues.licenseNumber.trim())
+          ? "License number can include letters, numbers, spaces, hyphens, slashes, and periods."
+          : formValues.speciality.trim().length === 0
+            ? "Please select your speciality."
+            : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
+              ? "Please enter a valid years of experience value."
+              : formValues.consultationType.trim().length === 0
+                ? "Please select consultation type offered."
+                : formValues.primaryPracticeLocation.trim().length === 0
+                  ? "Please select your primary practice location."
+                  : null;
 
   const isFormValid = validationError === null;
 
@@ -210,9 +213,11 @@ export function ProfessionalOnboardingOnePage() {
                   </span>
                   <input
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="characters"
                     value={formValues.licenseNumber}
                     onChange={handleFieldChange("licenseNumber")}
-                    placeholder="22222222222"
+                    placeholder="e.g. MDCN-A12345"
                     className="h-[47px] w-full rounded-[18px] border border-[#9eb1cf] bg-transparent px-[24px] text-[16px] font-light leading-[22px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#9eb1cf] md:h-[68px] md:text-[18px]"
                   />
                 </div>

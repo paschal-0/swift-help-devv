@@ -78,6 +78,13 @@ function DetailGrid({
   );
 }
 
+function parseDateOnly(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date(value);
+
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
@@ -95,7 +102,7 @@ export function PatientAppointmentDetailsPage() {
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
     if (!draft) return appointmentItems;
 
-    const date = draft.scheduledDate ? new Date(draft.scheduledDate) : null;
+    const date = draft.scheduledDate ? parseDateOnly(draft.scheduledDate) : null;
     const formattedDate =
       date && !Number.isNaN(date.getTime())
         ? date.toLocaleDateString("en-US", {

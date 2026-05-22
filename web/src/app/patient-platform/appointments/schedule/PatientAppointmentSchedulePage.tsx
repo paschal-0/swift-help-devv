@@ -91,6 +91,13 @@ function getMonthGrid(monthDate: Date) {
   return cells;
 }
 
+function formatLocalDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
   const [meetingMode, setMeetingMode] = useState<MeetingMode>("video");
@@ -119,7 +126,7 @@ export function PatientAppointmentSchedulePage() {
       try {
         const response = await getPatientProviderAvailability(
           draft.professionalId,
-          selectedDate.toISOString(),
+          formatLocalDateKey(selectedDate),
         );
         if (!isMounted) return;
         const slots = response.slots
@@ -203,7 +210,7 @@ export function PatientAppointmentSchedulePage() {
       JSON.stringify({
         ...draft,
         meetingMode,
-        scheduledDate: selectedDate.toISOString(),
+        scheduledDate: formatLocalDateKey(selectedDate),
         startTime: selectedTime.startTime,
         endTime: selectedTime.endTime,
         reason: reason.trim() || draft.reason || "General Consultation",
