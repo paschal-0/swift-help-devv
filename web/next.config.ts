@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: "/ng",
+          destination: "/",
+        },
+        {
+          source: "/ng/:path*",
+          destination: "/:path*",
+        },
+        {
           source: "/organization-platform",
           destination: "/organisation-platform",
         },
