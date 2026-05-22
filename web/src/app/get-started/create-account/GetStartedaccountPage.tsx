@@ -200,6 +200,12 @@ const roleContent = {
   },
 } as const;
 
+function toFrontendRole(role: string | undefined, fallback: keyof typeof roleContent) {
+  if (role === "organization") return "organisation";
+  if (role === "professional" || role === "patient") return role;
+  return fallback;
+}
+
 export function GetStartedaccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -279,7 +285,7 @@ export function GetStartedaccountPage() {
     setIsSubmitting(true);
 
     try {
-      await signup({
+      const response = await signup({
         fullName: trimmedFullName,
         email: trimmedEmail,
         phoneNumber: normalizedPhone,
@@ -287,6 +293,15 @@ export function GetStartedaccountPage() {
         role: toBackendRole(role),
         ...(trimmedReferralCode ? { referralCode: trimmedReferralCode } : {}),
       });
+
+      if (response.requiresEmailVerification) {
+        const verificationRole = toFrontendRole(response.role, role);
+        toast.info("This email is already registered but not verified. Click resend to receive a fresh OTP.");
+        router.push(
+          `/get-started/otp?role=${verificationRole}&email=${encodeURIComponent(response.email ?? trimmedEmail)}`
+        );
+        return;
+      }
 
       toast.success("Account created. Please verify your details.");
       router.push(

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { deleteProfileAvatar, getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getPatientProfile } from "@/services/patientApi";
 
 type SettingsTab = {
   id: "account" | "profile" | "notifications" | "security" | "subscriptions";
@@ -618,6 +621,10 @@ function AccountSettingsPanel({
 function ProfileSettingsPanel({
   formData,
   updateField,
+  avatarUrl,
+  isUploadingAvatar,
+  onUploadPicture,
+  onDeletePicture,
 }: {
   formData: {
     fullName: string;
@@ -629,6 +636,10 @@ function ProfileSettingsPanel({
     gender: string;
   };
   updateField: (key: keyof typeof formData) => (value: string) => void;
+  avatarUrl: string | null;
+  isUploadingAvatar: boolean;
+  onUploadPicture: () => void;
+  onDeletePicture: () => void;
 }) {
   return (
     <motion.section
@@ -637,22 +648,24 @@ function ProfileSettingsPanel({
       className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[640px] xl:px-[23px] xl:pb-[33px] xl:pt-[43px]"
     >
       <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:gap-[23px]">
-        <div className="h-[103px] w-[109px] rounded-full bg-[#D9D9D9]" />
+        <ProfileAvatar src={avatarUrl} alt="Patient profile picture" className="h-[103px] w-[109px] rounded-full" />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2 xl:mt-[6px]">
           <motion.button
             type="button"
-            onClick={() => toast.info("Image upload is not available yet")}
+            onClick={onUploadPicture}
+            disabled={isUploadingAvatar}
             className="inline-flex h-[41px] w-full items-center justify-center rounded-[5.14286px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[11px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[161px] xl:w-[109px]"
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.985 }}
           >
-            Upload New
+            {isUploadingAvatar ? "Uploading..." : "Upload New"}
           </motion.button>
 
           <motion.button
             type="button"
-            onClick={() => toast.info("Delete picture is not available yet")}
+            onClick={onDeletePicture}
+            disabled={isUploadingAvatar}
             className="inline-flex h-[41px] w-full items-center justify-center rounded-[5.14286px] bg-[#94A3B8] px-5 text-[11px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[161px] xl:w-[109px]"
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.985 }}
@@ -794,6 +807,9 @@ export function PatientSettingsPage() {
     aiRecommendations: true,
   });
   const [autoRenew, setAutoRenew] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const updateField =
     (key: keyof typeof formData) =>
@@ -831,8 +847,81 @@ export function PatientSettingsPage() {
 
   const isSubscriptionsView = activeTab === "subscriptions";
 
+  useEffect(() => {
+    let mounted = true;
+
+    getPatientProfile()
+      .then((response) => {
+        if (!mounted) return;
+
+        const profile = response.profile as Record<string, unknown>;
+        setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
+      })
+      .catch(() => {
+        if (mounted) {
+          setAvatarUrl(null);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const response = await uploadProfileAvatar(file);
+      setAvatarUrl(response.avatarUrl);
+      window.dispatchEvent(
+        new CustomEvent("swifthelp:avatar-updated", {
+          detail: { avatarUrl: response.avatarUrl },
+        }),
+      );
+      toast.success("Profile picture updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleDeletePicture = async () => {
+    setUploadingAvatar(true);
+
+    try {
+      const response = await deleteProfileAvatar();
+      setAvatarUrl(response.avatarUrl);
+      window.dispatchEvent(
+        new CustomEvent("swifthelp:avatar-updated", {
+          detail: { avatarUrl: response.avatarUrl },
+        }),
+      );
+      toast.success("Profile picture removed.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   return (
     <div className="mt-8 w-full xl:mt-[52px]">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleAvatarFileChange}
+        className="hidden"
+      />
       {isSubscriptionsView ? (
         <h1 className="mb-4 text-[24px] font-semibold leading-[29px] tracking-[-0.05em] text-[#334155] xl:mb-[16px]">
           Settings
@@ -898,7 +987,14 @@ export function PatientSettingsPage() {
             onToggleAutoRenew={() => setAutoRenew((current) => !current)}
           />
         ) : (
-          <ProfileSettingsPanel formData={formData} updateField={updateField} />
+          <ProfileSettingsPanel
+            formData={formData}
+            updateField={updateField}
+            avatarUrl={avatarUrl}
+            isUploadingAvatar={isUploadingAvatar}
+            onUploadPicture={() => fileInputRef.current?.click()}
+            onDeletePicture={handleDeletePicture}
+          />
         )}
       </div>
     </div>

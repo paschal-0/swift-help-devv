@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { getPatientProfile } from "@/services/patientApi";
 import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type NavItem = {
   label: string;
@@ -238,6 +240,7 @@ export function PatientPlatformShell({
   const router = useRouter();
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const contextValue = useMemo(
     () => ({
@@ -265,6 +268,35 @@ export function PatientPlatformShell({
       router.refresh();
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    getPatientProfile()
+      .then((response) => {
+        if (!mounted) return;
+
+        const profile = response.profile as Record<string, unknown>;
+        setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
+      })
+      .catch(() => {
+        if (mounted) {
+          setAvatarUrl(null);
+        }
+      });
+
+    const handleAvatarUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
+      setAvatarUrl(detail?.avatarUrl ?? null);
+    };
+
+    window.addEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+    };
+  }, []);
 
   return (
     <PatientPlatformShellContext.Provider value={contextValue}>
@@ -480,13 +512,7 @@ export function PatientPlatformShell({
                   whileTap={{ scale: 0.96 }}
                 >
                   <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm sm:h-11 sm:w-11 xl:h-12 xl:w-12">
-                    <Image
-                      src="/doctor.jpg"
-                      alt="Patient avatar"
-                      width={48}
-                      height={48}
-                      className="h-full w-full object-cover"
-                    />
+                    <ProfileAvatar src={avatarUrl} alt="Patient avatar" className="h-full w-full rounded-full" />
                   </span>
                 </motion.button>
               </div>

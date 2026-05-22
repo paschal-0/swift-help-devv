@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { metrics, records, referralCode, referralLink, tiers, type ReferralTier } from "./data";
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  formatPatientMoney,
+  getPatientReferrals,
+  type PatientReferralTier,
+  type PatientReferralSummary,
+} from "@/services/patientApi";
 
 const tierTheme = {
   blue: {
@@ -110,12 +117,124 @@ function TierCard({ tier }: { tier: ReferralTier }) {
   );
 }
 
+function mapReferralTier(tier: PatientReferralTier, currency?: string): ReferralTier {
+  const accent = tier.level === 1 ? "blue" : tier.level === 2 ? "green" : "gold";
+
+  return {
+    accent,
+    badge: tier.badge,
+    title: tier.title,
+    description: tier.description,
+    progressLabel: tier.progressLabel,
+    progressValue: tier.progressValue,
+    statusLabel: tier.active ? "Active" : "Locked",
+    statusTone: tier.active ? "active" : "locked",
+    rewards: [
+      {
+        label: "Patient signup",
+        value: formatPatientMoney(tier.rewards.patientAmountCents, currency),
+      },
+      {
+        label: "Professional signup",
+        value: formatPatientMoney(tier.rewards.professionalAmountCents, currency),
+      },
+      {
+        label: "Organization onboarded",
+        value: formatPatientMoney(tier.rewards.organizationAmountCents, currency),
+      },
+      {
+        label: "Unlock criteria",
+        value: tier.threshold > 0 ? `${tier.threshold} referrals` : "Verified account",
+      },
+    ],
+  };
+}
+
 export function PatientReferralsPage() {
   const [copied, setCopied] = useState(false);
+  const [summary, setSummary] = useState<PatientReferralSummary | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadReferrals() {
+      try {
+        const response = await getPatientReferrals();
+        if (isMounted) setSummary(response);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    loadReferrals();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const liveReferralCode = summary?.referralCode || referralCode;
+  const liveReferralLink = summary?.referralLink || referralLink;
+  const liveMetrics = useMemo(
+    () =>
+      summary
+        ? [
+            {
+              label: "Total referrals",
+              value: String(summary.totalReferred),
+              note: "All referred users",
+            },
+            {
+              label: "Organizations",
+              value: String(summary.organizationReferrals),
+              note: "Organization signups",
+            },
+            {
+              label: "Professionals",
+              value: String(summary.professionalReferrals),
+              note: "Professional signups",
+            },
+            {
+              label: "Patients",
+              value: String(summary.patientReferrals),
+              note: "Patient signups",
+            },
+          ]
+        : metrics,
+    [summary],
+  );
+
+  const recentReferralRows = useMemo(
+    () =>
+      summary?.recentReferrals.map((record) => ({
+        initials: record.name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+        name: record.name,
+        type: record.role,
+        joined: new Date(record.joinedAt).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        earned: "-",
+        status: "Completed",
+      })) ?? records.slice(0, 3),
+    [summary],
+  );
+  const liveTiers = useMemo(
+    () =>
+      summary?.tiers?.length
+        ? summary.tiers.map((tier) => mapReferralTier(tier, summary.currency))
+        : tiers,
+    [summary],
+  );
 
   const handleCopyCode = async () => {
     try {
-      await navigator.clipboard.writeText(referralCode);
+      await navigator.clipboard.writeText(liveReferralCode);
       setCopied(true);
       toast.success("Referral code copied");
       window.setTimeout(() => setCopied(false), 1800);
@@ -130,10 +249,10 @@ export function PatientReferralsPage() {
         await navigator.share({
           title: "Swifthelp referral link",
           text: "Join Swifthelp with my referral link.",
-          url: referralLink,
+          url: liveReferralLink,
         });
       } else {
-        await navigator.clipboard.writeText(referralLink);
+        await navigator.clipboard.writeText(liveReferralLink);
         toast.success("Referral link copied");
       }
     } catch {
@@ -169,7 +288,7 @@ export function PatientReferralsPage() {
                 className="flex min-h-[48px] flex-1 items-center justify-between rounded-[12px] bg-[#E2E8F0] px-4 py-2 text-[#334155] sm:px-5"
               >
                 <span className="text-[15px] font-semibold leading-[20px] tracking-[-0.07em] sm:text-[18px] sm:leading-normal">
-                  {referralCode}
+                  {liveReferralCode}
                 </span>
                 <motion.button
                   type="button"
@@ -196,8 +315,12 @@ export function PatientReferralsPage() {
 
           <div className="relative z-10 flex min-w-0 flex-col items-start gap-3 pr-0 xl:items-end xl:pt-3 xl:pr-2">
             <p className="text-[18px] font-semibold tracking-[-0.07em]">Total Earnings</p>
-            <p className="text-[40px] font-semibold leading-[1.1] tracking-[-0.07em]">N500,000</p>
-            <p className="text-[16px] tracking-[-0.07em] text-[#AF8D11]">Pending: N300,000</p>
+            <p className="text-[40px] font-semibold leading-[1.1] tracking-[-0.07em]">
+              {formatPatientMoney(summary?.totalEarned ?? 0, summary?.currency)}
+            </p>
+            <p className="text-[16px] tracking-[-0.07em] text-[#AF8D11]">
+              Pending: {formatPatientMoney(summary?.pendingBalance ?? 0, summary?.currency)}
+            </p>
             <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.18, ease: "easeOut" }}>
               <Link
               href="/patient-platform/referrals/withdraw"
@@ -211,7 +334,7 @@ export function PatientReferralsPage() {
       </section>
 
       <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
+        {liveMetrics.map((metric) => (
           <motion.div
             key={metric.label}
             whileHover={{ y: -2 }}
@@ -232,7 +355,7 @@ export function PatientReferralsPage() {
         </div>
 
         <div className="mt-4 space-y-4">
-          {tiers.map((tier) => (
+          {liveTiers.map((tier) => (
             <TierCard key={tier.title} tier={tier} />
           ))}
         </div>
@@ -255,7 +378,7 @@ export function PatientReferralsPage() {
         </div>
 
         <div>
-          {records.slice(0, 3).map((record) => (
+          {recentReferralRows.map((record) => (
             <div
               key={`${record.name}-${record.joined}`}
               className="border-b border-[#E2E8F0] px-6 py-4 md:grid md:grid-cols-[2.1fr_1.2fr_1.5fr_1.2fr_1fr] md:items-center"

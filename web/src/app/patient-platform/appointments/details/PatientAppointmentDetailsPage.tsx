@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import { createPatientAppointment } from "@/services/patientApi";
 
 type DetailItem = {
   label: string;
@@ -78,10 +80,73 @@ function DetailGrid({
 
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
+  const [draft, setDraft] = useState<Record<string, string> | null>(null);
   const [emailReminder, setEmailReminder] = useState(true);
   const [smsReminder, setSmsReminder] = useState(true);
   const [shareReminder, setShareReminder] = useState(true);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
+    if (rawDraft) setDraft(JSON.parse(rawDraft) as Record<string, string>);
+  }, []);
+
+  const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
+    if (!draft) return appointmentItems;
+
+    const date = draft.scheduledDate ? new Date(draft.scheduledDate) : null;
+    const formattedDate =
+      date && !Number.isNaN(date.getTime())
+        ? date.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })
+        : "-";
+
+    return [
+      { label: "Care type:", value: draft.careType ?? draft.reason ?? "-" },
+      { label: "Date:", value: formattedDate },
+      {
+        label: "Appointment mode",
+        value: draft.meetingMode === "in-person" ? "In Person" : "Video Consultation",
+      },
+      { label: "Time:", value: `${draft.startTime ?? "-"} - ${draft.endTime ?? "-"}` },
+      { label: "Duration:", value: "30 minutes" },
+    ];
+  }, [draft]);
+
+  const confirmAppointment = async () => {
+    if (!consentChecked) {
+      toast.error("Please confirm the consent checkbox before continuing.");
+      return;
+    }
+
+    if (!draft?.professionalId || !draft.scheduledDate || !draft.startTime || !draft.endTime) {
+      toast.error("Appointment draft is incomplete. Please review the schedule.");
+      return;
+    }
+
+    setIsConfirming(true);
+    try {
+      const appointment = await createPatientAppointment({
+        professionalId: draft.professionalId,
+        reason: draft.reason || draft.careType || "General Consultation",
+        scheduledDate: draft.scheduledDate,
+        startTime: draft.startTime,
+        endTime: draft.endTime,
+      });
+      window.sessionStorage.setItem("patientConfirmedAppointmentId", appointment.id);
+      window.sessionStorage.removeItem("patientAppointmentDraft");
+      toast.success("Appointment confirmed.");
+      router.push("/patient-platform/appointments/confirmed");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   return (
     <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-5 md:px-8 md:pb-12 md:pt-6 xl:px-10 xl:pb-[40px] xl:pt-[20px]">
@@ -111,7 +176,7 @@ export function PatientAppointmentDetailsPage() {
                   <p className="text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#94A3B8]">
                     Name
                     <br />
-                    <span className="text-[#334155]">Dr. Sarah Johnson</span>
+                    <span className="text-[#334155]">{draft?.professionalName ?? "Selected provider"}</span>
                   </p>
                 </div>
 
@@ -124,7 +189,7 @@ export function PatientAppointmentDetailsPage() {
               </div>
             </motion.div>
 
-            <DetailGrid items={appointmentItems} className="mt-3" />
+            <DetailGrid items={dynamicAppointmentItems} className="mt-3" />
           </motion.section>
 
           <motion.section
@@ -140,7 +205,7 @@ export function PatientAppointmentDetailsPage() {
               This summary can be shared with your provider to support a more informed consultation.
             </p>
 
-            <DetailGrid items={appointmentItems} className="mt-4" />
+            <DetailGrid items={dynamicAppointmentItems} className="mt-4" />
 
             <div className="mt-4 flex items-center justify-center gap-3 px-1 text-center sm:justify-start sm:px-2 sm:text-left">
               <ToggleSwitch checked={shareReminder} onChange={setShareReminder} />
@@ -216,19 +281,12 @@ export function PatientAppointmentDetailsPage() {
           </motion.button>
           <motion.button
             type="button"
-            onClick={() => {
-              if (!consentChecked) {
-                toast.error("Please confirm the consent checkbox before continuing.");
-                return;
-              }
-              toast.success("Appointment confirmed.");
-              router.push("/patient-platform/appointments/confirmed");
-            }}
+            onClick={confirmAppointment}
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
             className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:shadow-[0_16px_30px_rgba(17,75,127,0.3)] active:shadow-[0_7px_16px_rgba(17,75,127,0.22)]"
           >
-            Confirm appointment
+            {isConfirming ? "Confirming..." : "Confirm appointment"}
           </motion.button>
         </motion.div>
       </div>

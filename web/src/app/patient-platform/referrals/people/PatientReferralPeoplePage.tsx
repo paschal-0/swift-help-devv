@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { usePatientPlatformShell } from "../../components/PatientPlatformShell";
-import { records, type ReferralRecord, type ReferralRecordType } from "../data";
+import { type ReferralRecord, type ReferralRecordType } from "../data";
+import { getApiErrorMessage } from "@/services/authApi";
+import { listPatientReferralPeople } from "@/services/patientApi";
 
 type FilterKey = "All" | ReferralRecordType;
 
@@ -54,12 +57,57 @@ function ReferralTableRow({ record }: { record: ReferralRecord }) {
 export function PatientReferralPeoplePage() {
   const { searchText } = usePatientPlatformShell();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("All");
+  const [liveRecords, setLiveRecords] = useState<ReferralRecord[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadReferralPeople() {
+      try {
+        const response = await listPatientReferralPeople();
+        if (!isMounted) return;
+        setLiveRecords(
+          response.map((record) => ({
+            initials: record.name
+              .split(" ")
+              .map((part) => part[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase(),
+            name: record.name,
+            type:
+              record.role === "organization"
+                ? "Organization"
+                : record.role === "professional"
+                  ? "Professional"
+                  : "Patient",
+            joined: new Date(record.joinedAt).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
+            earned: "-",
+            status: "Completed",
+          })),
+        );
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+        if (isMounted) setLiveRecords([]);
+      }
+    }
+
+    loadReferralPeople();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredRecords = useMemo(() => {
     const query = searchText.trim().toLowerCase();
+    const sourceRecords = liveRecords;
 
     const visibleRecords =
-      activeFilter === "All" ? records : records.filter((record) => record.type === activeFilter);
+      activeFilter === "All" ? sourceRecords : sourceRecords.filter((record) => record.type === activeFilter);
 
     if (!query) {
       return visibleRecords;
@@ -71,7 +119,7 @@ export function PatientReferralPeoplePage() {
         .toLowerCase()
         .includes(query)
     );
-  }, [activeFilter, searchText]);
+  }, [activeFilter, liveRecords, searchText]);
 
   return (
     <section className="mt-[12px] overflow-x-hidden px-4 pb-8 md:px-0 xl:pb-10">

@@ -1,21 +1,23 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   createOrganizationInvite,
   createOrganizationInviteLink,
+  getApiErrorMessage,
   listOrganizationInvites,
   type OrganizationInvite,
   type OrganizationInviteRole,
+  uploadProfileAvatar,
 } from "@/services/authApi";
 import {
   getOrganizationSettings,
   type OrganizationSettings,
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type InfoItem = {
   label: string;
@@ -151,6 +153,8 @@ export function OrganisationMyProfilePage() {
   const [emailChips, setEmailChips] = useState<string[]>([]);
   const [isGeneratingLink, setGeneratingLink] = useState(false);
   const [isSendingInvite, setSendingInvite] = useState(false);
+  const [isUploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -185,8 +189,45 @@ export function OrganisationMyProfilePage() {
     ),
     "Organization",
   );
+  const avatarUrl = typeof profile.avatarUrl === "string" ? profile.avatarUrl : null;
   const editSettings = () => router.push("/organisation-platform/settings");
   const query = searchText.trim().toLowerCase();
+
+  async function handleAvatarFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const response = await uploadProfileAvatar(file);
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              profile: {
+                ...toRecord(current.profile),
+                avatarUrl: response.avatarUrl,
+              },
+            }
+          : current,
+      );
+      window.dispatchEvent(
+        new CustomEvent("swifthelp:avatar-updated", {
+          detail: { avatarUrl: response.avatarUrl },
+        }),
+      );
+      toast.success("Profile picture updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   const personalInformation: InfoItem[] = [
     { label: "Name", value: displayValue(account?.fullName) },
@@ -369,19 +410,22 @@ export function OrganisationMyProfilePage() {
         <div className="space-y-4">
           <div className="grid items-start gap-4 xl:grid-cols-[286px_minmax(0,1fr)]">
             <article className="rounded-[12px] bg-[#F8FAFC] px-6 py-6 shadow-[0_10px_30px_rgba(148,163,184,0.12)]">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleAvatarFileChange}
+                className="hidden"
+              />
               <div className="flex items-start gap-4">
-                <div className="relative overflow-hidden rounded-[12px] bg-[#E2E8F0]">
-                  <Image
-                    src="/doctor.jpg"
-                    alt={organizationName}
-                    width={186}
-                    height={195}
-                    className="h-[195px] w-[186px] object-cover"
-                  />
-                </div>
+                <ProfileAvatar
+                  src={avatarUrl}
+                  alt={organizationName}
+                  className="h-[195px] w-[186px] rounded-[12px]"
+                />
 
                 <div className="flex flex-col gap-3 pt-14">
-                  <SmallEditButton label="Profile image" onClick={editSettings} />
+                  <SmallEditButton label="Profile image" onClick={() => fileInputRef.current?.click()} />
                   <SmallEditButton label="Profile details" onClick={editSettings} />
                   <SmallEditButton label="Profile information" onClick={editSettings} />
                 </div>
@@ -393,6 +437,15 @@ export function OrganisationMyProfilePage() {
               <p className="mt-1 text-[13px] tracking-[-0.05em] text-[#94A3B8]">
                 {displayValue(firstValue(profile.facilityName, preferences.timeZone))}
               </p>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="mt-4 inline-flex h-9 w-full items-center justify-center rounded-[6px] border border-[#94A3B8] text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUploadingAvatar ? "Uploading..." : "Change photo"}
+              </button>
 
               <button
                 type="button"

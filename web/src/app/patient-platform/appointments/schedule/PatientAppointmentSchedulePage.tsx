@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import { getPatientProviderAvailability } from "@/services/patientApi";
 
 type MeetingMode = "video" | "in-person";
 
@@ -11,6 +13,8 @@ type TimeSlot = {
   id: string;
   consultant: string;
   patient: string;
+  startTime?: string;
+  endTime?: string;
 };
 
 const timeSlots: TimeSlot[] = [
@@ -90,10 +94,59 @@ function getMonthGrid(monthDate: Date) {
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
   const [meetingMode, setMeetingMode] = useState<MeetingMode>("video");
-  const [displayMonth, setDisplayMonth] = useState(new Date(2027, 2, 1));
-  const [selectedDate, setSelectedDate] = useState(new Date(2027, 2, 18));
-  const [selectedSlot, setSelectedSlot] = useState("slot-2");
+  const [displayMonth, setDisplayMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>(timeSlots);
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [manualStartTime, setManualStartTime] = useState("09:00");
+  const [manualEndTime, setManualEndTime] = useState("09:30");
   const [reason, setReason] = useState("");
+  const [draft, setDraft] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
+    if (rawDraft) {
+      setDraft(JSON.parse(rawDraft) as Record<string, string>);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAvailability() {
+      if (!draft?.professionalId) return;
+
+      try {
+        const response = await getPatientProviderAvailability(
+          draft.professionalId,
+          selectedDate.toISOString(),
+        );
+        if (!isMounted) return;
+        const slots = response.slots
+          .filter((slot) => slot.available)
+          .map((slot, index) => ({
+            id: `slot-${index + 1}`,
+            consultant: `${slot.startTime} - ${slot.endTime}`,
+            patient: `${slot.startTime} - ${slot.endTime}`,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+          }));
+        setAvailableSlots(slots);
+        setSelectedSlot(slots[0]?.id ?? "custom");
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+        if (isMounted) {
+          setAvailableSlots([]);
+          setSelectedSlot("custom");
+        }
+      }
+    }
+
+    loadAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [draft?.professionalId, selectedDate]);
 
   const monthTitle = useMemo(
     () =>
@@ -104,9 +157,26 @@ export function PatientAppointmentSchedulePage() {
   );
   const dayCells = useMemo(() => getMonthGrid(displayMonth), [displayMonth]);
   const selectedTimeSlot = useMemo(
-    () => timeSlots.find((slot) => slot.id === selectedSlot) ?? timeSlots[0],
-    [selectedSlot]
+    () => availableSlots.find((slot) => slot.id === selectedSlot) ?? availableSlots[0],
+    [availableSlots, selectedSlot]
   );
+  const selectedTime = useMemo(() => {
+    if (selectedSlot === "custom") {
+      return {
+        startTime: manualStartTime,
+        endTime: manualEndTime,
+        label: `${manualStartTime} - ${manualEndTime}`,
+      };
+    }
+
+    if (!selectedTimeSlot) return null;
+
+    return {
+      startTime: selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
+      endTime: selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      label: selectedTimeSlot.patient,
+    };
+  }, [manualEndTime, manualStartTime, selectedSlot, selectedTimeSlot]);
   const formattedDate = useMemo(
     () =>
       selectedDate.toLocaleDateString("en-US", {
@@ -118,6 +188,27 @@ export function PatientAppointmentSchedulePage() {
   );
 
   const handleContinue = () => {
+    if (!draft?.professionalId || !selectedTime) {
+      toast.error("Choose a professional and available time before continuing.");
+      return;
+    }
+
+    if (selectedTime.startTime >= selectedTime.endTime) {
+      toast.error("End time must be after start time.");
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      "patientAppointmentDraft",
+      JSON.stringify({
+        ...draft,
+        meetingMode,
+        scheduledDate: selectedDate.toISOString(),
+        startTime: selectedTime.startTime,
+        endTime: selectedTime.endTime,
+        reason: reason.trim() || draft.reason || "General Consultation",
+      }),
+    );
     toast.success("Schedule saved.");
     router.push("/patient-platform/appointments/details");
   };
@@ -301,7 +392,7 @@ export function PatientAppointmentSchedulePage() {
                 </div>
 
                 <div className="space-y-[6px]">
-                  {timeSlots.map((slot) => {
+                  {availableSlots.map((slot) => {
                     const selected = selectedSlot === slot.id;
                     return (
                       <motion.button
@@ -341,6 +432,56 @@ export function PatientAppointmentSchedulePage() {
                       </motion.button>
                     );
                   })}
+                  {availableSlots.length === 0 ? (
+                    <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B]">
+                      No preset slots for this day. Enter a preferred time below.
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] p-3">
+                    <label className="mb-3 flex cursor-pointer items-center gap-2 text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
+                      <input
+                        type="radio"
+                        name="appointment-time"
+                        checked={selectedSlot === "custom"}
+                        onChange={() => setSelectedSlot("custom")}
+                        className="h-4 w-4 accent-[#1565C0]"
+                      />
+                      Preferred time
+                    </label>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
+                          Start
+                        </span>
+                        <input
+                          type="time"
+                          value={manualStartTime}
+                          onChange={(event) => {
+                            setSelectedSlot("custom");
+                            setManualStartTime(event.target.value);
+                          }}
+                          className="h-10 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[13px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
+                        />
+                      </label>
+
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
+                          End
+                        </span>
+                        <input
+                          type="time"
+                          value={manualEndTime}
+                          onChange={(event) => {
+                            setSelectedSlot("custom");
+                            setManualEndTime(event.target.value);
+                          }}
+                          className="h-10 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[13px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -373,13 +514,13 @@ export function PatientAppointmentSchedulePage() {
 
           <div className="space-y-4 px-[14px] pb-4 pt-2">
             {[
-              { label: "Care type:", value: "General Consultation" },
-              { label: "Provider type:", value: "General Practitioner" },
-              { label: "Provider:", value: "Dr. Amanda Ellis" },
+              { label: "Care type:", value: draft?.careType ?? "General Consultation" },
+              { label: "Provider type:", value: draft?.professionalType ?? "General Practitioner" },
+              { label: "Provider:", value: draft?.professionalName ?? "Selected provider" },
               { label: "Date:", value: formattedDate },
               {
                 label: "Time:",
-                value: `${selectedTimeSlot.consultant} / ${selectedTimeSlot.patient}`,
+                value: selectedTime?.label ?? "No slot selected",
               },
               {
                 label: "Meeting mode:",
@@ -444,7 +585,7 @@ export function PatientAppointmentSchedulePage() {
                 Time
               </p>
               <p className="text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#1565C0]">
-                {selectedTimeSlot.patient}
+                {selectedTime?.label ?? "No slot"}
               </p>
             </div>
           </div>

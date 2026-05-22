@@ -28,6 +28,7 @@ export type ProfessionalProfile = {
   dateOfBirth?: string | null;
   gender?: string | null;
   address?: string | null;
+  avatarUrl?: string | null;
   licenseNumber?: string | null;
   specialization?: string | null;
   experienceYears?: number | null;

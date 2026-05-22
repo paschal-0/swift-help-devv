@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import { listPatientAppointments, type PatientAppointment } from "@/services/patientApi";
 
 type AppointmentStatus = "Completed" | "Upcoming";
 
@@ -15,6 +17,44 @@ type AppointmentItem = {
   date: string;
   status: AppointmentStatus;
 };
+
+function formatAppointmentDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatAppointmentTime(value: string) {
+  const [hourText, minuteText = "00"] = value.split(":");
+  const date = new Date();
+  date.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function mapAppointment(appointment: PatientAppointment): AppointmentItem {
+  const professional = appointment.professional;
+  const scheduled = new Date(appointment.scheduledDate);
+  const isCompleted =
+    appointment.status === "completed" ||
+    (!Number.isNaN(scheduled.getTime()) && scheduled < new Date());
+
+  return {
+    id: appointment.id,
+    professional: professional?.fullName ?? "Assigned professional",
+    specialty: "Healthcare professional",
+    consultationType: appointment.reason,
+    time: formatAppointmentTime(appointment.startTime),
+    date: formatAppointmentDate(appointment.scheduledDate),
+    status: isCompleted ? "Completed" : "Upcoming",
+  };
+}
 
 const upcomingAppointments: AppointmentItem[] = [
   {
@@ -156,14 +196,21 @@ function getMonthGrid(monthDate: Date) {
 export function PatientAppointmentsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+  const [fetchedAppointments, setFetchedAppointments] = useState<AppointmentItem[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [displayMonth, setDisplayMonth] = useState(new Date(2027, 2, 1));
   const [selectedDate, setSelectedDate] = useState(new Date(2027, 2, 18));
   const datePickerRef = useRef<HTMLDivElement | null>(null);
 
   const appointments = useMemo(
-    () => (tab === "upcoming" ? upcomingAppointments : pastAppointments),
-    [tab]
+    () =>
+      fetchedAppointments.filter((appointment) =>
+        tab === "upcoming"
+          ? appointment.status === "Upcoming"
+          : appointment.status === "Completed",
+      ),
+    [fetchedAppointments, tab]
   );
 
   const monthTitle = useMemo(
@@ -176,6 +223,29 @@ export function PatientAppointmentsPage() {
   );
 
   const dayCells = useMemo(() => getMonthGrid(displayMonth), [displayMonth]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAppointments() {
+      try {
+        const response = await listPatientAppointments();
+        if (!isMounted) return;
+        setFetchedAppointments(response.map(mapAppointment));
+      } catch (error) {
+        if (!isMounted) return;
+        toast.error(getApiErrorMessage(error));
+        setFetchedAppointments([]);
+      } finally {
+        if (isMounted) setIsLoadingAppointments(false);
+      }
+    }
+
+    loadAppointments();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const onDocumentClick = (event: MouseEvent) => {
@@ -333,7 +403,12 @@ export function PatientAppointmentsPage() {
 
       <div className="mt-5 sm:mt-[27px] sm:hidden">
         <div className="space-y-3">
-          {appointments.map((appointment) => (
+          {isLoadingAppointments ? (
+            <div className="rounded-[14px] border border-dashed border-[#94A3B8] px-4 py-6 text-center text-sm text-[#64748B]">
+              Loading appointments...
+            </div>
+          ) : appointments.length ? (
+            appointments.map((appointment) => (
             <div
               key={`mobile-${appointment.id}`}
               className="rounded-[14px] bg-[#F8FAFC] px-3 py-3 shadow-[0_0_24px_rgba(30,136,229,0.14)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(30,136,229,0.18)]"
@@ -394,7 +469,12 @@ export function PatientAppointmentsPage() {
                 </span>
               </div>
             </div>
-          ))}
+            ))
+          ) : (
+            <div className="rounded-[14px] border border-dashed border-[#94A3B8] px-4 py-6 text-center text-sm text-[#64748B]">
+              No {tab} appointments found.
+            </div>
+          )}
         </div>
       </div>
 
@@ -409,7 +489,12 @@ export function PatientAppointmentsPage() {
           </div>
 
           <div className="mt-3 space-y-4">
-            {appointments.map((appointment) => (
+            {isLoadingAppointments ? (
+              <div className="rounded-[12px] border border-dashed border-[#94A3B8] px-6 py-8 text-center text-sm text-[#64748B]">
+                Loading appointments...
+              </div>
+            ) : appointments.length ? (
+              appointments.map((appointment) => (
               <div
                 key={appointment.id}
                 className="grid h-[76px] grid-cols-[220px_1fr_132px_120px_52px] items-center gap-[28px] rounded-[12px] bg-[#F8FAFC] px-6 shadow-[0_0_30px_rgba(30,136,229,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(30,136,229,0.18)]"
@@ -442,7 +527,12 @@ export function PatientAppointmentsPage() {
                   <MoreVerticalIcon />
                 </button>
               </div>
-            ))}
+              ))
+            ) : (
+              <div className="rounded-[12px] border border-dashed border-[#94A3B8] px-6 py-8 text-center text-sm text-[#64748B]">
+                No {tab} appointments found.
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -58,10 +58,10 @@ export function PatientSymptomCheckerMainPage() {
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-[40px] sm:flex-wrap sm:flex-row sm:gap-[35px]">
           <button
             type="button"
-            onClick={() => router.push("/patient-platform/symptom-checker/assessment")}
-            className="inline-flex h-[48px] w-full max-w-[280px] cursor-pointer items-center justify-center rounded-[18.6577px] border border-[#1565C0] bg-[#F8FAFC] text-[18px] font-normal leading-[24px] tracking-[-0.05em] text-[#1E88E5] shadow-[0_4px_25px_rgba(30,136,229,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(30,136,229,0.2)] active:translate-y-0 active:scale-[0.985] sm:h-[51.31px] sm:w-[216.9px] sm:max-w-none sm:text-[20.6284px] sm:leading-[31px]"
+            onClick={() => router.push("/patient-platform")}
+            className="inline-flex h-[48px] w-full max-w-[280px] cursor-pointer items-center justify-center whitespace-nowrap rounded-[18.6577px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-[17px] font-normal leading-[24px] tracking-[-0.05em] text-[#1E88E5] shadow-[0_4px_25px_rgba(30,136,229,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(30,136,229,0.2)] active:translate-y-0 active:scale-[0.985] sm:h-[51.31px] sm:w-[216.9px] sm:max-w-none sm:text-[18px] sm:leading-[31px]"
           >
-            Start Assessment
+            Back to Dashboard
           </button>
           <button
             type="button"

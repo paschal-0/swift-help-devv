@@ -5,6 +5,14 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  getPatientConsultationRoom,
+  listPatientConsultations,
+  sendPatientConsultationMessage,
+  updatePatientConsultationPresence,
+  type PatientConsultationMessage,
+} from "@/services/patientApi";
 
 type ChatTab = "messages" | "summary" | "shared";
 type CallState = "idle" | "connecting" | "connected" | "failed";
@@ -21,16 +29,13 @@ type ConsultationTabsProps = {
   onChange: (tab: ChatTab) => void;
 };
 
-const messages: ChatMessage[] = [
-  { id: "m1", sender: "provider", text: "Hope you get me" },
-  { id: "m2", sender: "patient", text: "Yeah i do, but......." },
-  { id: "m3", sender: "provider", text: "Hope you get me" },
-  { id: "m4", sender: "patient", text: "Yeah i do, but......." },
-  { id: "m5", sender: "provider", text: "Hope you get me" },
-  { id: "m6", sender: "patient", text: "Yeah i do, but......." },
-  { id: "m7", sender: "provider", text: "Hope you get me" },
-  { id: "m8", sender: "patient", text: "Yeah i do, but......." },
-];
+function mapChatMessage(message: PatientConsultationMessage): ChatMessage {
+  return {
+    id: message.id,
+    sender: message.senderType === "patient" ? "patient" : "provider",
+    text: message.body,
+  };
+}
 
 const consultationTabs: Array<{ id: ChatTab; label: string; width: string }> = [
   { id: "messages", label: "Messages", width: "w-[72px] md:w-[90px]" },
@@ -112,7 +117,7 @@ export function PatientLiveConsultationPage() {
   const mobilePreviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const [callState, setCallState] = useState<CallState>("idle");
   const [activeTab, setActiveTab] = useState<ChatTab>("messages");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(messages);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [draftMessage, setDraftMessage] = useState("");
   const [callError, setCallError] = useState("");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -122,7 +127,24 @@ export function PatientLiveConsultationPage() {
   const [speakerMuted, setSpeakerMuted] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [activeConsultationId, setActiveConsultationId] = useState<string | null>(null);
+  const [providerName, setProviderName] = useState("Provider");
   const mobileChatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const reportPresence = useCallback(
+    (payload: {
+      online?: boolean;
+      cameraEnabled?: boolean;
+      microphoneEnabled?: boolean;
+      inCall?: boolean;
+    }) => {
+      if (!activeConsultationId) return;
+      void updatePatientConsultationPresence(activeConsultationId, payload).catch((error) => {
+        console.error("Failed to update consultation presence", error);
+      });
+    },
+    [activeConsultationId],
+  );
 
   const scrollMobileChatToBottom = useCallback(() => {
     if (mobileChatScrollRef.current) {
@@ -135,6 +157,42 @@ export function PatientLiveConsultationPage() {
       requestAnimationFrame(scrollMobileChatToBottom);
     }
   }, [isMobileChatOpen, chatMessages.length, scrollMobileChatToBottom]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRoom() {
+      try {
+        const storedConsultationId = window.sessionStorage.getItem("patientActiveConsultationId");
+        const consultationId =
+          storedConsultationId ||
+          (await listPatientConsultations()).find((consultation) =>
+            ["scheduled", "ongoing"].includes(consultation.status),
+          )?.id;
+
+        if (!consultationId) {
+          if (isMounted) setChatMessages([]);
+          return;
+        }
+
+        const room = await getPatientConsultationRoom(consultationId);
+        if (!isMounted) return;
+
+        setActiveConsultationId(consultationId);
+        setProviderName(room.provider?.name || "Provider");
+        setChatMessages(room.messages.length ? room.messages.map(mapChatMessage) : []);
+      } catch (error) {
+        if (!isMounted) return;
+        toast.error(getApiErrorMessage(error));
+        setChatMessages([]);
+      }
+    }
+
+    loadRoom();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const videoStarted = callState === "connecting" || callState === "connected";
   const callDuration = `${String(Math.floor(callSeconds / 60)).padStart(2, "0")}:${String(callSeconds % 60).padStart(2, "0")}`;
@@ -197,6 +255,12 @@ export function PatientLiveConsultationPage() {
     setMicrophoneEnabled(false);
     setSpeakerMuted(false);
     setIsMobileChatOpen(false);
+    reportPresence({
+      online: true,
+      inCall: false,
+      cameraEnabled: false,
+      microphoneEnabled: false,
+    });
   };
 
   const startCall = async () => {
@@ -221,6 +285,12 @@ export function PatientLiveConsultationPage() {
       setCameraEnabled(stream.getVideoTracks().some((track) => track.enabled));
       setMicrophoneEnabled(stream.getAudioTracks().some((track) => track.enabled));
       setCallState("connected");
+      reportPresence({
+        online: true,
+        inCall: true,
+        cameraEnabled: stream.getVideoTracks().some((track) => track.enabled),
+        microphoneEnabled: stream.getAudioTracks().some((track) => track.enabled),
+      });
       toast.success("Call connected");
     } catch (error) {
       const message =
@@ -231,7 +301,7 @@ export function PatientLiveConsultationPage() {
     }
   };
 
-  const handleSendMessage = (event?: FormEvent) => {
+  const handleSendMessage = async (event?: FormEvent) => {
     event?.preventDefault();
     const nextMessage = draftMessage.trim();
 
@@ -240,15 +310,20 @@ export function PatientLiveConsultationPage() {
       return;
     }
 
-    setChatMessages((current) => [
-      ...current,
-      {
-        id: `m${current.length + 1}`,
-        sender: "patient",
-        text: nextMessage,
-      },
-    ]);
-    setDraftMessage("");
+    if (!activeConsultationId) {
+      toast.error("No active consultation room is available yet.");
+      return;
+    }
+
+    try {
+      const sentMessage = await sendPatientConsultationMessage(activeConsultationId, {
+        body: nextMessage,
+      });
+      setChatMessages((current) => [...current, mapChatMessage(sentMessage)]);
+      setDraftMessage("");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   };
 
   return (
@@ -317,10 +392,10 @@ export function PatientLiveConsultationPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[16px] border border-white/10 bg-[rgba(15,23,42,0.55)] px-3 py-2.5 backdrop-blur-lg">
                   <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/20">
-                    <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
+                    <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt={providerName} fill className="object-cover" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold tracking-[-0.04em] text-white">Dr. Clara Ken</p>
+                    <p className="truncate text-[14px] font-semibold tracking-[-0.04em] text-white">{providerName}</p>
                     <p className="text-[11px] font-light tracking-[-0.04em] text-white/65">General Consultant</p>
                   </div>
                 </div>
@@ -382,7 +457,7 @@ export function PatientLiveConsultationPage() {
                   onClick={() => setIsMobileChatOpen(true)}
                   className="max-w-[85%] rounded-[18px] border border-white/10 bg-[rgba(15,23,42,0.48)] px-4 py-2.5 text-left text-[13px] text-white backdrop-blur-lg"
                 >
-                  <span className="font-medium text-[#93C5FD]">Dr. Clara Ken:</span>{" "}
+                  <span className="font-medium text-[#93C5FD]">{providerName}:</span>{" "}
                   <span className="font-light text-white/85">
                     {chatMessages[chatMessages.length - 1]?.text}
                   </span>
@@ -399,6 +474,12 @@ export function PatientLiveConsultationPage() {
                       track.enabled = nextEnabled;
                     });
                     setMicrophoneEnabled(nextEnabled);
+                    reportPresence({
+                      online: true,
+                      inCall: videoStarted,
+                      cameraEnabled,
+                      microphoneEnabled: nextEnabled,
+                    });
                     toast.info(nextEnabled ? "Microphone active" : "Microphone muted");
                   }}
                   className={`inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 backdrop-blur-xl transition ${
@@ -432,6 +513,12 @@ export function PatientLiveConsultationPage() {
                       track.enabled = nextEnabled;
                     });
                     setCameraEnabled(nextEnabled);
+                    reportPresence({
+                      online: true,
+                      inCall: videoStarted,
+                      cameraEnabled: nextEnabled,
+                      microphoneEnabled,
+                    });
                     toast.info(nextEnabled ? "Camera turned on" : "Camera turned off");
                   }}
                   className={`inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 backdrop-blur-xl transition ${
@@ -489,7 +576,7 @@ export function PatientLiveConsultationPage() {
                   <div>
                     <p className="text-[15px] font-semibold tracking-[-0.04em] text-white">Messages</p>
                     <p className="text-[11px] font-light tracking-[-0.04em] text-white/60">
-                      Chat with Dr. Clara Ken during session
+                      Chat with {providerName} during session
                     </p>
                   </div>
 
@@ -620,11 +707,11 @@ export function PatientLiveConsultationPage() {
 
           <div className="absolute left-[18px] top-[15px] inline-flex items-center gap-[3px] rounded-[12px] bg-[#F8FAFC] p-1 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
             <span className="relative h-10 w-10 overflow-hidden rounded-[12px]">
-              <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
+              <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt={providerName} fill className="object-cover" />
             </span>
             <div className="w-[91px]">
               <p className="text-[10px] font-light leading-4 tracking-[-0.05em] text-[#334155]">General Consultant</p>
-              <p className="text-[16px] font-normal leading-4 tracking-[-0.05em] text-[#334155]">Dr Clara Ken</p>
+              <p className="text-[16px] font-normal leading-4 tracking-[-0.05em] text-[#334155]">{providerName}</p>
             </div>
           </div>
 
@@ -727,6 +814,12 @@ export function PatientLiveConsultationPage() {
                     track.enabled = nextEnabled;
                   });
                   setCameraEnabled(nextEnabled);
+                  reportPresence({
+                    online: true,
+                    inCall: videoStarted,
+                    cameraEnabled: nextEnabled,
+                    microphoneEnabled,
+                  });
                   toast.info(nextEnabled ? "Camera turned on" : "Camera turned off");
                 }}
                 whileHover={{ y: -2, scale: 1.03 }}
@@ -762,6 +855,12 @@ export function PatientLiveConsultationPage() {
                     track.enabled = nextEnabled;
                   });
                   setMicrophoneEnabled(nextEnabled);
+                  reportPresence({
+                    online: true,
+                    inCall: videoStarted,
+                    cameraEnabled,
+                    microphoneEnabled: nextEnabled,
+                  });
                   toast.info(nextEnabled ? "Microphone active" : "Microphone muted");
                 }}
                 whileHover={{ y: -2, scale: 1.03 }}
@@ -868,11 +967,11 @@ export function PatientLiveConsultationPage() {
           <div className="mb-2 flex w-full min-w-0 flex-col gap-3 rounded-[16px] bg-[#E3F2FD] p-2.5 sm:mb-4 sm:p-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <span className="relative h-12 w-12 overflow-hidden rounded-[14px] border border-[#BFDBFE]">
-                <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt="Dr Clara Ken" fill className="object-cover" />
+                <Image src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg" alt={providerName} fill className="object-cover" />
               </span>
               <div>
                 <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-[#1565C0]">Ready to consult</p>
-                <p className="text-[18px] font-medium tracking-[-0.05em] text-[#334155]">Dr Clara Ken</p>
+                <p className="text-[18px] font-medium tracking-[-0.05em] text-[#334155]">{providerName}</p>
                 <p className="text-[13px] font-light tracking-[-0.04em] text-[#64748B]">
                   Chat first. Call if needed.
                 </p>

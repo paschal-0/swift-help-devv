@@ -26,6 +26,9 @@ export type SignupResponse = {
   message: string;
   userId: string;
   referralCode: string;
+  requiresEmailVerification?: boolean;
+  email?: string;
+  role?: BackendRole;
 };
 
 export type AuthUser = {
@@ -67,6 +70,11 @@ export type PatientProfilePayload = {
   medicalConditions?: string[];
   medications?: MedicationPayload[];
   supplements?: MedicationPayload[];
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
   onboardingCompleted?: boolean;
 };
 
@@ -144,7 +152,12 @@ export type OnboardingStatus = {
   missingFields: string[];
 };
 
-const API_BASE_URL =
+export type ProfileAvatarResponse = {
+  avatarUrl: string | null;
+  profile: unknown;
+};
+
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:5000";
 
@@ -258,6 +271,22 @@ export async function getProfile() {
   });
 }
 
+export async function uploadProfileAvatar(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFormRequest<ProfileAvatarResponse>("/profile/avatar", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function deleteProfileAvatar() {
+  return apiRequest<ProfileAvatarResponse>("/profile/avatar", {
+    method: "DELETE",
+  });
+}
+
 export async function getOnboardingStatus() {
   return apiRequest<OnboardingStatus>("/profile/onboarding-status", {
     method: "GET",
@@ -366,6 +395,51 @@ export async function apiRequest<T>(
 
     if (refreshResponse.ok) {
       return apiRequest<T>(path, init, true);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(body) ?? "Request failed.");
+  }
+
+  if (!body || !("data" in body)) {
+    throw new Error("Unexpected API response.");
+  }
+
+  return body.data;
+}
+
+async function apiFormRequest<T>(
+  path: string,
+  init: RequestInit,
+  hasRetriedAfterRefresh = false,
+) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+  });
+
+  const body = (await response.json().catch(() => null)) as
+    | ApiEnvelope<T>
+    | ApiErrorBody
+    | null;
+
+  if (
+    response.status === 401 &&
+    !hasRetriedAfterRefresh &&
+    path !== "/auth/login" &&
+    path !== "/auth/refresh"
+  ) {
+    const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (refreshResponse.ok) {
+      return apiFormRequest<T>(path, init, true);
     }
   }
 

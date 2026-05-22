@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import { createPatientSymptomCheck } from "@/services/patientApi";
 
 function SectionPill({ children }: { children: string }) {
   return (
@@ -15,6 +17,29 @@ function SectionPill({ children }: { children: string }) {
 
 export function PatientSymptomCheckerRecommendationPage() {
   const router = useRouter();
+
+  const saveRecommendation = async () => {
+    try {
+      await createPatientSymptomCheck({
+        title: "Symptom assessment",
+        symptoms: {
+          primarySymptom: "Headache",
+          duration: "2 days",
+          severity: "Moderate",
+          associatedSymptoms: "Dizziness, fatigue",
+        },
+        recommendation: {
+          headline: "A professional consultation is recommended",
+          recommendedCareType: "General Practitioner",
+          description:
+            "Best suited for evaluating headaches, fatigue, and related symptoms.",
+        },
+      });
+      toast.success("Recommendation saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
 
   return (
     <article className="mt-[18px] min-h-[930px] rounded-[12px] bg-[#F8FAFC] px-3 pb-6 pt-3 sm:mt-[26px] sm:px-5 sm:pb-8 sm:pt-4 xl:px-10 xl:pb-[34px] xl:pt-[17px]">
@@ -35,7 +60,7 @@ export function PatientSymptomCheckerRecommendationPage() {
 
           <button
             type="button"
-            onClick={() => toast.success("Recommendation saved")}
+            onClick={saveRecommendation}
             className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-[16px] bg-[#E3F2FD] px-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.22)] active:translate-y-0 active:scale-[0.98] sm:h-[27px] sm:px-[10px]"
           >
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>

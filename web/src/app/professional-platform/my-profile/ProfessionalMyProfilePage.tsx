@@ -1,18 +1,19 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import { getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
 import {
   getProfessionalProfile,
   listProfessionalNotifications,
   type ProfessionalNotification,
   type ProfessionalProfileResponse,
 } from "@/services/professionalApi";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type InfoRow = {
   label: string;
@@ -169,6 +170,8 @@ export function ProfessionalMyProfilePage() {
   const { searchText } = useProfessionalPlatformShell();
   const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
   const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
+  const [isUploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const query = searchText.trim().toLowerCase();
 
   useEffect(() => {
@@ -272,6 +275,44 @@ export function ProfessionalMyProfilePage() {
 
   const handleEdit = () => router.push("/professional-platform/settings");
   const handleDelete = (name: string) => toast.info(`${name} cannot be removed right now`);
+  const avatarUrl = profileData?.profile.avatarUrl ?? null;
+  const displayName = profileData?.profile.professionalName || profileData?.account?.fullName || "Professional";
+
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const response = await uploadProfileAvatar(file);
+      setProfileData((current) =>
+        current
+          ? {
+              ...current,
+              profile: {
+                ...current.profile,
+                avatarUrl: response.avatarUrl,
+              },
+            }
+          : current,
+      );
+      window.dispatchEvent(
+        new CustomEvent("swifthelp:avatar-updated", {
+          detail: { avatarUrl: response.avatarUrl },
+        }),
+      );
+      toast.success("Profile picture updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   return (
     <div className="mt-[22px] w-full">
@@ -285,24 +326,30 @@ export function ProfessionalMyProfilePage() {
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="rounded-[12px] bg-[#F8FAFC] p-6"
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleAvatarFileChange}
+                className="hidden"
+              />
               <div className="flex items-start justify-between gap-4">
-                <div className="relative h-[195px] w-full max-w-[186px] overflow-hidden rounded-[12px] bg-[#E2E8F0]">
-                  <Image
-                    src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
-                    alt="Dr Johnson portrait"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+                <ProfileAvatar
+                  src={avatarUrl}
+                  fallbackSrc="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
+                  alt={`${displayName} portrait`}
+                  className="h-[195px] w-full max-w-[186px] rounded-[12px]"
+                />
 
                 <div className="flex flex-col gap-3">
                   {Array.from({ length: 3 }).map((_, index) => (
                     <button
                       key={`professional-edit-${index + 1}`}
                       type="button"
-                      onClick={handleEdit}
+                      onClick={index === 0 ? () => fileInputRef.current?.click() : handleEdit}
                       className="inline-flex cursor-pointer items-center justify-center"
-                      aria-label={`Edit profile section ${index + 1}`}
+                      aria-label={index === 0 ? "Upload profile picture" : `Edit profile section ${index + 1}`}
+                      disabled={index === 0 && isUploadingAvatar}
                     >
                       <EditIcon />
                     </button>
@@ -311,8 +358,17 @@ export function ProfessionalMyProfilePage() {
               </div>
 
               <p className="mt-[18px] text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
-                {profileData?.profile.professionalName || profileData?.account?.fullName || "Professional"}
+                {displayName}
               </p>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="mt-3 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-[6px] border border-[#94A3B8] text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUploadingAvatar ? "Uploading..." : "Change photo"}
+              </button>
 
               <motion.button
                 type="button"

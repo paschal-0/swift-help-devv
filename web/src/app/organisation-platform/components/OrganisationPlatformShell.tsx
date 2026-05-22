@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import { getOrganizationSettings, type OrganizationSettings } from "@/services/organizationApi";
 import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type NavItem = {
   label: string;
@@ -263,6 +264,30 @@ export function OrganisationPlatformShell({
     };
   }, []);
 
+  useEffect(() => {
+    const handleAvatarUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
+
+      setSettings((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          profile: {
+            ...toRecord(current.profile),
+            avatarUrl: detail?.avatarUrl ?? null,
+          },
+        };
+      });
+    };
+
+    window.addEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+
+    return () => {
+      window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+    };
+  }, []);
+
   const profile = toRecord(settings?.profile);
   const organizationName = displayValue(
     firstValue(
@@ -273,6 +298,7 @@ export function OrganisationPlatformShell({
     ),
     "Organization",
   );
+  const avatarUrl = typeof profile.avatarUrl === "string" ? profile.avatarUrl : null;
 
   const logout = async () => {
     try {
@@ -530,12 +556,10 @@ export function OrganisationPlatformShell({
                     whileTap={{ scale: 0.98 }}
                   >
                     <span className="mx-2 block h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm">
-                      <Image
-                        src="/doctor.jpg"
+                      <ProfileAvatar
+                        src={avatarUrl}
                         alt={`${organizationName} avatar`}
-                        width={34}
-                        height={34}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full rounded-full"
                       />
                     </span>
                     <span className="flex flex-col items-start">
@@ -554,13 +578,7 @@ export function OrganisationPlatformShell({
                     whileTap={{ scale: 0.96 }}
                   >
                     <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm">
-                      <Image
-                        src="/doctor.jpg"
-                        alt="Organization avatar"
-                        width={48}
-                        height={48}
-                        className="h-full w-full object-cover"
-                      />
+                      <ProfileAvatar src={avatarUrl} alt="Organization avatar" className="h-full w-full rounded-full" />
                     </span>
                   </motion.button>
                 </div>

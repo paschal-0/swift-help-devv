@@ -15,6 +15,7 @@ import {
   type ProfessionalNotification,
 } from "@/services/professionalApi";
 import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type NavItem = {
   label: string;
@@ -256,6 +257,7 @@ export function ProfessionalPlatformShell({
     name: "Professional",
     availabilityLabel: "Availability not set",
     acceptingBookings: false,
+    avatarUrl: null as string | null,
   });
 
   const unreadNotificationCount = useMemo(
@@ -309,6 +311,7 @@ export function ProfessionalPlatformShell({
               ? "Available for bookings"
               : "Not accepting bookings",
             acceptingBookings: profile.availability.acceptingBookings,
+            avatarUrl: profile.profile.avatarUrl ?? null,
           });
           setNotifications(data);
         }
@@ -340,10 +343,21 @@ export function ProfessionalPlatformShell({
       eventSource.close();
     };
 
+    const handleAvatarUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
+      setProfileSummary((current) => ({
+        ...current,
+        avatarUrl: detail?.avatarUrl ?? null,
+      }));
+    };
+
+    window.addEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+
     return () => {
       cancelled = true;
       eventSource.removeEventListener("professional.notification.created", handleNotification);
       eventSource.close();
+      window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
     };
   }, []);
 
@@ -619,7 +633,11 @@ export function ProfessionalPlatformShell({
                     whileTap={{ scale: 0.98 }}
                   >
                     <span className="mx-2 block h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt={`${profileSummary.name} avatar`} width={34} height={34} className="h-full w-full object-cover" />
+                      <ProfileAvatar
+                        src={profileSummary.avatarUrl}
+                        alt={`${profileSummary.name} avatar`}
+                        className="h-full w-full rounded-full"
+                      />
                     </span>
                     <span className="flex flex-col items-start">
                       <span className="text-[12px] font-normal leading-4 tracking-[-0.05em] text-black">
@@ -647,7 +665,11 @@ export function ProfessionalPlatformShell({
                     whileTap={{ scale: 0.96 }}
                   >
                     <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm">
-                      <Image src="/doctor.jpg" alt={`${profileSummary.name} avatar`} width={48} height={48} className="h-full w-full object-cover" />
+                      <ProfileAvatar
+                        src={profileSummary.avatarUrl}
+                        alt={`${profileSummary.name} avatar`}
+                        className="h-full w-full rounded-full"
+                      />
                     </span>
                   </motion.button>
                 </div>

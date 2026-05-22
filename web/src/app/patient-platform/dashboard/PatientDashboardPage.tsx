@@ -2,27 +2,25 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
+import { getApiErrorMessage } from "@/services/authApi";
+import { getPatientDashboard, type PatientDashboard } from "@/services/patientApi";
 
 type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
 
 type Appointment = {
   id: string;
   day: string;
+  date: string;
   doctor: string;
   time: string;
   status: AppointmentStatus;
   specialty: string;
-};
-
-type UpdateItem = {
-  id: string;
-  title: string;
-  body: string;
-  date: string;
+  mode: string;
+  duration: string;
 };
 
 type ActivityItem = {
@@ -32,472 +30,509 @@ type ActivityItem = {
   status: "Completed" | "Pending";
 };
 
-const availableDays = ["MARCH 17", "MARCH 18", "MARCH 19"];
+function formatDay(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || "-";
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" }).toUpperCase();
+}
 
-const appointments: Appointment[] = [
-  { id: "appt-1", day: "MARCH 17", doctor: "Martin Samuel", time: "9:00am - 10:00 am", status: "Done", specialty: "Doctor" },
-  { id: "appt-2", day: "MARCH 17", doctor: "Martin Samuel", time: "10:00am - 11:00 am", status: "Done", specialty: "Doctor" },
-  { id: "appt-3", day: "MARCH 17", doctor: "Martin Samuel", time: "11:00am - 12:00 am", status: "Ongoing", specialty: "Doctor" },
-  { id: "appt-4", day: "MARCH 17", doctor: "Martin Samuel", time: "12:00am - 1:00 am", status: "Upcoming", specialty: "Doctor" },
-  { id: "appt-5", day: "MARCH 17", doctor: "Martin Samuel", time: "1:00am - 2:00 am", status: "Upcoming", specialty: "Doctor" },
-  { id: "appt-6", day: "MARCH 18", doctor: "Daisy Watson", time: "9:00am - 10:00 am", status: "Upcoming", specialty: "Therapist" },
-  { id: "appt-7", day: "MARCH 18", doctor: "Sarah Lane", time: "11:00am - 12:00 am", status: "Upcoming", specialty: "General Practitioner" },
-  { id: "appt-8", day: "MARCH 19", doctor: "Dr Pedro Martins", time: "10:00am - 11:00 am", status: "Upcoming", specialty: "Cardiologist" },
-];
+function formatFullDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || "-";
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 
-const updatesSeed: UpdateItem[] = [
-  {
-    id: "update-1",
-    title: "Medication reminder",
-    body: "It is almost time to take your prescribed medication. Staying consistent helps support your treatment plan.",
-    date: "17.03.2026",
-  },
-  {
-    id: "update-2",
-    title: "Medication reminder",
-    body: "It is almost time to take your prescribed medication. Staying consistent helps support your treatment plan.",
-    date: "17.03.2026",
-  },
-];
+function formatShortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || "-";
+  return date.toLocaleDateString("en-GB").replace(/\//g, ".");
+}
 
-const activitiesSeed: ActivityItem[] = [
-  { id: "act-1", activity: "Symptom assessment", time: "Today, 10:24 AM", status: "Completed" },
-  { id: "act-2", activity: "Symptom assessment", time: "Today, 10:24 AM", status: "Completed" },
-  { id: "act-3", activity: "Symptom assessment", time: "Today, 10:24 AM", status: "Completed" },
-  { id: "act-4", activity: "Follow-up form", time: "Yesterday, 2:11 PM", status: "Pending" },
-];
+function formatTimeRange(start: string, end: string) {
+  return `${start} - ${end}`;
+}
+
+function formatActivityDateTime(value: string | null) {
+  if (!value) return "No consultation yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const time = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (sameDay) return `Today, ${time}`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function appointmentStatus(status: string): AppointmentStatus {
+  const normalized = status.toLowerCase();
+  if (normalized === "completed") return "Done";
+  if (normalized === "ongoing" || normalized === "checked_in") return "Ongoing";
+  return "Upcoming";
+}
+
+function minutesBetween(start: string, end: string) {
+  const [startHour = 0, startMinute = 0] = start.split(":").map(Number);
+  const [endHour = 0, endMinute = 0] = end.split(":").map(Number);
+  const duration = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  return duration > 0 ? `${duration} minutes` : "30 minutes";
+}
+
+function CalendarIcon({ className = "h-8 w-8" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="#1565C0"
+        d="M19.2 3.2H21.6C22.2365 3.2 22.847 3.45286 23.2971 3.90294C23.7471 4.35303 24 4.96348 24 5.6V21.6C24 22.2365 23.7471 22.847 23.2971 23.2971C22.847 23.7471 22.2365 24 21.6 24H2.4C1.76348 24 1.15303 23.7471 0.702944 23.2971C0.252856 22.847 0 22.2365 0 21.6V5.6C0 4.96348 0.252856 4.35303 0.702944 3.90294C1.15303 3.45286 1.76348 3.2 2.4 3.2H4.8V0H6.4V3.2H17.6V0H19.2V3.2ZM9.6 12.8H4.8V11.2H9.6V12.8ZM19.2 11.2H14.4V12.8H19.2V11.2ZM9.6 17.6H4.8V16H9.6V17.6ZM14.4 17.6H19.2V16H14.4V17.6Z"
+      />
+    </svg>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  onClick,
+}: {
+  title: string;
+  value: string;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      className="h-20 cursor-pointer rounded-[12px] bg-[#F8FAFC] px-[11px] py-2 text-left transition hover:shadow-[0_8px_20px_rgba(148,163,184,0.2)]"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <div className="flex h-full items-center gap-[7px]">
+        <span className="inline-flex h-16 w-[59px] shrink-0 items-center justify-center rounded-[12px] bg-[#E3F2FD]">
+          <CalendarIcon />
+        </span>
+        <span className="min-w-0">
+          <span className="block max-w-[120px] text-[12px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
+            {title}
+          </span>
+          <span className="mt-3 block truncate text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#334155]">
+            {value}
+          </span>
+        </span>
+      </div>
+    </motion.button>
+  );
+}
+
+function StatusPill({ status }: { status: AppointmentStatus }) {
+  const className =
+    status === "Ongoing"
+      ? "bg-[#E3F2FD] text-[#1565C0]"
+      : status === "Done"
+        ? "border border-[#94A3B8] bg-[#E2E8F0] text-[#94A3B8]"
+        : "border border-[#94A3B8] bg-[#E2E8F0] text-[#64748B]";
+
+  return (
+    <span className={`inline-flex h-[23px] min-w-[58px] items-center justify-center rounded-md px-2 text-[10px] tracking-[-0.05em] ${className}`}>
+      {status}
+    </span>
+  );
+}
 
 export function PatientDashboardPage() {
   const router = useRouter();
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-  const [activeAppointmentId, setActiveAppointmentId] = useState<string>("appt-3");
-  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
   const { searchText } = usePatientPlatformShell();
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [activeAppointmentId, setActiveAppointmentId] = useState("");
+  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
+  const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
 
-  const selectedDay = availableDays[selectedDayIndex];
   const query = searchText.trim().toLowerCase();
 
-  const visibleUpdates = useMemo(() => {
-    const unresolved = updatesSeed.filter((u) => !dismissedUpdateIds.includes(u.id));
-    if (!query) return unresolved;
-    return unresolved.filter((u) => `${u.title} ${u.body} ${u.date}`.toLowerCase().includes(query));
-  }, [dismissedUpdateIds, query]);
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboard() {
+      try {
+        const response = await getPatientDashboard();
+        if (!isMounted) return;
+        setDashboard(response);
+        setActiveAppointmentId(response.appointments[0]?.id ?? "");
+      } catch (error) {
+        if (!isMounted) return;
+        toast.error(getApiErrorMessage(error));
+        setDashboard(null);
+      } finally {
+        if (isMounted) setIsLoadingDashboard(false);
+      }
+    }
+
+    loadDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const appointments = useMemo<Appointment[]>(() => {
+    return (dashboard?.appointments ?? []).map((appointment) => ({
+      id: appointment.id,
+      day: formatDay(appointment.scheduledDate),
+      date: formatFullDate(appointment.scheduledDate),
+      doctor: appointment.professional?.fullName ?? "Assigned professional",
+      time: formatTimeRange(appointment.startTime, appointment.endTime),
+      status: appointmentStatus(appointment.status),
+      specialty: appointment.reason || "General consultation",
+      mode: appointment.meetingUrl ? "Video consultation" : "In-person consultation",
+      duration: minutesBetween(appointment.startTime, appointment.endTime),
+    }));
+  }, [dashboard?.appointments]);
+
+  const dashboardDays = useMemo(() => Array.from(new Set(appointments.map((item) => item.day))), [appointments]);
+  const selectedDay = dashboardDays[Math.min(selectedDayIndex, Math.max(0, dashboardDays.length - 1))] ?? "";
 
   const dayAppointments = useMemo(() => {
-    const list = appointments.filter((a) => a.day === selectedDay);
+    const list = selectedDay ? appointments.filter((item) => item.day === selectedDay) : appointments;
     if (!query) return list;
-    return list.filter((a) => `${a.doctor} ${a.time} ${a.status} ${a.specialty}`.toLowerCase().includes(query));
-  }, [query, selectedDay]);
+    return list.filter((item) =>
+      [item.doctor, item.time, item.status, item.specialty, item.mode].join(" ").toLowerCase().includes(query),
+    );
+  }, [appointments, query, selectedDay]);
+
+  const activeAppointment = dayAppointments.find((item) => item.id === activeAppointmentId) ?? dayAppointments[0] ?? null;
+
+  const visibleUpdates = useMemo(() => {
+    const updates = (dashboard?.updates ?? []).filter((item) => !dismissedUpdateIds.includes(item.id));
+    if (!query) return updates;
+    return updates.filter((item) => [item.title, item.body, item.date].join(" ").toLowerCase().includes(query));
+  }, [dashboard?.updates, dismissedUpdateIds, query]);
 
   const visibleActivities = useMemo(() => {
-    if (!query) return activitiesSeed.slice(0, 3);
-    return activitiesSeed
-      .filter((a) => `${a.activity} ${a.time} ${a.status}`.toLowerCase().includes(query))
-      .slice(0, 3);
-  }, [query]);
+    const activities = (dashboard?.activities ?? []).map((activity) => ({
+      id: activity.id,
+      activity: activity.activity,
+      time: formatActivityDateTime(activity.time),
+      status: activity.status.toLowerCase().includes("pending") ? "Pending" : "Completed",
+    })) satisfies ActivityItem[];
 
-  const activeAppointment = dayAppointments.find((a) => a.id === activeAppointmentId) ?? dayAppointments[0] ?? null;
+    const filtered = query
+      ? activities.filter((item) => [item.activity, item.time, item.status].join(" ").toLowerCase().includes(query))
+      : activities;
+
+    return filtered.slice(0, 3);
+  }, [dashboard?.activities, query]);
 
   const stats = useMemo(
     () => [
       {
         title: "Upcoming appointments",
-        value: `${dayAppointments.filter((a) => a.status !== "Done").length} Scheduled`,
+        value: `${dashboard?.metrics.upcomingAppointments ?? 0} Scheduled`,
         onClick: () => router.push("/patient-platform/appointments"),
       },
       {
         title: "Recent symptom checks",
-        value: `${activitiesSeed.filter((a) => a.activity.toLowerCase().includes("symptom")).length} this month`,
+        value: `${dashboard?.metrics.recentSymptomChecks ?? 0} this month`,
         onClick: () => router.push("/patient-platform/symptom-checker"),
       },
       {
         title: "Last Consultation",
-        value: "3 Days Ago",
+        value: formatActivityDateTime(dashboard?.metrics.lastConsultationAt ?? null),
         onClick: () => router.push("/patient-platform/consultations"),
       },
       {
         title: "Pending Follow-Ups",
-        value: `${visibleUpdates.length} Action Needed`,
+        value: `${dashboard?.metrics.pendingFollowUps ?? 0} Action Needed`,
         onClick: () => router.push("/patient-platform/consultations"),
       },
     ],
-    [dayAppointments, router, visibleUpdates.length]
+    [dashboard?.metrics, router],
   );
 
   const goPrevDay = () => setSelectedDayIndex((current) => Math.max(0, current - 1));
-  const goNextDay = () => setSelectedDayIndex((current) => Math.min(availableDays.length - 1, current + 1));
+  const goNextDay = () => setSelectedDayIndex((current) => Math.min(dashboardDays.length - 1, current + 1));
 
   return (
-    <div className="mt-3 w-full sm:mt-4 xl:mt-[22px]">
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[551px_337px] xl:gap-4">
-          <motion.article
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="relative min-h-[188px] overflow-hidden rounded-[20px] bg-[#F8FAFC] sm:min-h-[204px] xl:min-h-[211px] xl:rounded-2xl"
-          >
-            <div className="absolute inset-0 bg-[linear-gradient(121deg,#f8fafc_0%,#f0f6fd_42%,#e8f3ff_100%)]" />
-            <div className="absolute left-3 top-3 z-20 flex w-[156px] flex-col gap-4 sm:left-4 sm:top-4 sm:w-[205px] sm:gap-6 xl:left-5 xl:top-[15px] xl:w-[246px] xl:gap-9">
-              <div className="inline-flex h-[23px] w-fit items-center justify-center gap-1.5 rounded-full bg-[#E3F2FD] px-2.5 sm:h-[25px] sm:gap-2 sm:px-3 xl:h-[26.81px] xl:w-[180px] xl:gap-[3.06px] xl:rounded-[30.6383px] xl:px-[7.65957px]">
-                <svg viewBox="0 0 24 24" className="h-[14px] w-[14px] sm:h-4 sm:w-4 xl:h-[18.38px] xl:w-[18.38px]" aria-hidden>
-                  <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
-                </svg>
-                <span className="text-[10px] font-light leading-none tracking-[-0.05em] text-[#1565C0] sm:text-[11px] xl:text-[12.2553px] xl:leading-3">
-                  March 17, 2026 10:20 am
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h2 className="text-[16px] font-medium leading-5 tracking-[-0.05em] text-[#334155] sm:text-[18px] sm:leading-6">
-                  Welcome back, Precious
-                </h2>
-                <p className="max-w-[150px] text-[12px] font-light leading-[14px] tracking-[-0.04em] text-[#334155] sm:max-w-[190px] sm:text-[14px] sm:leading-4 xl:max-w-[207px] xl:text-[16px] xl:tracking-[-0.05em]">
-                  Here is an overview of your care activity and what you can do next.
-                </p>
-              </div>
+    <div className="mt-[22px] w-full pb-10">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[551px_337px]">
+        <motion.article
+          className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#F8FAFC]"
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.18 }}
+        >
+          <Image src="/bg-platform.png" alt="" fill priority className="object-cover opacity-95" />
+          <div className="absolute left-5 top-[15px] z-10">
+            <div className="inline-flex h-[26.81px] items-center gap-2 rounded-[30px] bg-[#E3F2FD] px-3 text-[12.255px] font-light leading-3 tracking-[-0.05em] text-[#1565C0]">
+              <CalendarIcon className="h-[18px] w-[18px]" />
+              <span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+              <span>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}</span>
             </div>
 
-            <Image
-              src="/doctor-mobile.png"
-              alt="Doctors illustration"
-              width={128}
-              height={126}
-              className="absolute right-2 top-[42px] z-0 h-auto w-[128px] object-contain opacity-85 sm:hidden"
-            />
-            <Image
-              src="/Group 14.png"
-              alt="Doctors illustration"
-              width={280}
-              height={211}
-              className="absolute bottom-0 right-0 z-0 hidden h-full w-[240px] object-cover opacity-85 sm:block xl:w-[280px]"
-            />
-          </motion.article>
-
-          <motion.article
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="relative min-h-[188px] overflow-hidden rounded-[20px] bg-[#1565C0] sm:min-h-[204px] xl:min-h-[211px] xl:rounded-2xl"
-          >
-            <Image src="/doctor.jpg" alt="Quick assessment background" fill className="object-cover mix-blend-soft-light opacity-75" />
-            <div className="absolute left-4 top-5 z-10 max-w-[184px] space-y-1 text-[#F8FAFC] sm:top-7 sm:max-w-[205px] xl:top-9 xl:max-w-[207px]">
-              <h2 className="text-[16px] font-medium leading-5 tracking-[-0.05em] sm:text-[18px] sm:leading-6">Not Feeling Well?</h2>
-              <p className="text-[13px] font-light leading-[14px] tracking-[-0.04em] sm:text-[15px] sm:leading-4 xl:text-[16px] xl:tracking-[-0.05em]">
-                Start a quick symptom assessment to receive guidance and the right next steps.
+            <div className="mt-9 max-w-[246px]">
+              <h1 className="text-[18px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">
+                Welcome back, {dashboard?.patient.name?.split(" ")[0] ?? "Patient"}
+              </h1>
+              <p className="mt-1 max-w-[207px] text-[16px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                Here&apos;s an overview of your care activity and what you can do next.
               </p>
             </div>
-            <motion.button
-              type="button"
-              onClick={() => router.push("/patient-platform/symptom-checker")}
-              className="absolute bottom-4 left-4 inline-flex h-[32px] cursor-pointer items-center justify-center rounded-[12px] bg-[#F8FAFC] px-3 text-[12px] font-normal leading-none tracking-[-0.04em] text-[#1565C0] sm:bottom-5 sm:h-[34px] sm:px-3.5 sm:text-[13px] xl:bottom-[21px] xl:h-[34.76px] xl:rounded-[12.7318px] xl:px-[7.48374px] xl:text-[14.0766px] xl:leading-[21px] xl:tracking-[-0.05em]"
-              whileHover={{ y: -1, scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Start Symptom Check
-            </motion.button>
-          </motion.article>
-        </div>
+          </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 xl:mt-4 xl:grid-cols-4 xl:gap-[10px]">
-          {stats.map((stat) => (
-            <motion.button
-              key={stat.title}
-              type="button"
-              onClick={stat.onClick}
-              className="min-h-[86px] cursor-pointer rounded-xl bg-[#F8FAFC] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(148,163,184,0.25)] xl:h-20 xl:min-h-0 xl:p-[11px]"
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="flex items-center gap-2 xl:gap-[7px]">
-                <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#E3F2FD] xl:h-16 xl:w-[59px] xl:rounded-xl">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6 xl:h-8 xl:w-8" aria-hidden>
-                    <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
-                  </svg>
+          <Image
+            src="/undraw_doctors_djoj 1.png"
+            alt="Doctors illustration"
+            width={203}
+            height={175}
+            className="absolute left-[297px] top-[19px] hidden h-[175px] w-[203px] object-contain xl:block"
+          />
+          <Image
+            src="/undraw_doctors_djoj 1.png"
+            alt="Doctors illustration"
+            width={150}
+            height={129}
+            className="absolute bottom-0 right-3 h-[129px] w-[150px] object-contain xl:hidden"
+          />
+        </motion.article>
+
+        <motion.article
+          className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#1565C0]"
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.18 }}
+        >
+          <Image src="/bg-platform.png" alt="" fill className="object-cover opacity-20 mix-blend-soft-light" />
+          <div className="absolute left-4 top-9 z-10 max-w-[207px] text-[#F8FAFC]">
+            <h2 className="text-[18px] font-medium leading-6 tracking-[-0.05em]">Not Feeling Well?</h2>
+            <p className="mt-1 text-[16px] font-light leading-4 tracking-[-0.05em]">
+              Start a quick symptom assessment to receive guidance and the right next steps.
+            </p>
+          </div>
+          <Image
+            src="/undraw_marketing-analysis_2u5r 1.png"
+            alt="Care analysis illustration"
+            width={156}
+            height={93}
+            className="absolute right-[29px] top-[39px] hidden h-[93px] w-[156px] object-contain xl:block"
+          />
+          <Image
+            src="/undraw_marketing-analysis_2u5r 1.png"
+            alt="Care analysis illustration"
+            width={112}
+            height={67}
+            className="absolute right-4 top-5 h-[67px] w-[112px] object-contain opacity-95 xl:hidden"
+          />
+          <motion.button
+            type="button"
+            onClick={() => router.push("/patient-platform/symptom-checker")}
+            className="absolute bottom-[27px] left-4 inline-flex h-[34.76px] cursor-pointer items-center justify-center rounded-[6.37px] bg-[#F8FAFC] px-3 text-[8.49px] font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0] sm:text-[12px]"
+            whileHover={{ y: -1, scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            Start Symptom Check
+          </motion.button>
+        </motion.article>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-[10px] sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard key={stat.title} title={stat.title} value={stat.value} onClick={stat.onClick} />
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[551px_337px]">
+        <article className="min-h-[399px] rounded-2xl bg-[#F8FAFC] px-[17px] pb-5 pt-4">
+          <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Appointments</h2>
+
+          <div className="mt-5 flex max-w-[330px] items-center justify-between">
+            <button type="button" onClick={goPrevDay} disabled={selectedDayIndex === 0} className="cursor-pointer text-3xl leading-none text-[#334155] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous day">
+              ‹
+            </button>
+            <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">
+              {isLoadingDashboard ? "LOADING" : selectedDay || "NO APPOINTMENTS"}
+            </span>
+            <button type="button" onClick={goNextDay} disabled={selectedDayIndex >= dashboardDays.length - 1} className="cursor-pointer text-3xl leading-none text-[#334155] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next day">
+              ›
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[52px_245px_1fr]">
+            <div className="hidden flex-col items-center gap-2 pt-3 text-[14px] font-medium leading-[10px] tracking-[-0.05em] lg:flex">
+              {dayAppointments.slice(0, 5).map((appointment) => (
+                <div key={`${appointment.id}-time`} className="flex h-[50px] items-center text-[#94A3B8]">
+                  {appointment.time.split("-")[0].trim()}
                 </div>
-                <div className="flex min-w-0 flex-col gap-1.5 xl:gap-3">
-                  <p className="max-w-[94px] text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#94A3B8] sm:max-w-[120px] sm:text-[11px] xl:max-w-[132px] xl:text-[12px] xl:leading-[14px] xl:tracking-[-0.05em]">
-                    {stat.title}
-                  </p>
-                  <p className="text-[14px] font-light leading-[18px] tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:leading-5 xl:text-[18px] xl:leading-[22px] xl:tracking-[-0.05em]">
-                    {stat.value}
-                  </p>
-                </div>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[551px_337px]">
-          <article className="relative min-h-[399px] rounded-2xl bg-[#F8FAFC] px-4 pt-4 sm:px-[17px]">
-            <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Appointments</h3>
-
-            <div className="mt-4 flex items-center justify-between">
-              <button type="button" onClick={goPrevDay} disabled={selectedDayIndex === 0} className="cursor-pointer text-[#334155] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Previous day">
-                &lt;
-              </button>
-              <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">{selectedDay}</span>
-              <button type="button" onClick={goNextDay} disabled={selectedDayIndex === availableDays.length - 1} className="cursor-pointer text-[#334155] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Next day">
-                &gt;
-              </button>
+              ))}
             </div>
 
-            <div className="mt-3 flex flex-col gap-3 lg:hidden">
+            <div className="flex flex-col gap-2">
               {dayAppointments.length ? (
-                dayAppointments.map((appt) => (
-                  <motion.div
-                    key={`${appt.id}-mobile`}
-                    className={`rounded-2xl border p-4 transition ${
-                      appt.status === "Ongoing"
-                        ? "border-[#bfdbfe] bg-[#eff6ff] shadow-[0_10px_24px_rgba(30,136,229,0.12)]"
-                        : "border-[#e2e8f0] bg-white"
+                dayAppointments.slice(0, 5).map((appointment) => (
+                  <motion.button
+                    key={appointment.id}
+                    type="button"
+                    onClick={() => setActiveAppointmentId(appointment.id)}
+                    className={`relative h-[50px] cursor-pointer rounded-xl border px-2 text-left transition ${
+                      activeAppointment?.id === appointment.id ? "border-[#1E88E5] bg-[#F8FAFC]" : "border-[#E2E8F0]"
                     }`}
-                    whileHover={{ y: -2 }}
+                    whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#e2e8f0]">
-                          <Image src="/doctor.jpg" alt={`Dr ${appt.doctor}`} width={40} height={40} className="h-full w-full object-cover" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold tracking-[-0.04em] text-[#334155]">Dr. {appt.doctor}</p>
-                          <p className="mt-0.5 text-[11px] uppercase tracking-[-0.02em] text-[#94A3B8]">{appt.specialty}</p>
-                        </div>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold tracking-[-0.03em] ${
-                          appt.status === "Ongoing"
-                            ? "bg-[#1565C0] text-white"
-                            : appt.status === "Done"
-                              ? "bg-[#e2e8f0] text-[#64748B]"
-                              : "bg-[#f1f5f9] text-[#64748B]"
-                        }`}
-                      >
-                        {appt.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#e2e8f0] pt-3">
-                      <div className="flex min-w-0 items-center gap-2 text-[#64748B]">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
-                          <path
-                            fill="currentColor"
-                            d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11H8v-2h3V6h2Z"
-                          />
-                        </svg>
-                        <span className="truncate text-xs font-medium tracking-[-0.03em]">{appt.time}</span>
-                      </div>
-
-                      {appt.status === "Ongoing" ? (
-                        <motion.button
-                          type="button"
-                          onClick={() => router.push("/patient-platform/consultations")}
-                          className="shrink-0 rounded-lg bg-[#1565C0] px-4 py-1.5 text-xs font-semibold tracking-[-0.03em] text-white shadow-[0_8px_18px_rgba(21,101,192,0.25)] transition hover:bg-[#114B7F]"
-                          whileHover={{ y: -1, scale: 1.02 }}
-                          whileTap={{ scale: 0.96 }}
-                        >
-                          Join Call
-                        </motion.button>
-                      ) : null}
-                    </div>
-                  </motion.div>
+                    <span className="block max-w-[130px] truncate text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">
+                      {appointment.doctor}
+                    </span>
+                    <span className="block max-w-[130px] truncate text-[12px] font-light leading-5 tracking-[-0.05em] text-[#94A3B8]">
+                      {appointment.time}
+                    </span>
+                    <span className="absolute right-2 top-[13px]">
+                      <StatusPill status={appointment.status} />
+                    </span>
+                  </motion.button>
                 ))
               ) : (
-                <div className="rounded-xl border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">No appointments found for this day/search.</div>
+                <div className="rounded-xl border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">
+                  No appointments found.
+                </div>
               )}
             </div>
 
-            <div className="mt-3 hidden grid-cols-1 gap-3 lg:grid lg:grid-cols-[52px_1fr_255px]">
-              <div className="flex flex-col items-center gap-2 text-[14px] font-medium leading-[10px] tracking-[-0.05em] text-[#94A3B8]">
-                {dayAppointments.map((appt, index) => (
-                  <div key={`${appt.id}-time`} className="flex h-[50px] flex-col items-center justify-center">
-                    <span className={index === 2 ? "text-[#1565C0]" : ""}>{appt.time.split("-")[0].trim().replace("am", "")}</span>
-                  </div>
-                ))}
+            <div className="rounded-xl border border-[#94A3B8] p-3">
+              <div className="relative h-[121px] overflow-hidden rounded-lg bg-[#F8FAFC]">
+                <Image src="/doctor.jpg" alt="Doctor consultation" fill className="object-cover brightness-[0.45]" />
+                <div className="absolute left-2 top-2 inline-flex h-[16px] items-center gap-1 rounded-full bg-[#107D19] px-2 text-[11.7px] font-medium tracking-[-0.05em] text-[#F8FAFC]">
+                  ★ 5.0
+                </div>
+                <div className="absolute right-2 top-2 rounded-[15px] bg-[#E3F2FD] px-2 py-1 text-[7.5px] font-medium tracking-[-0.05em] text-[#1E88E5]">
+                  {activeAppointment?.status ?? "Upcoming"}
+                </div>
+                <div className="absolute bottom-3 left-2 text-[10px] font-semibold leading-[15px] tracking-[-0.05em] text-[#F8FAFC]">
+                  <p>Name: Dr {activeAppointment?.doctor ?? "Assigned professional"}</p>
+                  <p>specialty: {activeAppointment?.specialty ?? "Doctor"}</p>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                {dayAppointments.length ? (
-                  dayAppointments.map((row) => (
-                    <motion.button
-                      key={row.id}
-                      type="button"
-                      onClick={() => setActiveAppointmentId(row.id)}
-                      className={`relative h-[50px] rounded-xl border px-2 text-left transition ${
-                        row.id === activeAppointmentId ? "border-[#1E88E5] bg-[#f5faff]" : "border-[#E2E8F0] bg-transparent hover:bg-[#f8fbff]"
-                      } cursor-pointer`}
-                      whileHover={{ x: 2 }}
-                      whileTap={{ scale: 0.99 }}
-                    >
-                      <div className="absolute left-2 top-1 flex w-[120px] flex-col">
-                        <span className={`text-[14px] tracking-[-0.05em] ${row.id === activeAppointmentId ? "text-[#334155]" : "text-[#94A3B8]"}`}>{row.doctor}</span>
-                        <span className={`text-[12px] font-light tracking-[-0.05em] ${row.id === activeAppointmentId ? "text-[#334155]" : "text-[#94A3B8]"}`}>{row.time}</span>
-                      </div>
-                      <span
-                        className={`absolute right-2 top-[13px] inline-flex h-[23px] min-w-[58px] items-center justify-center rounded-md px-2 text-[10px] tracking-[-0.05em] ${
-                          row.status === "Ongoing"
-                            ? "bg-[#E3F2FD] text-[#1565C0]"
-                            : row.status === "Done"
-                              ? "border border-[#94A3B8] bg-[#E2E8F0] text-[#94A3B8]"
-                              : "border border-[#94A3B8] bg-[#E2E8F0] text-[#64748B]"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </motion.button>
-                  ))
-                ) : (
-                  <div className="rounded-xl border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">No appointments found for this day/search.</div>
-                )}
+              <div className="mt-4 space-y-2 text-[14px] font-medium leading-3 tracking-[-0.05em] text-[#334155]">
+                <p>Date: {activeAppointment?.date ?? "-"}</p>
+                <p>Time: {activeAppointment?.time.split("-")[0]?.trim() ?? "-"}</p>
+                <p>Care type: {activeAppointment?.specialty ?? "-"}</p>
+                <p>Duration: {activeAppointment?.duration ?? "-"}</p>
+                <p className="leading-[18px]">Appointment mode: {activeAppointment?.mode ?? "-"}</p>
               </div>
 
-              <div className="rounded-xl bg-[#E3F2FD] p-3">
-                <div className="relative h-[121px] overflow-hidden rounded-lg">
-                  <Image src="/doctor.jpg" alt="Doctor consultation" fill className="object-cover" />
-                  <div className="absolute right-2 top-2 rounded-[15px] bg-[#E3F2FD] px-2 py-1 text-[7.5px] font-medium tracking-[-0.05em] text-[#1E88E5]">
-                    {activeAppointment?.status ?? "Upcoming"}
-                  </div>
-                  <div className="absolute bottom-2 left-2 text-[10px] font-semibold leading-4 tracking-[-0.05em] text-[#F8FAFC]">
-                    <p>Name: Dr {activeAppointment?.doctor ?? "Martin Samuel"}</p>
-                    <p>specialty: {activeAppointment?.specialty ?? "Doctor"}</p>
-                  </div>
-                </div>
-
-                <div className="mt-3 text-[14px] font-medium leading-3 tracking-[-0.05em] text-[#334155]">
-                  {Array.from({ length: 6 }).map((_, idx) => (
-                    <p key={idx}>Date: March 227 2026</p>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <motion.button
-                    type="button"
-                    onClick={() => router.push("/patient-platform/appointments")}
-                    className="inline-flex h-[25px] flex-1 cursor-pointer items-center justify-center rounded-[9.26984px] border border-[#334155] text-[10.2489px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]"
-                    whileHover={{ y: -1, scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    View all
-                  </motion.button>
-                  <motion.button
-                    type="button"
-                    onClick={() => router.push("/patient-platform/consultations")}
-                    className="inline-flex h-[26px] flex-1 cursor-pointer items-center justify-center rounded-[9.52381px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10.5297px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD]"
-                    whileHover={{ y: -1, scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Join call
-                  </motion.button>
-                </div>
+              <div className="mt-3 flex gap-[19px]">
+                <motion.button
+                  type="button"
+                  onClick={() => router.push("/patient-platform/appointments/details")}
+                  className="inline-flex h-[25px] flex-1 cursor-pointer items-center justify-center rounded-[4.63px] border border-[#334155] text-[10px] tracking-[-0.05em] text-[#334155]"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  View details
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => router.push("/patient-platform/consultations/live")}
+                  className="inline-flex h-[26px] flex-1 cursor-pointer items-center justify-center rounded-[4.76px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] tracking-[-0.05em] text-[#E3F2FD]"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Join now
+                </motion.button>
               </div>
             </div>
-          </article>
+          </div>
+        </article>
 
-          <article className="relative hidden min-h-[399px] rounded-2xl bg-[#F8FAFC] px-[13px] pt-4 xl:block">
-            <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Important Updates</h3>
-
-            <div className="mt-4 space-y-2">
-              {visibleUpdates.length ? (
-                visibleUpdates.map((item) => (
-                  <div key={item.id} className="relative min-h-[158px] rounded-md border border-[#1E88E5]/60 bg-[#F8FAFC] p-2">
-                    <div className="inline-flex h-[16.56px] w-[59.05px] items-center justify-center rounded-[15.0507px] bg-[#E3F2FD] text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+        <article className="min-h-[399px] rounded-2xl bg-[#F8FAFC] px-[13px] pt-4">
+          <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Important Updates</h2>
+          <div className="mt-4 space-y-2">
+            {visibleUpdates.length ? (
+              visibleUpdates.slice(0, 2).map((update) => (
+                <div key={update.id} className="min-h-[158px] rounded-md border border-[#1E88E5] p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex h-[16.56px] min-w-[59px] items-center justify-center rounded-[15px] bg-[#E3F2FD] text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
                       Due soon
-                    </div>
-                    <span className="absolute right-2 top-[10px] text-[10px] leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{item.date}</span>
-                    <div className="mt-3 w-[264px]">
-                      <h4 className="text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">{item.title}</h4>
-                      <p className="mt-[7px] text-[13px] font-light leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{item.body}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDismissedUpdateIds((current) => [...current, item.id]);
-                        toast.success("Reminder marked");
-                      }}
-                      className="mt-3 inline-flex h-[23.47px] w-[116px] cursor-pointer items-center justify-center rounded-[8.59779px] bg-[#1565C0] text-[9.50592px] font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC]"
-                    >
-                      Set Reminder+Details
-                    </button>
+                    </span>
+                    <span className="text-[10px] leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{formatShortDate(update.date)}</span>
                   </div>
-                ))
-              ) : (
-                <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">No updates match your search.</div>
-              )}
-            </div>
-          </article>
-        </div>
-
-        <article className="relative mt-4 min-h-[329px] w-full rounded-xl bg-[#F8FAFC] px-4 pb-4 pt-4 sm:px-[19px] sm:pt-[21px]">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Recent Activities</h3>
-            <motion.button
-              type="button"
-              onClick={() => router.push("/patient-platform/consultations")}
-              className="inline-flex h-[30px] w-[72px] cursor-pointer items-center justify-center rounded-md bg-[#E3F2FD] text-[14px] font-medium leading-5 tracking-[-0.05em] text-[#1565C0] sm:h-[26px] sm:w-[66px] sm:text-[18px]"
-              whileHover={{ y: -1, scale: 1.02 }}
-              whileTap={{ scale: 0.96 }}
-            >
-              See all
-            </motion.button>
-          </div>
-
-          <div className="mt-3 flex flex-col gap-2 sm:hidden">
-            {visibleActivities.length ? (
-              visibleActivities.map((row) => (
-                <motion.button
-                  key={`${row.id}-mobile`}
-                  type="button"
-                  onClick={() => router.push("/patient-platform/consultations")}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#e2e8f0] bg-white px-3 py-3 text-left"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium tracking-[-0.04em] text-[#334155]">{row.activity}</p>
-                    <p className="mt-1 text-[11px] tracking-[-0.03em] text-[#94A3B8]">{row.time}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold tracking-[-0.03em] ${
-                      row.status === "Completed" ? "bg-[#D9F6E7] text-[#15A937]" : "bg-[#FEF3C7] text-[#B45309]"
-                    }`}
+                  <h3 className="mt-[18px] text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">{update.title}</h3>
+                  <p className="mt-[7px] max-w-[264px] text-[13px] font-light leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{update.body}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDismissedUpdateIds((current) => [...current, update.id]);
+                      toast.success("Reminder marked");
+                    }}
+                    className="mt-3 inline-flex h-[23.47px] min-w-[68px] cursor-pointer items-center justify-center rounded-[4.3px] bg-[#1565C0] px-2 text-[8px] tracking-[-0.05em] text-[#F8FAFC]"
                   >
-                    {row.status}
-                  </span>
-                </motion.button>
+                    Set Reminder+Details
+                  </button>
+                </div>
               ))
             ) : (
-              <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">No activities match your search.</div>
-            )}
-          </div>
-
-          <div className="mt-4 hidden grid-cols-3 rounded-xl bg-[#0F172A] px-6 py-5 text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC] sm:grid sm:px-10 sm:text-[18px]">
-            <span>Activity</span>
-            <span>Time</span>
-            <span className="text-right">Status</span>
-          </div>
-
-          <div className="mt-3 hidden sm:block">
-            {visibleActivities.length ? (
-              visibleActivities.map((row) => (
-                <motion.button
-                  key={row.id}
-                  type="button"
-                  onClick={() => router.push("/patient-platform/consultations")}
-                  className="grid h-[52px] w-full cursor-pointer grid-cols-3 items-center border-b border-[#94A3B8] px-[17px] text-left"
-                  whileHover={{ x: 2 }}
-                  whileTap={{ scale: 0.995 }}
-                >
-                  <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8] sm:text-[18px]">{row.activity}</span>
-                  <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8] sm:text-[18px]">{row.time}</span>
-                  <span className="justify-self-end inline-flex h-[30px] min-w-[115px] items-center justify-center rounded-3xl bg-[#D9F6E7] px-[10px] text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#15A937] sm:text-[18px]">
-                    {row.status}
-                  </span>
-                </motion.button>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">No activities match your search.</div>
+              <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">
+                No updates match your search.
+              </div>
             )}
           </div>
         </article>
+      </div>
+
+      <article className="mt-4 min-h-[329px] rounded-xl bg-[#F8FAFC] px-[19px] pb-4 pt-[21px]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Recent Activities</h2>
+          <button
+            type="button"
+            onClick={() => router.push("/patient-platform/consultations")}
+            className="inline-flex h-[26px] w-[66px] cursor-pointer items-center justify-center rounded-md bg-[#E3F2FD] text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#1565C0]"
+          >
+            See all
+          </button>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <div className="min-w-[760px]">
+            <div className="grid h-16 grid-cols-[1fr_1fr_160px] items-center rounded-xl bg-[#0F172A] px-10 text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC]">
+              <span>Activity</span>
+              <span>Date & Time</span>
+              <span className="text-center">Status</span>
+            </div>
+
+            <div className="mt-3">
+              {visibleActivities.length ? (
+                visibleActivities.map((activity) => (
+                  <button
+                    key={activity.id}
+                    type="button"
+                    onClick={() => router.push("/patient-platform/consultations")}
+                    className="grid h-[61px] w-full cursor-pointer grid-cols-[1fr_1fr_160px] items-center border-b border-[#334155] px-6 text-left"
+                  >
+                    <span className="text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">{activity.activity}</span>
+                    <span className="text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">{activity.time}</span>
+                    <span className={`justify-self-center rounded-3xl px-[10px] py-1 text-[18px] leading-5 tracking-[-0.05em] ${
+                      activity.status === "Completed" ? "bg-[#D9F6E7] text-[#15A937]" : "bg-[#FEF3C7] text-[#B45309]"
+                    }`}>
+                      {activity.status}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">
+                  No activities match your search.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </article>
     </div>
   );
 }
-

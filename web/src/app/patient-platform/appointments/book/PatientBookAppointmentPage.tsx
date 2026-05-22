@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/services/authApi";
+import { listPatientProviders, type PatientProvider } from "@/services/patientApi";
 
 type CareType = {
   id: string;
@@ -77,6 +79,20 @@ const professionals: ProfessionalCard[] = [
   },
 ];
 
+function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
+  return {
+    id: provider.userId,
+    name: provider.name,
+    role: provider.specialization,
+    imageSrc: "/doctor.jpg",
+    nextAvailable: "Check schedule",
+    highlights: [
+      provider.consultationType || "Consultation",
+      provider.verificationStatus === "approved" ? "Verified" : "Profile submitted",
+    ],
+  };
+}
+
 function BranchIcon({
   selected,
   className,
@@ -129,7 +145,32 @@ export function PatientBookAppointmentPage() {
   const router = useRouter();
   const [selectedCareType, setSelectedCareType] = useState("follow-up");
   const [selectedProfessionalType, setSelectedProfessionalType] = useState("gp");
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState("doc-2");
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
+  const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProviders() {
+      try {
+        const response = await listPatientProviders();
+        if (!isMounted) return;
+        const cards = response.map(mapProviderToCard);
+        setProviderCards(cards);
+        setSelectedProfessionalId((current) => current || cards[0]?.id || "");
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+        if (isMounted) setProviderCards([]);
+      }
+    }
+
+    loadProviders();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const visibleProfessionals = providerCards;
 
   const selectedCare = useMemo(
     () => careTypes.find((i) => i.id === selectedCareType) || careTypes[0],
@@ -142,11 +183,26 @@ export function PatientBookAppointmentPage() {
     [selectedProfessionalType]
   );
   const selectedProfessional = useMemo(
-    () => professionals.find((i) => i.id === selectedProfessionalId) || professionals[0],
-    [selectedProfessionalId]
+    () => visibleProfessionals.find((i) => i.id === selectedProfessionalId) || visibleProfessionals[0],
+    [selectedProfessionalId, visibleProfessionals]
   );
 
   const proceedToSchedule = () => {
+    if (!selectedProfessional) {
+      toast.error("Select a professional before continuing.");
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      "patientAppointmentDraft",
+      JSON.stringify({
+        careType: selectedCare.title,
+        professionalType: selectedProfessionalTypeLabel,
+        professionalId: selectedProfessional.id,
+        professionalName: selectedProfessional.name,
+        reason: selectedCare.title,
+      }),
+    );
     toast.success("Selection saved.");
     router.push("/patient-platform/appointments/schedule");
   };
@@ -253,7 +309,7 @@ export function PatientBookAppointmentPage() {
 
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3 xl:gap-2">
               <AnimatePresence mode="popLayout">
-                {professionals.map((prof, idx) => (
+                {visibleProfessionals.map((prof, idx) => (
                   <motion.div
                     key={prof.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -324,6 +380,11 @@ export function PatientBookAppointmentPage() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+              {visibleProfessionals.length === 0 ? (
+                <div className="min-w-[280px] rounded-[20px] border border-dashed border-[#94A3B8] bg-white p-4 text-sm text-[#64748B] md:min-w-0 xl:rounded-[12px]">
+                  No available professionals found yet.
+                </div>
+              ) : null}
             </div>
           </section>
         </div>
@@ -364,7 +425,7 @@ export function PatientBookAppointmentPage() {
               </p>
               <div className="h-9 rounded-[12px] bg-[#F8FAFC] px-[13px]">
                 <span className="inline-flex h-full items-center text-[16px] font-light leading-[42px] tracking-[-0.05em] text-[#94A3B8]">
-                  {selectedProfessional.name}
+                  {selectedProfessional?.name ?? "Select a provider"}
                 </span>
               </div>
             </div>
@@ -406,7 +467,7 @@ export function PatientBookAppointmentPage() {
                 Selected Provider
               </p>
               <p className="truncate text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#334155]">
-                {selectedProfessional.name}
+                {selectedProfessional?.name ?? "Select a provider"}
               </p>
             </div>
 

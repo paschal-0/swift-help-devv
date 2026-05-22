@@ -1,0 +1,534 @@
+"use client";
+
+import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
+
+function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
+  if (!params) return "";
+
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") query.set(key, String(value));
+  });
+
+  const value = query.toString();
+  return value ? `?${value}` : "";
+}
+
+export type PatientAppointment = {
+  id: string;
+  reason: string;
+  scheduledDate: string;
+  startTime: string;
+  endTime: string;
+  status: "upcoming" | "completed" | "cancelled" | string;
+  meetingUrl: string | null;
+  professional?: AuthUser | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientConsultation = {
+  id: string;
+  professionalUserId: string;
+  patientUserId: string | null;
+  patientName: string;
+  consultationLabel: string;
+  reason: string;
+  mode: string;
+  startsAt: string;
+  endsAt: string;
+  durationMinutes: number;
+  status: "scheduled" | "ongoing" | "completed" | "missed" | "cancelled" | string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientActivity = {
+  id: string;
+  activity: string;
+  time: string;
+  status: string;
+};
+
+export type PatientUpdate = {
+  id: string;
+  title: string;
+  body: string;
+  date: string;
+};
+
+export type PatientDashboard = {
+  patient: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  metrics: {
+    upcomingAppointments: number;
+    recentSymptomChecks: number;
+    pendingFollowUps: number;
+    lastConsultationAt: string | null;
+  };
+  appointments: PatientAppointment[];
+  consultations: PatientConsultation[];
+  activities: PatientActivity[];
+  updates: PatientUpdate[];
+};
+
+export type PatientProvider = {
+  id: string;
+  userId: string;
+  name: string;
+  email: string | null;
+  specialization: string;
+  consultationType: string;
+  location: string | null;
+  verificationStatus: string;
+  availability: unknown;
+};
+
+export type PatientProviderAvailability = {
+  professionalUserId: string;
+  date: string;
+  timezone: string;
+  durationMinutes: number;
+  slots: Array<{
+    startTime: string;
+    endTime: string;
+    available: boolean;
+  }>;
+};
+
+export type PatientMedicalRecord = {
+  id: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  provider: string;
+  date: string;
+  tab?: "upcoming" | "past";
+  mode?: string;
+  duration?: string;
+  summary?: string;
+  status?: string;
+  sessionDetails?: string[];
+  consultationNotes?: string[];
+  prescriptionNotes?: string[];
+  prescriptions?: PatientMedicalRecordPrescription[];
+  labResults?: PatientMedicalRecordLabResult[];
+  files?: PatientMedicalRecordFile[];
+  nextSteps?: string[];
+};
+
+export type PatientMedicalRecordPrescription = {
+  name: string;
+  dosage?: string;
+  instructions?: string;
+  duration?: string;
+};
+
+export type PatientMedicalRecordLabResult = {
+  name: string;
+  result?: string;
+  fileId?: string;
+  fileUrl?: string;
+  createdAt?: string;
+};
+
+export type PatientMedicalRecordFile = {
+  fileId?: string;
+  name: string;
+  url?: string;
+  type?: string;
+  size?: number;
+};
+
+export type PatientMedicalRecordPayload = {
+  consultationId?: string;
+  title: string;
+  category?: string;
+  providerName?: string;
+  recordDate?: string;
+  mode?: string;
+  duration?: string;
+  summary?: string;
+  sessionDetails?: string[];
+  consultationNotes?: string[];
+  prescriptions?: PatientMedicalRecordPrescription[];
+  labResults?: PatientMedicalRecordLabResult[];
+  files?: PatientMedicalRecordFile[];
+  nextSteps?: string[];
+  status?: string;
+};
+
+export type PatientMedicalRecordsSummary = {
+  totalRecords: number;
+  consultations: number;
+  symptomChecks: number;
+  upcomingCare: number;
+  latestRecordAt: string | null;
+};
+
+export type PatientMedicalRecordsRecommendation = {
+  headline?: string;
+  description?: string;
+  whyRecommended?: string;
+  symptomSummary?: {
+    primarySymptom?: string;
+    duration?: string;
+    severity?: string;
+    associatedSymptoms?: string;
+  };
+  recommendedCareType?: string;
+  recommendedCareDescription?: string;
+};
+
+export type PatientSymptomCheck = {
+  id: string;
+  patientUserId: string;
+  title: string;
+  symptoms: Record<string, unknown>;
+  answers: Record<string, unknown>;
+  recommendation: Record<string, unknown>;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientReferralSummary = {
+  referralCode: string;
+  referralLink: string;
+  totalReferred: number;
+  patientReferrals: number;
+  professionalReferrals: number;
+  organizationReferrals: number;
+  totalEarned: number;
+  availableBalance: number;
+  pendingBalance: number;
+  currency: string;
+  recentReferrals: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: BackendRole;
+    joinedAt: string;
+  }>;
+  tiers?: PatientReferralTier[];
+};
+
+export type PatientReferralTier = {
+  id: string;
+  level: number;
+  badge: string;
+  title: string;
+  description: string;
+  threshold: number;
+  rewards: {
+    organizationAmountCents: number;
+    professionalAmountCents: number;
+    patientAmountCents: number;
+  };
+  active: boolean;
+  progressValue: number;
+  progressLabel: string;
+};
+
+export type PatientReferralPerson = {
+  id: string;
+  name: string;
+  email: string;
+  role: BackendRole;
+  referralCode: string;
+  joinedAt: string;
+};
+
+export type PatientNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  read: boolean;
+  createdAt: string;
+};
+
+export type PatientProfileResponse = {
+  account: AuthUser;
+  profile: Record<string, unknown>;
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  recentActivities?: Array<{
+    id: string;
+    activity: string;
+    dateTime: string;
+    status: string;
+  }>;
+};
+
+export type PatientConsultationMessage = {
+  id: string;
+  consultationId: string;
+  senderUserId: string;
+  senderType: "patient" | "provider" | "system" | string;
+  body: string;
+  attachments: Array<{
+    name: string;
+    url?: string;
+    type?: string;
+    size?: number;
+  }>;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientConsultationPresence = {
+  id: string;
+  consultationId: string;
+  userId: string;
+  role: string;
+  online: boolean;
+  cameraEnabled: boolean;
+  microphoneEnabled: boolean;
+  inCall: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientConsultationRoom = {
+  consultation: PatientConsultation;
+  provider: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  messages: PatientConsultationMessage[];
+  presence: PatientConsultationPresence[];
+  room: {
+    id: string;
+    meetingUrl: string;
+    token: string;
+  };
+};
+
+export function getPatientDashboard() {
+  return apiRequest<PatientDashboard>("/patient/dashboard", { method: "GET" });
+}
+
+export function getPatientProfile() {
+  return apiRequest<PatientProfileResponse>("/profile/me", { method: "GET" });
+}
+
+export function updatePatientAccount(payload: {
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  password?: string;
+}) {
+  return apiRequest<AuthUser>("/profile/account", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listPatientAppointments() {
+  return apiRequest<PatientAppointment[]>("/patient/appointments", { method: "GET" });
+}
+
+export function createPatientAppointment(payload: {
+  professionalId: string;
+  reason: string;
+  scheduledDate: string;
+  startTime: string;
+  endTime: string;
+}) {
+  return apiRequest<PatientAppointment>("/patient/appointments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listPatientConsultations(params?: { from?: string; to?: string }) {
+  return apiRequest<PatientConsultation[]>(`/patient/consultations${buildQuery(params)}`, {
+    method: "GET",
+  });
+}
+
+export function listPatientProviders(params?: {
+  search?: string;
+  specialization?: string;
+  consultationType?: string;
+}) {
+  return apiRequest<PatientProvider[]>(`/patient/providers${buildQuery(params)}`, {
+    method: "GET",
+  });
+}
+
+export function getPatientProviderAvailability(
+  professionalUserId: string,
+  date: string,
+) {
+  return apiRequest<PatientProviderAvailability>(
+    `/patient/providers/${encodeURIComponent(professionalUserId)}/availability?date=${encodeURIComponent(date)}`,
+    { method: "GET" },
+  );
+}
+
+export function listPatientMedicalRecords(params?: {
+  tab?: "upcoming" | "past";
+  search?: string;
+}) {
+  return apiRequest<PatientMedicalRecord[]>(
+    `/patient/medical-records${buildQuery(params)}`,
+    { method: "GET" },
+  );
+}
+
+export function getPatientMedicalRecordsSummary() {
+  return apiRequest<PatientMedicalRecordsSummary>("/patient/medical-records/summary", {
+    method: "GET",
+  });
+}
+
+export function getPatientMedicalRecord(recordId: string) {
+  return apiRequest<PatientMedicalRecord>(
+    `/patient/medical-records/${encodeURIComponent(recordId)}`,
+    { method: "GET" },
+  );
+}
+
+export function createPatientMedicalRecord(payload: PatientMedicalRecordPayload) {
+  return apiRequest<PatientMedicalRecord>("/patient/medical-records", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePatientMedicalRecord(
+  recordId: string,
+  payload: PatientMedicalRecordPayload,
+) {
+  return apiRequest<PatientMedicalRecord>(
+    `/patient/medical-records/${encodeURIComponent(recordId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function getPatientMedicalRecordsRecommendation() {
+  return apiRequest<PatientMedicalRecordsRecommendation>("/patient/medical-records/recommendation", {
+    method: "GET",
+  });
+}
+
+export function createPatientSymptomCheck(payload: {
+  title?: string;
+  symptoms: Record<string, unknown>;
+  answers?: Record<string, unknown>;
+  recommendation?: Record<string, unknown>;
+}) {
+  return apiRequest<PatientSymptomCheck>("/patient/symptom-checks", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listPatientSymptomChecks(params?: {
+  status?: string;
+  search?: string;
+}) {
+  return apiRequest<PatientSymptomCheck[]>(
+    `/patient/symptom-checks${buildQuery(params)}`,
+    { method: "GET" },
+  );
+}
+
+export function getPatientReferrals() {
+  return apiRequest<PatientReferralSummary>("/patient/referrals", { method: "GET" });
+}
+
+export function getPatientReferralTiers() {
+  return apiRequest<PatientReferralTier[]>("/patient/referrals/tiers", { method: "GET" });
+}
+
+export function listPatientReferralPeople(params?: { role?: BackendRole; search?: string }) {
+  return apiRequest<PatientReferralPerson[]>(
+    `/patient/referrals/people${buildQuery(params)}`,
+    { method: "GET" },
+  );
+}
+
+export function getPatientConsultationRoom(consultationId: string) {
+  return apiRequest<PatientConsultationRoom>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/room`,
+    { method: "GET" },
+  );
+}
+
+export function listPatientConsultationMessages(consultationId: string) {
+  return apiRequest<PatientConsultationMessage[]>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/messages`,
+    { method: "GET" },
+  );
+}
+
+export function sendPatientConsultationMessage(
+  consultationId: string,
+  payload: {
+    body: string;
+    attachments?: PatientConsultationMessage["attachments"];
+  },
+) {
+  return apiRequest<PatientConsultationMessage>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function updatePatientConsultationPresence(
+  consultationId: string,
+  payload: {
+    online?: boolean;
+    cameraEnabled?: boolean;
+    microphoneEnabled?: boolean;
+    inCall?: boolean;
+  },
+) {
+  return apiRequest<PatientConsultationPresence>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/presence`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function listPatientNotifications(params?: { unreadOnly?: boolean }) {
+  return apiRequest<PatientNotification[]>(
+    `/patient/notifications${buildQuery(params)}`,
+    { method: "GET" },
+  );
+}
+
+export function markPatientNotificationRead(notificationId: string) {
+  return apiRequest<{ id: string; read: boolean }>(
+    `/patient/notifications/${encodeURIComponent(notificationId)}/read`,
+    { method: "PATCH" },
+  );
+}
+
+export function formatPatientMoney(amountCents: number, currency = "NGN") {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amountCents / 100);
+}

@@ -1,11 +1,13 @@
 "use client";
 
-import Image from "next/image";
-import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
+import { getApiErrorMessage, updatePatientProfile, uploadProfileAvatar } from "@/services/authApi";
+import { getPatientProfile, updatePatientAccount } from "@/services/patientApi";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type InfoRow = {
   label: string;
@@ -47,7 +49,7 @@ type ActivityItem = {
   id: string;
   activity: string;
   dateTime: string;
-  status: "Completed";
+  status: string;
 };
 
 type EditSection =
@@ -88,13 +90,6 @@ const initialEmergencyContact: EmergencyContact = {
   relationship: "Brother",
   phone: "+23455586969",
 };
-
-const recentActivities: ActivityItem[] = Array.from({ length: 6 }, (_, index) => ({
-  id: `activity-${index + 1}`,
-  activity: "Symptom Accessment",
-  dateTime: "10 March, 10:00 AM",
-  status: "Completed",
-}));
 
 function EditIcon({ subtle = false }: { subtle?: boolean }) {
   return (
@@ -143,6 +138,20 @@ function SearchEmptyState() {
       No profile activity matches the current search.
     </div>
   );
+}
+
+function getActivityStatusClass(status: string) {
+  const value = status.toLowerCase();
+
+  if (value.includes("cancel") || value.includes("declin") || value.includes("miss")) {
+    return "border-[#B91C1C] bg-[#FEE2E2] text-[#B91C1C]";
+  }
+
+  if (value.includes("pending") || value.includes("upcoming") || value.includes("scheduled")) {
+    return "border-[#1565C0] bg-[#D1E2F1] text-[#1565C0]";
+  }
+
+  return "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]";
 }
 
 function ModalField({
@@ -236,9 +245,74 @@ export function PatientMyProfilePage() {
   const [medicationGroups, setMedicationGroups] = useState(initialMedicationGroups);
   const [medicalInformation, setMedicalInformation] = useState(initialMedicalInformation);
   const [emergencyContact, setEmergencyContact] = useState(initialEmergencyContact);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
   const [activeEditSection, setActiveEditSection] = useState<EditSection | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const query = searchText.trim().toLowerCase();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfile() {
+      try {
+        const response = await getPatientProfile();
+        if (!isMounted) return;
+
+        const patientProfile = response.profile as Record<string, unknown>;
+        const medications = Array.isArray(patientProfile.medications)
+          ? (patientProfile.medications as Array<{ name?: string; dateIssued?: string; duration?: string }>)
+          : [];
+
+        setProfile({ name: response.account.fullName });
+        setAvatarUrl(typeof patientProfile.avatarUrl === "string" ? patientProfile.avatarUrl : null);
+        setPersonalInformation({
+          gender: String(patientProfile.gender ?? ""),
+          dateOfBirth: String(patientProfile.dateOfBirth ?? ""),
+          phoneNumber: String(patientProfile.phone ?? response.account.phoneNumber ?? ""),
+          email: response.account.email,
+          address: String(patientProfile.preferredLocation ?? ""),
+          location: String(patientProfile.preferredLocation ?? ""),
+        });
+        setMedicationGroups(
+          medications.length
+            ? medications.map((item) => ({
+                name: item.name ?? "",
+                date: item.dateIssued ?? "",
+                duration: item.duration ?? "",
+              }))
+            : [],
+        );
+        setMedicalInformation({
+          allergies: Array.isArray(patientProfile.allergies)
+            ? (patientProfile.allergies as string[]).join(", ")
+            : "",
+          healthConditions: Array.isArray(patientProfile.medicalConditions)
+            ? (patientProfile.medicalConditions as string[]).join(", ")
+            : "",
+          bloodGroup: String(patientProfile.bloodGroup ?? ""),
+        });
+        if (response.emergencyContact) setEmergencyContact(response.emergencyContact);
+        setRecentActivities(
+          (response.recentActivities ?? []).map((item) => ({
+            id: item.id,
+            activity: item.activity,
+            dateTime: item.dateTime,
+            status: item.status,
+          })),
+        );
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    loadProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredActivities = useMemo(() => {
     if (!query) return recentActivities;
@@ -246,7 +320,7 @@ export function PatientMyProfilePage() {
     return recentActivities.filter((item) =>
       `${item.activity} ${item.dateTime} ${item.status}`.toLowerCase().includes(query)
     );
-  }, [query]);
+  }, [query, recentActivities]);
 
   const personalInformationRows = useMemo(
     () => [
@@ -264,10 +338,91 @@ export function PatientMyProfilePage() {
 
   const closeModal = () => setActiveEditSection(null);
 
-  const saveSection = () => {
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await uploadProfileAvatar(file);
+      setAvatarUrl(response.avatarUrl);
+      window.dispatchEvent(
+        new CustomEvent("swifthelp:avatar-updated", {
+          detail: { avatarUrl: response.avatarUrl },
+        }),
+      );
+      toast.success("Profile picture updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveSection = async () => {
     if (!activeEditSection) return;
-    toast.success(`${activeEditSection} updated successfully.`);
-    closeModal();
+    setIsSaving(true);
+
+    try {
+      if (activeEditSection === "Profile") {
+        await updatePatientAccount({ fullName: profile.name });
+      }
+
+      if (activeEditSection === "Personal Information") {
+        await updatePatientAccount({
+          email: personalInformation.email,
+          phoneNumber: personalInformation.phoneNumber,
+        });
+        await updatePatientProfile({
+          gender: personalInformation.gender,
+          dateOfBirth: personalInformation.dateOfBirth,
+          phone: personalInformation.phoneNumber,
+          preferredLocation: personalInformation.location || personalInformation.address,
+        });
+      }
+
+      if (
+        [
+          "Medical Information",
+          "Medications",
+          "Health conditions",
+          "Blood group",
+        ].includes(activeEditSection)
+      ) {
+        await updatePatientProfile({
+          allergies: medicalInformation.allergies
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          medicalConditions: medicalInformation.healthConditions
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          bloodGroup: medicalInformation.bloodGroup,
+          medications: medicationGroups.map((item) => ({
+            name: item.name,
+            dateIssued: item.date,
+            duration: item.duration,
+          })),
+        });
+      }
+
+      if (activeEditSection === "Emergency Contact") {
+        await updatePatientProfile({ emergencyContact });
+      }
+
+      toast.success(`${activeEditSection} updated successfully.`);
+      closeModal();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -284,20 +439,34 @@ export function PatientMyProfilePage() {
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="rounded-[12px] bg-[#F8FAFC] p-4 md:p-6"
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleAvatarFileChange}
+                className="hidden"
+              />
               <div className="flex justify-center">
-                <div className="relative h-[195px] w-full max-w-[186px] overflow-hidden rounded-[12px] bg-[#E2E8F0]">
-                  <Image
-                    src="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
-                    alt="Sara Johnson portrait"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+                <ProfileAvatar
+                  src={avatarUrl}
+                  fallbackSrc="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
+                  alt={`${profile.name} portrait`}
+                  className="h-[195px] w-full max-w-[186px] rounded-[12px]"
+                />
               </div>
 
               <p className="mt-[18px] text-center text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
                 {profile.name}
               </p>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSaving}
+                className="mt-3 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-[6px] border border-[#94A3B8] text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? "Uploading..." : "Change photo"}
+              </button>
 
               <motion.button
                 type="button"
@@ -356,7 +525,7 @@ export function PatientMyProfilePage() {
                           {item.dateTime}
                         </span>
                         <div className="flex justify-center">
-                          <span className="inline-flex h-[23px] w-full max-w-[83px] items-center justify-center truncate rounded-[6px] border border-[#0D8C24] bg-[#E1FAE5] px-2 text-[11px] font-normal leading-[14px] tracking-[-0.05em] text-[#0D8C24] md:text-[12.403px]">
+                          <span className={`inline-flex h-[23px] w-full max-w-[92px] items-center justify-center truncate rounded-[6px] border px-2 text-[11px] font-normal leading-[14px] tracking-[-0.05em] md:text-[12.403px] ${getActivityStatusClass(item.status)}`}>
                             {item.status}
                           </span>
                         </div>
@@ -669,7 +838,7 @@ export function PatientMyProfilePage() {
                 onClick={saveSection}
                 className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-sm font-medium text-white transition hover:opacity-95"
               >
-                Save changes
+                {isSaving ? "Saving..." : "Save changes"}
               </button>
             </div>
           </motion.div>
