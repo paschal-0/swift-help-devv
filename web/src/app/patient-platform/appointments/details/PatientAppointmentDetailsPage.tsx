@@ -148,6 +148,9 @@ export function PatientAppointmentDetailsPage() {
         startTime: draft.startTime,
         endTime: draft.endTime,
         meetingMode: draft.meetingMode,
+        emailReminderEnabled: emailReminder || shareReminder,
+        smsReminderEnabled: smsReminder,
+        shareSummaryWithProvider: shareReminder,
       });
       window.sessionStorage.setItem("patientConfirmedAppointmentId", appointment.id);
       window.sessionStorage.removeItem("patientAppointmentDraft");

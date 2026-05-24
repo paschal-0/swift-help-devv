@@ -27,6 +27,9 @@ export type PatientAppointment = {
   endTime: string;
   status: "upcoming" | "completed" | "cancelled" | string;
   meetingUrl: string | null;
+  emailReminderEnabled?: boolean;
+  smsReminderEnabled?: boolean;
+  shareSummaryWithProvider?: boolean;
   professional?: AuthUser | null;
   createdAt: string;
   updatedAt: string;
@@ -250,9 +253,13 @@ export type PatientReferralPerson = {
 
 export type PatientNotification = {
   id: string;
+  patientUserId?: string;
   type: string;
   title: string;
   message: string | null;
+  appointmentId?: string | null;
+  consultationId?: string | null;
+  metadata?: Record<string, unknown> | null;
   read: boolean;
   createdAt: string;
 };
@@ -353,9 +360,44 @@ export function createPatientAppointment(payload: {
   startTime: string;
   endTime: string;
   meetingMode?: string;
+  emailReminderEnabled?: boolean;
+  smsReminderEnabled?: boolean;
+  shareSummaryWithProvider?: boolean;
 }) {
   return apiRequest<PatientAppointment>("/patient/appointments", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePatientAppointmentReminders(
+  appointmentId: string,
+  payload: {
+    emailReminderEnabled?: boolean;
+    smsReminderEnabled?: boolean;
+    shareSummaryWithProvider?: boolean;
+  },
+) {
+  return apiRequest<PatientAppointment>(
+    `/patient/appointments/${encodeURIComponent(appointmentId)}/reminders`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function updatePatientNotificationPreferences(payload: {
+  email?: boolean;
+  sms?: boolean;
+  push?: boolean;
+  reminders?: boolean;
+  updates?: boolean;
+  payments?: boolean;
+  promotions?: boolean;
+}) {
+  return apiRequest<Record<string, unknown>>("/profile/notifications", {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 }
@@ -576,7 +618,7 @@ export function getPatientLiveUrl() {
   return `${API_BASE_URL}/patient/live`;
 }
 
-export function listPatientNotifications(params?: { unreadOnly?: boolean }) {
+export function listPatientNotifications(params?: { unreadOnly?: boolean; limit?: number }) {
   return apiRequest<PatientNotification[]>(
     `/patient/notifications${buildQuery(params)}`,
     { method: "GET" },
@@ -584,7 +626,7 @@ export function listPatientNotifications(params?: { unreadOnly?: boolean }) {
 }
 
 export function markPatientNotificationRead(notificationId: string) {
-  return apiRequest<{ id: string; read: boolean }>(
+  return apiRequest<PatientNotification>(
     `/patient/notifications/${encodeURIComponent(notificationId)}/read`,
     { method: "PATCH" },
   );

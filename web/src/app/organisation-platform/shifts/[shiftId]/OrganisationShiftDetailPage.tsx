@@ -42,7 +42,8 @@ type ShiftDetailView = {
   headerId: string;
   internalId: string;
   department: string;
-  payPerSlot: string;
+  payPerHour: string;
+  durationHours: number;
   role: string;
   time: string;
   totalRequired: number;
@@ -142,7 +143,7 @@ function mapAssignmentStatus(
 }
 
 function mapShiftDetail(data: OrganizationShiftDetail): ShiftDetailView {
-  const payPerSlot = formatOrganizationMoney(
+  const payPerHour = formatOrganizationMoney(
     data.shift.payAmountCents,
     data.shift.currency,
   );
@@ -151,7 +152,15 @@ function mapShiftDetail(data: OrganizationShiftDetail): ShiftDetailView {
     headerId: data.shift.shiftCode ?? data.shift.id,
     internalId: data.shift.shiftCode ?? data.shift.id,
     department: data.shift.department ?? data.shift.role,
-    payPerSlot,
+    payPerHour,
+    durationHours:
+      data.shift.durationHours ??
+      Math.max(
+        0,
+        (new Date(data.shift.endsAt).getTime() -
+          new Date(data.shift.startsAt).getTime()) /
+          (1000 * 60 * 60),
+      ),
     role: data.shift.role,
     time: formatShiftTimeRange(data),
     totalRequired: data.shift.requiredSlots,
@@ -394,10 +403,16 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 </div>
                 <div className="space-y-2 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:pb-0">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
-                    Pay per slot
+                    Pay per hour
                   </p>
                   <p className="text-[18px] font-medium tracking-[-0.07em] text-[#334155]">
-                    {detail.payPerSlot}
+                    {detail.payPerHour}
+                  </p>
+                  <p className="text-[13px] font-medium tracking-[-0.07em] text-[#94A3B8]">
+                    {Number.isInteger(detail.durationHours)
+                      ? detail.durationHours.toFixed(0)
+                      : detail.durationHours.toFixed(1)}{" "}
+                    {detail.durationHours === 1 ? "hour" : "hours"}
                   </p>
                 </div>
                 <div className="space-y-2 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">

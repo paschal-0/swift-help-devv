@@ -105,12 +105,14 @@ const metricCardMeta: Omit<MetricCard, "value" | "subtitle">[] = [
   },
 ];
 
-const formatNaira = (value: number) =>
+const formatDashboardMoney = (value: number, currency = "NGN") =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
-    currency: "NGN",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
+
+const formatNaira = (value: number) => formatDashboardMoney(value, "NGN");
 
 const formatDateLabel = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
@@ -164,6 +166,7 @@ type MobileDashboardProps = {
   earningsMetrics: {
     totalEarned: number;
     pendingPayout: number;
+    currency: string;
     completedSessions: number;
     nextPayoutLabel: string;
   };
@@ -371,13 +374,13 @@ function MobileDashboardView({
           <div className="rounded-xl bg-white px-4 py-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Earned</p>
             <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
-              {formatNaira(earningsMetrics.totalEarned)}
+              {formatDashboardMoney(earningsMetrics.totalEarned, earningsMetrics.currency)}
             </p>
           </div>
           <div className="rounded-xl bg-white px-4 py-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Pending</p>
             <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
-              {formatNaira(earningsMetrics.pendingPayout)}
+              {formatDashboardMoney(earningsMetrics.pendingPayout, earningsMetrics.currency)}
             </p>
           </div>
           <div className="rounded-xl bg-white px-4 py-4">
@@ -659,6 +662,7 @@ export function ProfessionalDashboardPage() {
     return {
       totalEarned: dashboard?.earnings.totalEarned ?? 0,
       pendingPayout: dashboard?.earnings.pendingEarnings ?? 0,
+      currency: dashboard?.earnings.currency ?? "NGN",
       completedSessions: dashboard?.performance.completedSessions ?? 0,
       nextPayoutLabel: dashboard?.earnings.availableBalance
         ? "Available now"
@@ -730,7 +734,7 @@ export function ProfessionalDashboardPage() {
                 return `Sessions ${Math.round(parsedY / 3000)}`;
               }
 
-              return `${context.dataset.label} ${formatNaira(parsedY)}`;
+              return `${context.dataset.label} ${formatDashboardMoney(parsedY, earningsMetrics.currency)}`;
             },
           },
         },
@@ -768,13 +772,18 @@ export function ProfessionalDashboardPage() {
         },
       },
     }),
-    []
+    [earningsMetrics.currency]
   );
 
   const dashboardMetricCards = useMemo<MetricCard[]>(() => {
     const doneCount = dashboardAppointments.filter((appointment) => appointment.status === "Done").length;
     const upcomingCount = dashboardAppointments.filter((appointment) => appointment.status === "Upcoming").length;
-    const weeklyEarningsLabel = dashboard ? formatApiMoney(dashboard.metrics.weeklyEarnings) : formatNaira(0);
+    const weeklyEarningsLabel = dashboard
+      ? formatApiMoney(
+          dashboard.metrics.weeklyEarnings,
+          dashboard.metrics.currency ?? dashboard.earnings.currency,
+        )
+      : formatNaira(0);
 
     return [
       {
@@ -798,7 +807,13 @@ export function ProfessionalDashboardPage() {
         subtitle: `${earningsMetrics.completedSessions} sessions completed`,
       },
     ];
-  }, [dashboard, dashboardAppointments, dashboardRequests.length, earningsMetrics.completedSessions]);
+  }, [
+    dashboard,
+    dashboardAppointments,
+    dashboardRequests.length,
+    earningsMetrics.completedSessions,
+    earningsMetrics.currency,
+  ]);
 
   const dashboardDayLabels = [0, 1, 2].map((offset) => {
     const date = new Date(now);
@@ -962,10 +977,10 @@ export function ProfessionalDashboardPage() {
             <div className="min-h-[148px] rounded-lg bg-[#F8FAFC] px-[10px] py-[14px]">
               <div className="rounded-lg bg-[#E3F2FD] p-[10px] text-[10px] font-medium leading-[15px] tracking-[-0.07em] text-[#94A3B8]">
                 <p>
-                  Total earned: <span className="font-semibold text-[#1565C0]">{formatNaira(earningsMetrics.totalEarned)}</span>
+                  Total earned: <span className="font-semibold text-[#1565C0]">{formatDashboardMoney(earningsMetrics.totalEarned, earningsMetrics.currency)}</span>
                 </p>
                 <p>
-                  Pending payout: <span className="font-semibold text-[#1565C0]">{formatNaira(earningsMetrics.pendingPayout)}</span>
+                  Pending payout: <span className="font-semibold text-[#1565C0]">{formatDashboardMoney(earningsMetrics.pendingPayout, earningsMetrics.currency)}</span>
                 </p>
                 <p>
                   Completed sessions: <span className="font-semibold text-[#1565C0]">{earningsMetrics.completedSessions}</span>

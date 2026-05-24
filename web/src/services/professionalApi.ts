@@ -220,6 +220,10 @@ export type ShiftOffer = {
   startsAt: string;
   endsAt: string;
   payAmountCents: number;
+  payRateCents?: number;
+  payUnit?: "hour";
+  durationHours?: number;
+  payPerProfessionalCents?: number;
   currency: string;
   notes: string | null;
   status: "open" | "filled" | "cancelled";
@@ -378,6 +382,7 @@ export type ProfessionalDashboard = {
     pendingRequests: number;
     availableHours: number;
     weeklyEarnings: number;
+    currency?: string;
   };
   activeSession: ProfessionalConsultation | null;
   upcomingSessions: ProfessionalConsultation[];

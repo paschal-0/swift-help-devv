@@ -29,6 +29,10 @@ export type OrganizationShift = {
   startsAt: string;
   endsAt: string;
   payAmountCents: number;
+  payRateCents?: number;
+  payUnit?: "hour";
+  durationHours?: number;
+  payPerProfessionalCents?: number;
   currency: string;
   requiredSlots: number;
   acceptedSlots: number;

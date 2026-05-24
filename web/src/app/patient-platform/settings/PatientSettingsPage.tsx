@@ -6,7 +6,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { deleteProfileAvatar, getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { getPatientProfile } from "@/services/patientApi";
+import {
+  getPatientProfile,
+  updatePatientNotificationPreferences,
+} from "@/services/patientApi";
 
 type SettingsTab = {
   id: "account" | "profile" | "notifications" | "security" | "subscriptions";
@@ -827,17 +830,35 @@ export function PatientSettingsPage() {
         [key]: value,
       }));
 
-  const toggleChannel = (key: keyof typeof notificationChannels) =>
+  const toggleChannel = (key: keyof typeof notificationChannels) => {
+    const nextValue = !notificationChannels[key];
     setNotificationChannels((current) => ({
       ...current,
-      [key]: !current[key],
+      [key]: nextValue,
     }));
+    updatePatientNotificationPreferences({ [key]: nextValue }).catch((error) => {
+      setNotificationChannels((current) => ({
+        ...current,
+        [key]: !nextValue,
+      }));
+      toast.error(getApiErrorMessage(error));
+    });
+  };
 
-  const togglePreference = (key: keyof typeof notificationPreferences) =>
+  const togglePreference = (key: keyof typeof notificationPreferences) => {
+    const nextValue = !notificationPreferences[key];
     setNotificationPreferences((current) => ({
       ...current,
-      [key]: !current[key],
+      [key]: nextValue,
     }));
+    updatePatientNotificationPreferences({ [key]: nextValue }).catch((error) => {
+      setNotificationPreferences((current) => ({
+        ...current,
+        [key]: !nextValue,
+      }));
+      toast.error(getApiErrorMessage(error));
+    });
+  };
 
   const togglePrivacySetting = (key: keyof typeof privacySettings) =>
     setPrivacySettings((current) => ({
@@ -856,6 +877,27 @@ export function PatientSettingsPage() {
 
         const profile = response.profile as Record<string, unknown>;
         setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
+        const preferences = profile.notificationPreferences as
+          | Partial<
+              Record<
+                "email" | "sms" | "push" | "reminders" | "updates" | "payments" | "promotions",
+                boolean
+              >
+            >
+          | undefined;
+        if (preferences) {
+          setNotificationChannels((current) => ({
+            email: preferences.email ?? current.email,
+            sms: preferences.sms ?? current.sms,
+            push: preferences.push ?? current.push,
+          }));
+          setNotificationPreferences((current) => ({
+            reminders: preferences.reminders ?? current.reminders,
+            updates: preferences.updates ?? current.updates,
+            payments: preferences.payments ?? current.payments,
+            promotions: preferences.promotions ?? current.promotions,
+          }));
+        }
       })
       .catch(() => {
         if (mounted) {

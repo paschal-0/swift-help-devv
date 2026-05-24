@@ -7,7 +7,13 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
-import { getPatientProfile } from "@/services/patientApi";
+import {
+  getPatientLiveUrl,
+  getPatientProfile,
+  listPatientNotifications,
+  markPatientNotificationRead,
+  type PatientNotification,
+} from "@/services/patientApi";
 import { useRequireCompletedOnboarding } from "@/lib/useRequireCompletedOnboarding";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 
@@ -241,6 +247,13 @@ export function PatientPlatformShell({
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<PatientNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications],
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -272,18 +285,50 @@ export function PatientPlatformShell({
   useEffect(() => {
     let mounted = true;
 
-    getPatientProfile()
-      .then((response) => {
+    Promise.all([
+      getPatientProfile(),
+      listPatientNotifications({ limit: 20 }),
+    ])
+      .then(([response, notificationData]) => {
         if (!mounted) return;
 
         const profile = response.profile as Record<string, unknown>;
         setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
+        setNotifications(notificationData);
       })
       .catch(() => {
         if (mounted) {
           setAvatarUrl(null);
+          setNotifications([]);
         }
       });
+
+    const eventSource = new EventSource(getPatientLiveUrl(), {
+      withCredentials: true,
+    });
+
+    const handleNotification = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as PatientNotification;
+      setNotifications((current) =>
+        current.some((item) => item.id === notification.id)
+          ? current
+          : [notification, ...current].slice(0, 20),
+      );
+      toast.info(notification.title);
+    };
+
+    const handleDeliveryUpdate = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as PatientNotification;
+      setNotifications((current) =>
+        current.map((item) => (item.id === notification.id ? notification : item)),
+      );
+    };
+
+    eventSource.addEventListener("patient.notification.created", handleNotification);
+    eventSource.addEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
 
     const handleAvatarUpdated = (event: Event) => {
       const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
@@ -294,9 +339,34 @@ export function PatientPlatformShell({
 
     return () => {
       mounted = false;
+      eventSource.removeEventListener("patient.notification.created", handleNotification);
+      eventSource.removeEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
+      eventSource.close();
       window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
     };
   }, []);
+
+  const openNotifications = async () => {
+    setShowNotifications((value) => !value);
+    const unread = notifications.filter((notification) => !notification.read);
+    if (!unread.length) return;
+
+    setNotifications((current) =>
+      current.map((notification) => ({ ...notification, read: true })),
+    );
+    await Promise.allSettled(
+      unread.map((notification) => markPatientNotificationRead(notification.id)),
+    );
+  };
+
+  const openNotificationTarget = (notification: PatientNotification) => {
+    if (notification.appointmentId || notification.type === "appointment") {
+      router.push("/patient-platform/appointments");
+    } else if (notification.consultationId || notification.type === "consultation") {
+      router.push("/patient-platform/consultations");
+    }
+    setShowNotifications(false);
+  };
 
   return (
     <PatientPlatformShellContext.Provider value={contextValue}>
@@ -491,18 +561,58 @@ export function PatientPlatformShell({
               </label>
 
               <div className="flex items-center gap-2 sm:gap-3">
-                <motion.button
-                  type="button"
-                  onClick={() => toast.info("No new notifications")}
-                  className="flex aspect-square h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition-colors hover:bg-[#d1e9ff] sm:h-11 sm:w-11 xl:h-12 xl:w-12"
-                  aria-label="Notifications"
-                  whileHover={{ y: -1, scale: 1.03 }}
-                  whileTap={{ scale: 0.96 }}
-                >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-[22px] sm:w-[22px] xl:h-6 xl:w-6" aria-hidden>
-                    <path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z" />
-                  </svg>
-                </motion.button>
+                <div className="relative">
+                  <motion.button
+                    type="button"
+                    onClick={openNotifications}
+                    className="relative flex aspect-square h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition-colors hover:bg-[#d1e9ff] sm:h-11 sm:w-11 xl:h-12 xl:w-12"
+                    aria-label="Notifications"
+                    whileHover={{ y: -1, scale: 1.03 }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-[22px] sm:w-[22px] xl:h-6 xl:w-6" aria-hidden>
+                      <path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v3.3L4 14v2h16v-2l-2-2.7V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z" />
+                    </svg>
+                    {unreadNotificationCount ? (
+                      <span className="absolute right-0 top-0 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1565C0] px-1 text-[10px] font-semibold leading-none text-white">
+                        {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                      </span>
+                    ) : null}
+                  </motion.button>
+
+                  {showNotifications ? (
+                    <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[280px] rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+                      <p className="px-2 text-[13px] font-semibold tracking-[-0.04em] text-[#334155]">
+                        Notifications
+                      </p>
+                      <div className="mt-2 max-h-[280px] space-y-2 overflow-y-auto">
+                        {notifications.length ? (
+                          notifications.slice(0, 8).map((notification) => (
+                            <button
+                              key={notification.id}
+                              type="button"
+                              onClick={() => openNotificationTarget(notification)}
+                              className="block w-full rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-left hover:bg-[#d7ecff]"
+                            >
+                              <span className="block text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
+                                {notification.title}
+                              </span>
+                              {notification.message ? (
+                                <span className="mt-1 block text-[12px] font-light leading-4 tracking-[-0.04em] text-[#64748B]">
+                                  {notification.message}
+                                </span>
+                              ) : null}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-2 py-3 text-[12px] font-light tracking-[-0.04em] text-[#94A3B8]">
+                            No notifications yet.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
                 <motion.button
                   type="button"
                   onClick={() => router.push("/patient-platform/my-profile")}

@@ -30,14 +30,6 @@ type SummaryMetricIcon = "summary" | "filled" | "hours" | "paid";
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.98]";
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function toNumber(value: unknown, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -234,7 +226,10 @@ export function OrganisationReportsPage() {
             name: String(professional?.name ?? "Professional"),
             totalShifts: toNumber(item.totalShifts, 0),
             totalHours: toNumber(item.totalHours, 0),
-            amountPaid: formatOrganizationMoney(amountPaidCents),
+            amountPaid: formatOrganizationMoney(
+              amountPaidCents,
+              String(item.currency ?? reports?.summary.currency ?? "NGN"),
+            ),
             status: "Successful",
             avatarSrc: "/doctor.jpg",
             department: String(professional?.department ?? "General"),
@@ -375,6 +370,7 @@ export function OrganisationReportsPage() {
 
   const fillRate = totalShiftsPosted ? Math.round((shiftsFilled / totalShiftsPosted) * 100) : 0;
   const unfilledRate = Math.max(0, 100 - fillRate);
+  const reportCurrency = reports?.summary.currency ?? "NGN";
 
   const summaryMetrics = [
     { title: "Total shifts posted", value: totalShiftsPosted.toString(), icon: "summary" as const },
@@ -388,9 +384,12 @@ export function OrganisationReportsPage() {
               reports.summary.totalAmountPaidCents,
               toNumber(reports.summary.totalAmountPaid, 0),
             ),
-            reports.summary.currency ?? "NGN",
+            reportCurrency,
           )
-        : formatCurrency(totalAmountPaid),
+        : formatOrganizationMoney(
+            totalAmountPaid,
+            reportCurrency,
+          ),
       icon: "paid" as const,
     },
   ];

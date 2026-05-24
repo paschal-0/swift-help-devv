@@ -338,7 +338,15 @@ export function ProfessionalPlatformShell({
       toast.info(notification.title);
     };
 
+    const handleDeliveryUpdate = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as ProfessionalNotification;
+      setNotifications((current) =>
+        current.map((item) => (item.id === notification.id ? notification : item)),
+      );
+    };
+
     eventSource.addEventListener("professional.notification.created", handleNotification);
+    eventSource.addEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
     eventSource.onerror = () => {
       eventSource.close();
     };
@@ -356,6 +364,7 @@ export function ProfessionalPlatformShell({
     return () => {
       cancelled = true;
       eventSource.removeEventListener("professional.notification.created", handleNotification);
+      eventSource.removeEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
       eventSource.close();
       window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
     };
@@ -372,6 +381,17 @@ export function ProfessionalPlatformShell({
     await Promise.allSettled(
       unread.map((notification) => markProfessionalNotificationRead(notification.id)),
     );
+  };
+
+  const openNotificationTarget = (notification: ProfessionalNotification) => {
+    if (notification.shiftOfferId) {
+      router.push(`/professional-platform/shift-offers/${notification.shiftOfferId}`);
+    } else if (typeof notification.metadata?.consultationId === "string") {
+      router.push("/professional-platform/schedule");
+    } else if (typeof notification.metadata?.appointmentId === "string") {
+      router.push("/professional-platform/schedule");
+    }
+    setShowNotifications(false);
   };
 
   return (
@@ -597,12 +617,7 @@ export function ProfessionalPlatformShell({
                               <button
                                 key={notification.id}
                                 type="button"
-                                onClick={() => {
-                                  if (notification.shiftOfferId) {
-                                    router.push(`/professional-platform/shift-offers/${notification.shiftOfferId}`);
-                                  }
-                                  setShowNotifications(false);
-                                }}
+                                onClick={() => openNotificationTarget(notification)}
                                 className="block w-full rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-left hover:bg-[#d7ecff]"
                               >
                                 <span className="block text-[13px] font-medium tracking-[-0.04em] text-[#334155]">

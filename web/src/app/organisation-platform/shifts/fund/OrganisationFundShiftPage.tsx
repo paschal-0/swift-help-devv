@@ -121,6 +121,19 @@ function formatBackendTimeRange(shift: OrganizationShift) {
   return `${formatter.format(new Date(shift.startsAt))} - ${formatter.format(new Date(shift.endsAt))}`;
 }
 
+function calculateDurationHours(startsAt: string, endsAt: string) {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+  return Number.isFinite(hours) ? hours : 0;
+}
+
+function formatDurationHours(hours: number) {
+  if (!Number.isFinite(hours) || hours <= 0) return "0 hours";
+  const rounded = Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1);
+  return `${rounded} ${hours === 1 ? "hour" : "hours"}`;
+}
+
 function getSearchParam(
   searchParams: Record<string, string | string[] | undefined>,
   key: string,
@@ -146,10 +159,11 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
   const [bankDraft, setBankDraft] = useState(bankAccount);
 
   const fallbackShiftData = useMemo(() => {
-    const payPerSlot = getSearchParam(searchParams, "payPerSlot") ?? "300";
+    const payPerHour = getSearchParam(searchParams, "payPerHour") ?? getSearchParam(searchParams, "payPerSlot") ?? "300";
     const professionalsRequired = getSearchParam(searchParams, "professionalsRequired") ?? "10";
     const slots = formatSlotCount(professionalsRequired);
-    const pay = Number.parseFloat(payPerSlot.replace(/[^0-9.]/g, "")) || 0;
+    const pay = Number.parseFloat(payPerHour.replace(/[^0-9.]/g, "")) || 0;
+    const durationHours = 9;
 
     return {
       shiftId: "2A55D77",
@@ -161,8 +175,9 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
       totalRequired: slots,
       totalAccepted: 0,
       slots,
-      payPerSlot,
-      total: pay * slots,
+      payPerHour,
+      durationHours,
+      total: pay * durationHours * slots,
     };
   }, [searchParams]);
   const [shiftData, setShiftData] = useState(fallbackShiftData);
@@ -188,6 +203,9 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
         }
 
         setBackendShiftId(shift.id);
+        const durationHours =
+          shift.durationHours ?? calculateDurationHours(shift.startsAt, shift.endsAt);
+        const hourlyPay = shift.payAmountCents / 100;
         setShiftData({
           shiftId: shift.shiftCode ?? shift.id,
           department: shift.department ?? shift.role,
@@ -196,8 +214,12 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
           totalRequired: shift.requiredSlots,
           totalAccepted: shift.acceptedSlots,
           slots: shift.requiredSlots,
-          payPerSlot: String(shift.payAmountCents / 100),
-          total: (shift.payAmountCents / 100) * shift.requiredSlots,
+          payPerHour: String(hourlyPay),
+          durationHours,
+          total:
+            (shift.payPerProfessionalCents ?? Math.round(shift.payAmountCents * durationHours)) /
+            100 *
+            shift.requiredSlots,
         });
       })
       .catch((error) => {
@@ -300,9 +322,15 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
                   <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">{shiftData.department}</p>
                 </div>
                 <div className="space-y-1.5 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">
-                  <p className="text-[14px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">Pay per slot</p>
+                  <p className="text-[14px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">Pay per hour</p>
                   <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">
-                    {formatCurrencyAmount(shiftData.payPerSlot)}
+                    {formatCurrencyAmount(shiftData.payPerHour)}
+                  </p>
+                </div>
+                <div className="space-y-1.5 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:pb-0">
+                  <p className="text-[14px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">Duration</p>
+                  <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">
+                    {formatDurationHours(shiftData.durationHours)}
                   </p>
                 </div>
                 <div className="space-y-1.5 border-b border-[#E2E8F0] pb-4 sm:border-b-0 sm:pb-0">
@@ -337,9 +365,12 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
                     <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">{shiftData.slots}</p>
                   </div>
                   <div className="space-y-2 border-r border-[#E2E8F0] px-2 sm:px-4">
-                    <p className="text-[14px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">Pay per slot</p>
+                    <p className="text-[14px] font-medium tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">Pay per hour</p>
                     <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">
-                      {formatCurrencyAmount(shiftData.payPerSlot)}
+                      {formatCurrencyAmount(shiftData.payPerHour)}
+                    </p>
+                    <p className="text-[12px] font-medium tracking-[-0.05em] text-[#94A3B8]">
+                      {formatDurationHours(shiftData.durationHours)}
                     </p>
                   </div>
                   <div className="space-y-2">

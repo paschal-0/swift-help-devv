@@ -109,20 +109,20 @@ export function OrganisationCreateShiftPage() {
   const [toTime, setToTime] = useState("6:00 PM");
   const [professionalsRequired, setProfessionalsRequired] = useState("10");
   const [priority, setPriority] = useState<"Normal" | "Urgent">("Normal");
-  const [payPerSlot, setPayPerSlot] = useState("300");
+  const [payPerHour, setPayPerHour] = useState("300");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [instructions, setInstructions] = useState(
     "Report at the front desk and ask for the shift supervisor"
   );
 
   const handleProceed = async () => {
-    if (!department || !shiftRole || !shiftDate || !fromTime || !toTime || !professionalsRequired || !payPerSlot) {
+    if (!department || !shiftRole || !shiftDate || !fromTime || !toTime || !professionalsRequired || !payPerHour) {
       toast.error("Complete the shift details before proceeding.");
       return;
     }
 
     const requiredSlots = Number.parseInt(professionalsRequired, 10);
-    const payAmount = Number.parseFloat(payPerSlot.replace(/[^0-9.]/g, ""));
+    const payAmount = Number.parseFloat(payPerHour.replace(/[^0-9.]/g, ""));
 
     if (!Number.isFinite(requiredSlots) || requiredSlots < 1) {
       toast.error("Enter a valid number of professionals required.");
@@ -130,7 +130,7 @@ export function OrganisationCreateShiftPage() {
     }
 
     if (!Number.isFinite(payAmount) || payAmount <= 0) {
-      toast.error("Enter a valid pay per slot.");
+      toast.error("Enter a valid hourly pay.");
       return;
     }
 
@@ -152,7 +152,6 @@ export function OrganisationCreateShiftPage() {
         endsAt: endsAt.toISOString(),
         requiredSlots,
         payAmountCents: Math.round(payAmount * 100),
-        currency: "NGN",
         priority: priority.toLowerCase() as "normal" | "urgent",
         notes: instructions,
       });
@@ -314,12 +313,12 @@ export function OrganisationCreateShiftPage() {
               </div>
 
               <label className="flex flex-col gap-2">
-                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Pay per slot</span>
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Pay per hour</span>
                 <span className={`flex h-12 items-center rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
                   <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">$</span>
                   <input
-                    value={payPerSlot}
-                    onChange={(event) => setPayPerSlot(event.target.value)}
+                    value={payPerHour}
+                    onChange={(event) => setPayPerHour(event.target.value)}
                     className="ml-4 w-full bg-transparent text-[15px] font-semibold tracking-[-0.04em] text-[#334155] outline-none sm:ml-6 sm:text-[18px]"
                   />
                 </span>
