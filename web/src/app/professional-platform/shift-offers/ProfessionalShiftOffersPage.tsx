@@ -392,6 +392,7 @@ export function ProfessionalShiftOffersPage() {
             try {
               await acceptProfessionalShiftOffer(selectedOffer.id);
               toast.success(`Accepted ${selectedOffer.organization} shift.`);
+              setOffers((current) => current.filter((offer) => offer.id !== selectedOffer.id));
               setSelectedOfferId(null);
               router.push(`/professional-platform/shift-offers/${selectedOffer.id}`);
             } catch (error) {

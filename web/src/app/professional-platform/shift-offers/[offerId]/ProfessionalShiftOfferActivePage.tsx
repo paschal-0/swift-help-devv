@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { shiftOffers, type ShiftOffer } from "../data";
+import type { ShiftOffer } from "../data";
 import {
   acceptProfessionalShiftOffer,
   checkInProfessionalShift,
@@ -211,6 +211,7 @@ export function ProfessionalShiftOfferActivePage() {
   const [organizationTyping, setOrganizationTyping] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [backendOffer, setBackendOffer] = useState<ShiftOffer | null>(null);
+  const [isLoadingOffer, setIsLoadingOffer] = useState(true);
   const [shiftId, setShiftId] = useState<string | null>(null);
 
   const basePath = `/professional-platform/shift-offers/${params.offerId}`;
@@ -229,6 +230,8 @@ export function ProfessionalShiftOfferActivePage() {
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoadingOffer(true);
+    setBackendOffer(null);
 
     async function loadOffer() {
       try {
@@ -244,6 +247,10 @@ export function ProfessionalShiftOfferActivePage() {
         if (!cancelled) {
           toast.error(error instanceof Error ? error.message : "Unable to load shift");
         }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingOffer(false);
+        }
       }
     }
 
@@ -254,10 +261,7 @@ export function ProfessionalShiftOfferActivePage() {
     };
   }, [params.offerId]);
 
-  const offer = useMemo(
-    () => backendOffer ?? shiftOffers.find((item) => item.id === params.offerId) ?? null,
-    [backendOffer, params.offerId]
-  );
+  const offer = backendOffer;
 
   const messageThreads = useMemo<MessageThread[]>(() => {
     const latest = messages.at(-1);
@@ -498,6 +502,16 @@ export function ProfessionalShiftOfferActivePage() {
     setDraftMessage(value);
     void sendProfessionalShiftTyping(params.offerId, value.trim().length > 0);
   };
+
+  if (isLoadingOffer) {
+    return (
+      <section className="mt-6 rounded-[12px] bg-[#F8FAFC] px-6 py-10 shadow-[0_10px_30px_rgba(148,163,184,0.12)]">
+        <p className="text-[15px] font-normal leading-6 tracking-[-0.04em] text-[#94A3B8]">
+          Loading shift details...
+        </p>
+      </section>
+    );
+  }
 
   if (!offer) {
     return (
