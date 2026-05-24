@@ -4,9 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import { listPatientAppointments, type PatientAppointment } from "@/services/patientApi";
+import {
+  getPatientLiveUrl,
+  listPatientAppointments,
+  listPatientConsultationRequests,
+  type PatientAppointment,
+  type PatientConsultationRequest,
+} from "@/services/patientApi";
 
-type AppointmentStatus = "Completed" | "Upcoming";
+type AppointmentStatus = "Completed" | "Upcoming" | "Pending" | "Declined";
 
 type AppointmentItem = {
   id: string;
@@ -72,74 +78,46 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
   };
 }
 
-const upcomingAppointments: AppointmentItem[] = [
-  {
-    id: "upcoming-1",
-    professional: "Dr. Sarah Johnson",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "6:00 AM",
-    date: "17 Mar 2027",
-    status: "Completed",
-  },
-  {
-    id: "upcoming-2",
-    professional: "Dr. Sarah Johnson",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "6:00 AM",
-    date: "17 Mar 2027",
-    status: "Completed",
-  },
-  {
-    id: "upcoming-3",
-    professional: "Dr. Sarah Johnson",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "6:00 AM",
-    date: "17 Mar 2027",
-    status: "Completed",
-  },
-  {
-    id: "upcoming-4",
-    professional: "Dr. Sarah Johnson",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "6:00 AM",
-    date: "17 Mar 2027",
-    status: "Completed",
-  },
-  {
-    id: "upcoming-5",
-    professional: "Dr. Sarah Johnson",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "6:00 AM",
-    date: "17 Mar 2027",
-    status: "Completed",
-  },
-];
+function mapRequest(request: PatientConsultationRequest): AppointmentItem {
+  const startAt = new Date(request.requestedStartAt);
+  const isPending = request.status === "pending";
 
-const pastAppointments: AppointmentItem[] = [
-  {
-    id: "past-1",
-    professional: "Dr. Emeka Okoro",
-    specialty: "Follow-up Consultation",
-    consultationType: "In-person Consultation",
-    time: "3:00 PM",
-    date: "02 Feb 2027",
-    status: "Completed",
-  },
-  {
-    id: "past-2",
-    professional: "Dr. Tunde Adeyemi",
-    specialty: "General Consultation",
-    consultationType: "Video Consultation",
-    time: "10:00 AM",
-    date: "12 Jan 2027",
-    status: "Completed",
-  },
-];
+  return {
+    id: `request-${request.id}`,
+    professional: request.professionalName ?? "Selected professional",
+    specialty: "Healthcare professional",
+    consultationType: request.consultationLabel,
+    time: startAt.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    date: startAt.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    status: isPending ? "Pending" : "Declined",
+  };
+}
+
+function statusClass(status: AppointmentStatus) {
+  if (status === "Pending") return "bg-[#E3F2FD] text-[#1565C0]";
+  if (status === "Declined") return "bg-[#FEE2E2] text-[#B91C1C]";
+  return "bg-[#0E713C] text-[#F8FAFC]";
+}
+
+async function fetchAppointmentItems() {
+  const [appointments, requests] = await Promise.all([
+    listPatientAppointments(),
+    listPatientConsultationRequests(),
+  ]);
+  return [
+    ...appointments.map(mapAppointment),
+    ...requests
+      .filter((request) => request.status !== "accepted")
+      .map(mapRequest),
+  ];
+}
 
 function MoreVerticalIcon() {
   return (
@@ -223,8 +201,8 @@ export function PatientAppointmentsPage() {
     () =>
       fetchedAppointments.filter((appointment) =>
         tab === "upcoming"
-          ? appointment.status === "Upcoming"
-          : appointment.status === "Completed",
+          ? appointment.status === "Upcoming" || appointment.status === "Pending"
+          : appointment.status === "Completed" || appointment.status === "Declined",
       ),
     [fetchedAppointments, tab]
   );
@@ -245,9 +223,9 @@ export function PatientAppointmentsPage() {
 
     async function loadAppointments() {
       try {
-        const response = await listPatientAppointments();
+        const items = await fetchAppointmentItems();
         if (!isMounted) return;
-        setFetchedAppointments(response.map(mapAppointment));
+        setFetchedAppointments(items);
       } catch (error) {
         if (!isMounted) return;
         toast.error(getApiErrorMessage(error));
@@ -260,6 +238,25 @@ export function PatientAppointmentsPage() {
     loadAppointments();
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const eventSource = new EventSource(getPatientLiveUrl(), {
+      withCredentials: true,
+    });
+    const handleNotification = async () => {
+      try {
+        setFetchedAppointments(await fetchAppointmentItems());
+      } catch {
+        // Shell notification handling already reports connectivity problems.
+      }
+    };
+
+    eventSource.addEventListener("patient.notification.created", handleNotification);
+    return () => {
+      eventSource.removeEventListener("patient.notification.created", handleNotification);
+      eventSource.close();
     };
   }, []);
 
@@ -479,7 +476,7 @@ export function PatientAppointmentsPage() {
 
               <div className="mt-3 flex items-center justify-between">
                 <span
-                  className="inline-flex h-[30px] min-w-[104px] items-center justify-center rounded-[24px] bg-[#0E713C] px-[12px] text-[15px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC]"
+                  className={`inline-flex h-[30px] min-w-[104px] items-center justify-center rounded-[24px] px-[12px] text-[15px] font-normal leading-5 tracking-[-0.05em] ${statusClass(appointment.status)}`}
                 >
                   {appointment.status}
                 </span>
@@ -530,7 +527,7 @@ export function PatientAppointmentsPage() {
                   <span className="text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#64748B]">{appointment.date}</span>
                 </div>
 
-                <span className="inline-flex h-[30px] w-[104px] items-center justify-center rounded-[24px] bg-[#0E713C] px-[10px] text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC]">
+                <span className={`inline-flex h-[30px] w-[104px] items-center justify-center rounded-[24px] px-[10px] text-[16px] font-normal leading-5 tracking-[-0.05em] ${statusClass(appointment.status)}`}>
                   {appointment.status}
                 </span>
 

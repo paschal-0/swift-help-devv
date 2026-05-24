@@ -52,6 +52,26 @@ export type PatientConsultation = {
   updatedAt: string;
 };
 
+export type PatientConsultationRequest = {
+  id: string;
+  professionalUserId: string;
+  professionalName?: string | null;
+  patientUserId: string | null;
+  patientName: string;
+  consultationLabel: string;
+  urgency: "standard" | "urgent";
+  reason: string;
+  requestedStartAt: string;
+  requestedEndAt: string;
+  mode: string;
+  durationMinutes: number;
+  emailReminderEnabled: boolean;
+  smsReminderEnabled: boolean;
+  shareSummaryWithProvider: boolean;
+  status: "pending" | "accepted" | "declined" | "expired" | "cancelled";
+  createdAt: string;
+};
+
 export type PatientActivity = {
   id: string;
   activity: string;
@@ -367,6 +387,31 @@ export function createPatientAppointment(payload: {
   return apiRequest<PatientAppointment>("/patient/appointments", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function createPatientConsultationRequest(payload: {
+  professionalUserId: string;
+  consultationLabel: string;
+  reason: string;
+  requestedStartAt: string;
+  requestedEndAt: string;
+  mode?: string;
+  durationMinutes?: number;
+  patientNote?: string;
+  emailReminderEnabled?: boolean;
+  smsReminderEnabled?: boolean;
+  shareSummaryWithProvider?: boolean;
+}) {
+  return apiRequest<PatientConsultationRequest>("/patient/consultation-requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listPatientConsultationRequests() {
+  return apiRequest<PatientConsultationRequest[]>("/patient/consultation-requests", {
+    method: "GET",
   });
 }
 

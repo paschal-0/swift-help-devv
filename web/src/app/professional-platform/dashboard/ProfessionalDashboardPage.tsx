@@ -591,15 +591,76 @@ export function ProfessionalDashboardPage() {
       toast.info("New appointment booked");
     };
 
+    const handleRequestCreated = (event: MessageEvent) => {
+      const request = JSON.parse(event.data) as ProfessionalConsultationRequest;
+      setDashboardRequests((current) =>
+        current.some((existing) => existing.id === request.id)
+          ? current
+          : [mapRequestToIncomingRequest(request), ...current],
+      );
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                pendingRequests: current.metrics.pendingRequests + 1,
+              },
+              pendingRequests: [request, ...current.pendingRequests],
+            }
+          : current,
+      );
+    };
+
+    const handleRequestUpdated = (event: MessageEvent) => {
+      const request = JSON.parse(event.data) as ProfessionalConsultationRequest;
+      if (request.status !== "pending") {
+        setDashboardRequests((current) =>
+          current.filter((existing) => existing.id !== request.id),
+        );
+        setDashboard((current) => {
+          if (!current?.pendingRequests.some((existing) => existing.id === request.id)) {
+            return current;
+          }
+          return {
+            ...current,
+            metrics: {
+              ...current.metrics,
+              pendingRequests: Math.max(0, current.metrics.pendingRequests - 1),
+            },
+            pendingRequests: current.pendingRequests.filter(
+              (existing) => existing.id !== request.id,
+            ),
+          };
+        });
+      }
+    };
+
     eventSource.addEventListener(
       "professional.consultation_session.created",
       handleSessionCreated,
+    );
+    eventSource.addEventListener(
+      "professional.consultation_request.created",
+      handleRequestCreated,
+    );
+    eventSource.addEventListener(
+      "professional.consultation_request.updated",
+      handleRequestUpdated,
     );
 
     return () => {
       eventSource.removeEventListener(
         "professional.consultation_session.created",
         handleSessionCreated,
+      );
+      eventSource.removeEventListener(
+        "professional.consultation_request.created",
+        handleRequestCreated,
+      );
+      eventSource.removeEventListener(
+        "professional.consultation_request.updated",
+        handleRequestUpdated,
       );
       eventSource.close();
     };

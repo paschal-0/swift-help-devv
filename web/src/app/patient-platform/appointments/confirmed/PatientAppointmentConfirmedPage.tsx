@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 
 function SuccessBadgeIcon() {
   return (
@@ -50,7 +49,7 @@ export function PatientAppointmentConfirmedPage() {
           transition={{ duration: 0.28, ease: "easeOut", delay: 0.08 }}
           className="mt-4 text-center text-[34px] font-normal leading-[38px] tracking-[-0.05em] text-[#334155] sm:text-[40px] sm:leading-[44px] xl:mt-3 xl:text-[48px] xl:leading-[52px]"
         >
-          Appointment Confirmed
+          Request Sent
         </motion.h1>
 
         <motion.p
@@ -59,9 +58,9 @@ export function PatientAppointmentConfirmedPage() {
           transition={{ duration: 0.28, ease: "easeOut", delay: 0.14 }}
           className="mt-4 max-w-[564px] px-2 text-center text-[18px] font-light leading-[26px] tracking-[-0.04em] text-black sm:text-[20px] sm:leading-[28px] xl:mt-[14px] xl:text-[24px] xl:leading-[30px] xl:tracking-[-0.05em]"
         >
-          Your consultation has been successfully scheduled.
+          Your appointment request has been sent for review.
           <br />
-          A confirmation and reminder have been sent to you.
+          You will receive a notification when the professional responds.
         </motion.p>
 
         <motion.div
@@ -72,12 +71,12 @@ export function PatientAppointmentConfirmedPage() {
         >
           <motion.button
             type="button"
-            onClick={() => toast.info("You will be able to join when the appointment start time is reached.")}
+            onClick={() => router.push("/patient-platform/appointments")}
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
             className="inline-flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-3 text-center text-[14px] font-normal leading-5 tracking-[-0.03em] text-[#F8FAFC] transition duration-200 hover:shadow-[0_16px_30px_rgba(17,75,127,0.28)] active:shadow-[0_7px_16px_rgba(17,75,127,0.2)] sm:h-[50px] sm:min-h-0 sm:py-0 sm:text-[17px] sm:leading-6 xl:h-[46px] xl:text-[18px] xl:leading-10 xl:tracking-[-0.05em]"
           >
-            Join appointment when it starts
+            View Appointments
           </motion.button>
           <motion.button
             type="button"
@@ -86,7 +85,7 @@ export function PatientAppointmentConfirmedPage() {
             whileHover={{ y: -2 }}
             className="inline-flex h-[48px] w-full cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-4 text-[16px] font-normal leading-6 tracking-[-0.04em] text-[#334155] transition duration-200 hover:shadow-[0_14px_28px_rgba(148,163,184,0.25)] active:shadow-[0_6px_14px_rgba(148,163,184,0.18)] sm:h-[50px] sm:text-[17px] xl:h-[46px] xl:text-[18px] xl:leading-10 xl:tracking-[-0.05em]"
           >
-            Manage Appointments
+            Back to Appointments
           </motion.button>
         </motion.div>
       </div>

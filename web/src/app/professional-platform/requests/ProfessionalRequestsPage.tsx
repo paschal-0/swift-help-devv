@@ -8,6 +8,7 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import {
   acceptProfessionalRequest,
   declineProfessionalRequest,
+  getProfessionalLiveUrl,
   listProfessionalRequests,
   type ProfessionalConsultationRequest,
 } from "@/services/professionalApi";
@@ -77,7 +78,11 @@ const mapBackendRequest = (
       ? "Accepted"
       : request.status === "declined"
         ? "Declined"
-        : "Received recently",
+        : request.status === "expired"
+          ? "Expired"
+          : request.status === "cancelled"
+            ? "Cancelled"
+            : "Received recently",
   dateLabel: `${formatRequestDate(request.requestedStartAt)} - ${formatShortTime(request.requestedEndAt)}`,
   duration: `${request.durationMinutes} Mins`,
   mode: request.mode,
@@ -93,9 +98,9 @@ const mapBackendRequest = (
   status:
     request.status === "accepted"
       ? "accepted"
-      : request.status === "declined"
-        ? "declined"
-        : "needs-action",
+      : request.status === "pending"
+        ? "needs-action"
+        : "declined",
 });
 
 const filterIconPath =
@@ -170,6 +175,52 @@ export function ProfessionalRequestsPage() {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const eventSource = new EventSource(getProfessionalLiveUrl(), {
+      withCredentials: true,
+    });
+    const handleCreated = (event: MessageEvent) => {
+      const request = mapBackendRequest(
+        JSON.parse(event.data) as ProfessionalConsultationRequest,
+      );
+      setRequests((current) =>
+        current.some((existing) => existing.id === request.id)
+          ? current
+          : [request, ...current],
+      );
+    };
+    const handleUpdated = (event: MessageEvent) => {
+      const request = mapBackendRequest(
+        JSON.parse(event.data) as ProfessionalConsultationRequest,
+      );
+      setRequests((current) =>
+        current.map((existing) =>
+          existing.id === request.id ? request : existing,
+        ),
+      );
+    };
+
+    eventSource.addEventListener(
+      "professional.consultation_request.created",
+      handleCreated,
+    );
+    eventSource.addEventListener(
+      "professional.consultation_request.updated",
+      handleUpdated,
+    );
+    return () => {
+      eventSource.removeEventListener(
+        "professional.consultation_request.created",
+        handleCreated,
+      );
+      eventSource.removeEventListener(
+        "professional.consultation_request.updated",
+        handleUpdated,
+      );
+      eventSource.close();
     };
   }, []);
 

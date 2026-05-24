@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import { createPatientAppointment } from "@/services/patientApi";
+import { createPatientConsultationRequest } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 
 type DetailItem = {
@@ -141,20 +141,21 @@ export function PatientAppointmentDetailsPage() {
 
     setIsConfirming(true);
     try {
-      const appointment = await createPatientAppointment({
-        professionalId: draft.professionalId,
+      const request = await createPatientConsultationRequest({
+        professionalUserId: draft.professionalId,
+        consultationLabel: draft.careType || draft.reason || "General Consultation",
         reason: draft.reason || draft.careType || "General Consultation",
-        scheduledDate: draft.scheduledDate,
-        startTime: draft.startTime,
-        endTime: draft.endTime,
-        meetingMode: draft.meetingMode,
-        emailReminderEnabled: emailReminder || shareReminder,
+        requestedStartAt: `${draft.scheduledDate}T${draft.startTime}:00`,
+        requestedEndAt: `${draft.scheduledDate}T${draft.endTime}:00`,
+        mode: draft.meetingMode === "in-person" ? "In Person" : "Video consultation",
+        durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
+        emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,
         shareSummaryWithProvider: shareReminder,
       });
-      window.sessionStorage.setItem("patientConfirmedAppointmentId", appointment.id);
+      window.sessionStorage.setItem("patientSubmittedRequestId", request.id);
       window.sessionStorage.removeItem("patientAppointmentDraft");
-      toast.success("Appointment confirmed.");
+      toast.success("Appointment request sent.");
       router.push("/patient-platform/appointments/confirmed");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -301,7 +302,7 @@ export function PatientAppointmentDetailsPage() {
             whileHover={{ y: -2 }}
             className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:shadow-[0_16px_30px_rgba(17,75,127,0.3)] active:shadow-[0_7px_16px_rgba(17,75,127,0.22)]"
           >
-            {isConfirming ? "Confirming..." : "Confirm appointment"}
+            {isConfirming ? "Sending..." : "Send request"}
           </motion.button>
         </motion.div>
       </div>
