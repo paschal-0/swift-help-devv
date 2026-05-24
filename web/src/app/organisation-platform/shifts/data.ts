@@ -2,7 +2,6 @@ export type ShiftStatus =
   | "Completed"
   | "Ongoing"
   | "Upcoming"
-  | "Funding Required"
   | "Canceled";
 
 export type ShiftSummaryCard = {

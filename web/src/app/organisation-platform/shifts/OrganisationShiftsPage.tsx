@@ -59,7 +59,7 @@ function mapBackendShiftStatus(
   status: OrganizationShift["status"],
 ): ShiftStatus {
   if (status === "draft" || status === "awaiting_funding") {
-    return "Funding Required";
+    return "Upcoming";
   }
 
   if (status === "completed") {
@@ -301,13 +301,6 @@ export function OrganisationShiftsPage() {
   };
 
   const openShiftAction = (row: ShiftRow) => {
-    if (row.status === "Funding Required") {
-      router.push(
-        `/organisation-platform/shifts/fund?shiftId=${encodeURIComponent(row.routeId ?? row.id)}`,
-      );
-      return;
-    }
-
     openShiftDetails(row.routeId ?? row.id);
   };
 
@@ -489,7 +482,6 @@ export function OrganisationShiftsPage() {
                   <option value="Completed">Completed</option>
                   <option value="Ongoing">Ongoing</option>
                   <option value="Upcoming">Upcoming</option>
-                  <option value="Funding Required">Funding Required</option>
                   <option value="Canceled">Canceled</option>
                 </select>
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
@@ -586,9 +578,7 @@ export function OrganisationShiftsPage() {
                             onClick={() => openShiftAction(row)}
                             className={`cursor-pointer font-semibold text-[#1565C0] underline ${microInteractionClass}`}
                           >
-                            {row.status === "Funding Required"
-                              ? "Fund"
-                              : "View"}
+                            View
                           </button>
                         </td>
                       </tr>
@@ -670,9 +660,7 @@ export function OrganisationShiftsPage() {
                             onClick={() => openShiftAction(row)}
                             className={`cursor-pointer font-semibold text-[#1565C0] underline ${microInteractionClass}`}
                           >
-                            {row.status === "Funding Required"
-                              ? "Fund"
-                              : "View"}
+                            View
                           </button>
                         </td>
                       </tr>
@@ -746,9 +734,7 @@ export function OrganisationShiftsPage() {
                       onClick={() => openShiftAction(row)}
                       className={`mt-4 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1565C0] hover:bg-[#BFDBFE] ${microInteractionClass}`}
                     >
-                      {row.status === "Funding Required"
-                        ? "Fund Shift"
-                        : "View Details"}
+                      View Details
                     </button>
                   </motion.article>
                 ))}

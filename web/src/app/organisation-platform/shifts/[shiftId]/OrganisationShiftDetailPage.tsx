@@ -514,12 +514,12 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
 
             <div className="rounded-[14px] border-2 border-[#E2E8F0] bg-white p-4 xl:p-5">
               <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">
-                Payment Summary
+                Billing Summary
               </h2>
               <div className="mt-6 space-y-4">
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
-                    Funded
+                    Weekly liability
                   </p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     {detail.funded}
@@ -527,7 +527,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 </div>
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
-                    Released
+                    Completed value
                   </p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     {detail.released}
@@ -535,7 +535,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                 </div>
                 <div className="rounded-[12px] bg-[#F8FAFC] px-4 py-4 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm">
                   <p className="text-[16px] font-medium tracking-[-0.07em] text-[#94A3B8]">
-                    Remaining
+                    Unworked value
                   </p>
                   <p className="mt-2 text-[28px] font-medium leading-9 tracking-[-0.07em] text-[#334155] sm:text-[32px]">
                     {detail.remaining}

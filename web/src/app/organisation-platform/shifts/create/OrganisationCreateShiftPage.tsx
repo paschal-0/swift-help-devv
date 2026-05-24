@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createOrganizationShift } from "@/services/organizationApi";
+import { createOrganizationShift, publishOrganizationShift } from "@/services/organizationApi";
 
 const premiumEase = [0.32, 0.72, 0, 1] as const;
 const microInteractionClass =
@@ -156,8 +156,9 @@ export function OrganisationCreateShiftPage() {
         notes: instructions,
       });
 
-      toast.success("Shift draft created. Fund it to publish.");
-      router.push(`/organisation-platform/shifts/fund?shiftId=${encodeURIComponent(shift.id)}`);
+      await publishOrganizationShift(shift.id, { requireFunding: false });
+      toast.success("Shift published. Weekly billing will handle completed shift costs.");
+      router.push(`/organisation-platform/shifts/${encodeURIComponent(shift.id)}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to create shift.");
     } finally {
@@ -361,7 +362,7 @@ export function OrganisationCreateShiftPage() {
               transition={{ duration: 0.2, ease: premiumEase }}
               className={`h-11 w-full cursor-pointer rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[15px] font-medium tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[52px] sm:w-auto sm:min-w-[260px] sm:px-8 sm:text-[16px] ${microInteractionClass}`}
             >
-              {isSubmitting ? "Creating..." : "Proceed to payments"}
+              {isSubmitting ? "Publishing..." : "Create and publish shift"}
             </motion.button>
           </div>
         </motion.section>

@@ -43,7 +43,16 @@ export type OrganizationShift = {
   releasedAmountCents: number;
   remainingAmountCents: number;
   platformFeeCents: number;
-  paymentStatus: "unpaid" | "pending" | "funded" | "released" | "refunded";
+  paymentStatus:
+    | "unpaid"
+    | "pending"
+    | "funded"
+    | "postpaid"
+    | "invoiced"
+    | "paid"
+    | "released"
+    | "refunded"
+    | "past_due";
   priority: "normal" | "urgent";
   notes: string | null;
   status: OrganizationShiftStatus;
@@ -250,7 +259,36 @@ export type OrganizationSettings = {
     currentPlan: Record<string, unknown>;
     paymentMethods: Array<Record<string, unknown>>;
     billingHistory: OrganizationBilling[];
+    credit?: OrganizationBillingCredit;
   };
+};
+
+export type OrganizationBillingCredit = {
+  account: {
+    id: string;
+    plan: string;
+    subscriptionStatus: string;
+    shiftPostingStatus: string;
+    weeklyCreditLimitCents: number;
+    currency: string;
+    gracePeriodEndsAt: string | null;
+    failedPaymentCount: number;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
+  };
+  currentWeek: {
+    periodStart: string;
+    periodEnd: string;
+    creditLimitCents: number;
+    usedCents: number;
+    reservedCents: number;
+    completedCents: number;
+    remainingCents: number | null;
+    currency: string;
+  };
+  outstandingInvoices: Array<Record<string, unknown>>;
+  canPostShifts: boolean;
+  statusReason: string | null;
 };
 
 export type OrganizationNotification = {
@@ -467,9 +505,29 @@ export async function fundOrganizationShift(
   });
 }
 
-export async function publishOrganizationShift(shiftId: string) {
+export async function publishOrganizationShift(
+  shiftId: string,
+  payload?: { requireFunding?: boolean },
+) {
   return apiRequest<OrganizationShift>(`/organization/shifts/${encodeURIComponent(shiftId)}/publish`, {
     method: "POST",
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+}
+
+export async function getOrganizationBillingCredit() {
+  return apiRequest<OrganizationBillingCredit>("/organization/billing/credit", {
+    method: "GET",
+  });
+}
+
+export async function generateOrganizationWeeklyInvoice(payload?: {
+  periodStart?: string;
+  periodEnd?: string;
+}) {
+  return apiRequest<Record<string, unknown>>("/organization/billing/invoices/generate", {
+    method: "POST",
+    body: JSON.stringify(payload ?? {}),
   });
 }
 
