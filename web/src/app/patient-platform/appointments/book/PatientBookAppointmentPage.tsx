@@ -260,41 +260,48 @@ export function PatientBookAppointmentPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] py-4 shadow-sm xl:rounded-[12px] xl:border-transparent xl:bg-[#F8FAFC] xl:p-4 xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]">
-            <div className="mb-4 flex items-center gap-3 px-4">
-              <StepBadge step="2" />
-              <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
-                <span className="xl:hidden">Provider Category</span>
-                <span className="hidden xl:inline">Choose a professional type</span>
-              </h2>
-            </div>
+          <section className="rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] p-4 shadow-sm xl:h-[167px] xl:rounded-[12px] xl:border-transparent xl:bg-[#F8FAFC] xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]">
+            <h2 className="text-[17px] font-medium text-[#334155] xl:h-[45px] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
+              Choose a professional type
+            </h2>
 
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
-              {professionalTypes.map((item) => {
-                const isSelected = selectedProfessionalType === item.id;
+            <div className="mt-[13px] flex flex-col gap-2 xl:h-[77px]">
+              <label
+                htmlFor="professional-type"
+                className="text-[16px] font-light leading-[22px] tracking-[-0.05em] text-black"
+              >
+                professional type
+              </label>
 
-                return (
-                  <motion.button
-                    key={item.id}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectedProfessionalType(item.id)}
-                    className={`flex min-w-[160px] snap-center flex-col items-center justify-center rounded-[20px] border py-6 transition-all xl:h-[98px] xl:min-w-0 xl:rounded-[12px] xl:px-2 xl:py-2 ${
-                      isSelected
-                        ? "border-[#1565C0] bg-[#F2F8FF] shadow-md xl:border-transparent xl:bg-[#E3F2FD]"
-                        : "border-[#D7E5F4] bg-white xl:border-[#94A3B8] xl:bg-transparent"
-                    }`}
-                  >
-                    <BranchIcon selected={isSelected} className="mb-2 h-8 w-8 xl:h-11 xl:w-11" />
-                    <span
-                      className={`text-[14px] font-medium xl:text-[16px] xl:font-light xl:leading-[22px] xl:tracking-[-0.07em] ${
-                        isSelected ? "text-[#1565C0]" : "text-[#64748B] xl:text-[#94A3B8]"
-                      }`}
-                    >
+              <div className="relative h-[47px] w-full">
+                <select
+                  id="professional-type"
+                  value={selectedProfessionalType}
+                  onChange={(event) => setSelectedProfessionalType(event.target.value)}
+                  className="h-[47px] w-full appearance-none rounded-[12px] border border-[#94A3B8] bg-transparent px-[17px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#E3F2FD]"
+                >
+                  {professionalTypes.map((item) => (
+                    <option key={item.id} value={item.id}>
                       {item.label}
-                    </span>
-                  </motion.button>
-                );
-              })}
+                    </option>
+                  ))}
+                </select>
+
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="pointer-events-none absolute right-[26px] top-1/2 h-[14px] w-[15px] -translate-y-1/2 text-[#94A3B8]"
+                >
+                  <path
+                    d="M4.5 7.25L10 12.75L15.5 7.25"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.58"
+                  />
+                </svg>
+              </div>
             </div>
           </section>
 

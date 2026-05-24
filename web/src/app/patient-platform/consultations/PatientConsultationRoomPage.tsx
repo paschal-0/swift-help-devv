@@ -12,6 +12,7 @@ import {
   type PatientConsultation,
   type PatientConsultationRoom,
 } from "@/services/patientApi";
+import { formatDurationMinutes } from "@/utils/appointmentTime";
 
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
@@ -94,7 +95,7 @@ export function PatientConsultationRoomPage() {
         label: "Time:",
         value: `${formatTime(activeConsultation.startsAt)} - ${formatTime(activeConsultation.endsAt)}`,
       },
-      { label: "Duration:", value: `${activeConsultation.durationMinutes || 30} minutes` },
+      { label: "Duration:", value: formatDurationMinutes(activeConsultation.durationMinutes) },
       { label: "Status:", value: activeConsultation.status },
     ];
   }, [activeConsultation]);

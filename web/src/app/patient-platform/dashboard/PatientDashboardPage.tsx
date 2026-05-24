@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientDashboard, type PatientDashboard } from "@/services/patientApi";
+import { formatDurationFromTimes } from "@/utils/appointmentTime";
 
 type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
 
@@ -81,13 +82,6 @@ function appointmentStatus(status: string): AppointmentStatus {
   if (normalized === "completed") return "Done";
   if (normalized === "ongoing" || normalized === "checked_in") return "Ongoing";
   return "Upcoming";
-}
-
-function minutesBetween(start: string, end: string) {
-  const [startHour = 0, startMinute = 0] = start.split(":").map(Number);
-  const [endHour = 0, endMinute = 0] = end.split(":").map(Number);
-  const duration = endHour * 60 + endMinute - (startHour * 60 + startMinute);
-  return duration > 0 ? `${duration} minutes` : "30 minutes";
 }
 
 function CalendarIcon({ className = "h-8 w-8" }: { className?: string }) {
@@ -195,7 +189,7 @@ export function PatientDashboardPage() {
       status: appointmentStatus(appointment.status),
       specialty: appointment.reason || "General consultation",
       mode: appointment.meetingUrl ? "Video consultation" : "In-person consultation",
-      duration: minutesBetween(appointment.startTime, appointment.endTime),
+      duration: formatDurationFromTimes(appointment.startTime, appointment.endTime),
     }));
   }, [dashboard?.appointments]);
 

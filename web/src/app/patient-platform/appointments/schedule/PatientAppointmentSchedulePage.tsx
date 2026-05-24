@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientProviderAvailability } from "@/services/patientApi";
+import { formatDurationMinutes, getDurationMinutes } from "@/utils/appointmentTime";
 
 type MeetingMode = "video" | "in-person";
 
@@ -108,14 +109,18 @@ export function PatientAppointmentSchedulePage() {
   const [manualStartTime, setManualStartTime] = useState("09:00");
   const [manualEndTime, setManualEndTime] = useState("09:30");
   const [reason, setReason] = useState("");
-  const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const [draft] = useState<Record<string, string> | null>(() => {
+    if (typeof window === "undefined") return null;
 
-  useEffect(() => {
     const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
-    if (rawDraft) {
-      setDraft(JSON.parse(rawDraft) as Record<string, string>);
+    if (!rawDraft) return null;
+
+    try {
+      return JSON.parse(rawDraft) as Record<string, string>;
+    } catch {
+      return null;
     }
-  }, []);
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -200,7 +205,9 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
-    if (selectedTime.startTime >= selectedTime.endTime) {
+    const durationMinutes = getDurationMinutes(selectedTime.startTime, selectedTime.endTime);
+
+    if (!durationMinutes) {
       toast.error("End time must be after start time.");
       return;
     }
@@ -213,6 +220,8 @@ export function PatientAppointmentSchedulePage() {
         scheduledDate: formatLocalDateKey(selectedDate),
         startTime: selectedTime.startTime,
         endTime: selectedTime.endTime,
+        durationMinutes: String(durationMinutes),
+        durationLabel: formatDurationMinutes(durationMinutes),
         reason: reason.trim() || draft.reason || "General Consultation",
       }),
     );

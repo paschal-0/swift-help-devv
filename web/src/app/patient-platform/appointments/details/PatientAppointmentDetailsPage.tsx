@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { createPatientAppointment } from "@/services/patientApi";
+import { formatDurationFromTimes } from "@/utils/appointmentTime";
 
 type DetailItem = {
   label: string;
@@ -18,7 +19,7 @@ const appointmentItems: DetailItem[] = [
   { label: "Date:", value: "Friday, march 17" },
   { label: "Appointment mode", value: "Video Consultation" },
   { label: "Time:", value: "9:30 - 10:30" },
-  { label: "Duration:", value: "30 minuites" },
+  { label: "Duration:", value: "-" },
 ];
 
 function StarIcon() {
@@ -112,6 +113,9 @@ export function PatientAppointmentDetailsPage() {
           })
         : "-";
 
+    const durationLabel =
+      draft.durationLabel ?? formatDurationFromTimes(draft.startTime, draft.endTime);
+
     return [
       { label: "Care type:", value: draft.careType ?? draft.reason ?? "-" },
       { label: "Date:", value: formattedDate },
@@ -120,7 +124,7 @@ export function PatientAppointmentDetailsPage() {
         value: draft.meetingMode === "in-person" ? "In Person" : "Video Consultation",
       },
       { label: "Time:", value: `${draft.startTime ?? "-"} - ${draft.endTime ?? "-"}` },
-      { label: "Duration:", value: "30 minutes" },
+      { label: "Duration:", value: durationLabel },
     ];
   }, [draft]);
 

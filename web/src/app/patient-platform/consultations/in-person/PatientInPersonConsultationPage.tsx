@@ -12,6 +12,7 @@ import {
   ratePatientConsultation,
   type PatientConsultationRoom,
 } from "@/services/patientApi";
+import { formatDurationMinutes } from "@/utils/appointmentTime";
 
 type TrackerStatus = "not-started" | "enroute" | "arrived" | "in-progress" | "completed" | "rating";
 
@@ -93,7 +94,7 @@ export function PatientInPersonConsultationPage() {
         label: "Time",
         value: `${formatTime(consultation?.startsAt)} - ${formatTime(consultation?.endsAt)}`,
       },
-      { label: "Duration", value: `${consultation?.durationMinutes ?? 30} minutes` },
+      { label: "Duration", value: formatDurationMinutes(consultation?.durationMinutes) },
     ],
     [consultation],
   );
