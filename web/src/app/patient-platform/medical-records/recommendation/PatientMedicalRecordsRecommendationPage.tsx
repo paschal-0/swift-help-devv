@@ -1,29 +1,29 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
-  createPatientSymptomCheck,
   getPatientMedicalRecordsRecommendation,
   type PatientMedicalRecordsRecommendation,
 } from "@/services/patientApi";
 
 const fallbackRecommendation: Required<PatientMedicalRecordsRecommendation> = {
-  headline: "A professional consultation is recommended",
+  headline: "Complete a symptom assessment for care guidance",
   description:
-    "Your symptoms may benefit from review by a licensed healthcare professional. Booking a consultation can help you receive a more accurate assessment and next-step care.",
+    "No symptom assessment has been recorded yet. Complete a check to receive guidance based on the information you provide.",
   whyRecommended:
-    "This recommendation is based on your symptom type, duration, severity, and associated symptoms. This adds transparency and trust.",
+    "A recommendation is generated after your symptoms, duration, and severity have been submitted.",
   symptomSummary: {
-    primarySymptom: "Headache",
-    duration: "2 days",
-    severity: "Moderate",
-    associatedSymptoms: "Dizziness, fatigue",
+    primarySymptom: "Not recorded",
+    duration: "Not recorded",
+    severity: "Not recorded",
+    associatedSymptoms: "Not recorded",
   },
-  recommendedCareType: "General Practitioner",
+  recommendedCareType: "Not determined",
   recommendedCareDescription:
-    "Best suited for evaluating headaches, fatigue, and related symptoms.",
+    "Complete a symptom assessment to identify an appropriate next care step.",
 };
 
 function getRecommendationValue(
@@ -68,19 +68,11 @@ function LabelPill({ text, light = false }: { text: string; light?: boolean }) {
   );
 }
 
-function SaveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
-      <path fill="#334155" d="M5 3h11l3 3v15H5V3Zm2 2v5h8V5H7Zm0 8v6h10v-6H7Z" />
-    </svg>
-  );
-}
-
 export function PatientMedicalRecordsRecommendationPage() {
+  const router = useRouter();
   const [recommendation, setRecommendation] =
     useState<PatientMedicalRecordsRecommendation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const data = getRecommendationValue(recommendation);
 
   useEffect(() => {
@@ -103,27 +95,6 @@ export function PatientMedicalRecordsRecommendationPage() {
     };
   }, []);
 
-  async function handleSave() {
-    setIsSaving(true);
-    try {
-      await createPatientSymptomCheck({
-        title: data.headline,
-        symptoms: {
-          primarySymptom: data.symptomSummary.primarySymptom,
-          duration: data.symptomSummary.duration,
-          severity: data.symptomSummary.severity,
-          associatedSymptoms: data.symptomSummary.associatedSymptoms,
-        },
-        recommendation: data,
-      });
-      toast.success("Recommendation saved");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   return (
     <article className="mt-[26px] min-h-[865px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-[17px] sm:px-6 xl:px-10">
       <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">
@@ -143,13 +114,11 @@ export function PatientMedicalRecordsRecommendationPage() {
 
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isSaving || isLoading}
-            className="inline-flex h-[33px] cursor-pointer items-center justify-center gap-1 rounded-[16px] bg-[#E3F2FD] px-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.22)] active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => router.push("/patient-platform/symptom-checker/assessment")}
+            className="inline-flex h-[33px] cursor-pointer items-center justify-center rounded-[16px] bg-[#E3F2FD] px-4 shadow-[0_0_30px_rgba(255,255,255,0.3)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,255,255,0.22)] active:translate-y-0 active:scale-[0.98]"
           >
-            <SaveIcon />
             <span className="text-[16px] font-normal leading-[23px] tracking-[-0.05em] text-[#334155]">
-              {isSaving ? "Saving" : "Save"}
+              New check
             </span>
           </button>
         </div>

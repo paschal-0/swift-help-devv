@@ -13,36 +13,49 @@ const symptomCards: SymptomCardConfig[] = [
   {
     id: "start-time",
     title: "When did this symptom start?",
-    options: ["Today", "Today", "Today", "Today"],
+    options: ["Today", "1-2 days ago", "3-7 days ago", "More than a week ago"],
   },
   {
     id: "severity",
     title: "How severe is it right now?",
-    options: ["Today", "Today", "Today", "Today", "Today"],
+    options: ["Mild", "Moderate", "Severe", "Very severe"],
   },
   {
     id: "history",
     title: "Have you had this symptom before?",
-    options: ["Today", "Today", "Today", "Today"],
+    options: ["No, this is new", "Yes, occasionally", "Yes, frequently"],
   },
   {
     id: "associated",
     title: "Are you experiencing any of these as well?",
-    options: ["Today", "Today", "Today", "Today"],
+    options: ["None", "Dizziness", "Fatigue", "Dizziness and fatigue", "Chest pain or difficulty breathing"],
   },
 ];
 
 export function PatientSymptomCheckerDetailsPage() {
   const router = useRouter();
-  const [selections, setSelections] = useState<Record<string, number>>({
-    "start-time": 0,
-    severity: 0,
-    history: 0,
-    associated: 0,
-  });
+  const [selections, setSelections] = useState<Record<string, string>>({});
 
-  const onSelect = (cardId: string, optionIndex: number) => {
-    setSelections((current) => ({ ...current, [cardId]: optionIndex }));
+  const onSelect = (cardId: string, option: string) => {
+    setSelections((current) => ({ ...current, [cardId]: option }));
+  };
+  const canContinue = symptomCards.every((card) => selections[card.id]);
+  const continueAssessment = () => {
+    const stored = window.sessionStorage.getItem("patientSymptomAssessmentDraft");
+    const draft = stored
+      ? (JSON.parse(stored) as { primarySymptoms?: string[] })
+      : { primarySymptoms: [] };
+    window.sessionStorage.setItem(
+      "patientSymptomAssessmentDraft",
+      JSON.stringify({
+        ...draft,
+        duration: selections["start-time"],
+        severity: selections.severity,
+        priorHistory: selections.history,
+        associatedSymptoms: selections.associated,
+      }),
+    );
+    router.push("/patient-platform/symptom-checker/recommendation");
   };
 
   return (
@@ -80,12 +93,12 @@ export function PatientSymptomCheckerDetailsPage() {
 
             <div className="mt-3 space-y-2 sm:space-y-1">
               {card.options.map((option, index) => {
-                const active = selections[card.id] === index;
+                const active = selections[card.id] === option;
                 return (
                   <button
                     key={`${card.id}-${index}`}
                     type="button"
-                    onClick={() => onSelect(card.id, index)}
+                    onClick={() => onSelect(card.id, option)}
                     className={`flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-[12px] px-3 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(30,136,229,0.16)] active:translate-y-0 active:scale-[0.985] sm:h-10 sm:px-[7px] ${
                       active ? "bg-[#d7ebff]" : "bg-[#E3F2FD]"
                     }`}
@@ -109,8 +122,9 @@ export function PatientSymptomCheckerDetailsPage() {
       <div className="mx-auto mt-5 flex w-full max-w-[544px] justify-center sm:mt-[24px]">
         <button
           type="button"
-          onClick={() => router.push("/patient-platform/symptom-checker/recommendation")}
-          className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-[15px] font-normal leading-[20px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:h-[46px] sm:px-[14px] sm:py-0 sm:text-[18px] sm:leading-10"
+          disabled={!canContinue}
+          onClick={continueAssessment}
+          className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-[15px] font-normal leading-[20px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none sm:h-[46px] sm:px-[14px] sm:py-0 sm:text-[18px] sm:leading-10"
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
             <path

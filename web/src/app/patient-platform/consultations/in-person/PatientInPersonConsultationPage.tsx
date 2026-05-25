@@ -56,13 +56,19 @@ export function PatientInPersonConsultationPage() {
     async function loadRoom() {
       try {
         const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+        const consultations = await listPatientConsultations();
         const consultationId =
-          storedId ||
-          (await listPatientConsultations()).find((consultation) =>
+          consultations.find(
+            (consultation) =>
+              consultation.id === storedId &&
+              ["scheduled", "ongoing"].includes(consultation.status),
+          )?.id ||
+          consultations.find((consultation) =>
             ["scheduled", "ongoing"].includes(consultation.status),
           )?.id;
 
         if (!consultationId) {
+          window.sessionStorage.removeItem(ACTIVE_CONSULTATION_STORAGE_KEY);
           router.replace("/patient-platform/consultations/no-consultation");
           return;
         }

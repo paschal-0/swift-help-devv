@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { metrics, records, referralCode, referralLink, tiers, type ReferralTier } from "./data";
+import { type ReferralTier } from "./data";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
   formatPatientMoney,
@@ -153,6 +153,7 @@ function mapReferralTier(tier: PatientReferralTier, currency?: string): Referral
 export function PatientReferralsPage() {
   const [copied, setCopied] = useState(false);
   const [summary, setSummary] = useState<PatientReferralSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -163,6 +164,8 @@ export function PatientReferralsPage() {
         if (isMounted) setSummary(response);
       } catch (error) {
         toast.error(getApiErrorMessage(error));
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
 
@@ -172,8 +175,8 @@ export function PatientReferralsPage() {
     };
   }, []);
 
-  const liveReferralCode = summary?.referralCode || referralCode;
-  const liveReferralLink = summary?.referralLink || referralLink;
+  const liveReferralCode = summary?.referralCode || "Unavailable";
+  const liveReferralLink = summary?.referralLink || "";
   const liveMetrics = useMemo(
     () =>
       summary
@@ -199,8 +202,13 @@ export function PatientReferralsPage() {
               note: "Patient signups",
             },
           ]
-        : metrics,
-    [summary],
+        : [
+            { label: "Total referrals", value: isLoading ? "-" : "0", note: "All referred users" },
+            { label: "Organizations", value: isLoading ? "-" : "0", note: "Organization signups" },
+            { label: "Professionals", value: isLoading ? "-" : "0", note: "Professional signups" },
+            { label: "Patients", value: isLoading ? "-" : "0", note: "Patient signups" },
+          ],
+    [isLoading, summary],
   );
 
   const recentReferralRows = useMemo(
@@ -219,20 +227,25 @@ export function PatientReferralsPage() {
           month: "short",
           year: "numeric",
         }),
-        earned: "-",
-        status: "Completed",
-      })) ?? records.slice(0, 3),
+        earned: formatPatientMoney(record.amountCents, record.currency),
+        status: record.status === "completed" ? "Completed" : "Pending",
+      })) ?? [],
     [summary],
   );
   const liveTiers = useMemo(
     () =>
       summary?.tiers?.length
         ? summary.tiers.map((tier) => mapReferralTier(tier, summary.currency))
-        : tiers,
+        : [],
     [summary],
   );
 
   const handleCopyCode = async () => {
+    if (!summary?.referralCode) {
+      toast.error("Referral details are not available yet.");
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(liveReferralCode);
       setCopied(true);
@@ -244,6 +257,11 @@ export function PatientReferralsPage() {
   };
 
   const handleShareLink = async () => {
+    if (!liveReferralLink) {
+      toast.error("Referral details are not available yet.");
+      return;
+    }
+
     try {
       if (navigator.share) {
         await navigator.share({
@@ -265,7 +283,7 @@ export function PatientReferralsPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Referrals</h1>
         <span className="inline-flex w-fit items-center rounded-[8px] bg-[#1565C0] px-4 py-2 text-[16px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)]">
-          Level 1 - Referrer
+          {summary?.tiers?.find((tier) => tier.active)?.badge ?? (isLoading ? "Loading tier" : "No active tier")}
         </span>
       </div>
 
@@ -277,8 +295,8 @@ export function PatientReferralsPage() {
           <div className="min-w-0 pr-0 xl:pr-4">
             <h2 className="text-[18px] font-semibold tracking-[-0.07em]">Your referral code</h2>
             <p className="mt-3 max-w-[360px] text-[15px] leading-[1.2] tracking-[-0.07em] text-[#E2E8F0]">
-              Share this code with other organizations, professionals, or patients. Earn N5,000 for each organization,
-              N2,000 for each professional, and N500 for each patient that signs up using your code.
+              Share this code with other organizations, professionals, or patients. Rewards are credited according to
+              your active referral tier.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -358,6 +376,11 @@ export function PatientReferralsPage() {
           {liveTiers.map((tier) => (
             <TierCard key={tier.title} tier={tier} />
           ))}
+          {!isLoading && liveTiers.length === 0 ? (
+            <div className="rounded-[12px] border border-dashed border-[#94A3B8] px-5 py-8 text-center text-[16px] text-[#94A3B8]">
+              Referral tiers are not available.
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -401,6 +424,11 @@ export function PatientReferralsPage() {
               </div>
             </div>
           ))}
+          {!isLoading && recentReferralRows.length === 0 ? (
+            <p className="px-6 py-8 text-center text-[16px] tracking-[-0.05em] text-[#94A3B8]">
+              No referrals yet.
+            </p>
+          ) : null}
         </div>
       </section>
     </div>

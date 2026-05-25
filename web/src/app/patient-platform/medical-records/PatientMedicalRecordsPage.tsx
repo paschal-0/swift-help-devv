@@ -19,6 +19,7 @@ type HealthRecord = {
   category: string;
   provider: string;
   date: string;
+  dateKey: string;
   tab: RecordsTab;
 };
 
@@ -41,6 +42,7 @@ function mapMedicalRecord(record: PatientMedicalRecord): HealthRecord {
     category: record.category || "Medical record",
     provider: record.provider || "Provider",
     date: formatRecordDate(record.date),
+    dateKey: record.date?.slice(0, 10) ?? "",
     tab: record.tab ?? "past",
   };
 }
@@ -85,9 +87,13 @@ function MoreVerticalIcon() {
 function SegmentTabs({
   tab,
   onChange,
+  dateFilter,
+  onDateFilterChange,
 }: {
   tab: RecordsTab;
   onChange: (tab: RecordsTab) => void;
+  dateFilter: string;
+  onDateFilterChange: (date: string) => void;
 }) {
   return (
     <div className="inline-flex h-[49px] items-center gap-[9px] rounded-[12px] border border-[#94A3B8] p-[6px]">
@@ -112,14 +118,18 @@ function SegmentTabs({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => toast.info("Date filter is not available yet")}
-        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] transition hover:bg-[#E2E8F0]"
-        aria-label="Open date filter"
+      <label
+        className="relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] transition hover:bg-[#E2E8F0]"
+        aria-label="Filter records by date"
       >
         <CalendarFilterIcon />
-      </button>
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(event) => onDateFilterChange(event.target.value)}
+          className="absolute inset-0 cursor-pointer opacity-0"
+        />
+      </label>
     </div>
   );
 }
@@ -175,7 +185,7 @@ function MedicalRecordRow({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            toast.info("Record actions are not available yet");
+            onOpen();
           }}
           onKeyDown={(event) => event.stopPropagation()}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#E3F2FD]"
@@ -192,6 +202,7 @@ export function PatientMedicalRecordsPage() {
   const router = useRouter();
   const { searchText } = usePatientPlatformShell();
   const [tab, setTab] = useState<RecordsTab>("upcoming");
+  const [dateFilter, setDateFilter] = useState("");
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [isLoadingRecords, setIsLoadingRecords] = useState(true);
 
@@ -219,7 +230,9 @@ export function PatientMedicalRecordsPage() {
 
   const visibleRecords = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    const tabRecords = records.filter((record) => record.tab === tab);
+    const tabRecords = records.filter(
+      (record) => record.tab === tab && (!dateFilter || record.dateKey === dateFilter),
+    );
 
     if (!query) return tabRecords;
 
@@ -229,7 +242,7 @@ export function PatientMedicalRecordsPage() {
         .toLowerCase()
         .includes(query),
     );
-  }, [records, searchText, tab]);
+  }, [dateFilter, records, searchText, tab]);
 
   return (
     <section className="pb-10 pt-5 sm:pt-6">
@@ -238,7 +251,12 @@ export function PatientMedicalRecordsPage() {
           <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
             Medical Records
           </h1>
-          <SegmentTabs tab={tab} onChange={setTab} />
+          <SegmentTabs
+            tab={tab}
+            onChange={setTab}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+          />
         </header>
 
         <div className="mt-[27px] overflow-x-auto pb-2">

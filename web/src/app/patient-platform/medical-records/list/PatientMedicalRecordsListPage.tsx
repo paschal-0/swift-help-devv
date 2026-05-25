@@ -1,9 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../../components/PatientPlatformShell";
+import { getApiErrorMessage } from "@/services/authApi";
+import { listPatientMedicalRecords, type PatientMedicalRecord } from "@/services/patientApi";
 
 type RecordsTab = "upcoming" | "past";
 
@@ -14,92 +17,30 @@ type MedicalRecordRow = {
   category: string;
   provider: string;
   date: string;
+  dateKey: string;
   tab: RecordsTab;
 };
 
-const medicalRecordRows: MedicalRecordRow[] = [
-  {
-    id: "row-1",
-    title: "Consultation Summary",
-    subtitle: "Video consultation",
-    category: "Consultation",
-    provider: "Dr. Sarah Johnson",
-    date: "17 Mar 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-2",
-    title: "Symptom assessment",
-    subtitle: "AI triage",
-    category: "Symptom check",
-    provider: "Symptom checker",
-    date: "17 Mar 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-3",
-    title: "Consultation Summary",
-    subtitle: "General Checkup",
-    category: "Consultation Note",
-    provider: "Dr. Sarah Johnson",
-    date: "17 Mar 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-4",
-    title: "Follow-up Appointment",
-    subtitle: "In-person consultation",
-    category: "Follow-up Check",
-    provider: "Dr. Emily Carter",
-    date: "24 Mar 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-5",
-    title: "Test Results Review",
-    subtitle: "Lab results",
-    category: "Results Discussion",
-    provider: "Dr. Michael Lee",
-    date: "01 Apr 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-6",
-    title: "Medication Review",
-    subtitle: "Pharmacy consultation",
-    category: "Prescription Check",
-    provider: "Dr. Emily Carter",
-    date: "15 Apr 2027",
-    tab: "upcoming",
-  },
-  {
-    id: "row-7",
-    title: "Follow-up Appointment",
-    subtitle: "In-person consultation",
-    category: "Follow-up Check",
-    provider: "Dr. Emily Carter",
-    date: "24 Feb 2027",
-    tab: "past",
-  },
-  {
-    id: "row-8",
-    title: "Consultation Summary",
-    subtitle: "Video consultation",
-    category: "Consultation",
-    provider: "Dr. Sarah Johnson",
-    date: "19 Feb 2027",
-    tab: "past",
-  },
-  {
-    id: "row-9",
-    title: "Symptom assessment",
-    subtitle: "AI triage",
-    category: "Symptom check",
-    provider: "Symptom checker",
-    date: "10 Feb 2027",
-    tab: "past",
-  },
-];
+function mapMedicalRecord(record: PatientMedicalRecord): MedicalRecordRow {
+  const date = new Date(record.date);
+
+  return {
+    id: record.id,
+    title: record.title || "Medical record",
+    subtitle: record.subtitle || record.mode || "Care record",
+    category: record.category || "Medical record",
+    provider: record.provider || "Provider",
+    date: Number.isNaN(date.getTime())
+      ? record.date || "-"
+      : date.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+    dateKey: record.date?.slice(0, 10) ?? "",
+    tab: record.tab ?? "past",
+  };
+}
 
 function RecordsItemIcon() {
   return (
@@ -144,7 +85,7 @@ function MoreVerticalIcon() {
   );
 }
 
-function DesktopRow({ record }: { record: MedicalRecordRow }) {
+function DesktopRow({ record, onOpen }: { record: MedicalRecordRow; onOpen: () => void }) {
   return (
     <motion.div
       whileHover={{ y: -1 }}
@@ -178,7 +119,7 @@ function DesktopRow({ record }: { record: MedicalRecordRow }) {
 
       <button
         type="button"
-        onClick={() => toast.info(`Actions for "${record.title}" are coming in the next page`)}
+        onClick={onOpen}
         className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-[#E2E8F0]"
         aria-label={`Actions for ${record.title}`}
       >
@@ -188,7 +129,7 @@ function DesktopRow({ record }: { record: MedicalRecordRow }) {
   );
 }
 
-function MobileRow({ record }: { record: MedicalRecordRow }) {
+function MobileRow({ record, onOpen }: { record: MedicalRecordRow; onOpen: () => void }) {
   return (
     <article className="rounded-[12px] bg-[#F8FAFC] px-3 py-3 shadow-[0_0_20px_rgba(30,136,229,0.12)]">
       <div className="flex items-start justify-between gap-3">
@@ -208,7 +149,7 @@ function MobileRow({ record }: { record: MedicalRecordRow }) {
 
         <button
           type="button"
-          onClick={() => toast.info(`Actions for "${record.title}" are coming in the next page`)}
+          onClick={onOpen}
           className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-[#E2E8F0]"
           aria-label={`Actions for ${record.title}`}
         >
@@ -241,11 +182,39 @@ function MobileRow({ record }: { record: MedicalRecordRow }) {
 }
 
 export function PatientMedicalRecordsListPage() {
+  const router = useRouter();
   const { searchText } = usePatientPlatformShell();
   const [tab, setTab] = useState<RecordsTab>("upcoming");
+  const [dateFilter, setDateFilter] = useState("");
+  const [records, setRecords] = useState<MedicalRecordRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    listPatientMedicalRecords()
+      .then((response) => {
+        if (isMounted) setRecords(response.map(mapMedicalRecord));
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setRecords([]);
+          toast.error(getApiErrorMessage(error));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredRecords = useMemo(() => {
-    const scoped = medicalRecordRows.filter((row) => row.tab === tab);
+    const scoped = records.filter(
+      (row) => row.tab === tab && (!dateFilter || row.dateKey === dateFilter),
+    );
     const query = searchText.trim().toLowerCase();
 
     if (!query) {
@@ -258,7 +227,12 @@ export function PatientMedicalRecordsListPage() {
         .toLowerCase()
         .includes(query)
     );
-  }, [searchText, tab]);
+  }, [dateFilter, records, searchText, tab]);
+
+  const openRecord = (record: MedicalRecordRow) => {
+    window.sessionStorage.setItem("patientSelectedMedicalRecordId", record.id);
+    router.push("/patient-platform/medical-records/summary");
+  };
 
   return (
     <article className="mt-5 min-h-[678px] rounded-[12px] bg-[#F8FAFC] px-4 pb-5 pt-4 sm:mt-[26px] sm:px-6 sm:pb-7 sm:pt-[17px]">
@@ -295,14 +269,18 @@ export function PatientMedicalRecordsListPage() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => toast.info("Date filter options will appear in the next page")}
-              className="inline-flex h-6 w-6 cursor-pointer items-center justify-center transition hover:-translate-y-0.5"
-              aria-label="Open date filter"
+            <label
+              className="relative inline-flex h-6 w-6 cursor-pointer items-center justify-center transition hover:-translate-y-0.5"
+              aria-label="Filter records by date"
             >
               <CalendarFilterIcon />
-            </button>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
           </div>
         </div>
       </header>
@@ -319,7 +297,7 @@ export function PatientMedicalRecordsListPage() {
 
           <div className="mt-3 space-y-2">
             {filteredRecords.map((record) => (
-              <DesktopRow key={record.id} record={record} />
+              <DesktopRow key={record.id} record={record} onOpen={() => openRecord(record)} />
             ))}
           </div>
         </div>
@@ -327,11 +305,17 @@ export function PatientMedicalRecordsListPage() {
 
       <section className="mt-4 space-y-3 sm:hidden">
         {filteredRecords.map((record) => (
-          <MobileRow key={`mobile-${record.id}`} record={record} />
+          <MobileRow key={`mobile-${record.id}`} record={record} onOpen={() => openRecord(record)} />
         ))}
       </section>
 
-      {filteredRecords.length === 0 ? (
+      {isLoading ? (
+        <div className="mt-6 rounded-[12px] border border-dashed border-[#94A3B8] px-4 py-8 text-center">
+          <p className="text-[16px] font-light tracking-[-0.05em] text-[#94A3B8]">
+            Loading records...
+          </p>
+        </div>
+      ) : filteredRecords.length === 0 ? (
         <div className="mt-6 rounded-[12px] border border-dashed border-[#94A3B8] px-4 py-8 text-center">
           <p className="text-[16px] font-light tracking-[-0.05em] text-[#94A3B8]">
             No records found for this selection.

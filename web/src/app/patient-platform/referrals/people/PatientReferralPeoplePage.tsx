@@ -4,9 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../../components/PatientPlatformShell";
-import { type ReferralRecord, type ReferralRecordType } from "../data";
 import { getApiErrorMessage } from "@/services/authApi";
 import { listPatientReferralPeople } from "@/services/patientApi";
+
+type ReferralRecordType = "Patient" | "Professional" | "Organization";
+type ReferralRecord = {
+  name: string;
+  initials: string;
+  type: ReferralRecordType;
+  joined: string;
+  earned: string;
+  status: "Completed" | "Pending";
+};
 
 type FilterKey = "All" | ReferralRecordType;
 
@@ -16,6 +25,13 @@ const filters: { key: FilterKey; label: string }[] = [
   { key: "Professional", label: "Professionals" },
   { key: "Organization", label: "Organizations" },
 ];
+
+function formatMoney(amountCents: number, currency: string) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+  }).format(amountCents / 100);
+}
 
 function ReferralTableRow({ record }: { record: ReferralRecord }) {
   return (
@@ -86,8 +102,8 @@ export function PatientReferralPeoplePage() {
               month: "short",
               year: "numeric",
             }),
-            earned: "-",
-            status: "Completed",
+            earned: formatMoney(record.amountCents, record.currency),
+            status: record.status === "completed" ? "Completed" : "Pending",
           })),
         );
       } catch (error) {

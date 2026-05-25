@@ -1,12 +1,16 @@
 "use client";
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import { createPatientConsultationRequest } from "@/services/patientApi";
+import {
+  cancelPatientAppointment,
+  createPatientConsultationRequest,
+  getPatientAppointment,
+  updatePatientAppointmentReminders,
+} from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 
 type DetailItem = {
@@ -15,20 +19,12 @@ type DetailItem = {
 };
 
 const appointmentItems: DetailItem[] = [
-  { label: "Care type:", value: "General Consultation" },
-  { label: "Date:", value: "Friday, march 17" },
-  { label: "Appointment mode", value: "Video Consultation" },
-  { label: "Time:", value: "9:30 - 10:30" },
+  { label: "Care type:", value: "-" },
+  { label: "Date:", value: "-" },
+  { label: "Appointment mode", value: "-" },
+  { label: "Time:", value: "-" },
   { label: "Duration:", value: "-" },
 ];
-
-function StarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[14.67px] w-4" aria-hidden>
-      <path fill="#F8FAFC" d="m12 2 3 7h7l-5.6 4.1L18.5 21 12 16.8 5.5 21l2.1-7.9L2 9h7l3-7Z" />
-    </svg>
-  );
-}
 
 function ToggleSwitch({
   checked,
@@ -88,17 +84,39 @@ function parseDateOnly(value: string) {
 
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const appointmentId = searchParams.get("appointmentId");
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
   const [emailReminder, setEmailReminder] = useState(true);
   const [smsReminder, setSmsReminder] = useState(true);
-  const [shareReminder, setShareReminder] = useState(true);
+  const [shareSummaryWithProvider, setShareSummaryWithProvider] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
+    if (appointmentId) {
+      getPatientAppointment(appointmentId)
+        .then((appointment) => {
+          setDraft({
+            professionalName: appointment.professional?.fullName ?? "Assigned professional",
+            careType: appointment.reason,
+            reason: appointment.reason,
+            scheduledDate: appointment.scheduledDate,
+            startTime: appointment.startTime,
+            endTime: appointment.endTime,
+            meetingMode: appointment.meetingUrl ? "video" : "in-person",
+          });
+          setEmailReminder(appointment.emailReminderEnabled ?? true);
+          setSmsReminder(appointment.smsReminderEnabled ?? false);
+          setShareSummaryWithProvider(appointment.shareSummaryWithProvider ?? false);
+        })
+        .catch((error) => toast.error(getApiErrorMessage(error)));
+      return;
+    }
+
     const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
     if (rawDraft) setDraft(JSON.parse(rawDraft) as Record<string, string>);
-  }, []);
+  }, [appointmentId]);
 
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
     if (!draft) return appointmentItems;
@@ -145,18 +163,49 @@ export function PatientAppointmentDetailsPage() {
         professionalUserId: draft.professionalId,
         consultationLabel: draft.careType || draft.reason || "General Consultation",
         reason: draft.reason || draft.careType || "General Consultation",
-        requestedStartAt: `${draft.scheduledDate}T${draft.startTime}:00`,
-        requestedEndAt: `${draft.scheduledDate}T${draft.endTime}:00`,
+        requestedStartAt: draft.requestedStartAt ?? `${draft.scheduledDate}T${draft.startTime}:00`,
+        requestedEndAt: draft.requestedEndAt ?? `${draft.scheduledDate}T${draft.endTime}:00`,
         mode: draft.meetingMode === "in-person" ? "In Person" : "Video consultation",
         durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
         emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,
-        shareSummaryWithProvider: shareReminder,
+        shareSummaryWithProvider,
       });
       window.sessionStorage.setItem("patientSubmittedRequestId", request.id);
       window.sessionStorage.removeItem("patientAppointmentDraft");
       toast.success("Appointment request sent.");
       router.push("/patient-platform/appointments/confirmed");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const updatePreferences = async () => {
+    if (!appointmentId) return;
+    setIsConfirming(true);
+    try {
+      await updatePatientAppointmentReminders(appointmentId, {
+        emailReminderEnabled: emailReminder,
+        smsReminderEnabled: smsReminder,
+        shareSummaryWithProvider,
+      });
+      toast.success("Appointment preferences updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const cancelAppointment = async () => {
+    if (!appointmentId) return;
+    setIsConfirming(true);
+    try {
+      await cancelPatientAppointment(appointmentId);
+      toast.success("Appointment cancelled.");
+      router.push("/patient-platform/appointments");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -187,7 +236,9 @@ export function PatientAppointmentDetailsPage() {
               <div className="flex h-full flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
                 <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
                   <span className="relative h-[74px] w-[74px] shrink-0 overflow-hidden rounded-full sm:h-20 sm:w-20">
-                    <Image src="/doctor.jpg" alt="Dr. Sarah Johnson" fill className="object-cover" />
+                    <span className="flex h-full w-full items-center justify-center bg-[#E3F2FD] text-[24px] font-medium text-[#1565C0]">
+                      {(draft?.professionalName ?? "P").trim().charAt(0).toUpperCase()}
+                    </span>
                   </span>
                   <p className="text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#94A3B8]">
                     Name
@@ -195,13 +246,6 @@ export function PatientAppointmentDetailsPage() {
                     <span className="text-[#334155]">{draft?.professionalName ?? "Selected provider"}</span>
                   </p>
                 </div>
-
-                <span className="inline-flex h-[22px] items-center gap-1 rounded-[32px] bg-[#107D19] px-[6px]">
-                  <StarIcon />
-                  <span className="text-[16px] font-medium leading-[27px] tracking-[-0.05em] text-[#F8FAFC]">
-                    5.0
-                  </span>
-                </span>
               </div>
             </motion.div>
 
@@ -224,9 +268,9 @@ export function PatientAppointmentDetailsPage() {
             <DetailGrid items={dynamicAppointmentItems} className="mt-4" />
 
             <div className="mt-4 flex items-center justify-center gap-3 px-1 text-center sm:justify-start sm:px-2 sm:text-left">
-              <ToggleSwitch checked={shareReminder} onChange={setShareReminder} />
+              <ToggleSwitch checked={shareSummaryWithProvider} onChange={setShareSummaryWithProvider} />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
-                Send appointment reminder by email
+                Share my symptom summary with this professional
               </span>
             </div>
           </motion.section>
@@ -288,21 +332,29 @@ export function PatientAppointmentDetailsPage() {
         >
           <motion.button
             type="button"
-            onClick={() => router.push("/patient-platform/appointments/schedule")}
+            onClick={
+              appointmentId
+                ? cancelAppointment
+                : () => router.push("/patient-platform/appointments/schedule")
+            }
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
             className="inline-flex h-[46px] w-full max-w-[215px] cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155] transition duration-200 hover:shadow-[0_14px_28px_rgba(148,163,184,0.28)] active:shadow-[0_6px_14px_rgba(148,163,184,0.2)]"
           >
-            Edit Details
+            {appointmentId ? "Cancel appointment" : "Edit Details"}
           </motion.button>
           <motion.button
             type="button"
-            onClick={confirmAppointment}
+            onClick={appointmentId ? updatePreferences : confirmAppointment}
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
             className="inline-flex h-[46px] w-full max-w-[248px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:shadow-[0_16px_30px_rgba(17,75,127,0.3)] active:shadow-[0_7px_16px_rgba(17,75,127,0.22)]"
           >
-            {isConfirming ? "Sending..." : "Send request"}
+            {isConfirming
+              ? "Saving..."
+              : appointmentId
+                ? "Save preferences"
+                : "Send request"}
           </motion.button>
         </motion.div>
       </div>

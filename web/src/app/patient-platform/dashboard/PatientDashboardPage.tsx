@@ -9,6 +9,7 @@ import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientDashboard, type PatientDashboard } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled";
 
@@ -22,6 +23,7 @@ type Appointment = {
   specialty: string;
   mode: string;
   duration: string;
+  avatarUrl: string | null;
 };
 
 type ActivityItem = {
@@ -194,6 +196,7 @@ export function PatientDashboardPage() {
       specialty: appointment.reason || "General consultation",
       mode: appointment.meetingUrl ? "Video consultation" : "In-person consultation",
       duration: formatDurationFromTimes(appointment.startTime, appointment.endTime),
+      avatarUrl: appointment.professionalAvatarUrl ?? null,
     }));
   }, [dashboard?.appointments]);
 
@@ -404,10 +407,11 @@ export function PatientDashboardPage() {
 
             <div className="rounded-xl border border-[#94A3B8] p-3">
               <div className="relative h-[121px] overflow-hidden rounded-lg bg-[#F8FAFC]">
-                <Image src="/doctor.jpg" alt="Doctor consultation" fill className="object-cover brightness-[0.45]" />
-                <div className="absolute left-2 top-2 inline-flex h-[16px] items-center gap-1 rounded-full bg-[#107D19] px-2 text-[11.7px] font-medium tracking-[-0.05em] text-[#F8FAFC]">
-                  ★ 5.0
-                </div>
+                <ProfileAvatar
+                  src={activeAppointment?.avatarUrl}
+                  alt={activeAppointment?.doctor ?? "Assigned professional"}
+                  className="h-full w-full brightness-[0.45]"
+                />
                 <div className="absolute right-2 top-2 rounded-[15px] bg-[#E3F2FD] px-2 py-1 text-[7.5px] font-medium tracking-[-0.05em] text-[#1E88E5]">
                   {activeAppointment?.status ?? "Upcoming"}
                 </div>
@@ -428,7 +432,11 @@ export function PatientDashboardPage() {
               <div className="mt-3 flex gap-[19px]">
                 <motion.button
                   type="button"
-                  onClick={() => router.push("/patient-platform/appointments/details")}
+                  onClick={() =>
+                    activeAppointment?.id
+                      ? router.push(`/patient-platform/appointments/details?appointmentId=${encodeURIComponent(activeAppointment.id)}`)
+                      : router.push("/patient-platform/appointments")
+                  }
                   className="inline-flex h-[25px] flex-1 cursor-pointer items-center justify-center rounded-[4.63px] border border-[#334155] text-[10px] tracking-[-0.05em] text-[#334155]"
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.97 }}

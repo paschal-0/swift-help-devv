@@ -23,7 +23,7 @@ type ProfessionalCard = {
   id: string;
   name: string;
   role: string;
-  imageSrc: string;
+  imageSrc: string | null;
   nextAvailable: string;
   highlights: string[];
 };
@@ -52,45 +52,30 @@ const professionalTypes: ProfessionalType[] = [
   { id: "specialist", label: "Specialist" },
 ];
 
-const professionals: ProfessionalCard[] = [
-  {
-    id: "doc-1",
-    name: "Dr. Michael Chen",
-    role: "General Practitioner",
-    imageSrc: "/doctor.jpg",
-    nextAvailable: "Tomorrow, 10:00 AM",
-    highlights: ["Family medicine", "Licensed"],
-  },
-  {
-    id: "doc-2",
-    name: "Dr. Amanda Ellis",
-    role: "General Practitioner",
-    imageSrc: "/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg",
-    nextAvailable: "Tomorrow, 10:00 AM",
-    highlights: ["Family medicine", "Telehealth"],
-  },
-  {
-    id: "doc-3",
-    name: "Dr. David Kim",
-    role: "General Practitioner",
-    imageSrc: "/doctor.jpg",
-    nextAvailable: "Tomorrow, 10:00 AM",
-    highlights: ["Pediatrics", "Licensed"],
-  },
-];
-
 function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
   return {
     id: provider.userId,
     name: provider.name,
     role: provider.specialization,
-    imageSrc: "/doctor.jpg",
-    nextAvailable: "Check schedule",
+    imageSrc: provider.avatarUrl ?? null,
+    nextAvailable: "Select to view schedule",
     highlights: [
       provider.consultationType || "Consultation",
       provider.verificationStatus === "approved" ? "Verified" : "Profile submitted",
     ],
   };
+}
+
+function ProviderPicture({ provider }: { provider: ProfessionalCard }) {
+  if (provider.imageSrc) {
+    return <Image src={provider.imageSrc} alt={provider.name} fill className="object-cover" />;
+  }
+
+  return (
+    <span className="flex h-full w-full items-center justify-center text-[22px] font-medium text-[#1565C0]">
+      {provider.name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 function BranchIcon({
@@ -153,11 +138,18 @@ export function PatientBookAppointmentPage() {
 
     async function loadProviders() {
       try {
-        const response = await listPatientProviders();
+        const professionalTypeLabel =
+          professionalTypes.find((item) => item.id === selectedProfessionalType)?.label ??
+          professionalTypes[0].label;
+        const response = await listPatientProviders({
+          specialization: professionalTypeLabel,
+        });
         if (!isMounted) return;
         const cards = response.map(mapProviderToCard);
         setProviderCards(cards);
-        setSelectedProfessionalId((current) => current || cards[0]?.id || "");
+        setSelectedProfessionalId((current) =>
+          cards.some((card) => card.id === current) ? current : cards[0]?.id || "",
+        );
       } catch (error) {
         toast.error(getApiErrorMessage(error));
         if (isMounted) setProviderCards([]);
@@ -168,7 +160,7 @@ export function PatientBookAppointmentPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedProfessionalType]);
 
   const visibleProfessionals = providerCards;
 
@@ -331,7 +323,7 @@ export function PatientBookAppointmentPage() {
                   >
                     <div className="flex gap-4 xl:hidden">
                       <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100 xl:h-[77px] xl:w-full xl:rounded-[8px] xl:bg-[#E3F2FD]">
-                        <Image src={prof.imageSrc} alt={prof.name} fill className="object-cover" />
+                        <ProviderPicture provider={prof} />
                       </div>
                       <div className="flex-1 xl:mt-[2px]">
                         <h3 className="text-[16px] font-semibold text-[#334155] xl:text-[16px] xl:font-normal xl:leading-[25px]">
@@ -349,7 +341,7 @@ export function PatientBookAppointmentPage() {
 
                     <div className="hidden xl:block">
                       <div className="relative h-[77px] overflow-hidden rounded-[8px] bg-[#E3F2FD]">
-                        <Image src={prof.imageSrc} alt={prof.name} fill className="object-cover" />
+                        <ProviderPicture provider={prof} />
                       </div>
 
                       <div className="mt-[2px]">

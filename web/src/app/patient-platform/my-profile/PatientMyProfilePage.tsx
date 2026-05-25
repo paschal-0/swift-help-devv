@@ -62,33 +62,30 @@ type EditSection =
   | "Emergency Contact";
 
 const initialProfile: EditableProfile = {
-  name: "Sara Johnson",
+  name: "",
 };
 
 const initialPersonalInformation: PersonalInformation = {
-  gender: "Male",
-  dateOfBirth: "12 Jan 1998",
-  phoneNumber: "+2348339333300",
-  email: "sarah77@gmail.com",
-  address: "92, wilson street",
-  location: "London, England",
+  gender: "",
+  dateOfBirth: "",
+  phoneNumber: "",
+  email: "",
+  address: "",
+  location: "",
 };
 
-const initialMedicationGroups: MedicationGroup[] = [
-  { name: "proxies2g", date: "02 February", duration: "3 days" },
-  { name: "proxies2g", date: "02 February", duration: "3 days" },
-];
+const initialMedicationGroups: MedicationGroup[] = [];
 
 const initialMedicalInformation: MedicalInformation = {
-  allergies: "Penicilin, dust, Fat",
-  healthConditions: "Penicilin, dust, Fat",
-  bloodGroup: "B+",
+  allergies: "",
+  healthConditions: "",
+  bloodGroup: "",
 };
 
 const initialEmergencyContact: EmergencyContact = {
-  name: "Daniel",
-  relationship: "Brother",
-  phone: "+23455586969",
+  name: "",
+  relationship: "",
+  phone: "",
 };
 
 function EditIcon({ subtle = false }: { subtle?: boolean }) {
@@ -230,7 +227,7 @@ function ProfileInfoRows({ rows }: { rows: InfoRow[] }) {
             {row.label}:
           </span>
           <span className="break-words text-[13px] font-medium leading-[20px] tracking-[-0.07em] text-[#334155] sm:text-[14px] sm:leading-[23px]">
-            {row.value}
+            {row.value || "-"}
           </span>
         </div>
       ))}
@@ -449,14 +446,13 @@ export function PatientMyProfilePage() {
               <div className="flex justify-center">
                 <ProfileAvatar
                   src={avatarUrl}
-                  fallbackSrc="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
-                  alt={`${profile.name} portrait`}
+                  alt={`${profile.name || "Patient"} portrait`}
                   className="h-[195px] w-full max-w-[186px] rounded-[12px]"
                 />
               </div>
 
               <p className="mt-[18px] text-center text-[16px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
-                {profile.name}
+                {profile.name || "Patient"}
               </p>
 
               <button
@@ -552,7 +548,7 @@ export function PatientMyProfilePage() {
                   Allergies
                 </span>
                 <span className="break-words text-[13px] font-medium leading-[20px] tracking-[-0.07em] text-[#334155] sm:text-[14px] sm:leading-[23px]">
-                  {medicalInformation.allergies}
+                  {medicalInformation.allergies || "-"}
                 </span>
               </div>
 
@@ -574,7 +570,7 @@ export function PatientMyProfilePage() {
                 </div>
 
                 <div className="space-y-3 pb-2">
-                  {medicationGroups.map((item, index) => (
+                  {medicationGroups.length ? medicationGroups.map((item, index) => (
                     <div
                       key={`${item.name}-${index + 1}`}
                       className="flex flex-col rounded-lg border border-[#E2E8F0] bg-white p-2 text-[13px] font-medium leading-[20px] tracking-[-0.07em] text-[#334155] sm:flex-row sm:items-center sm:justify-between sm:text-[14px] sm:leading-[23px]"
@@ -586,7 +582,9 @@ export function PatientMyProfilePage() {
                         <span>{item.duration}</span>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-[13px] text-[#94A3B8]">No medications recorded.</p>
+                  )}
                 </div>
               </div>
 
@@ -595,7 +593,7 @@ export function PatientMyProfilePage() {
                   Health conditions
                 </span>
                 <span className="break-words text-[13px] font-medium leading-[20px] tracking-[-0.07em] text-[#334155] sm:text-[14px] sm:leading-[23px]">
-                  {medicalInformation.healthConditions}
+                  {medicalInformation.healthConditions || "-"}
                 </span>
                 <motion.button
                   type="button"
@@ -614,7 +612,7 @@ export function PatientMyProfilePage() {
                   Blood group
                 </span>
                 <span className="text-[13px] font-medium leading-[20px] tracking-[-0.07em] text-[#334155] sm:text-[14px] sm:leading-[23px]">
-                  {medicalInformation.bloodGroup}
+                  {medicalInformation.bloodGroup || "-"}
                 </span>
                 <motion.button
                   type="button"
@@ -633,9 +631,9 @@ export function PatientMyProfilePage() {
           <SectionCard title="Emergency Contact" className="pb-5" onEdit={() => handleEdit("Emergency Contact")}>
             <div className="px-4 pb-1 pt-5 md:px-[15px]">
               {[
-                { label: "Name", value: emergencyContact.name },
-                { label: "Relationship", value: emergencyContact.relationship },
-                { label: "Phone", value: emergencyContact.phone },
+                { label: "Name", value: emergencyContact.name || "-" },
+                { label: "Relationship", value: emergencyContact.relationship || "-" },
+                { label: "Phone", value: emergencyContact.phone || "-" },
               ].map((item) => (
                 <div
                   key={item.label}

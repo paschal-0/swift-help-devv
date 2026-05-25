@@ -52,11 +52,13 @@ export function PatientLiveConsultationPage() {
     async function loadRoom() {
       try {
         const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+        const consultations = await listPatientConsultations();
         const consultationId =
-          storedId ||
-          (await listPatientConsultations()).find(isActive)?.id;
+          consultations.find((item) => item.id === storedId && isActive(item))?.id ||
+          consultations.find(isActive)?.id;
 
         if (!consultationId) {
+          window.sessionStorage.removeItem(ACTIVE_CONSULTATION_STORAGE_KEY);
           router.replace("/patient-platform/consultations/no-consultation");
           return;
         }

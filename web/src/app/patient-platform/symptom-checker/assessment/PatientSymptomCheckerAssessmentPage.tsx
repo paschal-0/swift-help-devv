@@ -54,6 +54,19 @@ export function PatientSymptomCheckerAssessmentPage() {
   };
 
   const canContinue = selectedSymptoms.length > 0 || query.trim().length > 0;
+  const continueAssessment = () => {
+    const typedSymptom = query.trim();
+    const symptoms = selectedSymptoms.length
+      ? selectedSymptoms
+      : typedSymptom
+        ? [typedSymptom]
+        : [];
+    window.sessionStorage.setItem(
+      "patientSymptomAssessmentDraft",
+      JSON.stringify({ primarySymptoms: symptoms }),
+    );
+    router.push("/patient-platform/symptom-checker/details");
+  };
 
   return (
     <article className="mx-auto mt-[18px] min-h-[675px] w-full max-w-[640px] rounded-[12px] bg-[#F8FAFC] px-3 pb-8 pt-3 sm:mt-[26px] sm:max-w-none sm:px-5 sm:pt-4 xl:px-10 xl:pb-[42px] xl:pt-[17px]">
@@ -119,7 +132,7 @@ export function PatientSymptomCheckerAssessmentPage() {
         <button
           type="button"
           disabled={!canContinue}
-          onClick={() => router.push("/patient-platform/symptom-checker/details")}
+          onClick={continueAssessment}
           className="inline-flex h-[46px] w-[144px] cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none sm:text-[18px]"
         >
           Next

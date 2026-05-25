@@ -30,7 +30,8 @@ export type PatientAppointment = {
   emailReminderEnabled?: boolean;
   smsReminderEnabled?: boolean;
   shareSummaryWithProvider?: boolean;
-  professional?: AuthUser | null;
+  professional?: { id: string; fullName: string } | null;
+  professionalAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -108,10 +109,10 @@ export type PatientProvider = {
   id: string;
   userId: string;
   name: string;
-  email: string | null;
   specialization: string;
   consultationType: string;
   location: string | null;
+  avatarUrl?: string | null;
   verificationStatus: string;
   availability: unknown;
 };
@@ -242,6 +243,9 @@ export type PatientReferralSummary = {
     email: string;
     role: BackendRole;
     joinedAt: string;
+    amountCents: number;
+    currency: string;
+    status: "completed" | "pending";
   }>;
   tiers?: PatientReferralTier[];
 };
@@ -263,6 +267,27 @@ export type PatientReferralTier = {
   progressLabel: string;
 };
 
+export type PatientReferralPayoutMethod = {
+  id: string;
+  bankName: string;
+  accountName: string;
+  accountNumberLast4: string;
+  defaultMethod: boolean;
+};
+
+export type PatientReferralWallet = {
+  summary: PatientReferralSummary;
+  payoutMethods: PatientReferralPayoutMethod[];
+  payouts: Array<{
+    id: string;
+    payoutMethodId: string;
+    amountCents: number;
+    currency: string;
+    status: string;
+    createdAt: string;
+  }>;
+};
+
 export type PatientReferralPerson = {
   id: string;
   name: string;
@@ -270,6 +295,9 @@ export type PatientReferralPerson = {
   role: BackendRole;
   referralCode: string;
   joinedAt: string;
+  amountCents: number;
+  currency: string;
+  status: "completed" | "pending";
 };
 
 export type PatientNotification = {
@@ -374,6 +402,20 @@ export function listPatientAppointments() {
   return apiRequest<PatientAppointment[]>("/patient/appointments", { method: "GET" });
 }
 
+export function getPatientAppointment(appointmentId: string) {
+  return apiRequest<PatientAppointment>(
+    `/patient/appointments/${encodeURIComponent(appointmentId)}`,
+    { method: "GET" },
+  );
+}
+
+export function cancelPatientAppointment(appointmentId: string) {
+  return apiRequest<PatientAppointment>(
+    `/patient/appointments/${encodeURIComponent(appointmentId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function createPatientAppointment(payload: {
   professionalId: string;
   reason: string;
@@ -416,6 +458,15 @@ export function listPatientConsultationRequests() {
   });
 }
 
+export function cancelPatientConsultationRequest(requestId: string) {
+  return apiRequest<PatientConsultationRequest>(
+    `/patient/consultation-requests/${encodeURIComponent(requestId)}/cancel`,
+    {
+      method: "POST",
+    },
+  );
+}
+
 export function updatePatientAppointmentReminders(
   appointmentId: string,
   payload: {
@@ -445,6 +496,31 @@ export function updatePatientNotificationPreferences(payload: {
   return apiRequest<Record<string, unknown>>("/profile/notifications", {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updatePatientSecurityPreferences(payload: {
+  twoFactor?: boolean;
+  shareData?: boolean;
+  medicalHistory?: boolean;
+  aiRecommendations?: boolean;
+}) {
+  return apiRequest<Record<string, unknown>>("/profile/security", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getPatientSubscription() {
+  return apiRequest<{ autoRenew: boolean; status: string }>("/profile/subscriptions", {
+    method: "GET",
+  });
+}
+
+export function updatePatientSubscriptionAutoRenew(enabled: boolean) {
+  return apiRequest<Record<string, unknown>>("/profile/subscriptions/auto-renew", {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
   });
 }
 
@@ -558,6 +634,40 @@ export function getPatientReferrals() {
 
 export function getPatientReferralTiers() {
   return apiRequest<PatientReferralTier[]>("/patient/referrals/tiers", { method: "GET" });
+}
+
+export function getPatientReferralWallet() {
+  return apiRequest<PatientReferralWallet>("/patient/referrals/wallet", {
+    method: "GET",
+  });
+}
+
+export function createPatientReferralPayoutMethod(payload: {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  defaultMethod?: boolean;
+}) {
+  return apiRequest<PatientReferralPayoutMethod>(
+    "/patient/referrals/wallet/payout-methods",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function requestPatientReferralWithdrawal(payload: {
+  payoutMethodId: string;
+  amountCents: number;
+}) {
+  return apiRequest<{ id: string; status: string }>(
+    "/patient/referrals/wallet/withdrawals",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function listPatientReferralPeople(params?: { role?: BackendRole; search?: string }) {

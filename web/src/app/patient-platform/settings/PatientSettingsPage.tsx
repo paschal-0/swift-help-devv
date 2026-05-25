@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { deleteProfileAvatar, getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
+import { deleteProfileAvatar, getApiErrorMessage, updatePatientProfile, uploadProfileAvatar } from "@/services/authApi";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
   getPatientProfile,
+  getPatientSubscription,
+  updatePatientAccount,
   updatePatientNotificationPreferences,
+  updatePatientSecurityPreferences,
+  updatePatientSubscriptionAutoRenew,
 } from "@/services/patientApi";
 
 type SettingsTab = {
@@ -270,11 +274,13 @@ function SecuritySettingsPanel({
   privacy,
   onToggleTwoFactor,
   onTogglePrivacy,
+  onChangePassword,
 }: {
   twoFactorEnabled: boolean;
   privacy: Record<"shareData" | "historyAccess" | "aiRecommendations", boolean>;
   onToggleTwoFactor: () => void;
   onTogglePrivacy: (key: keyof typeof privacy) => void;
+  onChangePassword: () => void;
 }) {
   return (
     <motion.section
@@ -288,7 +294,7 @@ function SecuritySettingsPanel({
         <div className="mt-[34px] flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <ActionButton
             label="Change Password"
-            onClick={() => toast.info("Change password is not available yet")}
+            onClick={onChangePassword}
             className="w-full sm:w-[95px]"
           />
 
@@ -321,152 +327,14 @@ function SecuritySettingsPanel({
   );
 }
 
-function SubscriptionCheckIcon() {
-  return (
-    <span className="absolute -right-[8px] -top-[8px] inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#2F88FF] shadow-[0_0_8px_rgba(30,136,229,0.3)]" aria-hidden>
-      <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]">
-        <path d="m6 12.5 4 4 8-9" fill="none" stroke="#FFFFFF" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      </svg>
-    </span>
-  );
-}
-
-function CardBrand() {
-  return <span className="inline-flex h-[17px] w-[39px] rounded-[4.85581px] bg-[#0F172A]" aria-hidden />;
-}
-
-function CardMenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
-      <path
-        fill="#94A3B8"
-        d="M6 12a2 2 0 1 0 .001-3.999A2 2 0 0 0 6 12Zm6 0a2 2 0 1 0 .001-3.999A2 2 0 0 0 12 12Zm6 0a2 2 0 1 0 .001-3.999A2 2 0 0 0 18 12Z"
-      />
-    </svg>
-  );
-}
-
-function SubscriptionPlanCard({
-  name,
-  duration,
-  price,
-  selected = false,
-  dark = false,
-  buttonLabel,
-  buttonWidth,
-  secondaryText,
-  onClick,
-}: {
-  name: string;
-  duration: string;
-  price: string;
-  selected?: boolean;
-  dark?: boolean;
-  buttonLabel: string;
-  buttonWidth: string;
-  secondaryText?: string;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      className={`relative rounded-[12px] px-3 pb-[14px] pt-[15px] ${
-        dark
-          ? "bg-[#334155]"
-          : selected
-            ? "border border-[#1565C0] bg-[#E3F2FD]"
-            : "border border-[#E2E8F0] bg-[#F8FAFC]"
-      }`}
-    >
-      {selected ? <SubscriptionCheckIcon /> : null}
-
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className={`text-[16px] font-medium leading-[17px] tracking-[-0.05em] ${dark ? "text-[#F8FAFC]" : "text-[#334155]"}`}>
-            {name}
-          </div>
-          <div className={`mt-1 text-[12px] font-light leading-[17px] tracking-[-0.05em] ${dark ? "text-[#F8FAFC]/65" : "text-[#94A3B8]"}`}>
-            {duration}
-          </div>
-        </div>
-
-        <div className={`text-[20px] leading-[17px] tracking-[-0.05em] ${dark ? "text-[#F8FAFC]" : "text-[#334155]"}`}>
-          <span className="font-bold">{price}</span>
-          <span className={dark ? "font-medium" : "font-medium text-[#94A3B8]"}>/Month</span>
-        </div>
-      </div>
-
-      <div className="mt-[18px] flex items-center gap-[6px]">
-        <motion.button
-          type="button"
-          onClick={onClick}
-          className={`inline-flex h-[28px] items-center justify-center rounded-[5.14286px] border px-3 text-[6.85714px] font-normal tracking-[-0.05em] ${
-            dark
-              ? "border-[#1E88E5] bg-[#F8FAFC] text-[#1565C0]"
-              : "border-[#1E88E5] bg-transparent text-[#1565C0]"
-          } ${buttonWidth}`}
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.985 }}
-        >
-          {buttonLabel}
-        </motion.button>
-
-        {secondaryText ? (
-          <span className="text-[12px] font-normal leading-[17px] tracking-[-0.05em] text-[#F8FAFC]">{secondaryText}</span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function PaymentMethodCard({
-  selected = false,
-}: {
-  selected?: boolean;
-}) {
-  return (
-    <div
-      className={`relative h-[79px] rounded-[9.71163px] px-[10px] py-[10px] ${
-        selected ? "border border-[#1565C0] bg-[#E3F2FD]" : "border border-[#E2E8F0] bg-[#F8FAFC]"
-      }`}
-    >
-      {selected ? <SubscriptionCheckIcon /> : null}
-
-      <div className="text-[9.71163px] font-medium leading-[14px] tracking-[-0.05em] text-[#94A3B8]">Credit Card</div>
-
-      <div className="mt-[6px] flex items-center gap-[6px]">
-        <CardBrand />
-        <span className="text-[12.9488px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155]">**** **** **** 3456</span>
-      </div>
-
-      <div className="absolute bottom-[9px] right-[8px]">
-        <CardMenuIcon />
-      </div>
-    </div>
-  );
-}
-
-function AddPaymentMethodCard() {
-  return (
-    <motion.button
-      type="button"
-      onClick={() => toast.info("Add payment method is not available yet")}
-      className="flex h-[79px] items-center justify-center rounded-[9.71163px] bg-[#E2E8F0]"
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.985 }}
-    >
-      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-        <path d="M12 5v14M5 12h14" fill="none" stroke="#94A3B8" strokeLinecap="round" strokeWidth="2" />
-      </svg>
-    </motion.button>
-  );
-}
-
 function SubscriptionSettingsPanel({
   autoRenew,
   onToggleAutoRenew,
+  status,
 }: {
   autoRenew: boolean;
   onToggleAutoRenew: () => void;
+  status: string;
 }) {
   return (
     <motion.section
@@ -478,27 +346,13 @@ function SubscriptionSettingsPanel({
 
       <div className="mt-[39px] text-[16px] font-medium leading-[17px] tracking-[-0.05em] text-[#94A3B8]">Plan</div>
 
-      <div className="mt-[17px] grid grid-cols-1 gap-[10px] xl:grid-cols-2">
-        <SubscriptionPlanCard
-          name="Beginner"
-          duration="30 days remaining"
-          price="$10"
-          selected
-          buttonLabel="Cancel Subscription"
-          buttonWidth="w-[177px]"
-          onClick={() => toast.info("Subscription cancellation is not available yet")}
-        />
-
-        <SubscriptionPlanCard
-          name="Beginner"
-          duration="365 Days"
-          price="$10"
-          dark
-          buttonLabel="Upgrade"
-          buttonWidth="w-[80px]"
-          secondaryText="Learn more about this plan"
-          onClick={() => toast.info("Plan upgrade is not available yet")}
-        />
+      <div className="mt-[17px] rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-5">
+        <p className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
+          Subscription status
+        </p>
+        <p className="mt-2 capitalize text-[16px] tracking-[-0.05em] text-[#1565C0]">
+          {status || "Unavailable"}
+        </p>
       </div>
 
       <div className="mt-[29px] rounded-[12px] border border-[#E2E8F0] px-4 py-[14px] xl:h-[102px] xl:px-3">
@@ -516,17 +370,9 @@ function SubscriptionSettingsPanel({
         </div>
       </div>
 
-      <div className="mt-[23px] text-[16px] font-normal leading-[17px] tracking-[-0.05em] text-[#94A3B8]">Payment information</div>
-
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <PaymentMethodCard selected />
-        <PaymentMethodCard />
-        <AddPaymentMethodCard />
-      </div>
-
-      <div className="mt-[28px] text-[16px] font-normal leading-[17px] tracking-[-0.05em] text-[#94A3B8]">Payment History</div>
-
-      <div className="mt-3 h-[161px] rounded-[12px] border border-[#E2E8F0]" />
+      <p className="mt-[23px] text-[14px] font-normal leading-[20px] tracking-[-0.05em] text-[#94A3B8]">
+        Plan and payment management are not enabled for patient accounts.
+      </p>
     </motion.section>
   );
 }
@@ -536,11 +382,15 @@ function AccountSettingsPanel({
   password,
   onEmailChange,
   onPasswordChange,
+  onSaveEmail,
+  onSavePassword,
 }: {
   loginEmail: string;
   password: string;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onSaveEmail: () => void;
+  onSavePassword: () => void;
 }) {
   return (
     <motion.section
@@ -570,12 +420,12 @@ function AccountSettingsPanel({
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-[47px]">
           <ActionButton
             label="Change email"
-            onClick={() => toast.info("Change email is not available yet")}
+            onClick={onSaveEmail}
             className="w-full sm:w-[79px]"
           />
           <ActionButton
             label="Change Password"
-            onClick={() => toast.info("Change password is not available yet")}
+            onClick={onSavePassword}
             className="w-full sm:w-[95px]"
           />
         </div>
@@ -591,12 +441,9 @@ function AccountSettingsPanel({
             </div>
           </div>
 
-          <ActionButton
-            label="Deactivate Account"
-            danger
-            onClick={() => toast.error("Account deactivation is not available yet")}
-            className="w-full sm:w-[100px]"
-          />
+          <p className="max-w-[185px] text-[13px] leading-[18px] text-[#94A3B8]">
+            Contact support to deactivate your account.
+          </p>
         </div>
       </section>
 
@@ -609,12 +456,9 @@ function AccountSettingsPanel({
             </p>
           </div>
 
-          <ActionButton
-            label="Delete Account"
-            danger
-            onClick={() => toast.error("Account deletion is not available yet")}
-            className="w-full sm:w-[83px]"
-          />
+          <p className="max-w-[185px] text-[13px] leading-[18px] text-[#94A3B8]">
+            Contact support to request account deletion.
+          </p>
         </div>
       </section>
     </motion.section>
@@ -628,10 +472,10 @@ function ProfileSettingsPanel({
   isUploadingAvatar,
   onUploadPicture,
   onDeletePicture,
+  onSave,
 }: {
   formData: {
     fullName: string;
-    displayName: string;
     email: string;
     phone: string;
     address: string;
@@ -643,6 +487,7 @@ function ProfileSettingsPanel({
   isUploadingAvatar: boolean;
   onUploadPicture: () => void;
   onDeletePicture: () => void;
+  onSave: () => void;
 }) {
   return (
     <motion.section
@@ -683,13 +528,6 @@ function ProfileSettingsPanel({
           label="Full Name"
           value={formData.fullName}
           onChange={updateField("fullName")}
-          placeholder="e.g John Doe"
-        />
-
-        <Field
-          label="Full Name"
-          value={formData.displayName}
-          onChange={updateField("displayName")}
           placeholder="e.g John Doe"
         />
 
@@ -766,7 +604,7 @@ function ProfileSettingsPanel({
 
       <motion.button
         type="button"
-        onClick={() => toast.success("Changes saved")}
+        onClick={onSave}
         className="mt-10 inline-flex h-[41px] w-full items-center justify-center rounded-[7.49206px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[220px] xl:mt-[83px] xl:w-[147px] xl:text-[9.98942px]"
         whileHover={{ y: -1, scale: 1.01 }}
         whileTap={{ scale: 0.985 }}
@@ -781,12 +619,11 @@ export function PatientSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab["id"]>("account");
   const [formData, setFormData] = useState({
     fullName: "",
-    displayName: "",
     email: "",
-    phone: "+234",
+    phone: "",
     address: "",
-    dateOfBirth: "24 / 05 / 2003",
-    gender: "Male",
+    dateOfBirth: "",
+    gender: "",
   });
   const [accountData, setAccountData] = useState({
     loginEmail: "",
@@ -803,13 +640,14 @@ export function PatientSettingsPage() {
     payments: true,
     promotions: true,
   });
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [privacySettings, setPrivacySettings] = useState({
     shareData: true,
     historyAccess: true,
     aiRecommendations: true,
   });
   const [autoRenew, setAutoRenew] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -860,11 +698,81 @@ export function PatientSettingsPage() {
     });
   };
 
-  const togglePrivacySetting = (key: keyof typeof privacySettings) =>
-    setPrivacySettings((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
+  const toggleTwoFactor = () => {
+    const nextValue = !twoFactorEnabled;
+    setTwoFactorEnabled(nextValue);
+    updatePatientSecurityPreferences({ twoFactor: nextValue }).catch((error) => {
+      setTwoFactorEnabled(!nextValue);
+      toast.error(getApiErrorMessage(error));
+    });
+  };
+
+  const togglePrivacySetting = (key: keyof typeof privacySettings) => {
+    const nextValue = !privacySettings[key];
+    setPrivacySettings((current) => ({ ...current, [key]: nextValue }));
+    const apiKey =
+      key === "historyAccess" ? "medicalHistory" : key;
+
+    updatePatientSecurityPreferences({ [apiKey]: nextValue }).catch((error) => {
+      setPrivacySettings((current) => ({ ...current, [key]: !nextValue }));
+      toast.error(getApiErrorMessage(error));
+    });
+  };
+
+  const toggleAutoRenew = () => {
+    const nextValue = !autoRenew;
+    setAutoRenew(nextValue);
+    updatePatientSubscriptionAutoRenew(nextValue).catch((error) => {
+      setAutoRenew(!nextValue);
+      toast.error(getApiErrorMessage(error));
+    });
+  };
+
+  const saveAccountEmail = async () => {
+    try {
+      await updatePatientAccount({ email: accountData.loginEmail });
+      toast.success("Email updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const savePassword = async () => {
+    if (accountData.password.trim().length < 6) {
+      toast.error("Password must contain at least 6 characters.");
+      return;
+    }
+
+    try {
+      await updatePatientAccount({ password: accountData.password });
+      setAccountData((current) => ({ ...current, password: "" }));
+      toast.success("Password updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      await Promise.all([
+        updatePatientAccount({
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phone,
+        }),
+        updatePatientProfile({
+          dateOfBirth: formData.dateOfBirth,
+          gender: formData.gender,
+          phone: formData.phone,
+          preferredLocation: formData.address,
+        }),
+      ]);
+      setAccountData((current) => ({ ...current, loginEmail: formData.email }));
+      toast.success("Profile updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
 
   const isSubscriptionsView = activeTab === "subscriptions";
 
@@ -876,6 +784,16 @@ export function PatientSettingsPage() {
         if (!mounted) return;
 
         const profile = response.profile as Record<string, unknown>;
+        setAccountData((current) => ({ ...current, loginEmail: response.account.email }));
+        setFormData((current) => ({
+          ...current,
+          fullName: response.account.fullName ?? current.fullName,
+          email: response.account.email ?? current.email,
+          phone: response.account.phoneNumber ?? (typeof profile.phone === "string" ? profile.phone : current.phone),
+          address: typeof profile.preferredLocation === "string" ? profile.preferredLocation : current.address,
+          dateOfBirth: typeof profile.dateOfBirth === "string" ? profile.dateOfBirth : current.dateOfBirth,
+          gender: typeof profile.gender === "string" ? profile.gender : current.gender,
+        }));
         setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
         const preferences = profile.notificationPreferences as
           | Partial<
@@ -898,11 +816,32 @@ export function PatientSettingsPage() {
             promotions: preferences.promotions ?? current.promotions,
           }));
         }
+        const security = profile.securityPreferences as
+          | Partial<Record<"twoFactor" | "shareData" | "medicalHistory" | "aiRecommendations", boolean>>
+          | undefined;
+        if (security) {
+          setTwoFactorEnabled(security.twoFactor ?? false);
+          setPrivacySettings((current) => ({
+            shareData: security.shareData ?? current.shareData,
+            historyAccess: security.medicalHistory ?? current.historyAccess,
+            aiRecommendations: security.aiRecommendations ?? current.aiRecommendations,
+          }));
+        }
       })
       .catch(() => {
         if (mounted) {
           setAvatarUrl(null);
         }
+      });
+
+    getPatientSubscription()
+      .then((subscription) => {
+        if (!mounted) return;
+        setAutoRenew(subscription.autoRenew);
+        setSubscriptionStatus(subscription.status);
+      })
+      .catch((error) => {
+        if (mounted) toast.error(getApiErrorMessage(error));
       });
 
     return () => {
@@ -990,13 +929,7 @@ export function PatientSettingsPage() {
                 key={tab.id}
                 label={tab.label}
                 active={tab.id === activeTab}
-                onClick={() => {
-                  setActiveTab(tab.id);
-
-                  if (!["account", "profile", "notifications", "security", "subscriptions"].includes(tab.id)) {
-                    toast.info(`${tab.label} screen is not implemented yet`);
-                  }
-                }}
+                onClick={() => setActiveTab(tab.id)}
               />
             ))}
           </div>
@@ -1008,6 +941,8 @@ export function PatientSettingsPage() {
             password={accountData.password}
             onEmailChange={updateAccountField("loginEmail")}
             onPasswordChange={updateAccountField("password")}
+            onSaveEmail={saveAccountEmail}
+            onSavePassword={savePassword}
           />
         ) : activeTab === "notifications" ? (
           <NotificationSettingsPanel
@@ -1020,13 +955,15 @@ export function PatientSettingsPage() {
           <SecuritySettingsPanel
             twoFactorEnabled={twoFactorEnabled}
             privacy={privacySettings}
-            onToggleTwoFactor={() => setTwoFactorEnabled((current) => !current)}
+            onToggleTwoFactor={toggleTwoFactor}
             onTogglePrivacy={togglePrivacySetting}
+            onChangePassword={() => setActiveTab("account")}
           />
         ) : activeTab === "subscriptions" ? (
           <SubscriptionSettingsPanel
             autoRenew={autoRenew}
-            onToggleAutoRenew={() => setAutoRenew((current) => !current)}
+            onToggleAutoRenew={toggleAutoRenew}
+            status={subscriptionStatus}
           />
         ) : (
           <ProfileSettingsPanel
@@ -1036,6 +973,7 @@ export function PatientSettingsPage() {
             isUploadingAvatar={isUploadingAvatar}
             onUploadPicture={() => fileInputRef.current?.click()}
             onDeletePicture={handleDeletePicture}
+            onSave={saveProfile}
           />
         )}
       </div>

@@ -56,7 +56,11 @@ function chooseActiveConsultation(consultations: PatientConsultation[]) {
     typeof window !== "undefined"
       ? window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY)
       : null;
-  const stored = consultations.find((consultation) => consultation.id === storedId);
+  const stored = consultations.find(
+    (consultation) =>
+      consultation.id === storedId &&
+      ["scheduled", "ongoing"].includes(consultation.status),
+  );
   if (stored) return stored;
 
   const now = Date.now();

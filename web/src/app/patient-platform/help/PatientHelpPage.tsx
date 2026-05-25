@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 
 type HelpCategoryId =
@@ -268,8 +267,6 @@ export function PatientHelpPage() {
     setSelectedCategory(tile.id);
     if (tile.route) {
       router.push(tile.route);
-    } else {
-      toast.info("Payments support details are not available yet");
     }
   };
 
@@ -364,27 +361,25 @@ export function PatientHelpPage() {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-[5px]">
-              <motion.button
-                type="button"
-                onClick={() => toast.info("Support phone line is unavailable right now")}
+              <motion.a
+                href="mailto:support@swifthelp.net?subject=Request%20a%20support%20call"
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
-                <span>Call us</span>
+                <span>Request a call</span>
                 <PhoneIcon />
-              </motion.button>
+              </motion.a>
 
-              <motion.button
-                type="button"
-                onClick={() => toast.info("Support email is unavailable right now")}
+              <motion.a
+                href="mailto:support@swifthelp.net?subject=Patient%20support%20request"
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
               >
                 <span>Send us a mail</span>
                 <MailIcon />
-              </motion.button>
+              </motion.a>
             </div>
           </div>
         </motion.section>

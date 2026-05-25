@@ -18,13 +18,6 @@ type TimeSlot = {
   endTime?: string;
 };
 
-const timeSlots: TimeSlot[] = [
-  { id: "slot-1", consultant: "07:30 - 08:30", patient: "09:30 - 10:30" },
-  { id: "slot-2", consultant: "07:30 - 08:30", patient: "09:30 - 10:30" },
-  { id: "slot-3", consultant: "07:30 - 08:30", patient: "09:30 - 10:30" },
-  { id: "slot-4", consultant: "07:30 - 08:30", patient: "09:30 - 10:30" },
-];
-
 function ChevronIcon({ direction }: { direction: "left" | "right" }) {
   return (
     <svg
@@ -99,16 +92,60 @@ function formatLocalDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function zonedDateTimeToIso(dateKey: string, time: string, timeZone: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  const desiredUtc = Date.UTC(year, month - 1, day, hours, minutes);
+  let candidate = new Date(desiredUtc);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+
+  for (let attempts = 0; attempts < 2; attempts += 1) {
+    const parts = Object.fromEntries(
+      formatter
+        .formatToParts(candidate)
+        .filter((part) => part.type !== "literal")
+        .map((part) => [part.type, Number(part.value)]),
+    );
+    const displayedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+    candidate = new Date(candidate.getTime() + desiredUtc - displayedUtc);
+  }
+
+  return candidate.toISOString();
+}
+
+function formatTimeInZone(isoDate: string, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(isoDate));
+}
+
+function timezoneLabel(timezone: string) {
+  return timezone.replaceAll("_", " ");
+}
+
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
   const [meetingMode, setMeetingMode] = useState<MeetingMode>("video");
   const [displayMonth, setDisplayMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>(timeSlots);
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [manualStartTime, setManualStartTime] = useState("09:00");
   const [manualEndTime, setManualEndTime] = useState("09:30");
   const [reason, setReason] = useState("");
+  const [providerTimezone, setProviderTimezone] = useState("Africa/Lagos");
+  const patientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const [draft] = useState<Record<string, string> | null>(() => {
     if (typeof window === "undefined") return null;
 
@@ -134,12 +171,14 @@ export function PatientAppointmentSchedulePage() {
           formatLocalDateKey(selectedDate),
         );
         if (!isMounted) return;
+        setProviderTimezone(response.timezone || "Africa/Lagos");
+        const dateKey = formatLocalDateKey(selectedDate);
         const slots = response.slots
           .filter((slot) => slot.available)
           .map((slot, index) => ({
             id: `slot-${index + 1}`,
             consultant: `${slot.startTime} - ${slot.endTime}`,
-            patient: `${slot.startTime} - ${slot.endTime}`,
+            patient: `${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.startTime, response.timezone), patientTimezone)} - ${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.endTime, response.timezone), patientTimezone)}`,
             startTime: slot.startTime,
             endTime: slot.endTime,
           }));
@@ -212,14 +251,18 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
+    const selectedDateKey = formatLocalDateKey(selectedDate);
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
       JSON.stringify({
         ...draft,
         meetingMode,
-        scheduledDate: formatLocalDateKey(selectedDate),
+        scheduledDate: selectedDateKey,
         startTime: selectedTime.startTime,
         endTime: selectedTime.endTime,
+        requestedStartAt: zonedDateTimeToIso(selectedDateKey, selectedTime.startTime, providerTimezone),
+        requestedEndAt: zonedDateTimeToIso(selectedDateKey, selectedTime.endTime, providerTimezone),
+        providerTimezone,
         durationMinutes: String(durationMinutes),
         durationLabel: formatDurationMinutes(durationMinutes),
         reason: reason.trim() || draft.reason || "General Consultation",
@@ -365,7 +408,6 @@ export function PatientAppointmentSchedulePage() {
                       selectedDate.getFullYear() === displayMonth.getFullYear() &&
                       selectedDate.getMonth() === displayMonth.getMonth() &&
                       selectedDate.getDate() === day;
-                    const isMarked = [9, 20, 24].includes(day);
 
                     return (
                       <motion.button
@@ -380,9 +422,7 @@ export function PatientAppointmentSchedulePage() {
                         className={`flex h-[33px] w-[35px] cursor-pointer items-center justify-center text-[10px] font-normal leading-5 tracking-[-0.05em] ${
                           isSelected
                             ? "rounded-[60px] bg-[#1E88E5] text-[#F8FAFC]"
-                            : isMarked
-                              ? "rounded-[60px] bg-[#E3F2FD] text-[#334155]"
-                              : "text-[#334155]"
+                            : "text-[#334155]"
                         }`}
                         aria-label={`Choose ${day}`}
                       >
@@ -396,12 +436,12 @@ export function PatientAppointmentSchedulePage() {
               <div className="w-full max-w-none lg:max-w-[231px]">
                 <div className="mb-1 flex items-center justify-between px-[2px]">
                   <p className="w-[76px] text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
-                    EET
+                    {timezoneLabel(providerTimezone)}
                     <br />
                     Consultant Time
                   </p>
                   <p className="w-[55px] text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
-                    PST
+                    {timezoneLabel(patientTimezone)}
                     <br />
                     Patient time
                   </p>

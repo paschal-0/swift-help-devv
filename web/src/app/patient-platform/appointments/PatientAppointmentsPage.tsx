@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
+  cancelPatientConsultationRequest,
   getPatientLiveUrl,
   listPatientAppointments,
   listPatientConsultationRequests,
@@ -23,6 +24,8 @@ type AppointmentStatus =
 
 type AppointmentItem = {
   id: string;
+  source: "appointment" | "request";
+  requestId?: string;
   professional: string;
   specialty: string;
   consultationType: string;
@@ -83,6 +86,7 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
 
   return {
     id: appointment.id,
+    source: "appointment",
     professional: professional?.fullName ?? "Assigned professional",
     specialty: "Healthcare professional",
     consultationType: appointment.reason,
@@ -105,6 +109,8 @@ function mapRequest(request: PatientConsultationRequest): AppointmentItem {
 
   return {
     id: `request-${request.id}`,
+    source: "request",
+    requestId: request.id,
     professional: request.professionalName ?? "Selected professional",
     specialty: "Healthcare professional",
     consultationType: request.consultationLabel,
@@ -216,18 +222,42 @@ export function PatientAppointmentsPage() {
   const [fetchedAppointments, setFetchedAppointments] = useState<AppointmentItem[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [displayMonth, setDisplayMonth] = useState(new Date(2027, 2, 1));
-  const [selectedDate, setSelectedDate] = useState(new Date(2027, 2, 18));
+  const [displayMonth, setDisplayMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLDivElement | null>(null);
 
   const appointments = useMemo(
     () =>
-      fetchedAppointments.filter((appointment) =>
-        tab === "upcoming"
-          ? appointment.status === "Upcoming" || appointment.status === "Pending"
-          : !["Upcoming", "Pending"].includes(appointment.status),
+      fetchedAppointments.filter((appointment) => {
+        const belongsToTab =
+          tab === "upcoming"
+            ? appointment.status === "Upcoming" || appointment.status === "Pending"
+            : !["Upcoming", "Pending"].includes(appointment.status);
+        if (!belongsToTab || !selectedDate) return belongsToTab;
+        const appointmentDate = new Date(appointment.date);
+        return (
+          appointmentDate.getFullYear() === selectedDate.getFullYear() &&
+          appointmentDate.getMonth() === selectedDate.getMonth() &&
+          appointmentDate.getDate() === selectedDate.getDate()
+        );
+      }),
+    [fetchedAppointments, selectedDate, tab]
+  );
+  const markedDates = useMemo(
+    () =>
+      new Set(
+        fetchedAppointments
+          .map((appointment) => new Date(appointment.date))
+          .filter(
+            (date) =>
+              !Number.isNaN(date.getTime()) &&
+              date.getFullYear() === displayMonth.getFullYear() &&
+              date.getMonth() === displayMonth.getMonth(),
+          )
+          .map((date) => date.getDate()),
       ),
-    [fetchedAppointments, tab]
+    [displayMonth, fetchedAppointments],
   );
 
   const monthTitle = useMemo(
@@ -296,6 +326,37 @@ export function PatientAppointmentsPage() {
     document.addEventListener("mousedown", onDocumentClick);
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
+
+  const refreshAppointments = async () => {
+    setFetchedAppointments(await fetchAppointmentItems());
+  };
+
+  const openAppointment = (appointment: AppointmentItem) => {
+    if (appointment.source !== "appointment") {
+      return;
+    }
+    router.push(`/patient-platform/appointments/details?appointmentId=${encodeURIComponent(appointment.id)}`);
+  };
+
+  const cancelRequest = async (appointment: AppointmentItem) => {
+    if (appointment.source !== "request" || !appointment.requestId || appointment.status !== "Pending") {
+      return;
+    }
+
+    const shouldCancel = window.confirm("Cancel this pending appointment request?");
+    if (!shouldCancel) return;
+
+    setCancellingRequestId(appointment.requestId);
+    try {
+      await cancelPatientConsultationRequest(appointment.requestId);
+      await refreshAppointments();
+      toast.success("Appointment request cancelled.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setCancellingRequestId(null);
+    }
+  };
 
   return (
     <article className="mt-[18px] min-h-[681px] rounded-[12px] bg-[#F8FAFC] px-3 pb-6 pt-4 sm:mt-[26px] sm:px-5 sm:pt-[17px] xl:px-[33px] xl:pb-8">
@@ -390,11 +451,11 @@ export function PatientAppointmentsPage() {
                       }
 
                       const isSelected =
-                        selectedDate.getFullYear() === displayMonth.getFullYear() &&
-                        selectedDate.getMonth() === displayMonth.getMonth() &&
-                        selectedDate.getDate() === day;
+                        selectedDate?.getFullYear() === displayMonth.getFullYear() &&
+                        selectedDate?.getMonth() === displayMonth.getMonth() &&
+                        selectedDate?.getDate() === day;
 
-                      const isMarked = [9, 20, 24].includes(day);
+                      const isMarked = markedDates.has(day);
 
                       return (
                         <button
@@ -464,11 +525,31 @@ export function PatientAppointmentsPage() {
 
                 <button
                   type="button"
-                  onClick={() => toast.info("Appointment actions menu coming next")}
-                  className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition duration-200 hover:bg-[#E3F2FD]"
-                  aria-label={`Open actions for ${appointment.professional}`}
+                  onClick={() =>
+                    appointment.source === "request"
+                      ? cancelRequest(appointment)
+                      : openAppointment(appointment)
+                  }
+                  disabled={
+                    appointment.source === "request" &&
+                    (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
+                  }
+                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center transition duration-200 ${
+                    appointment.source === "request"
+                      ? "h-8 rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
+                      : "h-8 w-8 rounded-full hover:bg-[#E3F2FD]"
+                  }`}
+                  aria-label={
+                    appointment.source === "request"
+                      ? `Cancel request for ${appointment.professional}`
+                      : `Open details for ${appointment.professional}`
+                  }
                 >
-                  <MoreVerticalIcon />
+                  {appointment.source === "request" ? (
+                    cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
+                  ) : (
+                    <MoreVerticalIcon />
+                  )}
                 </button>
               </div>
 
@@ -556,11 +637,31 @@ export function PatientAppointmentsPage() {
 
                 <button
                   type="button"
-                  onClick={() => toast.info("Appointment actions menu coming next")}
-                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center justify-self-center rounded-full transition duration-200 hover:scale-110 hover:bg-[#E3F2FD]"
-                  aria-label={`Open actions for ${appointment.professional}`}
+                  onClick={() =>
+                    appointment.source === "request"
+                      ? cancelRequest(appointment)
+                      : openAppointment(appointment)
+                  }
+                  disabled={
+                    appointment.source === "request" &&
+                    (appointment.status !== "Pending" || cancellingRequestId === appointment.requestId)
+                  }
+                  className={`inline-flex h-8 cursor-pointer items-center justify-center justify-self-center transition duration-200 ${
+                    appointment.source === "request"
+                      ? "rounded-[8px] bg-[#E3F2FD] px-3 text-[12px] font-medium text-[#1565C0] hover:bg-[#d8ecfd] disabled:cursor-not-allowed disabled:opacity-60"
+                      : "w-8 rounded-full hover:scale-110 hover:bg-[#E3F2FD]"
+                  }`}
+                  aria-label={
+                    appointment.source === "request"
+                      ? `Cancel request for ${appointment.professional}`
+                      : `Open details for ${appointment.professional}`
+                  }
                 >
-                  <MoreVerticalIcon />
+                  {appointment.source === "request" ? (
+                    cancellingRequestId === appointment.requestId ? "Cancelling" : "Cancel"
+                  ) : (
+                    <MoreVerticalIcon />
+                  )}
                 </button>
               </div>
               ))

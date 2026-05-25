@@ -1,26 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-
-const availableBalance = 2000;
-
-type BankAccount = {
-  id: string;
-  accountName: string;
-  bankName: string;
-  accountNumber: string;
-};
-
-const initialBankAccounts: BankAccount[] = [
-  {
-    id: "kuda-primary",
-    accountName: "Sarah Johnson",
-    bankName: "Kuda",
-    accountNumber: "23512343622",
-  },
-];
+import { getApiErrorMessage } from "@/services/authApi";
+import {
+  createPatientReferralPayoutMethod,
+  getPatientReferralWallet,
+  requestPatientReferralWithdrawal,
+  type PatientReferralPayoutMethod,
+} from "@/services/patientApi";
 
 type AddBankFormState = {
   accountName: string;
@@ -34,24 +23,15 @@ const emptyAddBankForm: AddBankFormState = {
   accountNumber: "",
 };
 
-function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
+function formatMoney(valueCents: number, currency: string) {
+  return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
+    currency,
+  }).format(valueCents / 100);
 }
 
-function formatMaskedNumber(accountNumber: string) {
-  const digits = accountNumber.replace(/[^\d]/g, "");
-
-  if (digits.length <= 4) {
-    return digits;
-  }
-
-  const visibleStart = digits.slice(0, 3);
-  const visibleEnd = digits.slice(-4);
-  return `${visibleStart}****${visibleEnd}`;
+function formatMaskedNumber(lastFour: string) {
+  return `****${lastFour}`;
 }
 
 function BankIcon() {
@@ -178,7 +158,7 @@ function AddBankModal({
                 label="Account name"
                 value={form.accountName}
                 onChange={(value) => onChange("accountName", value)}
-                placeholder="Sarah Johnson"
+                placeholder="Account holder name"
                 error={errors.accountName}
               />
               <InputField
@@ -222,38 +202,55 @@ function AddBankModal({
 }
 
 export function ReferralWithdrawPanel() {
-  const [bankAccounts, setBankAccounts] = useState(initialBankAccounts);
-  const [selectedBankId, setSelectedBankId] = useState(initialBankAccounts[0]?.id ?? "");
+  const [bankAccounts, setBankAccounts] = useState<PatientReferralPayoutMethod[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState("");
+  const [availableBalanceCents, setAvailableBalanceCents] = useState(0);
+  const [currency, setCurrency] = useState("NGN");
   const [amountInput, setAmountInput] = useState("");
-  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddBankOpen, setIsAddBankOpen] = useState(false);
   const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
   const [addBankErrors, setAddBankErrors] = useState<Partial<Record<keyof AddBankFormState, string>>>({});
 
   const selectedBank = bankAccounts.find((bank) => bank.id === selectedBankId) ?? bankAccounts[0];
-  const parsedAmount = Number(amountInput.replace(/[^\d]/g, ""));
+  const parsedAmountCents = Math.round(Number(amountInput.replace(/[^\d.]/g, "")) * 100);
+
+  useEffect(() => {
+    getPatientReferralWallet()
+      .then((wallet) => {
+        setBankAccounts(wallet.payoutMethods);
+        setSelectedBankId(
+          wallet.payoutMethods.find((method) => method.defaultMethod)?.id ??
+            wallet.payoutMethods[0]?.id ??
+            "",
+        );
+        setAvailableBalanceCents(wallet.summary.availableBalance);
+        setCurrency(wallet.summary.currency);
+      })
+      .catch((error) => toast.error(getApiErrorMessage(error)));
+  }, []);
 
   const amountError = useMemo(() => {
     if (!amountInput) {
       return "";
     }
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmountCents) || parsedAmountCents <= 0) {
       return "Enter a valid amount.";
     }
-    if (parsedAmount > availableBalance) {
+    if (parsedAmountCents > availableBalanceCents) {
       return "Amount exceeds your available balance.";
     }
 
     return "";
-  }, [amountInput, parsedAmount]);
+  }, [amountInput, availableBalanceCents, parsedAmountCents]);
 
   const canWithdraw = Boolean(
     selectedBank &&
       amountInput &&
-      password.trim().length >= 8 &&
       !amountError &&
-      Number.isFinite(parsedAmount) &&
-      parsedAmount > 0
+      Number.isFinite(parsedAmountCents) &&
+      parsedAmountCents > 0 &&
+      !isSubmitting
   );
 
   const closeAddBankModal = () => {
@@ -285,7 +282,7 @@ export function ReferralWithdrawPanel() {
     return errors;
   };
 
-  const handleAddBank = () => {
+  const handleAddBank = async () => {
     const validationErrors = validateAddBankForm();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -293,30 +290,44 @@ export function ReferralWithdrawPanel() {
       return;
     }
 
-    const newBank: BankAccount = {
-      id: `bank-${Date.now()}`,
-      accountName: addBankForm.accountName.trim(),
-      bankName: addBankForm.bankName.trim(),
-      accountNumber: addBankForm.accountNumber.trim(),
-    };
-
-    setBankAccounts((current) => [...current, newBank]);
-    setSelectedBankId(newBank.id);
-    toast.success("Bank account added");
-    closeAddBankModal();
+    try {
+      const newBank = await createPatientReferralPayoutMethod({
+        accountName: addBankForm.accountName.trim(),
+        bankName: addBankForm.bankName.trim(),
+        accountNumber: addBankForm.accountNumber.trim(),
+        defaultMethod: bankAccounts.length === 0,
+      });
+      setBankAccounts((current) => [...current, newBank]);
+      setSelectedBankId(newBank.id);
+      toast.success("Bank account added");
+      closeAddBankModal();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!canWithdraw || !selectedBank) {
       toast.error("Complete the withdrawal details first");
       return;
     }
 
-    toast.success(
-      `Withdrawal request for ${formatNaira(parsedAmount)} submitted to ${selectedBank.bankName}`
-    );
-    setAmountInput("");
-    setPassword("");
+    setIsSubmitting(true);
+    try {
+      await requestPatientReferralWithdrawal({
+        payoutMethodId: selectedBank.id,
+        amountCents: parsedAmountCents,
+      });
+      setAvailableBalanceCents((current) => Math.max(0, current - parsedAmountCents));
+      toast.success(
+        `Withdrawal request for ${formatMoney(parsedAmountCents, currency)} submitted to ${selectedBank.bankName}`,
+      );
+      setAmountInput("");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -334,14 +345,10 @@ export function ReferralWithdrawPanel() {
 
           <div className="mt-8 rounded-[12px] bg-[#E3F2FD] px-4 py-5 text-center sm:px-6">
             <p className="text-[20px] font-medium tracking-[-0.07em] text-[#1565C0] xl:text-[16px]">
-              Withdrawals are processed every weekend
+              Withdrawals are submitted securely for processing
             </p>
-            <div className="mt-5 rounded-[12px] bg-[#F8FAFC] px-4 py-3 text-[18px] tracking-[-0.07em] text-[#334155] xl:text-[16px]">
-              <span className="text-[#94A3B8]">Next Payout Window :</span>{" "}
-              <span className="font-semibold">Saturday, April 25 - Sunday, April 26</span>
-            </div>
             <p className="mx-auto mt-5 max-w-[420px] text-[18px] italic leading-[1.25] tracking-[-0.07em] text-[#94A3B8] xl:text-[16px]">
-              Requests made before Friday 11:59 PM will be processed this weekend
+              Submitted requests appear in your payout history once processed.
             </p>
           </div>
 
@@ -371,7 +378,7 @@ export function ReferralWithdrawPanel() {
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[14px] tracking-[-0.05em] text-[#94A3B8]">
                         <span>{bank.bankName}</span>
                         <span className="h-[6px] w-[6px] rounded-full bg-[#94A3B8]" />
-                        <span>{formatMaskedNumber(bank.accountNumber)}</span>
+                        <span>{formatMaskedNumber(bank.accountNumberLast4)}</span>
                       </div>
                     </div>
                     {active ? <SuccessMark /> : null}
@@ -396,7 +403,7 @@ export function ReferralWithdrawPanel() {
             <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Amount</h2>
             <div className="mt-4 rounded-[6px] bg-[#E2E8F0] px-4 py-3">
               <div className="flex items-center gap-3">
-                <span className="text-[16px] tracking-[-0.07em] text-[#94A3B8]">NGN</span>
+                <span className="text-[16px] tracking-[-0.07em] text-[#94A3B8]">{currency}</span>
                 <span className="h-[20px] w-[2px] rounded-full bg-[#94A3B8]" />
                 <input
                   value={amountInput}
@@ -409,27 +416,11 @@ export function ReferralWithdrawPanel() {
               </div>
             </div>
             <p className="mt-2 text-[12px] tracking-[-0.05em] text-[#94A3B8]">
-              Available balance: {formatNaira(availableBalance)}
+              Available balance: {formatMoney(availableBalanceCents, currency)}
             </p>
             {amountError ? (
               <p className="mt-2 text-[13px] tracking-[-0.05em] text-[#C2410C]">{amountError}</p>
             ) : null}
-          </section>
-
-          <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-            <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">
-              Enter Account Password
-            </h2>
-            <div className="mt-4 rounded-[6px] bg-[#E2E8F0] px-4 py-3">
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="********"
-                className="w-full bg-transparent text-[16px] tracking-[-0.07em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
-                aria-label="Account password"
-              />
-            </div>
           </section>
 
           <button
