@@ -58,6 +58,16 @@ function formatAppointmentTime(value: string) {
   });
 }
 
+function isOverdueUncompletedAppointment(appointment: PatientAppointment) {
+  if (appointment.status !== "upcoming") return false;
+
+  const endsAt = parseAppointmentDate(appointment.scheduledDate);
+  const [hourText, minuteText = "00"] = appointment.endTime.split(":");
+  endsAt.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
+
+  return endsAt.getTime() + 30 * 60 * 1000 <= Date.now();
+}
+
 function mapAppointment(appointment: PatientAppointment): AppointmentItem {
   const professional = appointment.professional;
   const status: AppointmentStatus =
@@ -67,6 +77,8 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
         ? "Cancelled"
         : appointment.status === "missed"
           ? "Missed"
+          : isOverdueUncompletedAppointment(appointment)
+            ? "Missed"
           : "Upcoming";
 
   return {
