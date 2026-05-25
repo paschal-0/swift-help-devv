@@ -6,7 +6,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
+  getPatientMedicalRecord,
   getPatientConsultationRoom,
+  listPatientMedicalRecords,
+  type PatientMedicalRecord,
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 
@@ -103,26 +106,34 @@ export function PatientConsultationCompletePage() {
   const router = useRouter();
   const [feedback, setFeedback] = useState<StoredFeedback | null>(null);
   const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
+  const [medicalRecord, setMedicalRecord] = useState<PatientMedicalRecord | null>(null);
 
   useEffect(() => {
     const storedFeedback = window.localStorage.getItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
 
-    if (!storedFeedback) {
-      return;
-    }
-
-    try {
-      const parsedFeedback = JSON.parse(storedFeedback) as StoredFeedback;
-      setFeedback(parsedFeedback);
-    } catch {
-      window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+    if (storedFeedback) {
+      try {
+        const parsedFeedback = JSON.parse(storedFeedback) as StoredFeedback;
+        setFeedback(parsedFeedback);
+      } catch {
+        window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+      }
     }
 
     const consultationId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
     if (!consultationId) return;
 
-    getPatientConsultationRoom(consultationId)
-      .then(setRoom)
+    Promise.all([
+      getPatientConsultationRoom(consultationId),
+      listPatientMedicalRecords({ tab: "past" }),
+    ])
+      .then(async ([nextRoom, records]) => {
+        setRoom(nextRoom);
+        const record = records.find((item) => item.consultationId === consultationId);
+        if (record) {
+          setMedicalRecord(await getPatientMedicalRecord(record.id));
+        }
+      })
       .catch((error) => toast.error(getApiErrorMessage(error)));
   }, []);
 
@@ -199,28 +210,37 @@ export function PatientConsultationCompletePage() {
           <Card title="Consultation Notes" delay={0.4}>
             <div className="rounded-2xl border border-dashed border-[#CBD5E1] p-4">
               <ul className="space-y-3 text-[14px] text-[#475569]">
-                <li className="flex gap-2">
-                  <span className="text-blue-500">-</span>
-                  <span>Symptoms: Headache, dizziness, fatigue</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-500">-</span>
-                  <span>{consultation?.reason ?? "Consultation notes will appear here once the provider submits them."}</span>
-                </li>
+                {(medicalRecord?.consultationNotes?.length
+                  ? medicalRecord.consultationNotes
+                  : [medicalRecord?.summary ?? "No consultation notes were recorded."]
+                ).map((note) => (
+                  <li key={note} className="flex gap-2">
+                    <span className="text-blue-500">-</span>
+                    <span>{note}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </Card>
 
           <Card title="Prescription" delay={0.5}>
             <div className="space-y-3">
-              <div className="rounded-xl border-l-4 border-blue-500 bg-white p-3 shadow-sm">
-                <p className="text-[14px] font-bold text-[#334155]">Ibuprofen 200mg</p>
-                <p className="text-[12px] text-[#64748B]">1 tablet every 8 hours</p>
-              </div>
-              <div className="rounded-xl border-l-4 border-blue-300 bg-white p-3 shadow-sm">
-                <p className="text-[14px] font-bold text-[#334155]">Hydration Plan</p>
-                <p className="text-[12px] text-[#64748B]">2.5L water daily for 48h</p>
-              </div>
+              {medicalRecord?.prescriptions?.length ? (
+                medicalRecord.prescriptions.map((prescription) => (
+                  <div key={`${prescription.name}-${prescription.dosage ?? ""}`} className="rounded-xl border-l-4 border-blue-500 bg-white p-3 shadow-sm">
+                    <p className="text-[14px] font-bold text-[#334155]">
+                      {[prescription.name, prescription.dosage].filter(Boolean).join(" ")}
+                    </p>
+                    <p className="text-[12px] text-[#64748B]">
+                      {[prescription.instructions, prescription.duration].filter(Boolean).join(" - ") || "No instructions recorded."}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-xl border border-dashed border-[#CBD5E1] p-4 text-[14px] text-[#64748B]">
+                  No prescriptions were recorded.
+                </p>
+              )}
             </div>
           </Card>
         </div>

@@ -37,6 +37,7 @@ type ConsultationRequest = {
   bookedOn: string;
   note: string;
   status: RequestStatus;
+  statusLabel: string;
 };
 
 const tabs: Array<{ id: RequestStatus; label: string }> = [
@@ -101,6 +102,16 @@ const mapBackendRequest = (
       : request.status === "pending"
         ? "needs-action"
         : "declined",
+  statusLabel:
+    request.status === "accepted"
+      ? "Confirmed"
+      : request.status === "pending"
+        ? "Pending"
+        : request.status === "expired"
+          ? "Expired"
+          : request.status === "cancelled"
+            ? "Cancelled"
+            : "Declined",
 });
 
 const filterIconPath =
@@ -634,11 +645,7 @@ export function ProfessionalRequestsPage() {
                   Appointment details
                 </h2>
                 <span className="inline-flex h-[19px] items-center rounded-[32px] bg-[#B3E5C6] px-[10px] text-[12px] font-normal leading-[22px] tracking-[-0.05em] text-[#1E6E0E]">
-                  {selectedRequest.status === "needs-action"
-                    ? "Pending"
-                    : selectedRequest.status === "accepted"
-                      ? "Confirmed"
-                      : "Declined"}
+                  {selectedRequest.statusLabel}
                 </span>
               </div>
 
@@ -670,7 +677,7 @@ export function ProfessionalRequestsPage() {
                       Type
                     </span>
                     <span className="inline-flex min-h-[30px] items-center rounded-[8px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] py-1 text-[12px] text-[#334155]">
-                      General consultation
+                      {selectedRequest.consultationLabel}
                     </span>
                   </div>
                   <div className="details-item flex items-center gap-[6px]">

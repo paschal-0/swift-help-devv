@@ -12,7 +12,14 @@ import {
   type PatientConsultationRequest,
 } from "@/services/patientApi";
 
-type AppointmentStatus = "Completed" | "Upcoming" | "Pending" | "Declined";
+type AppointmentStatus =
+  | "Completed"
+  | "Upcoming"
+  | "Pending"
+  | "Declined"
+  | "Cancelled"
+  | "Expired"
+  | "Missed";
 
 type AppointmentItem = {
   id: string;
@@ -41,15 +48,6 @@ function parseAppointmentDate(value: string) {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
-function combineAppointmentDateAndTime(dateValue: string, timeValue: string) {
-  const date = parseAppointmentDate(dateValue);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const [hourText, minuteText = "00"] = timeValue.split(":");
-  date.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
-  return date;
-}
-
 function formatAppointmentTime(value: string) {
   const [hourText, minuteText = "00"] = value.split(":");
   const date = new Date();
@@ -62,10 +60,14 @@ function formatAppointmentTime(value: string) {
 
 function mapAppointment(appointment: PatientAppointment): AppointmentItem {
   const professional = appointment.professional;
-  const endAt = combineAppointmentDateAndTime(appointment.scheduledDate, appointment.endTime);
-  const isCompleted =
-    appointment.status === "completed" ||
-    (endAt !== null && endAt < new Date());
+  const status: AppointmentStatus =
+    appointment.status === "completed"
+      ? "Completed"
+      : appointment.status === "cancelled"
+        ? "Cancelled"
+        : appointment.status === "missed"
+          ? "Missed"
+          : "Upcoming";
 
   return {
     id: appointment.id,
@@ -74,13 +76,20 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
     consultationType: appointment.reason,
     time: formatAppointmentTime(appointment.startTime),
     date: formatAppointmentDate(appointment.scheduledDate),
-    status: isCompleted ? "Completed" : "Upcoming",
+    status,
   };
 }
 
 function mapRequest(request: PatientConsultationRequest): AppointmentItem {
   const startAt = new Date(request.requestedStartAt);
-  const isPending = request.status === "pending";
+  const status: AppointmentStatus =
+    request.status === "pending"
+      ? "Pending"
+      : request.status === "expired"
+        ? "Expired"
+        : request.status === "cancelled"
+          ? "Cancelled"
+          : "Declined";
 
   return {
     id: `request-${request.id}`,
@@ -96,13 +105,15 @@ function mapRequest(request: PatientConsultationRequest): AppointmentItem {
       month: "short",
       year: "numeric",
     }),
-    status: isPending ? "Pending" : "Declined",
+    status,
   };
 }
 
 function statusClass(status: AppointmentStatus) {
   if (status === "Pending") return "bg-[#E3F2FD] text-[#1565C0]";
-  if (status === "Declined") return "bg-[#FEE2E2] text-[#B91C1C]";
+  if (["Declined", "Cancelled", "Expired", "Missed"].includes(status)) {
+    return "bg-[#FEE2E2] text-[#B91C1C]";
+  }
   return "bg-[#0E713C] text-[#F8FAFC]";
 }
 
@@ -202,7 +213,7 @@ export function PatientAppointmentsPage() {
       fetchedAppointments.filter((appointment) =>
         tab === "upcoming"
           ? appointment.status === "Upcoming" || appointment.status === "Pending"
-          : appointment.status === "Completed" || appointment.status === "Declined",
+          : !["Upcoming", "Pending"].includes(appointment.status),
       ),
     [fetchedAppointments, tab]
   );

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
-  completePatientConsultation,
   getPatientLiveUrl,
   getPatientConsultationRoom,
   joinPatientConsultation,
@@ -14,6 +13,7 @@ import {
   updatePatientConsultationPresence,
   type PatientConsultation,
   type PatientConsultationMessage,
+  type PatientNotification,
   type PatientConsultationPresence,
   type PatientConsultationRoom,
 } from "@/services/patientApi";
@@ -41,7 +41,7 @@ export function PatientLiveConsultationPage() {
     roomToken: string;
   } | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const consultation = room?.consultation ?? null;
   const providerName = room?.provider?.name ?? "Provider";
@@ -123,15 +123,30 @@ export function PatientLiveConsultationPage() {
       );
     };
 
+    const handleNotification = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as PatientNotification;
+      if (
+        notification.consultationId !== consultation.id ||
+        notification.metadata?.status !== "completed"
+      ) {
+        return;
+      }
+      window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, consultation.id);
+      toast.success("Your professional has completed the consultation.");
+      router.push("/patient-platform/consultations/rate");
+    };
+
     eventSource.addEventListener("patient.consultation_message.created", handleMessage);
     eventSource.addEventListener("patient.consultation_presence.updated", handlePresence);
+    eventSource.addEventListener("patient.notification.created", handleNotification);
 
     return () => {
       eventSource.removeEventListener("patient.consultation_message.created", handleMessage);
       eventSource.removeEventListener("patient.consultation_presence.updated", handlePresence);
+      eventSource.removeEventListener("patient.notification.created", handleNotification);
       eventSource.close();
     };
-  }, [consultation]);
+  }, [consultation, router]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
@@ -154,23 +169,22 @@ export function PatientLiveConsultationPage() {
     }
   };
 
-  const completeSession = async () => {
-    if (!consultation || isCompleting) return;
-    setIsCompleting(true);
+  const leaveSession = async () => {
+    if (!consultation || isLeaving) return;
+    setIsLeaving(true);
     try {
-      await completePatientConsultation(consultation.id);
       await updatePatientConsultationPresence(consultation.id, {
-        online: true,
+        online: false,
         inCall: false,
         cameraEnabled: false,
         microphoneEnabled: false,
       });
-      toast.success("Consultation ended");
-      router.push("/patient-platform/consultations/rate");
+      toast.success("You left the consultation.");
+      router.push("/patient-platform/consultations");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
-      setIsCompleting(false);
+      setIsLeaving(false);
     }
   };
 
@@ -197,7 +211,7 @@ export function PatientLiveConsultationPage() {
           token={videoAccess?.roomToken ?? null}
           roomName={videoAccess?.roomName ?? null}
           remoteLabel={providerName}
-          onEnd={() => void completeSession()}
+          onEnd={() => void leaveSession()}
           onPresenceChange={(presence) => {
             if (!consultation) return;
             void updatePatientConsultationPresence(consultation.id, {
@@ -272,11 +286,11 @@ export function PatientLiveConsultationPage() {
           </dl>
           <button
             type="button"
-            onClick={() => void completeSession()}
-            disabled={!consultation || isCompleting}
+            onClick={() => void leaveSession()}
+            disabled={!consultation || isLeaving}
             className="mt-5 h-11 w-full rounded-[12px] bg-[#C82B33] text-[13px] font-medium text-white disabled:opacity-60"
           >
-            {isCompleting ? "Ending..." : "End consultation"}
+            {isLeaving ? "Leaving..." : "Leave consultation"}
           </button>
         </aside>
       </section>

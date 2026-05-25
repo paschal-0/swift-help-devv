@@ -333,7 +333,16 @@ const mapConsultationToUpcoming = (
   latitude: consultation.latitude,
   longitude: consultation.longitude,
   duration: `${consultation.mode} - ${consultation.durationMinutes} mins`,
-  startsIn: consultation.status === "ongoing" ? "Ongoing" : "Upcoming",
+  startsIn:
+    consultation.status === "ongoing"
+      ? "Ongoing"
+      : consultation.status === "completed"
+        ? "Completed"
+        : consultation.status === "missed"
+          ? "Missed"
+          : consultation.status === "cancelled"
+            ? "Cancelled"
+            : "Upcoming",
 });
 
 const mapConsultationToDetails = (
@@ -355,6 +364,8 @@ const mapConsultationToDetails = (
       ? "Ongoing"
       : consultation.status === "cancelled"
         ? "Cancelled"
+        : consultation.status === "missed"
+          ? "Missed"
         : consultation.status === "completed"
           ? "Completed"
           : "Confirmed",

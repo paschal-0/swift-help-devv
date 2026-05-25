@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import {
-  completePatientConsultation,
-  ratePatientConsultation,
-} from "@/services/patientApi";
+import { ratePatientConsultation } from "@/services/patientApi";
 
 const CONSULTATION_FEEDBACK_STORAGE_KEY = "patient-consultation-feedback";
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
@@ -56,7 +53,6 @@ export function PatientConsultationRatingPage() {
     setIsSubmitting(true);
 
     try {
-      await completePatientConsultation(consultationId);
       await ratePatientConsultation(consultationId, {
         rating,
         comment: trimmedComment || undefined,

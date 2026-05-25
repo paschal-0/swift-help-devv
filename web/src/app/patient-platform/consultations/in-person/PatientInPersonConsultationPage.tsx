@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
-  completePatientConsultation,
+  getPatientLiveUrl,
   getPatientConsultationRoom,
   listPatientConsultations,
   ratePatientConsultation,
+  type PatientNotification,
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
@@ -70,7 +71,13 @@ export function PatientInPersonConsultationPage() {
         const nextRoom = await getPatientConsultationRoom(consultationId);
         if (!isMounted) return;
         setRoom(nextRoom);
-        setStatus(nextRoom.consultation.status === "completed" ? "completed" : "not-started");
+        setStatus(
+          nextRoom.consultation.status === "completed"
+            ? "completed"
+            : nextRoom.consultation.status === "ongoing"
+              ? "in-progress"
+              : "not-started",
+        );
       } catch (error) {
         if (!isMounted) return;
         toast.error(getApiErrorMessage(error));
@@ -82,6 +89,33 @@ export function PatientInPersonConsultationPage() {
       isMounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!room?.consultation) return;
+
+    const eventSource = new EventSource(getPatientLiveUrl(), {
+      withCredentials: true,
+    });
+    const consultationId = room.consultation.id;
+    const handleNotification = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as PatientNotification;
+      if (
+        notification.consultationId !== consultationId ||
+        notification.metadata?.status !== "completed"
+      ) {
+        return;
+      }
+      void getPatientConsultationRoom(consultationId).then((updatedRoom) => {
+        setRoom(updatedRoom);
+        setStatus("completed");
+      });
+    };
+    eventSource.addEventListener("patient.notification.created", handleNotification);
+    return () => {
+      eventSource.removeEventListener("patient.notification.created", handleNotification);
+      eventSource.close();
+    };
+  }, [room?.consultation]);
 
   const consultation = room?.consultation;
   const providerName = room?.provider?.name ?? "Selected provider";
@@ -99,26 +133,10 @@ export function PatientInPersonConsultationPage() {
     [consultation],
   );
 
-  const completeVisit = async () => {
-    if (!consultation) return;
-    setIsSaving(true);
-    try {
-      const completed = await completePatientConsultation(consultation.id);
-      setRoom((current) => current ? { ...current, consultation: completed } : current);
-      setStatus("completed");
-      toast.success("Consultation completed");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const submitRating = async () => {
     if (!consultation) return;
     setIsSaving(true);
     try {
-      await completePatientConsultation(consultation.id);
       await ratePatientConsultation(consultation.id, {
         rating,
         comment: comment.trim() || undefined,
@@ -180,32 +198,10 @@ export function PatientInPersonConsultationPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setStatus("enroute")}
-                className="h-11 rounded-[12px] bg-[#E3F2FD] px-4 text-[15px] font-medium text-[#1565C0]"
+                onClick={() => router.push("/patient-platform/consultations")}
+                className="h-11 rounded-[12px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC]"
               >
-                Mark en route
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus("arrived")}
-                className="h-11 rounded-[12px] bg-[#E3F2FD] px-4 text-[15px] font-medium text-[#1565C0]"
-              >
-                Provider arrived
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus("in-progress")}
-                className="h-11 rounded-[12px] bg-[#1565C0] px-4 text-[15px] font-medium text-[#F8FAFC]"
-              >
-                Start visit
-              </button>
-              <button
-                type="button"
-                onClick={() => void completeVisit()}
-                disabled={isSaving || !consultation}
-                className="h-11 rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[15px] font-medium text-[#F8FAFC] disabled:opacity-60"
-              >
-                End visit
+                Leave appointment
               </button>
             </div>
           </div>

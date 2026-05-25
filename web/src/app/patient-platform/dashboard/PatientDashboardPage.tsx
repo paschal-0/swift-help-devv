@@ -10,7 +10,7 @@ import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientDashboard, type PatientDashboard } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 
-type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
+type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled";
 
 type Appointment = {
   id: string;
@@ -81,6 +81,8 @@ function appointmentStatus(status: string): AppointmentStatus {
   const normalized = status.toLowerCase();
   if (normalized === "completed") return "Done";
   if (normalized === "ongoing" || normalized === "checked_in") return "Ongoing";
+  if (normalized === "missed") return "Missed";
+  if (normalized === "cancelled") return "Cancelled";
   return "Upcoming";
 }
 
@@ -135,6 +137,8 @@ function StatusPill({ status }: { status: AppointmentStatus }) {
       ? "bg-[#E3F2FD] text-[#1565C0]"
       : status === "Done"
         ? "border border-[#94A3B8] bg-[#E2E8F0] text-[#94A3B8]"
+        : status === "Missed" || status === "Cancelled"
+          ? "border border-[#FCA5A5] bg-[#FEE2E2] text-[#B91C1C]"
         : "border border-[#94A3B8] bg-[#E2E8F0] text-[#64748B]";
 
   return (

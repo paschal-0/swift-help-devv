@@ -130,6 +130,7 @@ export type PatientProviderAvailability = {
 
 export type PatientMedicalRecord = {
   id: string;
+  consultationId?: string | null;
   title: string;
   subtitle: string;
   category: string;

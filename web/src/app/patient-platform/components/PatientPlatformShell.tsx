@@ -360,7 +360,16 @@ export function PatientPlatformShell({
   };
 
   const openNotificationTarget = (notification: PatientNotification) => {
-    if (notification.appointmentId || notification.type === "appointment") {
+    if (
+      notification.metadata?.status === "completed" &&
+      notification.consultationId
+    ) {
+      window.sessionStorage.setItem(
+        "patientActiveConsultationId",
+        notification.consultationId,
+      );
+      router.push("/patient-platform/consultations/rate");
+    } else if (notification.appointmentId || notification.type === "appointment") {
       router.push("/patient-platform/appointments");
     } else if (notification.consultationId || notification.type === "consultation") {
       router.push("/patient-platform/consultations");

@@ -386,6 +386,8 @@ export function ProfessionalPlatformShell({
   const openNotificationTarget = (notification: ProfessionalNotification) => {
     if (notification.shiftOfferId) {
       router.push(`/professional-platform/shift-offers/${notification.shiftOfferId}`);
+    } else if (typeof notification.metadata?.requestId === "string") {
+      router.push("/professional-platform/requests");
     } else if (typeof notification.metadata?.consultationId === "string") {
       router.push("/professional-platform/schedule");
     } else if (typeof notification.metadata?.appointmentId === "string") {

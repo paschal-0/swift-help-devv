@@ -30,7 +30,7 @@ import {
   type ProfessionalDashboard,
 } from "@/services/professionalApi";
 
-type AppointmentStatus = "Done" | "Ongoing" | "Upcoming";
+type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled";
 
 type Appointment = {
   id: string;
@@ -138,7 +138,11 @@ const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment
       ? "Done"
       : session.status === "ongoing"
         ? "Ongoing"
-        : "Upcoming",
+        : session.status === "missed"
+          ? "Missed"
+          : session.status === "cancelled"
+            ? "Cancelled"
+            : "Upcoming",
   consultationType: session.mode,
   reason: session.reason,
 });
@@ -245,6 +249,14 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
     return (
       <span className="inline-flex h-[23px] min-w-[52px] items-center justify-center rounded-md border border-[#94A3B8] bg-[#E2E8F0] px-2 text-[10px] font-normal leading-[10px] tracking-[-0.05em] text-[#94A3B8]">
         Done
+      </span>
+    );
+  }
+
+  if (status === "Missed" || status === "Cancelled") {
+    return (
+      <span className="inline-flex h-[23px] min-w-[60px] items-center justify-center rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-2 text-[10px] font-normal leading-[10px] tracking-[-0.05em] text-[#B91C1C]">
+        {status}
       </span>
     );
   }
