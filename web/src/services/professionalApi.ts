@@ -375,6 +375,28 @@ export type ProfessionalSettings = {
   securityPreferences: Record<string, boolean>;
 };
 
+export type ProfessionalVerificationStatus = {
+  verificationStatus: ProfessionalProfile["verificationStatus"];
+  uploadedDocuments: ProfessionalDocument[];
+};
+
+export type ProfessionalPerformance = {
+  completedSessions: number;
+  completedShifts: number;
+  missedShifts: number;
+  responseRate: number;
+  averageRating: number;
+  reviewCount: number;
+};
+
+export type ProfessionalReview = {
+  id: string;
+  professionalUserId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+};
+
 export type ProfessionalDashboard = {
   range: "today" | "week";
   metrics: {
@@ -451,6 +473,20 @@ export function uploadProfessionalDocuments(documents: ProfessionalDocument[]) {
   );
 }
 
+export function deleteProfessionalDocument(documentIndex: number) {
+  return apiRequest<ProfessionalProfile>(
+    `/professional/verification/documents/${documentIndex}`,
+    { method: "DELETE" },
+  );
+}
+
+export function getProfessionalVerificationStatus() {
+  return apiRequest<ProfessionalVerificationStatus>(
+    "/professional/verification/status",
+    { method: "GET" },
+  );
+}
+
 export function getProfessionalAvailability() {
   return apiRequest<ProfessionalAvailabilitySetting>(
     "/professional/availability",
@@ -510,6 +546,13 @@ export function listProfessionalRequests(status?: ConsultationRequestStatus) {
   const suffix = status ? `?status=${status}` : "";
   return apiRequest<ProfessionalConsultationRequest[]>(
     `/professional/requests${suffix}`,
+    { method: "GET" },
+  );
+}
+
+export function getProfessionalRequest(requestId: string) {
+  return apiRequest<ProfessionalConsultationRequest>(
+    `/professional/requests/${encodeURIComponent(requestId)}`,
     { method: "GET" },
   );
 }
@@ -873,13 +916,27 @@ export function getProfessionalReferrals() {
   });
 }
 
+export function getProfessionalPerformance() {
+  return apiRequest<ProfessionalPerformance>("/professional/performance", {
+    method: "GET",
+  });
+}
+
+export function listProfessionalReviews() {
+  return apiRequest<ProfessionalReview[]>("/professional/reviews", {
+    method: "GET",
+  });
+}
+
 export function getProfessionalSettings() {
   return apiRequest<ProfessionalSettings>("/professional/settings", {
     method: "GET",
   });
 }
 
-export function updateProfessionalAccountSettings(payload: Partial<AuthUser>) {
+export function updateProfessionalAccountSettings(
+  payload: Partial<AuthUser> & { password?: string },
+) {
   return apiRequest<AuthUser>("/professional/settings/account", {
     method: "PATCH",
     body: JSON.stringify(payload),

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 
 type HelpCategoryId = "appointments" | "schedules" | "earnings" | "requests";
@@ -32,7 +31,7 @@ const categoryList: Array<{ id: HelpCategoryId; label: string }> = [
   { id: "appointments", label: "Appointments" },
   { id: "schedules", label: "Schedules" },
   { id: "earnings", label: "Earnings" },
-  { id: "requests", label: "Records" },
+  { id: "requests", label: "Requests" },
 ];
 
 const faqItems: FaqItem[] = [
@@ -241,23 +240,14 @@ export function ProfessionalHelpPage() {
     );
   }, [normalizedQuery, selectedCategory]);
 
-  useEffect(() => {
-    if (!visibleFaqs.length) {
-      setExpandedFaqId("");
-      return;
-    }
-
-    if (!visibleFaqs.some((item) => item.id === expandedFaqId)) {
-      setExpandedFaqId(visibleFaqs[visibleFaqs.length - 1]?.id ?? "");
-    }
-  }, [expandedFaqId, visibleFaqs]);
+  const activeExpandedFaqId = visibleFaqs.some((item) => item.id === expandedFaqId)
+    ? expandedFaqId
+    : visibleFaqs[visibleFaqs.length - 1]?.id ?? "";
 
   const handleTileClick = (tile: HelpTile) => {
     setSelectedCategory(tile.id);
     if (tile.route) {
       router.push(tile.route);
-    } else {
-      toast.info("Appointments support details are not available yet");
     }
   };
 
@@ -352,7 +342,9 @@ export function ProfessionalHelpPage() {
             <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-[5px]">
               <motion.button
                 type="button"
-                onClick={() => toast.info("Support phone line is unavailable right now")}
+                onClick={() => {
+                  window.location.href = "tel:+442045860850";
+                }}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
@@ -363,7 +355,9 @@ export function ProfessionalHelpPage() {
 
               <motion.button
                 type="button"
-                onClick={() => toast.info("Support email is unavailable right now")}
+                onClick={() => {
+                  window.location.href = "mailto:support@swifthelp.net";
+                }}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#1565C0] px-3 text-[12px] font-light tracking-[-0.05em] text-[#F8FAFC] sm:h-[33px] sm:rounded-[7px] sm:px-0 sm:text-[12.2097px] sm:tracking-[-0.07em]"
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.985 }}
@@ -385,7 +379,7 @@ export function ProfessionalHelpPage() {
           <div className="mt-5 space-y-4 sm:mt-8 sm:space-y-6">
             {visibleFaqs.length ? (
               visibleFaqs.map((item) => {
-                const expanded = item.id === expandedFaqId;
+                const expanded = item.id === activeExpandedFaqId;
 
                 return (
                   <motion.button

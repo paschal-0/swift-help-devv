@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import { getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
 import {
+  deleteProfessionalDocument,
   getProfessionalProfile,
   listProfessionalNotifications,
   type ProfessionalNotification,
@@ -32,31 +33,24 @@ type LicenseFile = {
   name: string;
   size: string;
   status: string;
+  documentIndex: number;
 };
 
-const personalInformation: InfoRow[] = [
-  { label: "Gender", value: "Male" },
-  { label: "Date of Birth", value: "12 Jan 1998" },
-  { label: "Phone Number", value: "+2348339333300" },
-  { label: "Email", value: "sarah77@gmail.com" },
-  { label: "Address", value: "92, wilson street" },
-  { label: "Location", value: "London, England" },
-];
-
-const professionalInformation: InfoRow[] = [
-  { label: "License No", value: "1122336442" },
-  { label: "Speciality", value: "Doctor" },
-  { label: "Consultation type", value: "Virtual" },
-  { label: "Years of experience", value: "10 years" },
-];
-
-const licenseFiles: LicenseFile[] = [
-  { id: "license-1", name: "Certificate.pdf", size: "8MB / 8MB", status: "Completed" },
-  { id: "license-2", name: "Certificate.pdf", size: "8MB / 8MB", status: "Completed" },
-  { id: "license-3", name: "Certificate.pdf", size: "8MB / 8MB", status: "Completed" },
-];
-
 const fallbackActivities: ActivityItem[] = [];
+const emptyPersonalInformation: InfoRow[] = [
+  { label: "Gender", value: "Not provided" },
+  { label: "Date of Birth", value: "Not provided" },
+  { label: "Phone Number", value: "Not provided" },
+  { label: "Email", value: "Not provided" },
+  { label: "Address", value: "Not provided" },
+  { label: "Location", value: "Not provided" },
+];
+const emptyProfessionalInformation: InfoRow[] = [
+  { label: "License No", value: "Not provided" },
+  { label: "Speciality", value: "Not provided" },
+  { label: "Consultation type", value: "Not provided" },
+  { label: "Years of experience", value: "Not provided" },
+];
 
 function EditIcon({ subtle = false }: { subtle?: boolean }) {
   return (
@@ -202,7 +196,7 @@ export function ProfessionalMyProfilePage() {
   }, []);
 
   const backendPersonalInformation = useMemo<InfoRow[]>(() => {
-    if (!profileData) return personalInformation;
+    if (!profileData) return emptyPersonalInformation;
 
     return [
       { label: "Gender", value: profileData.profile.gender || "Not provided" },
@@ -215,7 +209,7 @@ export function ProfessionalMyProfilePage() {
   }, [profileData]);
 
   const backendProfessionalInformation = useMemo<InfoRow[]>(() => {
-    if (!profileData) return professionalInformation;
+    if (!profileData) return emptyProfessionalInformation;
 
     return [
       { label: "License No", value: profileData.profile.licenseNumber || "Not provided" },
@@ -233,14 +227,13 @@ export function ProfessionalMyProfilePage() {
 
   const backendLicenseFiles = useMemo<LicenseFile[]>(() => {
     const documents = profileData?.profile.uploadedDocuments ?? [];
-    return documents.length
-      ? documents.map((file, index) => ({
+    return documents.map((file, index) => ({
           id: `${file.name}-${index}`,
           name: file.name,
           size: file.sizeLabel,
           status: profileData?.profile.verificationStatus === "approved" ? "Completed" : "Pending",
-        }))
-      : licenseFiles;
+          documentIndex: index,
+        }));
   }, [profileData]);
 
   const filteredActivities = useMemo(() => {
@@ -274,7 +267,22 @@ export function ProfessionalMyProfilePage() {
   }, [backendLicenseFiles, query]);
 
   const handleEdit = () => router.push("/professional-platform/settings");
-  const handleDelete = (name: string) => toast.info(`${name} cannot be removed right now`);
+  const handleDelete = async (file: LicenseFile) => {
+    try {
+      const profile = await deleteProfessionalDocument(file.documentIndex);
+      setProfileData((current) =>
+        current
+          ? {
+              ...current,
+              profile,
+            }
+          : current,
+      );
+      toast.success(`${file.name} removed.`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
   const avatarUrl = profileData?.profile.avatarUrl ?? null;
   const displayName = profileData?.profile.professionalName || profileData?.account?.fullName || "Professional";
 
@@ -483,7 +491,7 @@ export function ProfessionalMyProfilePage() {
 
                     <button
                       type="button"
-                      onClick={() => handleDelete(file.name)}
+                      onClick={() => handleDelete(file)}
                       className="inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-full bg-[#F8FAFC]"
                       aria-label={`Delete ${file.name}`}
                     >
@@ -493,7 +501,7 @@ export function ProfessionalMyProfilePage() {
                 ))
               ) : (
                 <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-4 py-8 text-center text-sm font-light tracking-[-0.03em] text-[#64748B]">
-                  No license files match the current search.
+                  {query ? "No license files match the current search." : "No license files uploaded yet."}
                 </div>
               )}
             </div>

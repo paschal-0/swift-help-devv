@@ -104,22 +104,22 @@ function Card({
 
 export function PatientConsultationCompletePage() {
   const router = useRouter();
-  const [feedback, setFeedback] = useState<StoredFeedback | null>(null);
+  const [feedback] = useState<StoredFeedback | null>(() => {
+    if (typeof window === "undefined") return null;
+    const storedFeedback = window.localStorage.getItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+    if (!storedFeedback) return null;
+
+    try {
+      return JSON.parse(storedFeedback) as StoredFeedback;
+    } catch {
+      window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
+      return null;
+    }
+  });
   const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
   const [medicalRecord, setMedicalRecord] = useState<PatientMedicalRecord | null>(null);
 
   useEffect(() => {
-    const storedFeedback = window.localStorage.getItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
-
-    if (storedFeedback) {
-      try {
-        const parsedFeedback = JSON.parse(storedFeedback) as StoredFeedback;
-        setFeedback(parsedFeedback);
-      } catch {
-        window.localStorage.removeItem(CONSULTATION_FEEDBACK_STORAGE_KEY);
-      }
-    }
-
     const consultationId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
     if (!consultationId) return;
 

@@ -197,7 +197,7 @@ export function PatientAppointmentSchedulePage() {
     return () => {
       isMounted = false;
     };
-  }, [draft?.professionalId, selectedDate]);
+  }, [draft?.professionalId, patientTimezone, selectedDate]);
 
   const monthTitle = useMemo(
     () =>

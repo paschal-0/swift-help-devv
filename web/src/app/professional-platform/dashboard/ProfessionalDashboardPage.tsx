@@ -127,6 +127,14 @@ const formatTime = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+const getInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "P";
+
 const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment => ({
   id: session.id,
   startsAt: session.startsAt,
@@ -329,8 +337,8 @@ function MobileDashboardView({
             </span>
           </div>
           <div className="flex gap-3">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#E2E8F0]">
-              <Image src="/doctor.jpg" alt="Active consultation" fill className="object-cover" />
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#E3F2FD] text-lg font-semibold text-[#1565C0]">
+              {getInitials(activeAppointment.patient)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[#334155]">{activeAppointment.patient}</p>
@@ -885,7 +893,6 @@ export function ProfessionalDashboardPage() {
     dashboardAppointments,
     dashboardRequests.length,
     earningsMetrics.completedSessions,
-    earningsMetrics.currency,
   ]);
 
   const dashboardDayLabels = [0, 1, 2].map((offset) => {
@@ -1008,7 +1015,7 @@ export function ProfessionalDashboardPage() {
           transition={{ duration: 0.18, ease: "easeOut" }}
           className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#1565C0] px-4 pb-4 pt-4"
         >
-          <Image src="/doctor.jpg" alt="" fill className="object-cover mix-blend-soft-light opacity-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(227,242,253,0.22),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
           <div className="relative z-10 flex items-start justify-between gap-3">
             <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#F8FAFC]">Earnings Overview</h2>
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1228,8 +1235,8 @@ export function ProfessionalDashboardPage() {
 
               {activeAppointment ? (
                 <div className="rounded-xl border border-[#94A3B8] bg-[#F8FAFC] p-4">
-                  <div className="relative h-[121px] overflow-hidden rounded-lg bg-[#e7edf5]">
-                    <Image src="/doctor.jpg" alt="Active consultation" fill className="object-cover" />
+                  <div className="relative flex h-[121px] items-center justify-center overflow-hidden rounded-lg bg-[#E3F2FD]">
+                    <span className="text-4xl font-semibold text-[#1565C0]">{getInitials(activeAppointment.patient)}</span>
                     <span className="absolute right-2 top-2 inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[7.5px] font-medium leading-4 tracking-[-0.05em] text-[#1E88E5]">
                       Ongoing
                     </span>

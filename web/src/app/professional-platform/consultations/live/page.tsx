@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { ProfessionalLiveConsultationPage } from "./ProfessionalLiveConsultationPage";
 
 export default function Page() {
-  return <ProfessionalLiveConsultationPage />;
+  return (
+    <Suspense fallback={null}>
+      <ProfessionalLiveConsultationPage />
+    </Suspense>
+  );
 }

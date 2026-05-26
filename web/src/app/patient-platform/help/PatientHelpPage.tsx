@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
@@ -252,16 +252,9 @@ export function PatientHelpPage() {
     );
   }, [normalizedQuery, selectedCategory]);
 
-  useEffect(() => {
-    if (!visibleFaqs.length) {
-      setExpandedFaqId("");
-      return;
-    }
-
-    if (!visibleFaqs.some((item) => item.id === expandedFaqId)) {
-      setExpandedFaqId(visibleFaqs[visibleFaqs.length - 1]?.id ?? "");
-    }
-  }, [expandedFaqId, visibleFaqs]);
+  const activeExpandedFaqId = visibleFaqs.some((item) => item.id === expandedFaqId)
+    ? expandedFaqId
+    : visibleFaqs[visibleFaqs.length - 1]?.id ?? "";
 
   const handleTileClick = (tile: HelpTile) => {
     setSelectedCategory(tile.id);
@@ -396,7 +389,7 @@ export function PatientHelpPage() {
           <div className="mt-5 space-y-4 sm:mt-8 sm:space-y-6">
             {visibleFaqs.length ? (
               visibleFaqs.map((item) => {
-                const expanded = item.id === expandedFaqId;
+                const expanded = item.id === activeExpandedFaqId;
 
                 return (
                   <motion.button

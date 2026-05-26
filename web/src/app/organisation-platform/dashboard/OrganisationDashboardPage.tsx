@@ -11,13 +11,6 @@ import {
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 
-type StatCard = {
-  title: string;
-  value: number;
-  subtitle: string;
-  href: string;
-};
-
 type ShiftRow = {
   id: string;
   department: string;
@@ -27,24 +20,6 @@ type ShiftRow = {
   status: "Filled" | "Partially Filled" | "Assigned";
   action: string;
   href: string;
-};
-
-type ResponseItem = {
-  id: string;
-  staff: string;
-  action: "accepted" | "declined";
-  shiftId: string;
-  ago: string;
-};
-
-type AttentionItem = {
-  id: string;
-  title: string;
-  tags: string[];
-  primaryLabel: string;
-  secondaryLabel: string;
-  primaryHref: string;
-  secondaryHref: string;
 };
 
 function formatShiftTimeRange(shift: OrganizationShift) {
@@ -67,6 +42,14 @@ function mapShiftStatus(shift: OrganizationShift): ShiftRow["status"] {
 
   return "Assigned";
 }
+
+const getInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "SH";
 
 function shiftRowsFromDashboard(dashboard: OrganizationDashboard | null) {
   if (!dashboard?.todayShifts?.length) {
@@ -239,14 +222,19 @@ export function OrganisationDashboardPage() {
     () => staffAvailabilityFromDashboard(dashboard),
     [dashboard],
   );
-  const dashboardResponses = dashboard?.recentResponses?.length
-    ? dashboard.recentResponses
-        .filter((item) => item.action === "accepted" || item.action === "declined")
-        .map((item) => ({ ...item, action: item.action as "accepted" | "declined" }))
-    : [];
-  const dashboardAttentionItems = dashboard?.attentionItems?.length
-    ? dashboard.attentionItems
-    : [];
+  const dashboardResponses = useMemo(
+    () =>
+      dashboard?.recentResponses?.length
+        ? dashboard.recentResponses
+            .filter((item) => item.action === "accepted" || item.action === "declined")
+            .map((item) => ({ ...item, action: item.action as "accepted" | "declined" }))
+        : [],
+    [dashboard],
+  );
+  const dashboardAttentionItems = useMemo(
+    () => (dashboard?.attentionItems?.length ? dashboard.attentionItems : []),
+    [dashboard],
+  );
 
   const visibleShiftRows = useMemo(() => {
     if (!normalizedQuery) {
@@ -417,8 +405,8 @@ export function OrganisationDashboardPage() {
             {visibleResponses.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-[10px] transition duration-200 hover:bg-[#f6faff] hover:px-2 hover:py-1">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] transition duration-200 hover:scale-105">
-                    <img src="/doctor.jpg" alt={item.staff} className="h-full w-full object-cover" />
+                  <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E3F2FD] text-sm font-semibold text-[#1565C0] transition duration-200 hover:scale-105">
+                    {getInitials(item.staff)}
                   </div>
                   <p className="min-w-0 text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
                     {item.staff}{" "}

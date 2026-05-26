@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 
 const optionCards = [
   {
@@ -169,12 +169,11 @@ function OrganisationIcon() {
 
 export function WelcomePage() {
   const [activeMobileTab, setActiveMobileTab] = useState(0);
-  const [refCode, setRefCode] = useState("");
-
-  useEffect(() => {
-    const ref = new URLSearchParams(window.location.search).get("ref")?.trim() ?? "";
-    setRefCode(ref);
-  }, []);
+  const refCode = useSyncExternalStore(
+    () => () => undefined,
+    () => new URLSearchParams(window.location.search).get("ref")?.trim() ?? "",
+    () => "",
+  );
 
   const cardsWithHref = optionCards.map((card) => {
     if (!card.role) return card;

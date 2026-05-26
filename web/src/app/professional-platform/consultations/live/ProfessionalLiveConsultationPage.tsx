@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
@@ -35,6 +35,7 @@ function formatTime(value?: string | null) {
 
 export function ProfessionalLiveConsultationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [room, setRoom] = useState<ProfessionalConsultationRoom | null>(null);
   const [videoAccess, setVideoAccess] = useState<{
     roomName: string;
@@ -55,8 +56,10 @@ export function ProfessionalLiveConsultationPage() {
 
     async function loadRoom() {
       try {
+        const requestedId = searchParams.get("consultationId") ?? searchParams.get("id");
         const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
         const consultationId =
+          requestedId ||
           storedId ||
           (await listProfessionalConsultations()).find(isActive)?.id;
 
@@ -85,7 +88,7 @@ export function ProfessionalLiveConsultationPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!consultation) return;

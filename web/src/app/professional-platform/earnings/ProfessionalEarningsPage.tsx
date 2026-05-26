@@ -31,8 +31,47 @@ type TransactionItem = {
   consultation: string;
   patient: string;
   date: string;
+  createdAt: string;
   amount: string;
-  status: "Completed";
+  amountCents: number;
+  status: TransactionStatus;
+};
+
+type TransactionStatus =
+  | "Pending"
+  | "Available"
+  | "Paid out"
+  | "Completed"
+  | "Requested"
+  | "Processing"
+  | "Failed"
+  | "Cancelled";
+
+const earningStatusLabel: Record<ProfessionalEarning["status"], TransactionStatus> = {
+  pending: "Pending",
+  available: "Available",
+  paid_out: "Paid out",
+  cancelled: "Cancelled",
+};
+
+const payoutStatusLabel: Record<ProfessionalPayout["status"], TransactionStatus> = {
+  requested: "Requested",
+  processing: "Processing",
+  completed: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
+
+const statusTone = (status: TransactionStatus) => {
+  if (["Completed", "Available", "Paid out"].includes(status)) return "text-[#19AA4A]";
+  if (["Failed", "Cancelled"].includes(status)) return "text-[#DC2626]";
+  return "text-[#B45309]";
+};
+
+const statusPillTone = (status: TransactionStatus) => {
+  if (["Completed", "Available", "Paid out"].includes(status)) return "bg-[#DCFCE7] text-[#16A34A]";
+  if (["Failed", "Cancelled"].includes(status)) return "bg-[#FEE2E2] text-[#DC2626]";
+  return "bg-[#FEF3C7] text-[#B45309]";
 };
 
 const formatDate = (value: string) =>
@@ -48,8 +87,10 @@ const mapEarning = (earning: ProfessionalEarning): TransactionItem => ({
   consultation: earning.description,
   patient: earning.counterpartyName ?? "Swifthelp",
   date: formatDate(earning.createdAt),
+  createdAt: earning.createdAt,
   amount: formatApiMoney(earning.amountCents, earning.currency),
-  status: "Completed",
+  amountCents: earning.amountCents,
+  status: earningStatusLabel[earning.status],
 });
 
 const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
@@ -58,8 +99,10 @@ const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
   consultation: "Withdrawal",
   patient: payout.status,
   date: formatDate(payout.createdAt),
+  createdAt: payout.createdAt,
   amount: formatApiMoney(payout.amountCents, payout.currency),
-  status: "Completed",
+  amountCents: payout.amountCents,
+  status: payoutStatusLabel[payout.status],
 });
 
 const buildSummaryCards = (summary: EarningsSummary | null): EarningsSummaryCard[] => {
@@ -103,10 +146,10 @@ export function ProfessionalEarningsPage() {
   const { searchText } = useProfessionalPlatformShell();
   const [activeTab, setActiveTab] = useState<EarningsTab>("overview");
   const [period, setPeriod] = useState<"This month" | "Last month">("This month");
-  const [transactionStatusFilter, setTransactionStatusFilter] = useState<"All Statuses" | "Completed">(
-    "All Statuses"
+  const [transactionStatusFilter, setTransactionStatusFilter] = useState<"All Statuses" | TransactionStatus>(
+    "All Statuses",
   );
-  const [payoutFilter, setPayoutFilter] = useState<"All Payouts" | "Completed">("All Payouts");
+  const [payoutFilter, setPayoutFilter] = useState<"All Payouts" | TransactionStatus>("All Payouts");
   const [payoutMethodIndex, setPayoutMethodIndex] = useState(0);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
@@ -124,17 +167,29 @@ export function ProfessionalEarningsPage() {
   const query = searchText.trim().toLowerCase();
 
   const searchedTransactions = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const periodFiltered = transactionItems.filter((transaction) => {
+      const createdAt = new Date(transaction.createdAt);
+      if (period === "Last month") {
+        return createdAt >= previousMonthStart && createdAt < monthStart;
+      }
+      return createdAt >= monthStart && createdAt < nextMonthStart;
+    });
+
     if (!query) {
-      return transactionItems;
+      return periodFiltered;
     }
 
-    return transactionItems.filter((transaction) =>
+    return periodFiltered.filter((transaction) =>
       [transaction.consultation, transaction.patient, transaction.date, transaction.amount, transaction.status]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
-  }, [query, transactionItems]);
+  }, [period, query, transactionItems]);
 
   const transactionsForTab = useMemo(() => {
     if (transactionStatusFilter === "All Statuses") {
@@ -154,6 +209,23 @@ export function ProfessionalEarningsPage() {
 
   const overviewTransactions = searchedTransactions.slice(0, 9);
   const summaryCards = buildSummaryCards(walletSummary);
+  const completedPeriodTransactions = searchedTransactions.filter((transaction) =>
+    ["Completed", "Available", "Paid out"].includes(transaction.status),
+  );
+  const completedConsultationCount = completedPeriodTransactions.length;
+  const completedPeriodTotal = completedPeriodTransactions.reduce(
+    (total, transaction) => total + transaction.amountCents,
+    0,
+  );
+  const averagePeriodEarning =
+    completedConsultationCount > 0
+      ? Math.round(completedPeriodTotal / completedConsultationCount)
+      : 0;
+  const highestPeriodEarning = completedPeriodTransactions.reduce(
+    (highest, transaction) => Math.max(highest, transaction.amountCents),
+    0,
+  );
+  const periodCurrency = walletSummary?.currency ?? "NGN";
   const selectedTransaction =
     transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
@@ -474,7 +546,7 @@ export function ProfessionalEarningsPage() {
                   Bank name:{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutBank}</span>
                   <br />
-                  Account holder: <span className="font-semibold text-[#334155]">Ayeni Precious</span>
+                  Account holder: <span className="font-semibold text-[#334155]">{payoutMethodItems[payoutMethodIndex]?.accountName ?? "Not added"}</span>
                   <br />
                   Account number:{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutAccount}</span>
@@ -497,11 +569,11 @@ export function ProfessionalEarningsPage() {
                   This Month
                 </h3>
                 <p className="mt-3 text-[14px] font-normal leading-[26px] tracking-[-0.05em] text-[#64748B] md:mt-2 md:text-[12px] md:font-light md:leading-[22px] md:text-[#334155]">
-                  Completed Consultations: <span className="font-semibold text-[#334155]">18</span>
+                  Completed earnings: <span className="font-semibold text-[#334155]">{completedConsultationCount}</span>
                   <br />
-                  Average per Consultation: <span className="font-semibold text-[#334155]">N13,611</span>
+                  Average earning: <span className="font-semibold text-[#334155]">{formatApiMoney(averagePeriodEarning, periodCurrency)}</span>
                   <br />
-                  Highest Single Earning: <span className="font-semibold text-[#334155]">N20,000</span>
+                  Highest single earning: <span className="font-semibold text-[#334155]">{formatApiMoney(highestPeriodEarning, periodCurrency)}</span>
                 </p>
               </article>
             </aside>
@@ -518,7 +590,7 @@ export function ProfessionalEarningsPage() {
               type="button"
               onClick={() =>
                 setTransactionStatusFilter((current) =>
-                  current === "All Statuses" ? "Completed" : "All Statuses"
+                  current === "All Statuses" ? "Pending" : current === "Pending" ? "Available" : current === "Available" ? "Paid out" : "All Statuses"
                 )
               }
               className="inline-flex h-10 w-full items-center justify-between gap-1 rounded-[12px] border border-[#E2E8F0] bg-white px-4 text-[15px] font-medium tracking-[-0.05em] text-[#334155] shadow-sm md:h-8 md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:text-[16px] md:font-normal md:shadow-none"
@@ -571,7 +643,7 @@ export function ProfessionalEarningsPage() {
                     <span>{transaction.patient}</span>
                     <span>{transaction.date}</span>
                     <span>{transaction.amount}</span>
-                    <span className="text-[#19AA4A]">{transaction.status}</span>
+                    <span className={statusTone(transaction.status)}>{transaction.status}</span>
                     <button
                       type="button"
                       onClick={() => setSelectedTransactionId(transaction.id)}
@@ -599,7 +671,7 @@ export function ProfessionalEarningsPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-[16px] font-bold text-[#334155]">{transaction.amount}</span>
-                        <span className="rounded-md bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-medium text-[#16A34A]">
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(transaction.status)}`}>
                           {transaction.status}
                         </span>
                       </div>
@@ -632,7 +704,11 @@ export function ProfessionalEarningsPage() {
             </h2>
             <button
               type="button"
-              onClick={() => setPayoutFilter((current) => (current === "All Payouts" ? "Completed" : "All Payouts"))}
+              onClick={() =>
+                setPayoutFilter((current) =>
+                  current === "All Payouts" ? "Requested" : current === "Requested" ? "Processing" : current === "Processing" ? "Completed" : "All Payouts"
+                )
+              }
               className="inline-flex h-10 w-full items-center justify-between gap-1 rounded-[12px] border border-[#E2E8F0] bg-white px-4 text-[15px] font-medium tracking-[-0.05em] text-[#334155] shadow-sm md:h-8 md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:text-[16px] md:font-normal md:shadow-none"
             >
               {payoutFilter}
@@ -683,7 +759,7 @@ export function ProfessionalEarningsPage() {
                     <span>{payout.patient}</span>
                     <span>{payout.date}</span>
                     <span>{payout.amount}</span>
-                    <span className="text-[#19AA4A]">{payout.status}</span>
+                    <span className={statusTone(payout.status)}>{payout.status}</span>
                     <button
                       type="button"
                       onClick={() => setSelectedPayoutId(payout.id)}
@@ -711,7 +787,7 @@ export function ProfessionalEarningsPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-[16px] font-bold text-[#334155]">{payout.amount}</span>
-                        <span className="rounded-md bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-medium text-[#16A34A]">
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusPillTone(payout.status)}`}>
                           {payout.status}
                         </span>
                       </div>

@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,6 +8,7 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import {
   cancelProfessionalConsultation,
   createProfessionalBlockedTime,
+  deleteProfessionalBlockedTime,
   getProfessionalSchedule,
   updateProfessionalAvailability,
   type ProfessionalBlockedTime,
@@ -176,14 +176,25 @@ const timeOptions = [
 ];
 
 const blockTypeOptions = ["Break", "Meeting", "Time Off"];
-const blockDateOptions = ["2026-03-27", "2026-03-28", "2026-03-29"];
+const getDateInputValue = (offsetDays: number) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + offsetDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+const minBlockDate = getDateInputValue(0);
+const maxBlockDate = getDateInputValue(90);
 const blockTimeOptions = [
   "10:30 AM - 12:30 PM",
   "1:00 PM - 2:00 PM",
   "3:00 PM - 5:00 PM",
 ];
 const repeatOptions = ["Does not repeat", "Daily", "Weekly"];
-const calendarHeaderOptions = ["MARCH 17", "MARCH 18", "MARCH 19"];
+const calendarHeaderOptions = Array.from({ length: 3 }, (_item, index) =>
+  new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" })
+    .format(new Date(`${getDateInputValue(index)}T12:00:00`))
+    .toUpperCase(),
+);
 
 const ruleOptions: Record<string, string[]> = {
   Available: ["Monday - Friday", "Monday - Saturday", "Tuesday - Saturday"],
@@ -259,16 +270,19 @@ const formatBlockDateLabel = (value: string) =>
     year: "numeric",
   }).format(new Date(`${value}T00:00:00`));
 
-const getBlockDayLabel = (value: string) =>
-  new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-  }).format(new Date(`${value}T00:00:00`));
-
 const formatClock = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "P";
 
 const parseClockMinutes = (value: string) => {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -510,7 +524,7 @@ export function ProfessionalSchedulePage() {
     useState<AvailabilityRule[]>(availabilityRules);
   const [isEditingRules, setIsEditingRules] = useState(false);
   const [blockType, setBlockType] = useState(blockTypeOptions[0]);
-  const [blockDate, setBlockDate] = useState(blockDateOptions[0]);
+  const [blockDate, setBlockDate] = useState(minBlockDate);
   const [blockTime, setBlockTime] = useState(blockTimeOptions[0]);
   const [blockRepeat, setBlockRepeat] = useState(repeatOptions[0]);
 
@@ -855,6 +869,16 @@ export function ProfessionalSchedulePage() {
     }
   };
 
+  const removeBlockedTime = async (blockedTimeId: string) => {
+    try {
+      await deleteProfessionalBlockedTime(blockedTimeId);
+      setBlockedTimeItems((current) => current.filter((item) => item.id !== blockedTimeId));
+      toast.success("Blocked time removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove blocked time");
+    }
+  };
+
   return (
     <section className="mt-[14px] pb-9 xl:mt-[8px]">
       <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
@@ -1170,13 +1194,9 @@ export function ProfessionalSchedulePage() {
 
                 <div className="mt-[10px] flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div className="flex min-w-0 items-center gap-[8px]">
-                    <Image
-                      src="/doctor.jpg"
-                      alt={`${consultation.patient} avatar`}
-                      width={33}
-                      height={33}
-                      className="h-[33px] w-[33px] shrink-0 rounded-full object-cover"
-                    />
+                    <span className="inline-flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-full bg-[#F8FAFC] text-[11px] font-semibold text-[#1565C0]">
+                      {getInitials(consultation.patient)}
+                    </span>
                     <div className="min-w-0">
                       <p className="truncate text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155]">
                         {consultation.patient}
@@ -1255,17 +1275,18 @@ export function ProfessionalSchedulePage() {
 
                   <div className="mt-1 w-full space-y-[6px] sm:mt-0">
                     <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
-                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
-                        {item.reasonA}
-                      </p>
-                      <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
-                        {item.start} - {item.end}
-                      </p>
-                    </div>
-                    <div className="w-full max-w-full justify-self-start rounded-[10px] border border-[#64748B] bg-[#E2E8F0] px-2 py-[4px] sm:w-[210px] sm:px-[9px] sm:py-[3px]">
-                      <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
-                        {item.reasonB}
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[12px] font-medium leading-[14px] tracking-[-0.05em] text-[#334155] sm:font-normal">
+                          {item.reasonA}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => removeBlockedTime(item.id)}
+                          className="text-[11px] font-medium tracking-[-0.04em] text-[#DC2626]"
+                        >
+                          Remove
+                        </button>
+                      </div>
                       <p className="mt-[2px] text-[11px] font-light leading-[14px] tracking-[-0.05em] text-[#64748B] sm:text-[12px]">
                         {item.start} - {item.end}
                       </p>
@@ -1451,8 +1472,8 @@ export function ProfessionalSchedulePage() {
                     <input
                       type="date"
                       value={blockDate}
-                      min={blockDateOptions[0]}
-                      max={blockDateOptions[blockDateOptions.length - 1]}
+                      min={minBlockDate}
+                      max={maxBlockDate}
                       onChange={(event) => setBlockDate(event.target.value)}
                       aria-label={`Block date ${formatBlockDateLabel(blockDate)}`}
                       className="hide-date-picker h-[44px] w-full rounded-[12px] border border-[#94A3B8] bg-white pl-11 pr-3 text-[14px] font-medium leading-[22px] tracking-[-0.05em] text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#BFDBFE]"
@@ -1625,13 +1646,9 @@ export function ProfessionalSchedulePage() {
               </p>
 
               <div className="mt-4 flex items-center gap-3 rounded-[12px] bg-white py-2 sm:mt-5">
-                <Image
-                  src="/doctor.jpg"
-                  alt={`${activeAppointmentDetails.patient} avatar`}
-                  width={40}
-                  height={40}
-                  className="h-[40px] w-[40px] rounded-full object-cover"
-                />
+                <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[12px] font-semibold text-[#1565C0]">
+                  {getInitials(activeAppointmentDetails.patient)}
+                </span>
                 <span className="text-[15px] font-semibold leading-7 tracking-[-0.05em] text-black">
                   {activeAppointmentDetails.patient}
                 </span>
@@ -1746,7 +1763,7 @@ export function ProfessionalSchedulePage() {
                       activeConsultationId,
                     );
                     setIsAppointmentDetailsModalOpen(false);
-                    router.push("/professional-platform/consultations/live");
+                    router.push(`/professional-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultationId)}`);
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
                 >

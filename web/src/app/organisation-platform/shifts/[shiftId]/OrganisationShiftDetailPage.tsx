@@ -231,16 +231,16 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
   useEffect(() => {
     let isMounted = true;
 
-    setIsLoading(true);
-    getOrganizationShift(shiftId)
-      .then((data) => {
+    async function loadShift() {
+      setIsLoading(true);
+      try {
+        const data = await getOrganizationShift(shiftId);
         if (!isMounted) {
           return;
         }
 
         setDetail(mapShiftDetail(data));
-      })
-      .catch((error) => {
+      } catch (error) {
         if (isMounted) {
           setDetail(null);
           toast.error(
@@ -249,12 +249,14 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               : "Unable to load shift details.",
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) {
           setIsLoading(false);
         }
-      });
+      }
+    }
+
+    void loadShift();
 
     return () => {
       isMounted = false;

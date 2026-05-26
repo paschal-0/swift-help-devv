@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 type ProfileAvatarProps = {
   src?: string | null;
   fallbackSrc?: string;
@@ -16,9 +18,9 @@ export function ProfileAvatar({
   const imageSrc = src || fallbackSrc;
 
   return (
-    <span className={`block overflow-hidden bg-[#E2E8F0] ${className}`}>
+    <span className={`relative block overflow-hidden bg-[#E2E8F0] ${className}`}>
       {imageSrc ? (
-        <img src={imageSrc} alt={alt} className="h-full w-full object-cover" />
+        <Image src={imageSrc} alt={alt} fill sizes="64px" className="object-cover" unoptimized />
       ) : (
         <span className="flex h-full w-full items-center justify-center" aria-label={alt}>
           <svg viewBox="0 0 24 24" className="h-1/2 w-1/2 text-[#94A3B8]" aria-hidden>

@@ -175,6 +175,12 @@ export function ProfessionalReferralsPage() {
 
   const referralCode = referrals?.referralCode ?? "";
   const referralShareUrl = referrals?.referralShareUrl ?? "";
+  const partnerLevel =
+    (referrals?.metrics.totalReferrals ?? 0) >= 20
+      ? "Health Ambassador"
+      : (referrals?.metrics.totalReferrals ?? 0) >= 5
+        ? "Community Advocate"
+        : "Referral Partner";
   const referralMetrics = useMemo<ReferralMetric[]>(() => {
     const metrics = referrals?.metrics;
     return [
@@ -283,7 +289,7 @@ export function ProfessionalReferralsPage() {
         <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Referrals</h1>
         <span className="inline-flex w-fit items-center gap-2 rounded-[8px] bg-[#1565C0] px-4 py-2 text-[16px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)]">
           <StarBadge tone="blue" />
-          Level 1 - Referrer
+          {partnerLevel}
         </span>
       </div>
 
@@ -295,9 +301,8 @@ export function ProfessionalReferralsPage() {
           <div className="min-w-0 pr-0 xl:pr-4">
             <h2 className="text-[18px] font-semibold tracking-[-0.07em]">Your referral code</h2>
             <p className="mt-3 max-w-[360px] text-[15px] leading-[1.2] tracking-[-0.07em] text-[#E2E8F0]">
-              Share this code with other organizations, professionals, or patients. Earn N5,000 for
-              each organization, N2,000 for each professional, and N500 for each patient that signs
-              up using your code.
+              Share this code with other organizations, professionals, or patients. Referral
+              rewards are tracked automatically and added to your earnings when they qualify.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 xl:flex-row xl:items-center">

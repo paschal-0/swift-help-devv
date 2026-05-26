@@ -84,7 +84,7 @@ export function ProfessionalSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
   const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
   const [settings, setSettings] = useState<ProfessionalSettings | null>(null);
-  const [accountForm, setAccountForm] = useState({ fullName: "", email: "", phoneNumber: "" });
+  const [accountForm, setAccountForm] = useState({ fullName: "", email: "", phoneNumber: "", password: "" });
   const [profileForm, setProfileForm] = useState({
     professionalName: "",
     specialization: "",
@@ -110,6 +110,7 @@ export function ProfessionalSettingsPage() {
           fullName: profile.account?.fullName ?? "",
           email: profile.account?.email ?? "",
           phoneNumber: profile.account?.phoneNumber ?? "",
+          password: "",
         });
         setProfileForm({
           professionalName: profile.profile.professionalName ?? "",
@@ -144,6 +145,7 @@ export function ProfessionalSettingsPage() {
     try {
       await updateProfessionalNotificationSettings({ [key]: next[key] });
     } catch (error) {
+      setSettings((value) => (value ? { ...value, notificationPreferences: current } : value));
       toast.error(error instanceof Error ? error.message : "Unable to update notification setting");
     }
   };
@@ -156,13 +158,20 @@ export function ProfessionalSettingsPage() {
     try {
       await updateProfessionalSecuritySettings({ [key]: next[key] });
     } catch (error) {
+      setSettings((value) => (value ? { ...value, securityPreferences: current } : value));
       toast.error(error instanceof Error ? error.message : "Unable to update security setting");
     }
   };
 
   const saveAccount = async () => {
     try {
-      await updateProfessionalAccountSettings(accountForm);
+      await updateProfessionalAccountSettings({
+        fullName: accountForm.fullName,
+        email: accountForm.email,
+        phoneNumber: accountForm.phoneNumber,
+        ...(accountForm.password ? { password: accountForm.password } : {}),
+      });
+      setAccountForm((current) => ({ ...current, password: "" }));
       toast.success("Account settings saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save account settings");
@@ -213,6 +222,7 @@ export function ProfessionalSettingsPage() {
                 <Field label="Full name" value={accountForm.fullName} onChange={(fullName) => setAccountForm((current) => ({ ...current, fullName }))} />
                 <Field label="Email address" value={accountForm.email} onChange={(email) => setAccountForm((current) => ({ ...current, email }))} />
                 <Field label="Phone number" value={accountForm.phoneNumber} onChange={(phoneNumber) => setAccountForm((current) => ({ ...current, phoneNumber }))} />
+                <Field label="New password" type="password" value={accountForm.password} onChange={(password) => setAccountForm((current) => ({ ...current, password }))} placeholder="Leave blank to keep current password" />
               </div>
               <button type="button" onClick={saveAccount} className="mt-8 h-[46px] rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-8 text-[#E3F2FD]">
                 Save account

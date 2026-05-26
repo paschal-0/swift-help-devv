@@ -20,14 +20,20 @@ type TwilioRoom = {
     tracks: Map<string, { track?: TwilioTrack | null }>;
   };
   participants: Map<string, TwilioParticipant>;
-  on: (event: string, handler: (...args: any[]) => void) => void;
+  on: (
+    event: "participantConnected" | "participantDisconnected",
+    handler: (participant: TwilioParticipant) => void,
+  ) => void;
   disconnect: () => void;
 };
 
 type TwilioParticipant = {
   identity: string;
   tracks: Map<string, { track?: TwilioTrack | null }>;
-  on: (event: string, handler: (...args: any[]) => void) => void;
+  on: (
+    event: "trackSubscribed" | "trackUnsubscribed",
+    handler: (track: TwilioTrack) => void,
+  ) => void;
 };
 
 type TwilioTrack = {
@@ -154,6 +160,8 @@ export function ConsultationVideoRoom({
     }
 
     void connectToRoom();
+    const localElement = localRef.current;
+    const remoteElement = remoteRef.current;
 
     return () => {
       cancelled = true;
@@ -163,8 +171,8 @@ export function ConsultationVideoRoom({
       });
       roomRef.current?.disconnect();
       roomRef.current = null;
-      localRef.current?.replaceChildren();
-      remoteRef.current?.replaceChildren();
+      localElement?.replaceChildren();
+      remoteElement?.replaceChildren();
       setRemoteTrackCount(0);
       onPresenceChange?.({ inCall: false, cameraEnabled: false, microphoneEnabled: false });
     };

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -14,7 +13,7 @@ import {
 } from "@/services/professionalApi";
 import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
-type RequestStatus = "needs-action" | "accepted" | "declined";
+type RequestStatus = "needs-action" | "accepted" | "declined" | "closed";
 
 type ConsultationRequest = {
   id: string;
@@ -35,6 +34,7 @@ type ConsultationRequest = {
   latitude: number | null;
   longitude: number | null;
   bookedOn: string;
+  createdAt: string;
   note: string;
   status: RequestStatus;
   statusLabel: string;
@@ -44,6 +44,7 @@ const tabs: Array<{ id: RequestStatus; label: string }> = [
   { id: "needs-action", label: "Needs Action" },
   { id: "accepted", label: "Accepted" },
   { id: "declined", label: "Declined" },
+  { id: "closed", label: "Closed" },
 ];
 
 const microInteractionClass =
@@ -64,6 +65,14 @@ const formatShortTime = (value: string) =>
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "P";
 
 const mapBackendRequest = (
   request: ProfessionalConsultationRequest,
@@ -95,13 +104,16 @@ const mapBackendRequest = (
   latitude: request.latitude,
   longitude: request.longitude,
   bookedOn: formatRequestDate(request.createdAt),
+  createdAt: request.createdAt,
   note: request.patientNote ?? "No patient note provided.",
   status:
     request.status === "accepted"
       ? "accepted"
       : request.status === "pending"
         ? "needs-action"
-        : "declined",
+        : request.status === "declined"
+          ? "declined"
+          : "closed",
   statusLabel:
     request.status === "accepted"
       ? "Confirmed"
@@ -267,7 +279,7 @@ export function ProfessionalRequestsPage() {
         return left.patient.localeCompare(right.patient);
       }
 
-      return right.id.localeCompare(left.id);
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
 
     return nextRequests;
@@ -284,7 +296,7 @@ export function ProfessionalRequestsPage() {
         accumulator[request.status] += 1;
         return accumulator;
       },
-      { "needs-action": 0, accepted: 0, declined: 0 } as Record<
+      { "needs-action": 0, accepted: 0, declined: 0, closed: 0 } as Record<
         RequestStatus,
         number
       >,
@@ -304,7 +316,8 @@ export function ProfessionalRequestsPage() {
       if (status === "accepted") {
         await acceptProfessionalRequest(id);
       } else if (status === "declined") {
-        await declineProfessionalRequest(id);
+        const reason = window.prompt("Reason for declining this request (optional)")?.trim();
+        await declineProfessionalRequest(id, reason || undefined);
       }
     } catch (error) {
       toast.error(
@@ -532,13 +545,9 @@ export function ProfessionalRequestsPage() {
                   >
                     <div className="request-card-header flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <Image
-                          src="/doctor.jpg"
-                          alt={`${request.patient} avatar`}
-                          width={35}
-                          height={36}
-                          className="h-[36px] w-[35px] shrink-0 rounded-full object-cover"
-                        />
+                        <span className="inline-flex h-[36px] w-[35px] shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[12px] font-semibold text-[#1565C0]">
+                          {getInitials(request.patient)}
+                        </span>
                         <div className="leading-none">
                           <p className="text-[16px] font-normal leading-7 tracking-[-0.05em] text-black">
                             {request.patient}
@@ -654,13 +663,9 @@ export function ProfessionalRequestsPage() {
               </p>
 
               <div className="details-patient mt-[36px] flex items-center gap-1">
-                <Image
-                  src="/doctor.jpg"
-                  alt={`${selectedRequest.patient} avatar`}
-                  width={33}
-                  height={33}
-                  className="h-[33px] w-[33px] shrink-0 rounded-full object-cover"
-                />
+                <span className="inline-flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[11px] font-semibold text-[#1565C0]">
+                  {getInitials(selectedRequest.patient)}
+                </span>
                 <span className="text-[12.403px] font-medium leading-7 tracking-[-0.05em] text-black">
                   {selectedRequest.patient.replace("Mr ", "").trim()}
                 </span>

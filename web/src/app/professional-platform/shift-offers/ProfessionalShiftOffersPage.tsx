@@ -40,14 +40,14 @@ const mapBackendShiftOffer = (offer: BackendShiftOffer): ShiftOffer => {
     date: new Intl.DateTimeFormat("en-US", { weekday: "short", month: "long", day: "numeric" }).format(startsAt),
     time: `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(startsAt)} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(endsAt)}`,
     location: offer.location,
-    pay: `${formatApiMoney(offer.payAmountCents, offer.currency)}/hr`,
+    pay: `${formatApiMoney(offer.payRateCents ?? offer.payAmountCents, offer.currency)}/hr`,
     postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
     facilityName: offer.facilityName,
     address: offer.address,
     notes: offer.notes ?? "No extra notes provided.",
     etaLabel: "40 minutes",
     dateBucket,
-    payTier: offer.payAmountCents / 100 >= 100 ? "100-plus" : "under-100",
+    payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
   };
 };
 

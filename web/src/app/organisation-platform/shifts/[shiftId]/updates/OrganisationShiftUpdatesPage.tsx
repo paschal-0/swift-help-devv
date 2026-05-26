@@ -16,7 +16,6 @@ import {
   type OrganizationShiftMessage,
   type OrganizationShiftUpdate,
 } from "@/services/organizationApi";
-import { buildOrganisationShiftDetail } from "../../data";
 
 type UpdatesTab = "All" | "Unread";
 
@@ -166,7 +165,6 @@ function messageToPreview(message: OrganizationShiftMessage): ConversationPrevie
 
 export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
   const router = useRouter();
-  const detail = buildOrganisationShiftDetail(shiftId);
   const [activeTab, setActiveTab] = useState<UpdatesTab>("All");
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
