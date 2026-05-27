@@ -61,6 +61,8 @@ type DailyCallObject = {
   off: (eventName: string, handler: () => void) => DailyCallObject;
   setLocalAudio: (enabled: boolean) => Promise<unknown>;
   setLocalVideo: (enabled: boolean) => Promise<unknown>;
+  startScreenShare?: () => Promise<unknown>;
+  stopScreenShare?: () => Promise<unknown>;
 };
 
 type DailyModule = {
@@ -231,6 +233,17 @@ function SpeakerIcon() {
   );
 }
 
+function ScreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
+      <path
+        fill="currentColor"
+        d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H13v2h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2H6.5A2.5 2.5 0 0 1 4 13.5v-8Zm2.5-.5a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-11Z"
+      />
+    </svg>
+  );
+}
+
 function SendIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -270,6 +283,8 @@ export function ConsultationVideoRoom({
   >("idle");
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
+  const [voiceOnly, setVoiceOnly] = useState(false);
+  const [screenSharing, setScreenSharing] = useState(false);
   const cameraEnabledRef = useRef(cameraEnabled);
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
@@ -418,9 +433,34 @@ export function ConsultationVideoRoom({
 
   const toggleCamera = async () => {
     const nextValue = !cameraEnabled;
+    setVoiceOnly(false);
     setCameraEnabled(nextValue);
     presenceChangeRef.current?.({ cameraEnabled: nextValue });
     await callRef.current?.setLocalVideo(nextValue).catch(() => undefined);
+  };
+
+  const toggleVoiceOnly = async () => {
+    const nextValue = !voiceOnly;
+    setVoiceOnly(nextValue);
+    const cameraValue = !nextValue;
+    setCameraEnabled(cameraValue);
+    presenceChangeRef.current?.({ cameraEnabled: cameraValue });
+    await callRef.current?.setLocalVideo(cameraValue).catch(() => undefined);
+  };
+
+  const toggleScreenShare = async () => {
+    const call = callRef.current;
+    if (!call?.startScreenShare || !call.stopScreenShare) {
+      return;
+    }
+
+    const nextValue = !screenSharing;
+    setScreenSharing(nextValue);
+    if (nextValue) {
+      await call.startScreenShare().catch(() => setScreenSharing(false));
+      return;
+    }
+    await call.stopScreenShare().catch(() => setScreenSharing(true));
   };
 
   const toggleMicrophone = async () => {
@@ -526,7 +566,7 @@ export function ConsultationVideoRoom({
               <SpeakerIcon />
             </div>
 
-            <div className="flex h-20 items-end gap-6 text-[#F8FAFC]">
+            <div className="flex h-20 items-end gap-3 text-[#F8FAFC]">
               <button
                 type="button"
                 onClick={() => void toggleCamera()}
@@ -549,6 +589,17 @@ export function ConsultationVideoRoom({
               </button>
               <button
                 type="button"
+                onClick={() => void toggleScreenShare()}
+                className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
+                  screenSharing ? "bg-[#1565C0]" : "bg-[rgba(255,255,255,0.3)]"
+                }`}
+                aria-pressed={screenSharing}
+                aria-label={screenSharing ? "Stop screen sharing" : "Share screen"}
+              >
+                <ScreenIcon />
+              </button>
+              <button
+                type="button"
                 onClick={() => void toggleMicrophone()}
                 className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
                   microphoneEnabled ? "bg-[rgba(255,255,255,0.3)]" : "bg-[#64748B]"
@@ -562,6 +613,19 @@ export function ConsultationVideoRoom({
               </button>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => void toggleVoiceOnly()}
+            className={`absolute right-[15px] top-[74px] rounded-[70px] px-4 py-2 text-[12px] font-medium tracking-[-0.04em] ${
+              voiceOnly
+                ? "bg-[#1565C0] text-[#F8FAFC]"
+                : "bg-[rgba(248,250,252,0.88)] text-[#334155]"
+            }`}
+            aria-pressed={voiceOnly}
+          >
+            Voice only
+          </button>
 
           {!isReady || connectionStatus === "error" ? (
             <div className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.72)] px-8 text-center text-white">

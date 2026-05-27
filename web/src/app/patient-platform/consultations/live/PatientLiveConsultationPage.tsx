@@ -268,16 +268,34 @@ export function PatientLiveConsultationPage() {
           </div>
         }
         sharedInfoContent={
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-[#94A3B8]">Mode</dt>
-              <dd>{consultation?.mode ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-[#94A3B8]">Reason</dt>
-              <dd>{consultation?.reason ?? "-"}</dd>
-            </div>
-          </dl>
+          <div className="space-y-4">
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-[#94A3B8]">Mode</dt>
+                <dd>{consultation?.mode ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-[#94A3B8]">Reason</dt>
+                <dd>{consultation?.reason ?? "-"}</dd>
+              </div>
+            </dl>
+            {room?.intake?.aiSummary ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">AI intake summary</p>
+                <p className="mt-2 whitespace-pre-line text-[#64748B]">
+                  {room.intake.aiSummary}
+                </p>
+              </section>
+            ) : null}
+            {room?.aiDocument?.patientSummary ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">Care summary</p>
+                <p className="mt-2 text-[#64748B]">
+                  {room.aiDocument.patientSummary}
+                </p>
+              </section>
+            ) : null}
+          </div>
         }
         onPresenceChange={(presence) => {
           if (!consultation) return;

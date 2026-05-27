@@ -170,6 +170,45 @@ export type ProfessionalConsultationPresence = {
   updatedAt: string;
 };
 
+export type ProfessionalConsultationIntake = {
+  id: string;
+  consultationId: string | null;
+  requestId: string | null;
+  patientUserId: string;
+  symptoms: Record<string, unknown>;
+  answers: Record<string, unknown>;
+  recommendation: Record<string, unknown>;
+  patientNotes: string | null;
+  aiSummary: string | null;
+  status: "draft" | "submitted" | string;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfessionalConsultationAiDocument = {
+  id: string;
+  consultationId: string;
+  professionalUserId: string;
+  patientUserId: string | null;
+  transcript: string | null;
+  clinicalSummary: string | null;
+  soapNote: {
+    subjective?: string;
+    objective?: string;
+    assessment?: string;
+    plan?: string;
+  };
+  patientSummary: string | null;
+  followUpActions: string[];
+  redFlags: string[];
+  status: "draft" | "reviewed" | "archived" | string;
+  generatedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProfessionalConsultationRoom = {
   consultation: ProfessionalConsultation;
   patient: {
@@ -179,6 +218,8 @@ export type ProfessionalConsultationRoom = {
   } | null;
   messages: ProfessionalConsultationMessage[];
   presence: ProfessionalConsultationPresence[];
+  intake: ProfessionalConsultationIntake | null;
+  aiDocument: ProfessionalConsultationAiDocument | null;
   room: {
     id: string;
     meetingUrl: string | null;
@@ -640,6 +681,55 @@ export function getProfessionalConsultationRoom(consultationId: string) {
   return apiRequest<ProfessionalConsultationRoom>(
     `/professional/consultations/${encodeURIComponent(consultationId)}/room`,
     { method: "GET" },
+  );
+}
+
+export function getProfessionalConsultationIntake(consultationId: string) {
+  return apiRequest<ProfessionalConsultationIntake | null>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/intake`,
+    { method: "GET" },
+  );
+}
+
+export function getProfessionalConsultationAiDocument(consultationId: string) {
+  return apiRequest<ProfessionalConsultationAiDocument | null>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/ai-document`,
+    { method: "GET" },
+  );
+}
+
+export function generateProfessionalConsultationAiDocument(
+  consultationId: string,
+  payload: { transcript?: string } = {},
+) {
+  return apiRequest<ProfessionalConsultationAiDocument>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/ai-document/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function reviewProfessionalConsultationAiDocument(
+  consultationId: string,
+  payload: Partial<
+    Pick<
+      ProfessionalConsultationAiDocument,
+      | "clinicalSummary"
+      | "soapNote"
+      | "patientSummary"
+      | "followUpActions"
+      | "redFlags"
+    >
+  >,
+) {
+  return apiRequest<ProfessionalConsultationAiDocument>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/ai-document/review`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
   );
 }
 

@@ -7,13 +7,16 @@ import { getApiErrorMessage } from "@/services/authApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import {
   completeProfessionalConsultation,
+  generateProfessionalConsultationAiDocument,
   getProfessionalLiveUrl,
   getProfessionalConsultationRoom,
   joinProfessionalConsultation,
   listProfessionalConsultations,
   sendProfessionalConsultationMessage,
   updateProfessionalConsultationPresence,
+  reviewProfessionalConsultationAiDocument,
   type ProfessionalConsultation,
+  type ProfessionalConsultationAiDocument,
   type ProfessionalConsultationMessage,
   type ProfessionalConsultationPresence,
   type ProfessionalConsultationRoom,
@@ -70,6 +73,7 @@ export function ProfessionalLiveConsultationPage() {
   const [prescription, setPrescription] = useState("");
   const [nextSteps, setNextSteps] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
 
   const consultation = room?.consultation ?? null;
   const patientName = room?.patient?.name ?? consultation?.patientName ?? "Patient";
@@ -159,6 +163,24 @@ export function ProfessionalLiveConsultationPage() {
     eventSource.addEventListener("professional.consultation_message.created", handleMessage);
     eventSource.addEventListener("professional.consultation_presence.updated", handlePresence);
 
+    const handleAiDocument = (event: MessageEvent) => {
+      const document = JSON.parse(event.data) as ProfessionalConsultationAiDocument;
+      if (document.consultationId !== consultation.id) return;
+      setRoom((current) =>
+        current
+          ? {
+              ...current,
+              aiDocument: document,
+            }
+          : current,
+      );
+    };
+
+    eventSource.addEventListener(
+      "professional.consultation_ai_document.updated",
+      handleAiDocument,
+    );
+
     return () => {
       eventSource.removeEventListener(
         "professional.consultation_message.created",
@@ -167,6 +189,10 @@ export function ProfessionalLiveConsultationPage() {
       eventSource.removeEventListener(
         "professional.consultation_presence.updated",
         handlePresence,
+      );
+      eventSource.removeEventListener(
+        "professional.consultation_ai_document.updated",
+        handleAiDocument,
       );
       eventSource.close();
     };
@@ -233,6 +259,81 @@ export function ProfessionalLiveConsultationPage() {
     }
   };
 
+  const applyAiDocument = (document: ProfessionalConsultationAiDocument) => {
+    setSummary(document.clinicalSummary ?? document.patientSummary ?? "");
+    setNotes(
+      [
+        document.soapNote?.subjective
+          ? `Subjective: ${document.soapNote.subjective}`
+          : null,
+        document.soapNote?.objective
+          ? `Objective: ${document.soapNote.objective}`
+          : null,
+        document.soapNote?.assessment
+          ? `Assessment: ${document.soapNote.assessment}`
+          : null,
+        document.soapNote?.plan ? `Plan: ${document.soapNote.plan}` : null,
+        document.redFlags?.length
+          ? `Red flags: ${document.redFlags.join(", ")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+    setNextSteps(document.followUpActions?.join("\n") ?? "");
+  };
+
+  const generateAiDraft = async () => {
+    if (!consultation || isGeneratingDocument) return;
+    setIsGeneratingDocument(true);
+    try {
+      const document = await generateProfessionalConsultationAiDocument(
+        consultation.id,
+      );
+      setRoom((current) =>
+        current
+          ? {
+              ...current,
+              aiDocument: document,
+            }
+          : current,
+      );
+      applyAiDocument(document);
+      toast.success("AI documentation draft generated");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsGeneratingDocument(false);
+    }
+  };
+
+  const markAiDraftReviewed = async () => {
+    if (!consultation) return;
+    try {
+      const document = await reviewProfessionalConsultationAiDocument(
+        consultation.id,
+        {
+          clinicalSummary: summary,
+          followUpActions: nextSteps
+            .split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        },
+      );
+      setRoom((current) =>
+        current
+          ? {
+              ...current,
+              aiDocument: document,
+            }
+          : current,
+      );
+      toast.success("AI draft marked as reviewed");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   return (
     <section className="w-full max-w-[899px]">
       <ConsultationVideoRoom
@@ -287,16 +388,36 @@ export function ProfessionalLiveConsultationPage() {
           </div>
         }
         sharedInfoContent={
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-[#94A3B8]">Mode</dt>
-              <dd>{consultation?.mode ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-[#94A3B8]">Reason</dt>
-              <dd>{consultation?.reason ?? "-"}</dd>
-            </div>
-          </dl>
+          <div className="space-y-4">
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-[#94A3B8]">Mode</dt>
+                <dd>{consultation?.mode ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-[#94A3B8]">Reason</dt>
+                <dd>{consultation?.reason ?? "-"}</dd>
+              </div>
+            </dl>
+            {room?.intake?.aiSummary ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">AI intake summary</p>
+                <p className="mt-2 whitespace-pre-line text-[#64748B]">
+                  {room.intake.aiSummary}
+                </p>
+              </section>
+            ) : null}
+            {room?.aiDocument?.clinicalSummary ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">
+                  Documentation draft
+                </p>
+                <p className="mt-2 text-[#64748B]">
+                  {room.aiDocument.clinicalSummary}
+                </p>
+              </section>
+            ) : null}
+          </div>
         }
         onPresenceChange={(presence) => {
           if (!consultation) return;
@@ -333,6 +454,24 @@ export function ProfessionalLiveConsultationPage() {
             <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">
               Clinical notes
             </h2>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void generateAiDraft()}
+                disabled={!consultation || isGeneratingDocument}
+                className="h-10 rounded-[10px] bg-[#1565C0] px-3 text-[12px] font-medium text-white disabled:opacity-60"
+              >
+                {isGeneratingDocument ? "Generating..." : "Generate AI draft"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void markAiDraftReviewed()}
+                disabled={!consultation}
+                className="h-10 rounded-[10px] border border-[#1565C0] px-3 text-[12px] font-medium text-[#1565C0] disabled:opacity-60"
+              >
+                Mark reviewed
+              </button>
+            </div>
             <div className="mt-3 space-y-3">
               <label className="block">
                 <span className="text-[12px] text-[#64748B]">Summary</span>

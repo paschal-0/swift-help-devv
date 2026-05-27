@@ -24,6 +24,29 @@ function SectionPill({ children }: { children: string }) {
   );
 }
 
+function urgencyLabel(urgency?: PatientMedicalRecordsRecommendation["urgencyLevel"]) {
+  switch (urgency) {
+    case "self_care":
+      return "Self-care guidance";
+    case "soon":
+      return "Book soon";
+    case "urgent":
+      return "Urgent";
+    case "emergency":
+      return "Emergency";
+    case "routine":
+    default:
+      return "Routine";
+  }
+}
+
+function guidanceList(items: string[] | undefined, fallback: string) {
+  if (!items?.length) {
+    return [fallback];
+  }
+  return items;
+}
+
 export function PatientSymptomCheckerRecommendationPage() {
   const router = useRouter();
   const [recommendation, setRecommendation] = useState<PatientMedicalRecordsRecommendation | null>(null);
@@ -68,6 +91,16 @@ export function PatientSymptomCheckerRecommendationPage() {
   }, [router]);
 
   const summary = recommendation?.symptomSummary;
+  const redFlags = guidanceList(
+    recommendation?.redFlags,
+    "Seek urgent care if symptoms suddenly worsen, become severe, or feel unsafe.",
+  );
+  const selfCareAdvice = guidanceList(
+    recommendation?.selfCareAdvice,
+    "Monitor symptoms and seek professional care if they persist or worsen.",
+  );
+  const possibleCauses = recommendation?.possibleCauses ?? [];
+  const isEmergency = recommendation?.urgencyLevel === "emergency";
 
   return (
     <article className="mt-[18px] min-h-[930px] rounded-[12px] bg-[#F8FAFC] px-3 pb-6 pt-3 sm:mt-[26px] sm:px-5 sm:pb-8 sm:pt-4 xl:px-10 xl:pb-[34px] xl:pt-[17px]">
@@ -86,18 +119,29 @@ export function PatientSymptomCheckerRecommendationPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="inline-flex h-8 items-center justify-center gap-1 rounded-[16px] bg-[#E3F2FD] px-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] sm:h-[27px] sm:px-[10px]"
-          >
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
-              <path fill="#334155" d="M5 3h11l3 3v15H5V3Zm2 2v5h8V5H7Zm0 8v6h10v-6H7Z" />
-            </svg>
-            <span className="text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[16px] sm:leading-[23px]">
-              {isSaving ? "Saving" : "Saved"}
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex h-8 items-center justify-center rounded-[16px] px-3 text-[13px] font-medium leading-[18px] tracking-[-0.05em] sm:h-[27px] sm:text-[16px] sm:leading-[23px] ${
+                isEmergency
+                  ? "bg-[#FEE2E2] text-[#B91C1C]"
+                  : "bg-[#E3F2FD] text-[#1565C0]"
+              }`}
+            >
+              {urgencyLabel(recommendation?.urgencyLevel)}
             </span>
-          </button>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-8 items-center justify-center gap-1 rounded-[16px] bg-[#E3F2FD] px-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] sm:h-[27px] sm:px-[10px]"
+            >
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
+                <path fill="#334155" d="M5 3h11l3 3v15H5V3Zm2 2v5h8V5H7Zm0 8v6h10v-6H7Z" />
+              </svg>
+              <span className="text-[13px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[16px] sm:leading-[23px]">
+                {isSaving ? "Saving" : "Saved"}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 space-y-3 sm:mt-[20px] sm:space-y-4">
@@ -138,6 +182,50 @@ export function PatientSymptomCheckerRecommendationPage() {
               {recommendation?.recommendedCareDescription ?? "A care type will be shown once the recommendation is ready."}
             </p>
           </div>
+
+          {possibleCauses.length > 0 ? (
+            <div className="rounded-[12px] bg-[#F8FAFC] px-3 pb-4 pt-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:px-[18px] sm:pb-[13px] sm:pt-[15px]">
+              <SectionPill>Possible factors to discuss</SectionPill>
+              <ul className="mt-3 grid gap-2 text-[14px] leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[18px] sm:leading-[23px]">
+                {possibleCauses.map((item) => (
+                  <li key={item} className="rounded-[10px] bg-[#E3F2FD] px-3 py-2">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-[12px] bg-[#F8FAFC] px-3 pb-4 pt-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:px-[18px] sm:pb-[13px] sm:pt-[15px]">
+              <SectionPill>Warning signs</SectionPill>
+              <ul className="mt-3 space-y-2 text-[14px] leading-[18px] tracking-[-0.05em] text-[#94A3B8] sm:text-[18px] sm:leading-[23px]">
+                {redFlags.map((item) => (
+                  <li key={item}>- {item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-[12px] bg-[#F8FAFC] px-3 pb-4 pt-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:px-[18px] sm:pb-[13px] sm:pt-[15px]">
+              <SectionPill>While you wait</SectionPill>
+              <ul className="mt-3 space-y-2 text-[14px] leading-[18px] tracking-[-0.05em] text-[#94A3B8] sm:text-[18px] sm:leading-[23px]">
+                {selfCareAdvice.map((item) => (
+                  <li key={item}>- {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-[12px] bg-[#F8FAFC] px-3 pb-4 pt-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:px-[18px] sm:pb-[13px] sm:pt-[15px]">
+            <SectionPill>Follow-up window</SectionPill>
+            <p className="mt-3 text-[14px] font-medium leading-[18px] tracking-[-0.05em] text-[#334155] sm:text-[18px] sm:leading-[23px]">
+              {recommendation?.followUpWindow ?? "Follow up if symptoms persist or worsen."}
+            </p>
+            <p className="mt-3 text-[12px] font-normal leading-[17px] tracking-[-0.05em] text-[#94A3B8] sm:text-[14px] sm:leading-[20px]">
+              {recommendation?.disclaimer ??
+                "This guidance is informational and is not a diagnosis. If symptoms are severe, worsening, or you feel unsafe, seek urgent medical care."}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -151,10 +239,10 @@ export function PatientSymptomCheckerRecommendationPage() {
         </button>
         <button
           type="button"
-          onClick={() => router.push("/patient-platform/consultations")}
+          onClick={() => router.push("/patient-platform/appointments/book")}
           className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-center text-[15px] font-normal leading-[20px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:h-[46px] sm:w-[232px] sm:px-[14px] sm:py-0 sm:text-[16px] sm:leading-10 sm:whitespace-nowrap"
         >
-          Book Consultation
+          {isEmergency ? "Book urgent care" : "Book Consultation"}
         </button>
       </div>
     </article>

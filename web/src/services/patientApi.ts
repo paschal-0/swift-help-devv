@@ -210,8 +210,18 @@ export type PatientMedicalRecordsRecommendation = {
     severity?: string;
     associatedSymptoms?: string;
   };
+  urgencyLevel?: "self_care" | "routine" | "soon" | "urgent" | "emergency";
+  possibleCauses?: string[];
+  redFlags?: string[];
   recommendedCareType?: string;
   recommendedCareDescription?: string;
+  selfCareAdvice?: string[];
+  followUpWindow?: string;
+  shouldBookConsultation?: boolean;
+  disclaimer?: string;
+  aiGenerated?: boolean;
+  generatedAt?: string;
+  safetyOverride?: boolean;
 };
 
 export type PatientSymptomCheck = {
@@ -360,6 +370,45 @@ export type PatientConsultationPresence = {
   updatedAt: string;
 };
 
+export type PatientConsultationIntake = {
+  id: string;
+  consultationId: string | null;
+  requestId: string | null;
+  patientUserId: string;
+  symptoms: Record<string, unknown>;
+  answers: Record<string, unknown>;
+  recommendation: Record<string, unknown>;
+  patientNotes: string | null;
+  aiSummary: string | null;
+  status: "draft" | "submitted" | string;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientConsultationAiDocument = {
+  id: string;
+  consultationId: string;
+  professionalUserId: string;
+  patientUserId: string | null;
+  transcript: string | null;
+  clinicalSummary: string | null;
+  soapNote: {
+    subjective?: string;
+    objective?: string;
+    assessment?: string;
+    plan?: string;
+  };
+  patientSummary: string | null;
+  followUpActions: string[];
+  redFlags: string[];
+  status: "draft" | "reviewed" | "archived" | string;
+  generatedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PatientConsultationRoom = {
   consultation: PatientConsultation;
   provider: {
@@ -370,6 +419,8 @@ export type PatientConsultationRoom = {
   } | null;
   messages: PatientConsultationMessage[];
   presence: PatientConsultationPresence[];
+  intake: PatientConsultationIntake | null;
+  aiDocument: PatientConsultationAiDocument | null;
   room: {
     id: string;
     meetingUrl: string | null;
@@ -682,6 +733,31 @@ export function getPatientConsultationRoom(consultationId: string) {
   return apiRequest<PatientConsultationRoom>(
     `/patient/consultations/${encodeURIComponent(consultationId)}/room`,
     { method: "GET" },
+  );
+}
+
+export function getPatientConsultationIntake(consultationId: string) {
+  return apiRequest<PatientConsultationIntake>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/intake`,
+    { method: "GET" },
+  );
+}
+
+export function upsertPatientConsultationIntake(
+  consultationId: string,
+  payload: {
+    symptoms?: Record<string, unknown>;
+    answers?: Record<string, unknown>;
+    patientNotes?: string;
+    submit?: boolean;
+  },
+) {
+  return apiRequest<PatientConsultationIntake>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/intake`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
   );
 }
 

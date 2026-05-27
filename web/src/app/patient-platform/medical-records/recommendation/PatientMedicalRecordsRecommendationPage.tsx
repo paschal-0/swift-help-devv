@@ -21,9 +21,20 @@ const fallbackRecommendation: Required<PatientMedicalRecordsRecommendation> = {
     severity: "Not recorded",
     associatedSymptoms: "Not recorded",
   },
+  urgencyLevel: "routine",
+  possibleCauses: [],
+  redFlags: [],
   recommendedCareType: "Not determined",
   recommendedCareDescription:
     "Complete a symptom assessment to identify an appropriate next care step.",
+  selfCareAdvice: [],
+  followUpWindow: "Complete an assessment first",
+  shouldBookConsultation: false,
+  disclaimer:
+    "This guidance is informational and is not a diagnosis. If symptoms are severe, worsening, or you feel unsafe, seek urgent medical care.",
+  aiGenerated: false,
+  generatedAt: "",
+  safetyOverride: false,
 };
 
 function getRecommendationValue(
@@ -48,11 +59,22 @@ function getRecommendationValue(
         recommendation?.symptomSummary?.associatedSymptoms ||
         fallbackRecommendation.symptomSummary.associatedSymptoms,
     },
+    urgencyLevel: recommendation?.urgencyLevel || fallbackRecommendation.urgencyLevel,
+    possibleCauses: recommendation?.possibleCauses || fallbackRecommendation.possibleCauses,
+    redFlags: recommendation?.redFlags || fallbackRecommendation.redFlags,
     recommendedCareType:
       recommendation?.recommendedCareType || fallbackRecommendation.recommendedCareType,
     recommendedCareDescription:
       recommendation?.recommendedCareDescription ||
       fallbackRecommendation.recommendedCareDescription,
+    selfCareAdvice: recommendation?.selfCareAdvice || fallbackRecommendation.selfCareAdvice,
+    followUpWindow: recommendation?.followUpWindow || fallbackRecommendation.followUpWindow,
+    shouldBookConsultation:
+      recommendation?.shouldBookConsultation ?? fallbackRecommendation.shouldBookConsultation,
+    disclaimer: recommendation?.disclaimer || fallbackRecommendation.disclaimer,
+    aiGenerated: recommendation?.aiGenerated ?? fallbackRecommendation.aiGenerated,
+    generatedAt: recommendation?.generatedAt || fallbackRecommendation.generatedAt,
+    safetyOverride: recommendation?.safetyOverride ?? fallbackRecommendation.safetyOverride,
   };
 }
 
