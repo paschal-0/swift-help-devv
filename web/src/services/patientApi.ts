@@ -366,14 +366,15 @@ export type PatientConsultationRoom = {
     id: string;
     name: string;
     email: string;
+    specialization?: string | null;
   } | null;
   messages: PatientConsultationMessage[];
   presence: PatientConsultationPresence[];
   room: {
     id: string;
-    meetingUrl: string;
+    meetingUrl: string | null;
     token: string | null;
-    provider?: "twilio" | string;
+    provider?: "daily" | string;
     roomName?: string;
   };
 };
@@ -686,7 +687,7 @@ export function getPatientConsultationRoom(consultationId: string) {
 
 export function joinPatientConsultation(consultationId: string) {
   return apiRequest<{
-    provider: "twilio";
+    provider: "daily";
     roomName: string;
     identity: string;
     displayName: string;

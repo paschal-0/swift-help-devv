@@ -451,45 +451,55 @@ export function OrganisationDashboardPage() {
 
         <div className="mt-5 space-y-4">
           {visibleAttentionItems.map((item) => (
-            <motion.div
-              key={item.id}
-              whileHover={{ y: -2, scale: 1.005 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4 transition-shadow duration-200 hover:shadow-[0_14px_30px_rgba(148,163,184,0.14)]"
-            >
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div>
-                  <p className="text-[16px] font-medium tracking-[-0.05em] text-[#1565C0]">{item.title}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {item.tags.map((tag) => (
-                      <span
-                        key={`${item.id}-${tag}`}
-                        className="inline-flex items-center rounded-full bg-[#E3F2FD] px-4 py-2 text-[16px] font-light tracking-[-0.07em] text-[#334155] transition duration-200 hover:-translate-y-0.5 hover:bg-[#d5ebff]"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+            (() => {
+              const detailHref = item.shiftId
+                ? `/organisation-platform/shifts/${item.shiftId}`
+                : "/organisation-platform/reports";
+              const primaryHref = item.primaryHref || detailHref;
+              const secondaryHref = item.secondaryHref || detailHref;
 
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => openRoute(item.primaryHref)}
-                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#0f5fa8]"
-                  >
-                    {item.primaryLabel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openRoute(item.secondaryHref)}
-                    className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#94A3B8] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#7f8ea3]"
-                  >
-                    {item.secondaryLabel}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+              return (
+                <motion.div
+                  key={item.id}
+                  whileHover={{ y: -2, scale: 1.005 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="rounded-[12px] border-2 border-[#E2E8F0] px-4 py-4 transition-shadow duration-200 hover:shadow-[0_14px_30px_rgba(148,163,184,0.14)]"
+                >
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <p className="text-[16px] font-medium tracking-[-0.05em] text-[#1565C0]">{item.title}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={`${item.id}-${tag}`}
+                            className="inline-flex items-center rounded-full bg-[#E3F2FD] px-4 py-2 text-[16px] font-light tracking-[-0.07em] text-[#334155] transition duration-200 hover:-translate-y-0.5 hover:bg-[#d5ebff]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => openRoute(primaryHref)}
+                        className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#1565C0] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#0f5fa8]"
+                      >
+                        {item.primaryLabel || "Repost Shift"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openRoute(secondaryHref)}
+                        className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-sm font-medium text-[#1565C0] transition duration-200 hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+                      >
+                        {item.secondaryLabel || "View details"}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()
           ))}
 
           {visibleAttentionItems.length === 0 ? (

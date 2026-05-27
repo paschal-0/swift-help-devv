@@ -184,10 +184,12 @@ export type OrganizationDashboard = {
     id: string;
     title: string;
     tags: string[];
-    primaryLabel: string;
-    secondaryLabel: string;
-    primaryHref: string;
-    secondaryHref: string;
+    type?: string;
+    shiftId?: string | null;
+    primaryLabel?: string;
+    secondaryLabel?: string;
+    primaryHref?: string;
+    secondaryHref?: string;
   }>;
 };
 

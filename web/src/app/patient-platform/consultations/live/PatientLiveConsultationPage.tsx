@@ -29,6 +29,28 @@ function formatTime(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
+function formatDuration(minutes?: number | null) {
+  if (!minutes || minutes < 1) return "-";
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
+function formatStatus(value?: string | null) {
+  if (!value) return "Loading";
+  return value
+    .split("_")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 function isActive(consultation: PatientConsultation) {
   return ["scheduled", "ongoing"].includes(consultation.status);
 }
@@ -38,6 +60,7 @@ export function PatientLiveConsultationPage() {
   const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
   const [videoAccess, setVideoAccess] = useState<{
     roomName: string;
+    meetingUrl: string;
     roomToken: string;
   } | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
@@ -45,6 +68,8 @@ export function PatientLiveConsultationPage() {
 
   const consultation = room?.consultation ?? null;
   const providerName = room?.provider?.name ?? "Provider";
+  const providerSpecialty =
+    room?.provider?.specialization ?? consultation?.consultationLabel ?? "-";
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +98,7 @@ export function PatientLiveConsultationPage() {
         setRoom(nextRoom);
         setVideoAccess({
           roomName: access.roomName,
+          meetingUrl: access.meetingUrl,
           roomToken: access.roomToken,
         });
       } catch (error) {
@@ -191,111 +217,76 @@ export function PatientLiveConsultationPage() {
   };
 
   return (
-    <article className="mt-3 w-full rounded-[12px] bg-[#F8FAFC] px-4 pb-6 pt-5 xl:max-w-[899px] xl:px-7">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155]">
-            Live Consultation
-          </h1>
-          <p className="text-[13px] font-light tracking-[-0.04em] text-[#64748B]">
-            {consultation
-              ? `${consultation.consultationLabel} with ${providerName}, ${formatTime(consultation.startsAt)}`
-              : "Loading consultation room..."}
-          </p>
-        </div>
-        <span className="inline-flex w-fit rounded-full bg-[#E3F2FD] px-4 py-2 text-[13px] font-medium text-[#1565C0]">
-          {consultation?.status ?? "loading"}
-        </span>
-      </div>
-
-      <div className="mt-5">
-        <ConsultationVideoRoom
-          token={videoAccess?.roomToken ?? null}
-          roomName={videoAccess?.roomName ?? null}
-          remoteLabel={providerName}
-          onEnd={() => void leaveSession()}
-          onPresenceChange={(presence) => {
-            if (!consultation) return;
-            void updatePatientConsultationPresence(consultation.id, {
-              online: true,
-              ...presence,
-            }).catch(() => undefined);
-          }}
-        />
-      </div>
-
-      <section className="mt-5 grid gap-4 lg:grid-cols-[1fr_260px]">
-        <div className="rounded-[16px] bg-[#E2E8F0] p-3">
-          <h2 className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
-            Messages
-          </h2>
-          <div className="mt-3 max-h-[260px] space-y-2 overflow-y-auto pr-1">
-            {(room?.messages ?? []).map((message: PatientConsultationMessage) => (
-              <div
-                key={message.id}
-                className={`flex ${message.senderType === "patient" ? "justify-end" : "justify-start"}`}
-              >
-                <span
-                  className={`max-w-[80%] rounded-[14px] px-4 py-2 text-[13px] tracking-[-0.04em] ${
-                    message.senderType === "patient"
-                      ? "bg-[#1565C0] text-white"
-                      : "bg-[#F8FAFC] text-[#334155]"
-                  }`}
-                >
-                  {message.body}
-                </span>
+    <article className="mt-3 w-full xl:max-w-[899px]">
+      <ConsultationVideoRoom
+        token={videoAccess?.roomToken ?? null}
+        meetingUrl={videoAccess?.meetingUrl ?? null}
+        roomName={videoAccess?.roomName ?? null}
+        remoteLabel={providerName}
+        remoteRoleLabel="Provider"
+        localLabel="Patient"
+        messages={room?.messages ?? []}
+        currentUserSenderType="patient"
+        messageDraft={messageDraft}
+        onMessageDraftChange={setMessageDraft}
+        onSendMessage={sendMessage}
+        isEnding={isLeaving}
+        onEnd={() => void leaveSession()}
+        summaryContent={
+          <div className="flex min-h-[254px] flex-col justify-between">
+            <dl className="space-y-7">
+              <div className="flex gap-1">
+                <dt className="text-[#94A3B8]">Provider:</dt>
+                <dd className="font-medium text-[#334155]">{providerName}</dd>
               </div>
-            ))}
-            {!room?.messages.length ? (
-              <p className="rounded-[12px] border border-dashed border-[#94A3B8] px-4 py-5 text-center text-[13px] text-[#94A3B8]">
-                No messages yet.
-              </p>
-            ) : null}
+              <div className="flex gap-1">
+                <dt className="text-[#94A3B8]">Specialty:</dt>
+                <dd className="font-medium text-[#334155]">{providerSpecialty}</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-[#94A3B8]">Date:</dt>
+                <dd className="font-medium text-[#334155]">
+                  {formatDate(consultation?.startsAt)}
+                </dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-[#94A3B8]">Time:</dt>
+                <dd className="font-medium text-[#334155]">
+                  {formatTime(consultation?.startsAt)}
+                </dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-[#94A3B8]">Duration:</dt>
+                <dd className="font-medium text-[#334155]">
+                  {formatDuration(consultation?.durationMinutes)}
+                </dd>
+              </div>
+            </dl>
+            <span className="mt-7 inline-flex w-fit rounded-[16px] bg-[#A6A100] px-4 py-1 text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-white">
+              {formatStatus(consultation?.status)}
+            </span>
           </div>
-          <form onSubmit={sendMessage} className="mt-3 flex gap-2">
-            <input
-              value={messageDraft}
-              onChange={(event) => setMessageDraft(event.target.value)}
-              placeholder="Write your message"
-              className="h-11 min-w-0 flex-1 rounded-[12px] border border-[#CBD5E1] bg-white px-4 text-[13px] outline-none focus:border-[#1565C0]"
-            />
-            <button
-              type="submit"
-              className="h-11 rounded-[12px] bg-[#1565C0] px-5 text-[13px] font-medium text-white"
-            >
-              Send
-            </button>
-          </form>
-        </div>
-
-        <aside className="rounded-[16px] bg-[#E3F2FD] p-4">
-          <h2 className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
-            Session
-          </h2>
-          <dl className="mt-3 space-y-3 text-[13px] tracking-[-0.04em]">
-            <div>
-              <dt className="text-[#94A3B8]">Care type</dt>
-              <dd className="text-[#334155]">{consultation?.consultationLabel ?? "-"}</dd>
-            </div>
+        }
+        sharedInfoContent={
+          <dl className="space-y-3">
             <div>
               <dt className="text-[#94A3B8]">Mode</dt>
-              <dd className="text-[#334155]">{consultation?.mode ?? "-"}</dd>
+              <dd>{consultation?.mode ?? "-"}</dd>
             </div>
             <div>
               <dt className="text-[#94A3B8]">Reason</dt>
-              <dd className="text-[#334155]">{consultation?.reason ?? "-"}</dd>
+              <dd>{consultation?.reason ?? "-"}</dd>
             </div>
           </dl>
-          <button
-            type="button"
-            onClick={() => void leaveSession()}
-            disabled={!consultation || isLeaving}
-            className="mt-5 h-11 w-full rounded-[12px] bg-[#C82B33] text-[13px] font-medium text-white disabled:opacity-60"
-          >
-            {isLeaving ? "Leaving..." : "Leave consultation"}
-          </button>
-        </aside>
-      </section>
+        }
+        onPresenceChange={(presence) => {
+          if (!consultation) return;
+          void updatePatientConsultationPresence(consultation.id, {
+            online: true,
+            ...presence,
+          }).catch(() => undefined);
+        }}
+      />
     </article>
   );
 }

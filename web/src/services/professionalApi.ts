@@ -181,9 +181,9 @@ export type ProfessionalConsultationRoom = {
   presence: ProfessionalConsultationPresence[];
   room: {
     id: string;
-    meetingUrl: string;
+    meetingUrl: string | null;
     token: string | null;
-    provider?: "twilio" | string;
+    provider?: "daily" | string;
     roomName?: string;
   };
 };
@@ -623,7 +623,7 @@ export function startProfessionalConsultation(consultationId: string) {
 
 export function joinProfessionalConsultation(consultationId: string) {
   return apiRequest<{
-    provider: "twilio";
+    provider: "daily";
     roomName: string;
     identity: string;
     displayName: string;
