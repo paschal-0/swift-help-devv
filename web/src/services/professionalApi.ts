@@ -1,6 +1,7 @@
 "use client";
 
 import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
+import type { CommunicationRoomAccess } from "./communicationApi";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
@@ -663,15 +664,7 @@ export function startProfessionalConsultation(consultationId: string) {
 }
 
 export function joinProfessionalConsultation(consultationId: string) {
-  return apiRequest<{
-    provider: "daily";
-    roomName: string;
-    identity: string;
-    displayName: string;
-    meetingUrl: string;
-    roomToken: string;
-    expiresInSeconds: number;
-  }>(
+  return apiRequest<CommunicationRoomAccess>(
     `/professional/consultations/${encodeURIComponent(consultationId)}/join`,
     { method: "POST" },
   );

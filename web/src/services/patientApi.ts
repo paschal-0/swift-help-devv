@@ -6,6 +6,7 @@ import {
   type AuthUser,
   type BackendRole,
 } from "./authApi";
+import type { CommunicationRoomAccess } from "./communicationApi";
 
 function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
   if (!params) return "";
@@ -762,15 +763,7 @@ export function upsertPatientConsultationIntake(
 }
 
 export function joinPatientConsultation(consultationId: string) {
-  return apiRequest<{
-    provider: "daily";
-    roomName: string;
-    identity: string;
-    displayName: string;
-    meetingUrl: string;
-    roomToken: string;
-    expiresInSeconds: number;
-  }>(
+  return apiRequest<CommunicationRoomAccess>(
     `/patient/consultations/${encodeURIComponent(consultationId)}/join`,
     { method: "POST" },
   );

@@ -65,10 +65,10 @@ export function PatientSymptomCheckerMainPage() {
           </button>
           <button
             type="button"
-            onClick={() => router.push("/patient-platform/symptom-checker/assessment")}
+            onClick={() => router.push("/patient-platform/ai-assistant")}
             className="inline-flex h-[48px] w-full max-w-[280px] cursor-pointer items-center justify-center rounded-[18.6577px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[18px] font-normal leading-[24px] tracking-[-0.05em] text-[#E3F2FD] shadow-[0_4px_25px_rgba(30,136,229,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:h-[51.31px] sm:w-[216.9px] sm:max-w-none sm:text-[20.6284px] sm:leading-[31px]"
           >
-            Start Assessment
+            Talk to Swift AI
           </button>
         </div>
     </article>

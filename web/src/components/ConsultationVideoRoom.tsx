@@ -32,6 +32,16 @@ type ConsultationVideoRoomProps = {
   onSendMessage?: (event: FormEvent<HTMLFormElement>) => void;
   summaryContent?: ReactNode;
   sharedInfoContent?: ReactNode;
+  waitingRoomContent?: ReactNode;
+  canJoin?: boolean;
+  networkMode?: "auto" | "video" | "voice";
+  recordingEnabled?: boolean;
+  transcriptionEnabled?: boolean;
+  recordingActive?: boolean;
+  transcriptionActive?: boolean;
+  onToggleRecording?: () => Promise<void> | void;
+  onToggleTranscription?: () => Promise<void> | void;
+  onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
   onEnd: () => void;
   onPresenceChange?: (presence: {
@@ -63,6 +73,10 @@ type DailyCallObject = {
   setLocalVideo: (enabled: boolean) => Promise<unknown>;
   startScreenShare?: () => Promise<unknown>;
   stopScreenShare?: () => Promise<unknown>;
+  startRecording?: (options?: Record<string, unknown>) => Promise<unknown>;
+  stopRecording?: () => Promise<unknown>;
+  startTranscription?: (options?: Record<string, unknown>) => Promise<unknown>;
+  stopTranscription?: () => Promise<unknown>;
 };
 
 type DailyModule = {
@@ -271,6 +285,16 @@ export function ConsultationVideoRoom({
   onSendMessage,
   summaryContent,
   sharedInfoContent,
+  waitingRoomContent,
+  canJoin = true,
+  networkMode = "auto",
+  recordingEnabled,
+  transcriptionEnabled,
+  recordingActive,
+  transcriptionActive,
+  onToggleRecording,
+  onToggleTranscription,
+  onTranscriptText,
   isEnding,
   onEnd,
   onPresenceChange,
@@ -285,6 +309,7 @@ export function ConsultationVideoRoom({
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [voiceOnly, setVoiceOnly] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [networkNotice, setNetworkNotice] = useState<string | null>(null);
   const cameraEnabledRef = useRef(cameraEnabled);
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
@@ -302,7 +327,7 @@ export function ConsultationVideoRoom({
   const remoteVideoTrack = getVideoTrack(remoteParticipant);
   const remoteAudioTrack = getAudioTrack(remoteParticipant);
   const effectiveRemoteLabel = remoteParticipant?.user_name || remoteLabel;
-  const isReady = Boolean(token && meetingUrl);
+  const isReady = Boolean(canJoin && token && meetingUrl);
 
   useEffect(() => {
     presenceChangeRef.current = onPresenceChange;
@@ -317,7 +342,7 @@ export function ConsultationVideoRoom({
   }, [microphoneEnabled]);
 
   useEffect(() => {
-    if (!token || !meetingUrl) {
+    if (!canJoin || !token || !meetingUrl) {
       setConnectionStatus("idle");
       return;
     }
@@ -357,6 +382,44 @@ export function ConsultationVideoRoom({
       if (!cancelled) setConnectionStatus("error");
     };
 
+    const handleNetworkQuality = (...args: unknown[]) => {
+      const quality = JSON.stringify(args).toLowerCase();
+      const isPoor =
+        quality.includes("very-low") ||
+        quality.includes("low") ||
+        quality.includes("bad") ||
+        quality.includes("poor");
+      setNetworkNotice(
+        isPoor
+          ? "Network is weak. Voice-only mode can keep the consultation stable."
+          : null,
+      );
+      if (isPoor && networkMode === "auto") {
+        setVoiceOnly(true);
+        setCameraEnabled(false);
+        void activeCall?.setLocalVideo(false).catch(() => undefined);
+      }
+    };
+
+    const handleTranscription = (...args: unknown[]) => {
+      const text = args
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object") {
+            const record = item as Record<string, unknown>;
+            return typeof record.text === "string"
+              ? record.text
+              : typeof record.transcript === "string"
+                ? record.transcript
+                : "";
+          }
+          return "";
+        })
+        .join(" ")
+        .trim();
+      if (text) void onTranscriptText?.(text);
+    };
+
     setConnectionStatus("connecting");
 
     void import("@daily-co/daily-js")
@@ -382,6 +445,9 @@ export function ConsultationVideoRoom({
           .on("participant-left", syncParticipants)
           .on("track-started", syncParticipants)
           .on("track-stopped", syncParticipants)
+          .on("network-quality-change", handleNetworkQuality as () => void)
+          .on("transcription-message", handleTranscription as () => void)
+          .on("app-message", handleTranscription as () => void)
           .on("error", handleError);
 
         void activeCall.join({ url: meetingUrl, token }).catch(() => {
@@ -403,6 +469,9 @@ export function ConsultationVideoRoom({
         call.off("participant-left", syncParticipants);
         call.off("track-started", syncParticipants);
         call.off("track-stopped", syncParticipants);
+        call.off("network-quality-change", handleNetworkQuality as () => void);
+        call.off("transcription-message", handleTranscription as () => void);
+        call.off("app-message", handleTranscription as () => void);
         call.off("error", handleError);
         void call.leave().catch(() => undefined);
         void call.destroy().catch(() => undefined);
@@ -416,7 +485,7 @@ export function ConsultationVideoRoom({
         microphoneEnabled: false,
       });
     };
-  }, [meetingUrl, token]);
+  }, [canJoin, meetingUrl, networkMode, onTranscriptText, token]);
 
   useEffect(() => {
     if (!joinedAt) {
@@ -468,6 +537,30 @@ export function ConsultationVideoRoom({
     setMicrophoneEnabled(nextValue);
     presenceChangeRef.current?.({ microphoneEnabled: nextValue });
     await callRef.current?.setLocalAudio(nextValue).catch(() => undefined);
+  };
+
+  const toggleRecording = async () => {
+    const call = callRef.current;
+    if (recordingActive) {
+      await call?.stopRecording?.().catch(() => undefined);
+      await onToggleRecording?.();
+    } else {
+      await onToggleRecording?.();
+      await call
+        ?.startRecording?.({ layout: { preset: "default" } })
+        .catch(() => undefined);
+    }
+  };
+
+  const toggleTranscription = async () => {
+    const call = callRef.current;
+    if (transcriptionActive) {
+      await call?.stopTranscription?.().catch(() => undefined);
+      await onToggleTranscription?.();
+    } else {
+      await onToggleTranscription?.();
+      await call?.startTranscription?.().catch(() => undefined);
+    }
   };
 
   const handleEnd = async () => {
@@ -627,7 +720,20 @@ export function ConsultationVideoRoom({
             Voice only
           </button>
 
-          {!isReady || connectionStatus === "error" ? (
+          {!canJoin ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.74)] px-8 text-center text-white">
+              {waitingRoomContent ?? (
+                <div>
+                  <p className="text-[20px] font-medium tracking-[-0.05em]">
+                    Waiting for admission
+                  </p>
+                  <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                    Your professional will admit you into the secure room.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : !isReady || connectionStatus === "error" ? (
             <div className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.72)] px-8 text-center text-white">
               <div>
                 <p className="text-[20px] font-medium tracking-[-0.05em]">
@@ -642,6 +748,12 @@ export function ConsultationVideoRoom({
           ) : connectionStatus === "connecting" ? (
             <div className="absolute inset-x-4 bottom-4 rounded-[12px] bg-[rgba(15,23,42,0.55)] px-4 py-3 text-center text-[13px] font-medium tracking-[-0.04em] text-white">
               Connecting to secure consultation...
+            </div>
+          ) : null}
+
+          {networkNotice ? (
+            <div className="absolute left-4 right-4 top-[74px] rounded-[12px] bg-[rgba(15,23,42,0.68)] px-4 py-2 text-center text-[12px] font-medium tracking-[-0.04em] text-white">
+              {networkNotice}
             </div>
           ) : null}
         </div>
@@ -755,6 +867,34 @@ export function ConsultationVideoRoom({
 
           {activeTab === "shared" ? (
             <div className="mt-6 rounded-[12px] bg-[#F8FAFC] p-4 text-[13px] leading-5 tracking-[-0.04em] text-[#334155]">
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                {recordingEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => void toggleRecording()}
+                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium ${
+                      recordingActive
+                        ? "bg-[#C82B33] text-white"
+                        : "bg-[#E3F2FD] text-[#1565C0]"
+                    }`}
+                  >
+                    {recordingActive ? "Stop recording" : "Start recording"}
+                  </button>
+                ) : null}
+                {transcriptionEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => void toggleTranscription()}
+                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium ${
+                      transcriptionActive
+                        ? "bg-[#0F172A] text-white"
+                        : "bg-[#E3F2FD] text-[#1565C0]"
+                    }`}
+                  >
+                    {transcriptionActive ? "Stop transcript" : "Start transcript"}
+                  </button>
+                ) : null}
+              </div>
               {sharedInfoContent ?? (
                 <p className="text-[#94A3B8]">
                   Shared consultation information will appear here.

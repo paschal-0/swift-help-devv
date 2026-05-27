@@ -6,6 +6,20 @@ import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import {
+  admitCommunicationParticipant,
+  appendCommunicationTranscript,
+  completeCommunicationTranscription,
+  denyCommunicationParticipant,
+  getCommunicationAnalytics,
+  startCommunicationRecording,
+  startCommunicationTranscription,
+  stopCommunicationRecording,
+  updateCommunicationConsent,
+  type CommunicationParticipant,
+  type CommunicationRecording,
+  type CommunicationTranscript,
+} from "@/services/communicationApi";
+import {
   completeProfessionalConsultation,
   generateProfessionalConsultationAiDocument,
   getProfessionalLiveUrl,
@@ -63,10 +77,16 @@ export function ProfessionalLiveConsultationPage() {
   const searchParams = useSearchParams();
   const [room, setRoom] = useState<ProfessionalConsultationRoom | null>(null);
   const [videoAccess, setVideoAccess] = useState<{
+    roomId?: string;
     roomName: string;
-    meetingUrl: string;
-    roomToken: string;
+    meetingUrl: string | null;
+    roomToken: string | null;
+    canJoin?: boolean;
   } | null>(null);
+  const [participants, setParticipants] = useState<CommunicationParticipant[]>([]);
+  const [recording, setRecording] = useState<CommunicationRecording | null>(null);
+  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
+  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [summary, setSummary] = useState("");
   const [notes, setNotes] = useState("");
@@ -105,10 +125,13 @@ export function ProfessionalLiveConsultationPage() {
         if (cancelled) return;
         setRoom(nextRoom);
         setVideoAccess({
+          roomId: access.roomId,
           roomName: access.roomName,
           meetingUrl: access.meetingUrl,
           roomToken: access.roomToken,
+          canJoin: access.canJoin,
         });
+        if (access.participant) setParticipants([access.participant]);
         setSummary(nextRoom.consultation.reason ?? "");
       } catch (error) {
         if (!cancelled) toast.error(getApiErrorMessage(error));
@@ -181,6 +204,27 @@ export function ProfessionalLiveConsultationPage() {
       handleAiDocument,
     );
 
+    const handleParticipant = (event: MessageEvent) => {
+      const participant = JSON.parse(event.data) as CommunicationParticipant;
+      setParticipants((current) =>
+        current.some((item) => item.id === participant.id)
+          ? current.map((item) => (item.id === participant.id ? participant : item))
+          : [...current, participant],
+      );
+    };
+
+    const handleRecording = (event: MessageEvent) => {
+      setRecording(JSON.parse(event.data) as CommunicationRecording);
+    };
+
+    const handleTranscript = (event: MessageEvent) => {
+      setTranscript(JSON.parse(event.data) as CommunicationTranscript);
+    };
+
+    eventSource.addEventListener("communication.participant.updated", handleParticipant);
+    eventSource.addEventListener("communication.recording.updated", handleRecording);
+    eventSource.addEventListener("communication.transcript.updated", handleTranscript);
+
     return () => {
       eventSource.removeEventListener(
         "professional.consultation_message.created",
@@ -194,9 +238,25 @@ export function ProfessionalLiveConsultationPage() {
         "professional.consultation_ai_document.updated",
         handleAiDocument,
       );
+      eventSource.removeEventListener("communication.participant.updated", handleParticipant);
+      eventSource.removeEventListener("communication.recording.updated", handleRecording);
+      eventSource.removeEventListener("communication.transcript.updated", handleTranscript);
       eventSource.close();
     };
   }, [consultation]);
+
+  useEffect(() => {
+    if (!videoAccess?.roomId) return;
+    let cancelled = false;
+    void getCommunicationAnalytics(videoAccess.roomId)
+      .then((result) => {
+        if (!cancelled) setAnalytics(result.totals);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [videoAccess?.roomId, participants.length, recording?.status, transcript?.status]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
@@ -287,9 +347,9 @@ export function ProfessionalLiveConsultationPage() {
     if (!consultation || isGeneratingDocument) return;
     setIsGeneratingDocument(true);
     try {
-      const document = await generateProfessionalConsultationAiDocument(
-        consultation.id,
-      );
+      const document = await generateProfessionalConsultationAiDocument(consultation.id, {
+        transcript: transcript?.text ?? undefined,
+      });
       setRoom((current) =>
         current
           ? {
@@ -306,6 +366,97 @@ export function ProfessionalLiveConsultationPage() {
       setIsGeneratingDocument(false);
     }
   };
+
+  const admitWaitingParticipant = async (participant: CommunicationParticipant) => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const saved = await admitCommunicationParticipant(
+        videoAccess.roomId,
+        participant.userId,
+      );
+      setParticipants((current) =>
+        current.some((item) => item.id === saved.id)
+          ? current.map((item) => (item.id === saved.id ? saved : item))
+          : [...current, saved],
+      );
+      toast.success("Patient admitted");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const denyWaitingParticipant = async (participant: CommunicationParticipant) => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const saved = await denyCommunicationParticipant(
+        videoAccess.roomId,
+        participant.userId,
+      );
+      setParticipants((current) =>
+        current.map((item) => (item.id === saved.id ? saved : item)),
+      );
+      toast.success("Waiting room entry denied");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const allowClinicalAi = async () => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const participant = await updateCommunicationConsent(videoAccess.roomId, {
+        recordingConsent: true,
+        transcriptionConsent: true,
+        translationConsent: true,
+      });
+      setParticipants((current) =>
+        current.some((item) => item.id === participant.id)
+          ? current.map((item) => (item.id === participant.id ? participant : item))
+          : [...current, participant],
+      );
+      toast.success("Consent saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const saved =
+        recording?.status === "recording"
+          ? await stopCommunicationRecording(videoAccess.roomId)
+          : await startCommunicationRecording(videoAccess.roomId);
+      setRecording(saved);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const toggleTranscription = async () => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const saved =
+        transcript?.status === "transcribing"
+          ? await completeCommunicationTranscription(videoAccess.roomId)
+          : await startCommunicationTranscription(videoAccess.roomId, {
+              language: "en",
+            });
+      setTranscript(saved);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const appendTranscriptText = async (text: string) => {
+    if (!videoAccess?.roomId) return;
+    const saved = await appendCommunicationTranscript(videoAccess.roomId, { text });
+    setTranscript(saved);
+  };
+
+  const waitingParticipants = participants.filter(
+    (participant) => participant.status === "waiting",
+  );
 
   const markAiDraftReviewed = async () => {
     if (!consultation) return;
@@ -340,6 +491,7 @@ export function ProfessionalLiveConsultationPage() {
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}
         roomName={videoAccess?.roomName ?? null}
+        canJoin={videoAccess?.canJoin !== false}
         remoteLabel={patientName}
         remoteRoleLabel="Patient"
         localLabel="Professional"
@@ -348,6 +500,13 @@ export function ProfessionalLiveConsultationPage() {
         messageDraft={messageDraft}
         onMessageDraftChange={setMessageDraft}
         onSendMessage={sendMessage}
+        recordingEnabled={Boolean(videoAccess?.roomId)}
+        transcriptionEnabled={Boolean(videoAccess?.roomId)}
+        recordingActive={recording?.status === "recording"}
+        transcriptionActive={transcript?.status === "transcribing"}
+        onToggleRecording={toggleRecording}
+        onToggleTranscription={toggleTranscription}
+        onTranscriptText={appendTranscriptText}
         isEnding={isCompleting}
         onEnd={() => void completeSession()}
         summaryContent={
@@ -415,6 +574,87 @@ export function ProfessionalLiveConsultationPage() {
                 <p className="mt-2 text-[#64748B]">
                   {room.aiDocument.clinicalSummary}
                 </p>
+              </section>
+            ) : null}
+            {waitingParticipants.length ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">Waiting room</p>
+                <div className="mt-2 space-y-2">
+                  {waitingParticipants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate text-[#64748B]">
+                        {participant.displayName ?? "Patient waiting"}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void denyWaitingParticipant(participant)}
+                          className="rounded-[8px] border border-[#94A3B8] px-3 py-1.5 text-[12px] font-medium text-[#334155]"
+                        >
+                          Deny
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void admitWaitingParticipant(participant)}
+                          className="rounded-[8px] bg-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-white"
+                        >
+                          Admit
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+              <p className="font-medium text-[#334155]">Compliance controls</p>
+              <p className="mt-1 text-[#64748B]">
+                Recording and transcription require participant consent before they start.
+              </p>
+              <button
+                type="button"
+                onClick={() => void allowClinicalAi()}
+                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white"
+              >
+                Allow clinical AI support
+              </button>
+            </section>
+            {transcript?.text ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">Live transcript</p>
+                <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-line text-[#64748B]">
+                  {transcript.text}
+                </p>
+              </section>
+            ) : null}
+            {analytics ? (
+              <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+                <p className="font-medium text-[#334155]">Session analytics</p>
+                <dl className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[#64748B]">
+                  <div>
+                    <dt>Joins</dt>
+                    <dd className="font-semibold text-[#334155]">{analytics.joins ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>Leaves</dt>
+                    <dd className="font-semibold text-[#334155]">{analytics.leaves ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>Recordings</dt>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.recordings ?? 0}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Transcripts</dt>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.transcripts ?? 0}
+                    </dd>
+                  </div>
+                </dl>
               </section>
             ) : null}
           </div>

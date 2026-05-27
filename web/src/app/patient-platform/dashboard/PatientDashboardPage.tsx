@@ -314,7 +314,7 @@ export function PatientDashboardPage() {
           <div className="absolute left-4 top-9 z-10 max-w-[207px] text-[#F8FAFC]">
             <h2 className="text-[18px] font-medium leading-6 tracking-[-0.05em]">Not Feeling Well?</h2>
             <p className="mt-1 text-[16px] font-light leading-4 tracking-[-0.05em]">
-              Start a quick symptom assessment to receive guidance and the right next steps.
+              Start a guided AI health conversation to receive care guidance and the right next steps.
             </p>
           </div>
           <Image
@@ -333,12 +333,12 @@ export function PatientDashboardPage() {
           />
           <motion.button
             type="button"
-            onClick={() => router.push("/patient-platform/symptom-checker")}
+            onClick={() => router.push("/patient-platform/ai-assistant")}
             className="absolute bottom-[27px] left-4 inline-flex h-[34.76px] cursor-pointer items-center justify-center rounded-[6.37px] bg-[#F8FAFC] px-3 text-[8.49px] font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0] sm:text-[12px]"
             whileHover={{ y: -1, scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
           >
-            Start Symptom Check
+            Talk to Swift AI
           </motion.button>
         </motion.article>
       </div>

@@ -18,6 +18,10 @@ import {
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
+import {
+  updateCommunicationConsent,
+  type CommunicationParticipant,
+} from "@/services/communicationApi";
 
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
@@ -59,9 +63,12 @@ export function PatientLiveConsultationPage() {
   const router = useRouter();
   const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
   const [videoAccess, setVideoAccess] = useState<{
+    roomId?: string;
     roomName: string;
-    meetingUrl: string;
-    roomToken: string;
+    meetingUrl: string | null;
+    roomToken: string | null;
+    canJoin?: boolean;
+    waitingRoomStatus?: string;
   } | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [isLeaving, setIsLeaving] = useState(false);
@@ -97,9 +104,12 @@ export function PatientLiveConsultationPage() {
         if (cancelled) return;
         setRoom(nextRoom);
         setVideoAccess({
+          roomId: access.roomId,
           roomName: access.roomName,
           meetingUrl: access.meetingUrl,
           roomToken: access.roomToken,
+          canJoin: access.canJoin,
+          waitingRoomStatus: access.waitingRoomStatus,
         });
       } catch (error) {
         if (!cancelled) toast.error(getApiErrorMessage(error));
@@ -168,10 +178,36 @@ export function PatientLiveConsultationPage() {
     eventSource.addEventListener("patient.consultation_presence.updated", handlePresence);
     eventSource.addEventListener("patient.notification.created", handleNotification);
 
+    const handleParticipant = (event: MessageEvent) => {
+      const participant = JSON.parse(event.data) as CommunicationParticipant;
+      if (participant.status === "denied") {
+        toast.info("The professional did not admit this waiting room session.");
+        router.push("/patient-platform/consultations");
+        return;
+      }
+      if (participant.status === "admitted") {
+        void joinPatientConsultation(consultation.id)
+          .then((access) => {
+            setVideoAccess({
+              roomId: access.roomId,
+              roomName: access.roomName,
+              meetingUrl: access.meetingUrl,
+              roomToken: access.roomToken,
+              canJoin: access.canJoin,
+              waitingRoomStatus: access.waitingRoomStatus,
+            });
+          })
+          .catch(() => undefined);
+      }
+    };
+
+    eventSource.addEventListener("communication.participant.updated", handleParticipant);
+
     return () => {
       eventSource.removeEventListener("patient.consultation_message.created", handleMessage);
       eventSource.removeEventListener("patient.consultation_presence.updated", handlePresence);
       eventSource.removeEventListener("patient.notification.created", handleNotification);
+      eventSource.removeEventListener("communication.participant.updated", handleParticipant);
       eventSource.close();
     };
   }, [consultation, router]);
@@ -216,12 +252,38 @@ export function PatientLiveConsultationPage() {
     }
   };
 
+  const allowClinicalAi = async () => {
+    if (!videoAccess?.roomId) return;
+    try {
+      const participant = await updateCommunicationConsent(videoAccess.roomId, {
+        recordingConsent: true,
+        transcriptionConsent: true,
+        translationConsent: true,
+      });
+      void participant;
+      toast.success("Consultation consent saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   return (
     <article className="mt-3 w-full xl:max-w-[899px]">
       <ConsultationVideoRoom
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}
         roomName={videoAccess?.roomName ?? null}
+        canJoin={videoAccess?.canJoin !== false}
+        waitingRoomContent={
+          <div>
+            <p className="text-[20px] font-medium tracking-[-0.05em]">
+              Waiting room
+            </p>
+            <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+              Your professional has been notified. You will enter automatically once admitted.
+            </p>
+          </div>
+        }
         remoteLabel={providerName}
         remoteRoleLabel="Provider"
         localLabel="Patient"
@@ -295,6 +357,19 @@ export function PatientLiveConsultationPage() {
                 </p>
               </section>
             ) : null}
+            <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+              <p className="font-medium text-[#334155]">Consent</p>
+              <p className="mt-1 text-[#64748B]">
+                Allow recording, transcription, and AI notes only when you are comfortable.
+              </p>
+              <button
+                type="button"
+                onClick={() => void allowClinicalAi()}
+                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white"
+              >
+                Allow clinical AI support
+              </button>
+            </section>
           </div>
         }
         onPresenceChange={(presence) => {
