@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -24,8 +23,8 @@ type ConversationPreview = {
   name: string;
   preview: string;
   time: string;
-  avatarType: "initials" | "photo";
   initials?: string;
+  avatarSrc?: string | null;
   unread?: boolean;
 };
 
@@ -63,17 +62,6 @@ function SendIcon() {
   );
 }
 
-function CallIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-      <path
-        fill="#1565C0"
-        d="M6.6 10.8a15.9 15.9 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V21c0 .6-.4 1-1 1C10.2 22 2 13.8 2 3.7c0-.6.4-1 1-1h4.6c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1l-2.3 2.2Z"
-      />
-    </svg>
-  );
-}
-
 function CompletedPill() {
   return (
     <span className="inline-flex h-[23px] items-center justify-center rounded-[6px] border border-[#0D8C24] bg-[#E1FAE5] px-4 text-[12px] font-normal tracking-[-0.05em] text-[#0D8C24]">
@@ -90,11 +78,25 @@ function InitialsAvatar({ initials }: { initials: string }) {
   );
 }
 
-function PhotoAvatar() {
+function Avatar({ name, src }: { name: string; src?: string | null }) {
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "SH";
+
+  if (!src) {
+    return <InitialsAvatar initials={initials} />;
+  }
+
   return (
-    <div className="h-9 w-9 overflow-hidden rounded-full bg-white">
-      <Image src="/doctor.jpg" alt="Doctor avatar" width={36} height={36} className="h-full w-full object-cover" />
-    </div>
+    <div
+      className="h-9 w-9 overflow-hidden rounded-full bg-cover bg-center"
+      style={{ backgroundImage: `url("${src}")` }}
+      aria-label={`${name} avatar`}
+    />
   );
 }
 
@@ -117,7 +119,6 @@ function updateToPreview(update: OrganizationShiftUpdate): ConversationPreview {
     name: update.title,
     preview: text,
     time: timeAgo(update.createdAt),
-    avatarType: "initials",
     initials: "SH",
     unread: false,
   };
@@ -157,7 +158,6 @@ function messageToPreview(message: OrganizationShiftMessage): ConversationPrevie
     name: message.senderType === "organization" ? "Organization" : "Professional",
     preview: message.deletedAt ? "Message deleted" : (message.body ?? `${message.attachments?.length ?? 0} attachment(s)`),
     time: timeAgo(message.createdAt),
-    avatarType: message.senderType === "organization" ? "initials" : "photo",
     initials: "SH",
     unread: message.senderType !== "organization" && !message.readByOrganization,
   };
@@ -173,61 +173,11 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
   const [professionalTyping, setProfessionalTyping] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
-  const [conversationPreviews, setConversationPreviews] = useState<ConversationPreview[]>([
-    {
-      id: "c1",
-      name: "Shift 2234",
-      preview: "I’ll be there in 10 minutes",
-      time: "3m",
-      avatarType: "initials",
-      initials: "SH",
-    },
-    {
-      id: "c2",
-      name: "Dr Darah",
-      preview: "Hii, i’m actually on my way",
-      time: "3m",
-      avatarType: "photo",
-      unread: true,
-    },
-    {
-      id: "c3",
-      name: "Dr Smith",
-      preview: "I’ll be there in 10 minutes",
-      time: "3m",
-      avatarType: "photo",
-    },
-    {
-      id: "c4",
-      name: "Dr Patel",
-      preview: "Stuck in traffic, expect me in 25 minutes",
-      time: "10m",
-      avatarType: "photo",
-      unread: true,
-    },
-    {
-      id: "c5",
-      name: "Dr Johnson",
-      preview: "Running a bit late, ETA 15 minutes",
-      time: "5m",
-      avatarType: "photo",
-    },
-    {
-      id: "c6",
-      name: "Dr Lee",
-      preview: "On my way, should arrive in 20 minutes",
-      time: "7m",
-      avatarType: "photo",
-    },
-    {
-      id: "c7",
-      name: "Dr Garcia",
-      preview: "Just finished up, I'll be there in 12 minutes",
-      time: "4m",
-      avatarType: "photo",
-      unread: true,
-    },
-  ]);
+  const [conversationPreviews, setConversationPreviews] = useState<
+    ConversationPreview[]
+  >([]);
+  const [threadName, setThreadName] = useState("Shift updates");
+  const [threadAvatar, setThreadAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -237,6 +187,14 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
         if (!isMounted) {
           return;
         }
+
+        const firstProfessional = data.assignments.find(
+          (assignment) => assignment.professional,
+        )?.professional;
+        setThreadName(
+          firstProfessional?.name ?? data.shift.shiftCode ?? "Shift updates",
+        );
+        setThreadAvatar(firstProfessional?.avatarUrl ?? null);
 
         if (data.messages.length) {
           setConversationPreviews(data.messages.map(messageToPreview));
@@ -462,22 +420,13 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
             <div className="flex flex-wrap items-center justify-between gap-4 border-b-[2px] border-[#E2E8F0] pb-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 overflow-hidden rounded-full bg-white">
-                  <Image src="/doctor.jpg" alt="Dr Darah avatar" width={40} height={40} className="h-full w-full object-cover" />
+                  <Avatar name={threadName} src={threadAvatar} />
                 </div>
                 <h2 className="text-[18px] font-normal tracking-[-0.05em] text-[#334155] sm:text-[24px]">
-                  Dr Darah
+                  {threadName}
                 </h2>
                 <CompletedPill />
               </div>
-
-              <button
-                type="button"
-                onClick={() => toast.info("Calling Dr Darah is not available yet.")}
-                className="inline-flex h-[37px] w-[37px] cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD]"
-                aria-label="Call Dr Darah"
-              >
-                <CallIcon />
-              </button>
             </div>
 
             <div className="min-h-[360px] space-y-10 px-1 py-8 xl:min-h-[430px]">
@@ -657,14 +606,13 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
                 <button
                   key={conversation.id}
                   type="button"
-                  onClick={() => toast.info(`${conversation.name} thread is not switchable yet.`)}
+                  onClick={() => setActiveTab("All")}
                   className="flex w-full cursor-pointer items-start gap-[9px] text-left"
                 >
-                  {conversation.avatarType === "initials" && conversation.initials ? (
-                    <InitialsAvatar initials={conversation.initials} />
-                  ) : (
-                    <PhotoAvatar />
-                  )}
+                  <Avatar
+                    name={conversation.name}
+                    src={conversation.avatarSrc ?? null}
+                  />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">

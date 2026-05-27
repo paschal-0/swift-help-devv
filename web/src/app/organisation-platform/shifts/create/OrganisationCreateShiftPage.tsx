@@ -1,10 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createOrganizationShift, publishOrganizationShift } from "@/services/organizationApi";
+import {
+  createOrganizationShift,
+  getOrganizationShiftOptions,
+  publishOrganizationShift,
+  type OrganizationShiftOptions,
+} from "@/services/organizationApi";
 
 const premiumEase = [0.32, 0.72, 0, 1] as const;
 const microInteractionClass =
@@ -111,9 +116,43 @@ export function OrganisationCreateShiftPage() {
   const [priority, setPriority] = useState<"Normal" | "Urgent">("Normal");
   const [payPerHour, setPayPerHour] = useState("300");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shiftOptions, setShiftOptions] =
+    useState<OrganizationShiftOptions | null>(null);
   const [instructions, setInstructions] = useState(
     "Report at the front desk and ask for the shift supervisor"
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationShiftOptions()
+      .then((options) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setShiftOptions(options);
+        setDepartment((current) =>
+          options.departments.includes(current)
+            ? current
+            : options.departments[0] || "Medical",
+        );
+        setShiftRole((current) =>
+          options.roles.includes(current) ? current : options.roles[0] || "Doctor",
+        );
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to load shift options.",
+        );
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleProceed = async () => {
     if (!department || !shiftRole || !shiftDate || !fromTime || !toTime || !professionalsRequired || !payPerHour) {
@@ -198,10 +237,12 @@ export function OrganisationCreateShiftPage() {
                     onChange={(event) => setDepartment(event.target.value)}
                     className={`h-12 w-full cursor-pointer appearance-none rounded-[12px] border border-[#94A3B8] bg-white px-4 pr-12 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-6 sm:pr-14 sm:text-[18px] ${inputFocusClass}`}
                   >
-                    <option>Medical</option>
-                    <option>Emergency</option>
-                    <option>Radiology</option>
-                    <option>ICU</option>
+                    {(shiftOptions?.departments.length
+                      ? shiftOptions.departments
+                      : ["Medical"]
+                    ).map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
                   </select>
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                     <ChevronDownIcon />
@@ -217,10 +258,12 @@ export function OrganisationCreateShiftPage() {
                     onChange={(event) => setShiftRole(event.target.value)}
                     className={`h-12 w-full cursor-pointer appearance-none rounded-[12px] border border-[#94A3B8] bg-white px-4 pr-12 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-6 sm:pr-14 sm:text-[18px] ${inputFocusClass}`}
                   >
-                    <option>Lab Technician</option>
-                    <option>Nurse</option>
-                    <option>Doctor</option>
-                    <option>Support Staff</option>
+                    {(shiftOptions?.roles.length
+                      ? shiftOptions.roles
+                      : ["Doctor", "Nurse", "Lab Technician", "Support Staff"]
+                    ).map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
                   </select>
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                     <ChevronDownIcon />
@@ -316,7 +359,9 @@ export function OrganisationCreateShiftPage() {
               <label className="flex flex-col gap-2">
                 <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Pay per hour</span>
                 <span className={`flex h-12 items-center rounded-[12px] border border-[#94A3B8] bg-white px-4 sm:h-[56px] sm:px-5 ${fieldClass}`}>
-                  <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">$</span>
+                  <span className="text-[15px] font-light tracking-[-0.04em] text-[#94A3B8] sm:text-[18px]">
+                    {shiftOptions?.currency ?? "$"}
+                  </span>
                   <input
                     value={payPerHour}
                     onChange={(event) => setPayPerHour(event.target.value)}

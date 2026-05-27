@@ -83,7 +83,8 @@ export type OrganizationProfessional = {
   rating: number;
   verificationStatus: string;
   status: "Available" | "On shift" | "On leave" | "Off duty" | string;
-  profile?: unknown;
+  avatarUrl?: string | null;
+  profile?: Record<string, unknown> | null;
   availability?: unknown;
 };
 
@@ -239,14 +240,46 @@ export type OrganizationReports = {
 
 export type OrganizationAttendanceRow = {
   id: string;
-  professional: string;
+  professional?: string;
+  staff?: string;
   role: string;
   department: string;
   shiftId: string;
-  date: string;
-  checkIn: string;
-  checkOut: string;
+  shiftOfferId?: string;
+  professionalUserId?: string;
+  date?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  checkIn?: string | null;
+  checkInTime?: string | null;
+  checkOut?: string | null;
+  checkOutTime?: string | null;
   status: string;
+  avatarSrc?: string | null;
+};
+
+export type OrganizationShiftOptions = {
+  departments: string[];
+  roles: string[];
+  currency: string;
+  defaultShiftDuration: string;
+  timeZone: string;
+  operatingHours:
+    | Record<
+        string,
+        {
+          enabled: boolean;
+          from: string;
+          to: string;
+        }
+      >
+    | null;
+  staffAvailability: {
+    availableNow: number;
+    onShift: number;
+    offDuty: number;
+    onLeave: number;
+  };
 };
 
 export type OrganizationSettings = {
@@ -366,9 +399,19 @@ export async function getOrganizationDashboard() {
 export async function listOrganizationShifts(params?: {
   status?: string;
   department?: string;
+  role?: string;
   date?: string;
+  from?: string;
+  to?: string;
+  search?: string;
 }) {
   return apiRequest<OrganizationShiftList>(`/organization/shifts${buildQuery(params)}`, {
+    method: "GET",
+  });
+}
+
+export async function getOrganizationShiftOptions() {
+  return apiRequest<OrganizationShiftOptions>("/organization/shift-options", {
     method: "GET",
   });
 }
@@ -521,6 +564,19 @@ export async function getOrganizationBillingCredit() {
   });
 }
 
+export async function inviteProfessionalsToOrganizationShift(
+  shiftId: string,
+  professionalUserIds: string[],
+) {
+  return apiRequest<{ invited: number; professionals: Array<Record<string, unknown>> }>(
+    `/organization/shifts/${encodeURIComponent(shiftId)}/invite-professionals`,
+    {
+      method: "POST",
+      body: JSON.stringify({ professionalUserIds }),
+    },
+  );
+}
+
 export async function generateOrganizationWeeklyInvoice(payload?: {
   periodStart?: string;
   periodEnd?: string;
@@ -579,26 +635,53 @@ export async function getOrganizationProfessional(professionalUserId: string) {
   );
 }
 
-export async function getOrganizationReports() {
-  return apiRequest<OrganizationReports>("/organization/reports", {
+export async function getOrganizationReports(params?: {
+  from?: string;
+  to?: string;
+  department?: string;
+  role?: string;
+}) {
+  return apiRequest<OrganizationReports>(`/organization/reports${buildQuery(params)}`, {
     method: "GET",
   });
 }
 
-export async function listOrganizationAttendance() {
-  return apiRequest<OrganizationAttendanceRow[]>("/organization/reports/attendance", {
-    method: "GET",
-  });
+export async function listOrganizationAttendance(params?: {
+  from?: string;
+  to?: string;
+  department?: string;
+  role?: string;
+}) {
+  return apiRequest<OrganizationAttendanceRow[]>(
+    `/organization/reports/attendance${buildQuery(params)}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export async function exportOrganizationReports(payload: {
-  reportType: string;
-  format: "csv" | "pdf";
+  format: "csv" | "pdf" | "xlsx";
+  from?: string;
+  to?: string;
+  department?: string;
+  role?: string;
 }) {
-  return apiRequest<{ exportId: string; status: string; format: string; report: OrganizationReports }>("/organization/reports/export", {
+  return apiRequest<{
+    exportId: string;
+    status: string;
+    format: string;
+    report: OrganizationReports;
+    downloadUrl?: string;
+    legacyDownloadUrl?: string;
+  }>("/organization/reports/export", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function getOrganizationReportDownloadUrl(exportId: string) {
+  return `${API_BASE_URL}/organization/reports/exports/${encodeURIComponent(exportId)}/download`;
 }
 
 export async function getOrganizationSettings() {

@@ -470,7 +470,7 @@ export function OrganisationMyProfilePage() {
               setInviteModalOpen(true);
               setInviteLink("");
             }}
-            onEditMember={() => toast.info("Team member editing is not available yet.")}
+            onEditMember={editSettings}
           />
         </div>
 
@@ -484,7 +484,7 @@ export function OrganisationMyProfilePage() {
 
           <DepartmentsCard
             departments={filteredDepartments}
-            onAdd={() => toast.info("Department management is not available yet.")}
+            onAdd={editSettings}
           />
         </div>
       </div>

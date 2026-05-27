@@ -5,19 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  getOrganizationShiftOptions,
   listOrganizationShifts,
+  type OrganizationShiftOptions,
   type OrganizationShift,
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 import { type ShiftRow, type ShiftStatus } from "./data";
 
 type ShiftTab = "All" | "Upcoming" | "Checked in" | "Completed" | "Missed";
-type AvailabilityDay = {
-  day: string;
-  enabled: boolean;
-  from: string;
-  to: string;
-};
 
 const microInteractionClass =
   "transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97]";
@@ -170,27 +166,24 @@ export function OrganisationShiftsPage() {
   const [summaryCards, setSummaryCards] = useState(emptySummaryCards);
   const [isLoading, setIsLoading] = useState(true);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
-  const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([
-    { day: "Monday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Tuesday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Wednesday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Thursday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Friday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Saturday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-    { day: "Sunday", enabled: true, from: "9:00 AM", to: "6:00 PM" },
-  ]);
+  const [shiftOptions, setShiftOptions] =
+    useState<OrganizationShiftOptions | null>(null);
 
   const normalizedQuery = searchText.trim().toLowerCase();
 
   useEffect(() => {
     let isMounted = true;
 
-    listOrganizationShifts()
-      .then((data) => {
+    Promise.all([
+      listOrganizationShifts(),
+      getOrganizationShiftOptions().catch(() => null),
+    ])
+      .then(([data, options]) => {
         if (!isMounted) {
           return;
         }
 
+        setShiftOptions(options);
         setShiftRows(data.shifts.map(mapBackendShiftRow));
         const totalShifts = data.summary.totalShifts ?? data.shifts.length;
         const completedShifts =
@@ -304,15 +297,20 @@ export function OrganisationShiftsPage() {
     openShiftDetails(row.routeId ?? row.id);
   };
 
-  const toggleAvailabilityDay = (day: string) => {
-    setAvailabilityDays((currentDays) =>
-      currentDays.map((currentDay) =>
-        currentDay.day === day
-          ? { ...currentDay, enabled: !currentDay.enabled }
-          : currentDay,
-      ),
-    );
-  };
+  const operatingHours = shiftOptions?.operatingHours ?? null;
+
+  const operatingHourRows = useMemo(() => {
+    if (!operatingHours) {
+      return [];
+    }
+
+    return Object.entries(operatingHours).map(([day, value]) => ({
+      day: day.charAt(0).toUpperCase() + day.slice(1),
+      enabled: Boolean(value.enabled),
+      from: value.from,
+      to: value.to,
+    }));
+  }, [operatingHours]);
 
   return (
     <div className="mt-4 px-3 pb-6 sm:mt-6 sm:px-6 sm:pb-8 xl:mt-[72px] xl:px-0">
@@ -786,18 +784,42 @@ export function OrganisationShiftsPage() {
 
               <div className="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 <div className="space-y-5">
-                  {availabilityDays.map((availabilityDay) => (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[
+                      ["Available now", shiftOptions?.staffAvailability.availableNow ?? 0],
+                      ["On shift", shiftOptions?.staffAvailability.onShift ?? 0],
+                      ["Off duty", shiftOptions?.staffAvailability.offDuty ?? 0],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-[12px] bg-white px-4 py-4 shadow-sm"
+                      >
+                        <p className="text-[13px] font-medium text-[#94A3B8]">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-[28px] font-semibold text-[#334155]">
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <h4 className="text-[15px] font-semibold tracking-[-0.04em] text-[#334155]">
+                      Organization operating hours
+                    </h4>
+                    <p className="mt-1 text-[13px] tracking-[-0.03em] text-[#94A3B8]">
+                      These hours are read from organization settings and are used as context when shifts are created.
+                    </p>
+                  </div>
+
+                  {operatingHourRows.length ? (
+                    operatingHourRows.map((availabilityDay) => (
                     <div
                       key={availabilityDay.day}
                       className="grid gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:grid-cols-[140px_1fr] md:items-center md:gap-[20px] md:border-none md:bg-transparent md:p-0 md:shadow-none"
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleAvailabilityDay(availabilityDay.day)
-                        }
-                        className={`flex w-full cursor-pointer items-center justify-between gap-[12px] text-left md:justify-start ${microInteractionClass}`}
-                      >
+                      <div className="flex w-full items-center justify-between gap-[12px] text-left md:justify-start">
                         <span className="text-[16px] font-medium leading-5 tracking-[-0.03em] text-[#334155] md:font-light md:text-[#94A3B8]">
                           {availabilityDay.day}
                         </span>
@@ -816,7 +838,7 @@ export function OrganisationShiftsPage() {
                             }`}
                           />
                         </span>
-                      </button>
+                      </div>
 
                       <div
                         className={`grid gap-3 transition-opacity duration-200 sm:grid-cols-2 sm:gap-4 ${
@@ -843,7 +865,12 @@ export function OrganisationShiftsPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="rounded-[12px] border border-[#E2E8F0] bg-white px-4 py-6 text-center text-[14px] font-medium tracking-[-0.04em] text-[#94A3B8]">
+                      No operating hours have been configured yet.
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

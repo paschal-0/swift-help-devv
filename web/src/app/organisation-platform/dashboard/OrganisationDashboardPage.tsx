@@ -482,10 +482,7 @@ export function OrganisationDashboardPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      toast.info(`${item.secondaryLabel} placeholder opened.`);
-                      openRoute(item.secondaryHref);
-                    }}
+                    onClick={() => openRoute(item.secondaryHref)}
                     className="flex h-[44px] min-w-[160px] cursor-pointer items-center justify-center rounded-[8px] bg-[#94A3B8] px-5 text-sm font-medium text-[#F8FAFC] transition duration-200 hover:-translate-y-0.5 hover:bg-[#7f8ea3]"
                   >
                     {item.secondaryLabel}

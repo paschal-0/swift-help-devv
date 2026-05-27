@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,7 +9,6 @@ import {
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../../components/OrganisationPlatformShell";
 import {
-  organisationAttendanceRows,
   type AttendanceRow,
   type AttendanceStatus,
   type AttendanceTab,
@@ -21,8 +19,15 @@ type OrganisationReportsAttendancePageProps = {
 };
 
 function normalizeAttendanceStatus(status: string): AttendanceStatus {
-  if (status === "Checked in" || status === "Completed" || status === "Missed") {
-    return status;
+  const normalized = status.toLowerCase();
+  if (status === "Checked in" || normalized === "checked_in") {
+    return "Checked in";
+  }
+  if (status === "Completed" || normalized === "completed") {
+    return "Completed";
+  }
+  if (status === "Missed" || normalized === "missed") {
+    return "Missed";
   }
 
   return "Upcoming";
@@ -81,17 +86,68 @@ function StatusPill({ status }: { status: AttendanceStatus }) {
   );
 }
 
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "Not scheduled";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "long",
+  }).format(new Date(value));
+}
+
+function formatTime(value?: string | null) {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function initialsForName(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "PR"
+  );
+}
+
+function StaffAvatar({ src, name, size = "h-10 w-10" }: { src: string | null; name: string; size?: string }) {
+  if (src) {
+    return (
+      <span
+        className={`inline-flex shrink-0 rounded-full bg-cover bg-center ${size}`}
+        style={{ backgroundImage: `url("${src}")` }}
+        aria-label={`${name} avatar`}
+      />
+    );
+  }
+
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1565C0] ${size}`}>
+      {initialsForName(name)}
+    </span>
+  );
+}
+
 export function OrganisationReportsAttendancePage({
-  initialRows = organisationAttendanceRows,
+  initialRows = [],
 }: OrganisationReportsAttendancePageProps) {
   const router = useRouter();
   const { searchText } = useOrganisationPlatformShell();
   const [activeTab, setActiveTab] = useState<AttendanceTab>("All");
   const [sortOrder, setSortOrder] = useState<"Newest" | "Oldest">("Newest");
   const [scopeFilter, setScopeFilter] = useState("All");
-  const [roleFilter, setRoleFilter] = useState("Doctor");
-  const [departmentFilter, setDepartmentFilter] = useState("Health");
-  const [statusFilter, setStatusFilter] = useState("Available");
+  const [roleFilter, setRoleFilter] = useState("All roles");
+  const [departmentFilter, setDepartmentFilter] = useState("All departments");
+  const [statusFilter, setStatusFilter] = useState("All statuses");
   const [rows, setRows] = useState<AttendanceRow[]>(initialRows);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(
     initialRows.find((row) => row.status === "Upcoming")?.id ?? null,
@@ -112,18 +168,30 @@ export function OrganisationReportsAttendancePage({
           return;
         }
 
-        const nextRows = data.map((row) => ({
-          id: row.id,
-          staff: row.professional,
-          shiftId: row.shiftId,
-          department: row.department,
-          date: row.date,
-          time: `${row.checkIn} - ${row.checkOut}`,
-          status: normalizeAttendanceStatus(row.status),
-          checkInTime: row.checkIn,
-          checkOutTime: row.checkOut,
-          avatarSrc: "/doctor.jpg",
-        }));
+        const nextRows = data.map((row) => {
+          const startsAt = row.startsAt ?? row.date ?? null;
+          const endsAt = row.endsAt ?? null;
+          const checkIn = row.checkInTime ?? row.checkIn ?? null;
+          const checkOut = row.checkOutTime ?? row.checkOut ?? null;
+
+          return {
+            id: row.id,
+            staff: row.staff ?? row.professional ?? "Assigned professional",
+            shiftId: row.shiftOfferId ?? row.shiftId,
+            department: row.department,
+            date: formatDate(startsAt),
+            time:
+              startsAt && endsAt
+                ? `${formatTime(startsAt)} - ${formatTime(endsAt)}`
+                : "Not scheduled",
+            status: normalizeAttendanceStatus(row.status),
+            checkInTime: checkIn ? formatTime(checkIn) : "Not checked in",
+            checkOutTime: checkOut ? formatTime(checkOut) : "Not checked out",
+            avatarSrc: row.avatarSrc ?? null,
+            role: row.role,
+            startsAt,
+          };
+        });
 
         setRows(nextRows);
         setSelectedRowId(nextRows.find((row) => row.status === "Upcoming")?.id ?? null);
@@ -140,29 +208,86 @@ export function OrganisationReportsAttendancePage({
   const visibleRows = useMemo(() => {
     const filteredRows = rows.filter((row) => {
       const matchesTab = activeTab === "All" ? true : row.status === activeTab;
+      const matchesRole = roleFilter === "All roles" || row.role === roleFilter;
+      const matchesDepartment =
+        departmentFilter === "All departments" ||
+        row.department === departmentFilter;
+      const matchesStatus =
+        statusFilter === "All statuses" || row.status === statusFilter;
+      const matchesScope =
+        scopeFilter === "All" ||
+        (row.startsAt
+          ? (() => {
+              const date = new Date(row.startsAt);
+              const now = new Date();
+              const start = new Date(now);
+              if (scopeFilter === "This week") {
+                start.setDate(now.getDate() - 7);
+              } else {
+                start.setMonth(now.getMonth() - 1);
+              }
+              return date >= start;
+            })()
+          : true);
       const matchesSearch =
         !normalizedQuery ||
-        `${row.staff} ${row.shiftId} ${row.department} ${row.date} ${row.time} ${row.status}`
+        `${row.staff} ${row.shiftId} ${row.department} ${row.role} ${row.date} ${row.time} ${row.status}`
           .toLowerCase()
           .includes(normalizedQuery);
 
-      return matchesTab && matchesSearch;
+      return (
+        matchesTab &&
+        matchesRole &&
+        matchesDepartment &&
+        matchesStatus &&
+        matchesScope &&
+        matchesSearch
+      );
     });
 
     const sortedRows = [...filteredRows].sort((left, right) =>
-      sortOrder === "Newest" ? right.id.localeCompare(left.id) : left.id.localeCompare(right.id),
+      sortOrder === "Newest"
+        ? (right.startsAt ?? right.id).localeCompare(left.startsAt ?? left.id)
+        : (left.startsAt ?? left.id).localeCompare(right.startsAt ?? right.id),
     );
 
     return sortedRows;
-  }, [activeTab, normalizedQuery, rows, sortOrder]);
+  }, [
+    activeTab,
+    departmentFilter,
+    normalizedQuery,
+    roleFilter,
+    rows,
+    scopeFilter,
+    sortOrder,
+    statusFilter,
+  ]);
+
+  const roleOptions = useMemo(
+    () => ["All roles", ...Array.from(new Set(rows.map((row) => row.role).filter(Boolean)))],
+    [rows],
+  );
+
+  const departmentOptions = useMemo(
+    () => [
+      "All departments",
+      ...Array.from(new Set(rows.map((row) => row.department).filter(Boolean))),
+    ],
+    [rows],
+  );
+
+  const statusOptions = useMemo(
+    () => ["All statuses", "Upcoming", "Checked in", "Completed", "Missed"],
+    [],
+  );
 
   const isDefaultAttendanceView =
     activeTab === "All" &&
     sortOrder === "Newest" &&
     scopeFilter === "All" &&
-    roleFilter === "Doctor" &&
-    departmentFilter === "Health" &&
-    statusFilter === "Available" &&
+    roleFilter === "All roles" &&
+    departmentFilter === "All departments" &&
+    statusFilter === "All statuses" &&
     !normalizedQuery;
 
   const shouldShowEmptyState = rows.length === 0 || (visibleRows.length === 0 && isDefaultAttendanceView);
@@ -261,9 +386,9 @@ export function OrganisationReportsAttendancePage({
                 onChange={(event) => setRoleFilter(event.target.value)}
                 className="h-11 min-w-[120px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-10 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
               >
-                <option>Doctor</option>
-                <option>Nurse</option>
-                <option>Pharmacist</option>
+                {roleOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
               </select>
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
@@ -276,9 +401,9 @@ export function OrganisationReportsAttendancePage({
                 onChange={(event) => setDepartmentFilter(event.target.value)}
                 className="h-11 min-w-[128px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-10 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
               >
-                <option>Health</option>
-                <option>Medical</option>
-                <option>Cardiology</option>
+                {departmentOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
               </select>
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
@@ -291,10 +416,9 @@ export function OrganisationReportsAttendancePage({
                 onChange={(event) => setStatusFilter(event.target.value)}
                 className="h-11 min-w-[138px] appearance-none rounded-[10px] border border-[#94A3B8] bg-transparent px-4 pr-10 text-[16px] tracking-[-0.05em] text-[#334155] outline-none"
               >
-                <option>Available</option>
-                <option>Checked in</option>
-                <option>Completed</option>
-                <option>Missed</option>
+                {statusOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
               </select>
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
                 <ChevronDownIcon />
@@ -340,14 +464,7 @@ export function OrganisationReportsAttendancePage({
                       <tr key={row.id} className="text-[14px] text-[#334155]">
                         <td className="border-b-2 border-[#FFFFFF] px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <span className="relative h-10 w-10 overflow-hidden rounded-full">
-                              <Image
-                                src={row.avatarSrc}
-                                alt={`${row.staff} avatar`}
-                                fill
-                                className="object-cover"
-                              />
-                            </span>
+                            <StaffAvatar src={row.avatarSrc} name={row.staff} />
                             <span>{row.staff}</span>
                           </div>
                         </td>
@@ -397,14 +514,7 @@ export function OrganisationReportsAttendancePage({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="relative h-12 w-12 overflow-hidden rounded-full">
-                          <Image
-                            src={row.avatarSrc}
-                            alt={`${row.staff} avatar`}
-                            fill
-                            className="object-cover"
-                          />
-                        </span>
+                        <StaffAvatar src={row.avatarSrc} name={row.staff} size="h-12 w-12" />
                         <div>
                           <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">
                             {row.staff}
@@ -484,7 +594,7 @@ export function OrganisationReportsAttendancePage({
                     Professional
                   </p>
                   <p className="text-[18px] font-medium leading-5 tracking-[-0.07em] text-[#334155]">
-                    Sarah J.
+                    {selectedRow.staff}
                   </p>
                 </div>
                 <div className="hidden h-12 w-[2px] bg-[#E2E8F0] sm:block" />
@@ -493,7 +603,7 @@ export function OrganisationReportsAttendancePage({
                     Shift ID
                   </p>
                   <p className="text-[18px] font-medium leading-5 tracking-[-0.07em] text-[#334155]">
-                    2A55D77
+                    {selectedRow.shiftId}
                   </p>
                 </div>
                 <div className="hidden h-12 w-[2px] bg-[#E2E8F0] sm:block" />
@@ -502,7 +612,7 @@ export function OrganisationReportsAttendancePage({
                     Time
                   </p>
                   <p className="text-[18px] font-medium leading-5 tracking-[-0.07em] text-[#334155]">
-                    2:00PM - *:00 PM
+                    {selectedRow.time}
                   </p>
                 </div>
               </div>

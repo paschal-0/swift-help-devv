@@ -213,6 +213,7 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
   const [detail, setDetail] = useState<ShiftDetailView | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
   const [selectedAttendanceStatus, setSelectedAttendanceStatus] = useState<
     "Completed" | "Missed"
   >("Completed");
@@ -294,12 +295,16 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
   };
 
   const confirmCancelShift = async () => {
+    const reason = cancellationReason.trim();
+    if (!reason) {
+      toast.error("Add a cancellation reason before cancelling this shift.");
+      return;
+    }
+
     try {
-      await cancelOrganizationShift(
-        shiftId,
-        "Cancelled from organization dashboard.",
-      );
+      await cancelOrganizationShift(shiftId, reason);
       setShowCancelModal(false);
+      setCancellationReason("");
       toast.success("Shift canceled.");
       router.push("/organisation-platform/shifts");
     } catch (error) {
@@ -663,46 +668,6 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
               ) : null}
             </div>
 
-            {detail.acceptedProfessionals.length > 0 ? (
-              <div className="mt-6 flex items-center justify-end gap-[6px]">
-                <button
-                  type="button"
-                  onClick={() => toast.info("Already on the first page.")}
-                  className={`flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
-                >
-                  <BackIcon />
-                </button>
-                <button
-                  type="button"
-                  className="h-[35px] w-[36px] rounded-[6px] bg-[#E3F2FD] text-[16px] text-[#94A3B8]"
-                >
-                  1
-                </button>
-                <button
-                  type="button"
-                  className={`h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
-                >
-                  2
-                </button>
-                <button
-                  type="button"
-                  className={`h-[35px] w-[36px] rounded-[6px] border border-[#E2E8F0] text-[16px] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
-                >
-                  3
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    toast.info("More pages are not available yet.")
-                  }
-                  className={`flex h-[35px] w-[36px] cursor-pointer items-center justify-center rounded-[6px] border border-[#E2E8F0] text-[#94A3B8] hover:bg-white ${microInteractionClass}`}
-                >
-                  <span className="rotate-180">
-                    <BackIcon />
-                  </span>
-                </button>
-              </div>
-            ) : null}
           </div>
         </section>
       </div>
@@ -862,6 +827,18 @@ export function OrganisationShiftDetailPage({ shiftId }: { shiftId: string }) {
                   professionals will be notified immediately.
                 </p>
               </div>
+
+              <label className="mt-6 block text-left">
+                <span className="text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
+                  Cancellation reason
+                </span>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(event) => setCancellationReason(event.target.value)}
+                  className="mt-2 min-h-[96px] w-full resize-none rounded-[12px] border border-[#CBD5E1] bg-white px-4 py-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20"
+                  placeholder="Tell the professional why this shift is being cancelled"
+                />
+              </label>
 
               <div className="mt-8 flex items-center justify-center gap-4">
                 <button

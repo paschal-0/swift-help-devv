@@ -3,10 +3,13 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  getOrganizationProfessional,
+  inviteProfessionalsToOrganizationShift,
+  listOrganizationShifts,
   listOrganizationProfessionals,
+  type OrganizationShift,
   type OrganizationProfessional,
 } from "@/services/organizationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
@@ -76,6 +79,12 @@ function normalizeProfessionalStatus(status: string): ProfessionalStatus {
 function mapProfessionalRow(
   professional: OrganizationProfessional,
 ): ProfessionalRosterItem {
+  const avatarUrl =
+    professional.avatarUrl ??
+    (typeof professional.profile?.avatarUrl === "string"
+      ? professional.profile.avatarUrl
+      : null);
+
   return {
     id: professional.id,
     name: professional.name,
@@ -86,13 +95,47 @@ function mapProfessionalRow(
     status: normalizeProfessionalStatus(professional.status),
     actionLabel: "View",
     date: "Today",
-    avatarSrc: "/doctor.jpg",
+    avatarSrc: avatarUrl,
     linkedShiftId: "",
   };
 }
 
+function InitialsAvatar({ name, className = "h-10 w-10 text-[14px]" }: { name: string; className?: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "PR";
+
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] font-semibold text-[#1565C0] ${className}`}>
+      {initials}
+    </span>
+  );
+}
+
+function ProfessionalAvatar({
+  src,
+  name,
+  size = "h-10 w-10",
+}: {
+  src: string | null;
+  name: string;
+  size?: string;
+}) {
+  if (!src) {
+    return <InitialsAvatar name={name} className={`${size} text-[14px]`} />;
+  }
+
+  return (
+    <span className={`relative shrink-0 overflow-hidden rounded-full ${size}`}>
+      <Image src={src} alt={`${name} avatar`} fill className="object-cover" />
+    </span>
+  );
+}
+
 export function OrganisationProfessionalsPage() {
-  const router = useRouter();
   const { searchText } = useOrganisationPlatformShell();
   const [activeTab, setActiveTab] = useState<ProfessionalTab>("All");
   const [dateFilter, setDateFilter] = useState("all");
@@ -106,20 +149,33 @@ export function OrganisationProfessionalsPage() {
   const [summaryCards, setSummaryCards] =
     useState<ProfessionalSummaryCard[]>(emptySummaryCards);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedProfessional, setSelectedProfessional] = useState<OrganizationProfessional | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [openShifts, setOpenShifts] = useState<OrganizationShift[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
 
   const normalizedQuery = searchText.trim().toLowerCase();
 
   useEffect(() => {
     let isMounted = true;
 
-    listOrganizationProfessionals()
-      .then((data) => {
+    Promise.all([
+      listOrganizationProfessionals(),
+      listOrganizationShifts({ status: "open" }).catch(() => ({ shifts: [], summary: { attendanceRate: 0 } })),
+    ])
+      .then(([data, shiftData]) => {
         if (!isMounted) {
           return;
         }
 
         const nextProfessionals = data.map(mapProfessionalRow);
         setProfessionals(nextProfessionals);
+        const inviteableShifts = shiftData.shifts.filter((shift) =>
+          ["open", "partially_filled", "draft"].includes(shift.status),
+        );
+        setOpenShifts(inviteableShifts);
+        setSelectedShiftId(inviteableShifts[0]?.id ?? "");
         setSummaryCards([
           {
             title: "Total professionals",
@@ -223,13 +279,34 @@ export function OrganisationProfessionalsPage() {
     statusFilter,
   ]);
 
-  const openLinkedShift = (shiftId: string) => {
-    if (!shiftId) {
-      toast.info("Professional profile details are loaded from the roster.");
+  const openProfessionalDetails = async (professionalId: string) => {
+    setIsDetailLoading(true);
+    try {
+      const professional = await getOrganizationProfessional(professionalId);
+      setSelectedProfessional(professional);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load professional details.");
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
+  const inviteSelectedProfessional = async () => {
+    if (!selectedProfessional || !selectedShiftId) {
+      toast.error("Select a published shift before inviting this professional.");
       return;
     }
 
-    router.push(`/organisation-platform/shifts/${encodeURIComponent(shiftId)}`);
+    setIsInviting(true);
+    try {
+      const response = await inviteProfessionalsToOrganizationShift(selectedShiftId, [selectedProfessional.id]);
+      toast.success(`${response.invited} professional invite sent.`);
+      setSelectedProfessional(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to invite professional.");
+    } finally {
+      setIsInviting(false);
+    }
   };
 
   return (
@@ -465,12 +542,7 @@ export function OrganisationProfessionalsPage() {
                       <td className="border-b-2 border-[#FFFFFF] px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <span className="relative h-10 w-10 overflow-hidden rounded-full">
-                            <Image
-                              src={item.avatarSrc}
-                              alt={`${item.name} avatar`}
-                              fill
-                              className="object-cover"
-                            />
+                            <ProfessionalAvatar src={item.avatarSrc} name={item.name} />
                           </span>
                           <span
                             className="min-w-0 truncate font-normal"
@@ -506,7 +578,7 @@ export function OrganisationProfessionalsPage() {
                       <td className="border-b-2 border-[#FFFFFF] px-5 py-4">
                         <button
                           type="button"
-                          onClick={() => openLinkedShift(item.linkedShiftId)}
+                          onClick={() => openProfessionalDetails(item.id)}
                           className={`cursor-pointer font-medium text-[#1565C0] underline ${microInteractionClass}`}
                         >
                           {item.actionLabel}
@@ -536,12 +608,7 @@ export function OrganisationProfessionalsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span className="relative h-12 w-12 overflow-hidden rounded-full">
-                        <Image
-                          src={item.avatarSrc}
-                          alt={`${item.name} avatar`}
-                          fill
-                          className="object-cover"
-                        />
+                        <ProfessionalAvatar src={item.avatarSrc} name={item.name} size="h-12 w-12" />
                       </span>
                       <div>
                         <p className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">
@@ -588,7 +655,7 @@ export function OrganisationProfessionalsPage() {
 
                   <button
                     type="button"
-                    onClick={() => openLinkedShift(item.linkedShiftId)}
+                    onClick={() => openProfessionalDetails(item.id)}
                     className={`mt-4 cursor-pointer font-medium text-[#1565C0] underline ${microInteractionClass}`}
                   >
                     {item.actionLabel}
@@ -603,6 +670,105 @@ export function OrganisationProfessionalsPage() {
               </div>
             ) : null}
           </motion.section>
+        ) : null}
+
+        {isDetailLoading ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 px-4 backdrop-blur-sm">
+            <div className="rounded-[16px] bg-white px-6 py-4 text-[15px] font-medium text-[#334155] shadow-xl">
+              Loading professional...
+            </div>
+          </div>
+        ) : null}
+
+        {selectedProfessional ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+            <button
+              type="button"
+              aria-label="Close professional details"
+              className="absolute inset-0"
+              onClick={() => setSelectedProfessional(null)}
+            />
+            <section className="relative z-10 w-full max-w-[560px] rounded-[20px] bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-4">
+                  <ProfessionalAvatar
+                    src={
+                      selectedProfessional.avatarUrl ??
+                      (typeof selectedProfessional.profile?.avatarUrl === "string"
+                        ? selectedProfessional.profile.avatarUrl
+                        : null)
+                    }
+                    name={selectedProfessional.name}
+                    size="h-16 w-16"
+                  />
+                  <div className="min-w-0">
+                    <h2 className="truncate text-[22px] font-semibold tracking-[-0.05em] text-[#334155]">
+                      {selectedProfessional.name}
+                    </h2>
+                    <p className="text-[15px] tracking-[-0.05em] text-[#1565C0]">
+                      {selectedProfessional.role}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProfessional(null)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E2E8F0] text-[#64748B]"
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {[
+                  ["Email", selectedProfessional.email],
+                  ["Phone", selectedProfessional.phoneNumber || "Not provided"],
+                  ["Department", selectedProfessional.department],
+                  ["Status", selectedProfessional.status],
+                  ["Completed shifts", String(selectedProfessional.shiftsCompleted)],
+                  ["Verification", selectedProfessional.verificationStatus],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-[12px] bg-[#F8FAFC] px-4 py-3">
+                    <p className="text-[13px] tracking-[-0.04em] text-[#94A3B8]">{label}</p>
+                    <p className="mt-1 truncate text-[15px] font-medium tracking-[-0.04em] text-[#334155]">
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 rounded-[12px] border border-[#E2E8F0] p-4">
+                <label className="block">
+                  <span className="text-[14px] font-medium tracking-[-0.04em] text-[#334155]">
+                    Invite to shift
+                  </span>
+                  <select
+                    value={selectedShiftId}
+                    onChange={(event) => setSelectedShiftId(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-[10px] border border-[#94A3B8] bg-white px-4 text-[14px] text-[#334155] outline-none"
+                  >
+                    {openShifts.length ? (
+                      openShifts.map((shift) => (
+                        <option key={shift.id} value={shift.id}>
+                          {shift.shiftCode} - {shift.role}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No open shifts available</option>
+                    )}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  disabled={!selectedShiftId || isInviting}
+                  onClick={inviteSelectedProfessional}
+                  className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isInviting ? "Sending invite..." : "Send shift invite"}
+                </button>
+              </div>
+            </section>
+          </div>
         ) : null}
       </motion.div>
     </div>

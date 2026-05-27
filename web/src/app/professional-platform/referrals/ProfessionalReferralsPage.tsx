@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
-  partnerTiers,
   type PartnerTier,
   type RecentReferral,
   type ReferralMetric,
@@ -144,6 +143,71 @@ function TierCard({ tier }: { tier: PartnerTier }) {
   );
 }
 
+function buildPartnerTiers(referrals: ProfessionalReferrals | null): PartnerTier[] {
+  const totalReferrals = referrals?.metrics.totalReferrals ?? 0;
+  const verifiedProfessionals = referrals?.metrics.professionalsReferred ?? 0;
+  const advocateUnlocked = totalReferrals >= 20 && verifiedProfessionals >= 5;
+  const ambassadorUnlocked = totalReferrals >= 100;
+
+  return [
+    {
+      id: "referrer",
+      badge: "Level 1 - Referrer",
+      title: "Referral Partner",
+      description:
+        "Share your referral link with patients, professionals, organizations, and community members. Rewards are tracked automatically after successful signups.",
+      statusLabel: "Current Status",
+      statusTone: "active",
+      progress: 1,
+      progressLabel: "Active",
+      cardTone: "blue",
+      rewards: [
+        { label: "Referral tracking", value: "Enabled" },
+        { label: "Reward status", value: "Calculated automatically" },
+        { label: "Payout timing", value: "After verification" },
+        { label: "Requirement", value: "Verified account" },
+      ],
+    },
+    {
+      id: "community-advocate",
+      badge: "Level 2 - Advocate",
+      title: "Community Advocate",
+      description: "For professionals who consistently bring verified members into Swifthelp.",
+      statusLabel: advocateUnlocked ? "Unlocked" : "Locked",
+      statusTone: advocateUnlocked ? "active" : "locked",
+      progress: Math.min(1, Math.min(totalReferrals / 20, verifiedProfessionals / 5)),
+      progressLabel: `${Math.min(totalReferrals, 20)} / 20 referrals | ${Math.min(
+        verifiedProfessionals,
+        5,
+      )} / 5 verified pros`,
+      cardTone: "green",
+      rewards: [
+        { label: "Priority tracking", value: advocateUnlocked ? "Enabled" : "Locked" },
+        { label: "Verified pros", value: `${verifiedProfessionals}` },
+        { label: "Total referrals", value: `${totalReferrals}` },
+        { label: "Unlock criteria", value: "20 referrals + 5 verified pros" },
+      ],
+    },
+    {
+      id: "health-ambassador",
+      badge: "Level 3 - Ambassador",
+      title: "Health Ambassador",
+      description: "For high-performing partners with broad verified referral impact.",
+      statusLabel: ambassadorUnlocked ? "Unlocked" : "Locked",
+      statusTone: ambassadorUnlocked ? "active" : "locked",
+      progress: Math.min(1, totalReferrals / 100),
+      progressLabel: `${Math.min(totalReferrals, 100)} / 100 referrals`,
+      cardTone: "gold",
+      rewards: [
+        { label: "Partner status", value: ambassadorUnlocked ? "Active" : "Locked" },
+        { label: "Total referrals", value: `${totalReferrals}` },
+        { label: "Community tier", value: advocateUnlocked ? "Reached" : "Pending" },
+        { label: "Unlock criteria", value: "100 referrals" },
+      ],
+    },
+  ];
+}
+
 export function ProfessionalReferralsPage() {
   const { searchText } = useProfessionalPlatformShell();
   const [copied, setCopied] = useState(false);
@@ -231,6 +295,7 @@ export function ProfessionalReferralsPage() {
       status: record.status === "completed" ? "Completed" : "Pending",
     }));
   }, [referrals]);
+  const partnerTiers = useMemo(() => buildPartnerTiers(referrals), [referrals]);
 
   const filteredReferrals = recentReferrals
     .filter((referral) =>

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  fundOrganizationShift,
   getOrganizationShift,
   publishOrganizationShift,
   type OrganizationShift,
@@ -152,9 +151,9 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
   const [showBackModal, setShowBackModal] = useState(false);
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankAccount, setBankAccount] = useState({
-    accountName: "Sarah Johnson",
-    bankName: "Kuda",
-    accountNumber: "235****3622",
+    accountName: "Organization billing profile",
+    bankName: "Weekly invoice billing",
+    accountNumber: "Saved payment method",
   });
   const [bankDraft, setBankDraft] = useState(bankAccount);
 
@@ -236,21 +235,18 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
 
   const handlePayAndCreate = async () => {
     if (!backendShiftId) {
-      toast.error("Create the shift before funding it.");
+      toast.error("Create the shift before publishing it.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await fundOrganizationShift(backendShiftId, {
-        paymentReference: `ui-${Date.now()}`,
-      });
       await publishOrganizationShift(backendShiftId);
-      toast.success("Shift funded and published successfully.");
+      toast.success("Shift published successfully.");
       router.push(`/organisation-platform/shifts/success?shiftId=${encodeURIComponent(backendShiftId)}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to fund shift.");
+      toast.error(error instanceof Error ? error.message : "Unable to publish shift.");
     } finally {
       setIsSubmitting(false);
     }
@@ -296,7 +292,7 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
           >
             <BackIcon />
           </motion.button>
-          <h1 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[24px]">Fund shift</h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[24px]">Review shift</h1>
         </div>
 
         <motion.section
@@ -413,13 +409,13 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
               >
                 <LockIcon />
                 <p className="max-w-[280px] text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#1565C0] sm:text-[16px] sm:font-medium sm:leading-5">
-                  Funds will be held securely and released per completed shift
+                  Completed shift costs are tracked and billed through the weekly organization invoice.
                 </p>
               </motion.div>
 
               <div className="w-full max-w-[446px] rounded-[14px] border border-[#E2E8F0] bg-white p-3 shadow-sm transition duration-200 ease-out hover:border-[#BFDBFE] hover:shadow-md sm:p-4">
                 <p className="text-[14px] font-semibold tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:font-medium sm:tracking-[-0.05em]">
-                  Payment method
+                  Billing method
                 </p>
 
                 <motion.div
@@ -474,11 +470,11 @@ export function OrganisationFundShiftPage({ searchParams }: OrganisationFundShif
                   transition={{ duration: 0.2, ease: premiumEase }}
                   className={`h-11 w-full cursor-pointer rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[15px] font-semibold tracking-[-0.04em] text-[#E3F2FD] hover:shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60 ${microInteractionClass}`}
                 >
-                  {isSubmitting ? "Publishing..." : "Pay & Create shift"}
+                  {isSubmitting ? "Publishing..." : "Publish shift"}
                 </motion.button>
 
                 <p className="text-center text-[14px] font-medium leading-5 tracking-[-0.05em] text-[#94A3B8] sm:text-[16px]">
-                  By continuing, you agree to our terms
+                  By continuing, you agree to weekly usage billing for completed shifts.
                 </p>
               </div>
             </div>

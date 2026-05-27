@@ -10,7 +10,6 @@ import {
   getOrganizationReferrals,
   type OrganizationReferrals,
 } from "@/services/organizationApi";
-import { organisationReferralTiers, type ReferralTier } from "./data";
 
 function StarBadge() {
   return (
@@ -23,89 +22,6 @@ function StarBadge() {
         strokeWidth="1.4"
       />
     </svg>
-  );
-}
-
-const tierTheme = {
-  blue: {
-    panel: "border-[#1565C0] bg-[#E3F2FD]",
-    badge: "bg-[#1565C0] text-[#F8FAFC]",
-    status: "border-[#1565C0] text-[#1565C0]",
-    bar: "bg-[#1565C0]",
-    label: "text-[#1565C0]",
-  },
-  green: {
-    panel: "border-[#19AA4A] bg-[#D3F1DD]",
-    badge: "bg-[#19AA4A] text-[#F8FAFC]",
-    status: "border-[#94A3B8] text-[#94A3B8]",
-    bar: "bg-[#19AA4A]",
-    label: "text-[#19AA4A]",
-  },
-  gold: {
-    panel: "border-[#AF8D11] bg-[#EEE7CE]",
-    badge: "bg-[#AF8D11] text-[#F8FAFC]",
-    status: "border-[#94A3B8] text-[#94A3B8]",
-    bar: "bg-[#AF8D11]",
-    label: "text-[#AF8D11]",
-  },
-} as const;
-
-function TierCard({ tier }: { tier: ReferralTier }) {
-  const theme = tierTheme[tier.accent];
-
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className={`rounded-[12px] border px-4 py-5 sm:px-5 ${theme.panel}`}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-3 pr-0 sm:pr-4">
-          <span
-            className={`inline-flex items-center gap-2 rounded-[6px] px-4 py-2 text-[16px] font-medium tracking-[-0.05em] ${theme.badge}`}
-          >
-            <StarBadge />
-            {tier.badgeLabel}
-          </span>
-          <div>
-            <h3 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">{tier.title}</h3>
-            <p className="mt-1 max-w-[760px] text-[16px] leading-[1.35] tracking-[-0.05em] text-[#94A3B8]">
-              {tier.description}
-            </p>
-          </div>
-        </div>
-        <span
-          className={`inline-flex h-10 w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-[6px] border px-4 text-[16px] font-medium tracking-[-0.05em] ${theme.status}`}
-        >
-          {tier.statusLabel}
-        </span>
-      </div>
-
-      <div className="mt-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#F8FAFC]">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.max(6, tier.progressValue * 100)}%` }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className={`h-full rounded-full ${theme.bar}`}
-            />
-          </div>
-          <p className={`text-right text-[16px] font-medium tracking-[-0.05em] ${theme.label}`}>
-            {tier.progressLabel}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {tier.metrics.map((metric) => (
-          <div key={metric.label} className="rounded-[6px] bg-[#F8FAFC] px-4 py-3">
-            <p className="text-[16px] tracking-[-0.05em] text-[#334155]">{metric.label}</p>
-            <p className="mt-1 text-[18px] font-bold tracking-[-0.06em] text-[#334155]">{metric.value}</p>
-          </div>
-        ))}
-      </div>
-    </motion.section>
   );
 }
 
@@ -204,7 +120,7 @@ export function OrganisationReferralsPage() {
 
   const handleCopyCode = async () => {
     if (!referralCode) {
-      toast.error("Referral code is not available yet");
+      toast.error("Referral code could not be loaded.");
       return;
     }
 
@@ -220,7 +136,7 @@ export function OrganisationReferralsPage() {
 
   const handleShareLink = async () => {
     if (!referralShareUrl) {
-      toast.error("Referral link is not available yet");
+      toast.error("Referral link could not be loaded.");
       return;
     }
 
@@ -250,7 +166,7 @@ export function OrganisationReferralsPage() {
         <h1 className="text-[24px] font-semibold tracking-[-0.05em] text-[#334155]">Referrals</h1>
         <span className="inline-flex w-fit items-center gap-2 rounded-[8px] bg-[#1565C0] px-4 py-2 text-[16px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)]">
           <StarBadge />
-          Level 1 - Referrer
+          Organization referrals
         </span>
       </div>
 
@@ -312,7 +228,7 @@ export function OrganisationReferralsPage() {
                 href="/organisation-platform/referrals/withdraw"
                 className="mt-1 inline-flex h-9 items-center justify-center rounded-[12px] border border-[#F8FAFC] px-5 text-[16px] font-medium tracking-[-0.05em] text-[#E3F2FD] transition hover:bg-white/10"
               >
-                Withdraw Earnings
+                View payout status
               </Link>
             </motion.div>
           </div>
@@ -333,17 +249,6 @@ export function OrganisationReferralsPage() {
           </motion.article>
         ))}
       </section>
-
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Your partner level</h2>
-        <p className="text-[16px] tracking-[-0.05em] text-[#94A3B8]">Progress to unlock higher tiers</p>
-      </div>
-
-      <div className="mt-4 space-y-4">
-        {organisationReferralTiers.map((tier) => (
-          <TierCard key={tier.id} tier={tier} />
-        ))}
-      </div>
 
       <section className="mt-6 overflow-hidden rounded-[12px] bg-[#F8FAFC] shadow-[0_4px_14px_rgba(148,163,184,0.14)]">
         <div className="flex items-center justify-between px-5 py-4">
@@ -400,4 +305,3 @@ export function OrganisationReferralsPage() {
     </div>
   );
 }
-

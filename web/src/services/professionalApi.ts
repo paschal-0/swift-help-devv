@@ -34,6 +34,11 @@ export type ProfessionalProfile = {
   experienceYears?: number | null;
   consultationType?: string | null;
   primaryPracticeLocation?: string | null;
+  countryCode?: string | null;
+  currencyCode?: string | null;
+  locale?: string | null;
+  videoConsultationRateCents?: number | null;
+  inPersonVisitRateCents?: number | null;
   uploadedDocuments?: ProfessionalDocument[] | null;
   availability?: WeeklyAvailability | null;
   verificationStatus?: "pending" | "approved" | "rejected";
@@ -458,6 +463,17 @@ export function updateProfessionalPlatformProfile(
   payload: Partial<ProfessionalProfile>,
 ) {
   return apiRequest<ProfessionalProfile>("/professional/profile", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateProfessionalPricing(payload: {
+  videoConsultationRateCents: number;
+  inPersonVisitRateCents: number;
+  currencyCode?: string;
+}) {
+  return apiRequest<ProfessionalProfile>("/professional/pricing", {
     method: "PATCH",
     body: JSON.stringify(payload),
   });

@@ -9,8 +9,10 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import { getApiErrorMessage, uploadProfileAvatar } from "@/services/authApi";
 import {
   deleteProfessionalDocument,
+  formatApiMoney,
   getProfessionalProfile,
   listProfessionalNotifications,
+  updateProfessionalPricing,
   type ProfessionalNotification,
   type ProfessionalProfileResponse,
 } from "@/services/professionalApi";
@@ -34,6 +36,12 @@ type LicenseFile = {
   size: string;
   status: string;
   documentIndex: number;
+};
+
+type PricingDraft = {
+  videoConsultationRate: string;
+  inPersonVisitRate: string;
+  currencyCode: string;
 };
 
 const fallbackActivities: ActivityItem[] = [];
@@ -165,6 +173,13 @@ export function ProfessionalMyProfilePage() {
   const [profileData, setProfileData] = useState<ProfessionalProfileResponse | null>(null);
   const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
   const [isUploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isPricingOpen, setPricingOpen] = useState(false);
+  const [isSavingPricing, setSavingPricing] = useState(false);
+  const [pricingDraft, setPricingDraft] = useState<PricingDraft>({
+    videoConsultationRate: "",
+    inPersonVisitRate: "",
+    currencyCode: "NGN",
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const query = searchText.trim().toLowerCase();
 
@@ -267,6 +282,73 @@ export function ProfessionalMyProfilePage() {
   }, [backendLicenseFiles, query]);
 
   const handleEdit = () => router.push("/professional-platform/settings");
+  const currencyCode = profileData?.profile.currencyCode || "NGN";
+  const formatHourlyRate = (amountCents?: number | null) =>
+    typeof amountCents === "number" && amountCents > 0
+      ? `${formatApiMoney(amountCents, currencyCode)} per hour`
+      : "Not set";
+
+  const openPricingEditor = () => {
+    const profile = profileData?.profile;
+    setPricingDraft({
+      videoConsultationRate:
+        typeof profile?.videoConsultationRateCents === "number" && profile.videoConsultationRateCents > 0
+          ? String(profile.videoConsultationRateCents / 100)
+          : "",
+      inPersonVisitRate:
+        typeof profile?.inPersonVisitRateCents === "number" && profile.inPersonVisitRateCents > 0
+          ? String(profile.inPersonVisitRateCents / 100)
+          : "",
+      currencyCode: profile?.currencyCode || "NGN",
+    });
+    setPricingOpen(true);
+  };
+
+  const parseRateToCents = (value: string) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+  };
+
+  const handleSavePricing = async () => {
+    const videoConsultationRateCents = parseRateToCents(pricingDraft.videoConsultationRate);
+    const inPersonVisitRateCents = parseRateToCents(pricingDraft.inPersonVisitRate);
+    const normalizedCurrency = pricingDraft.currencyCode.trim().toUpperCase();
+
+    if (videoConsultationRateCents <= 0 || inPersonVisitRateCents <= 0) {
+      toast.error("Enter valid hourly rates for video and in-person consultations.");
+      return;
+    }
+
+    if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
+      toast.error("Enter a valid 3-letter currency code.");
+      return;
+    }
+
+    setSavingPricing(true);
+
+    try {
+      const profile = await updateProfessionalPricing({
+        videoConsultationRateCents,
+        inPersonVisitRateCents,
+        currencyCode: normalizedCurrency,
+      });
+      setProfileData((current) =>
+        current
+          ? {
+              ...current,
+              profile,
+            }
+          : current,
+      );
+      setPricingOpen(false);
+      toast.success("Consultation pricing updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
   const handleDelete = async (file: LicenseFile) => {
     try {
       const profile = await deleteProfessionalDocument(file.documentIndex);
@@ -344,7 +426,6 @@ export function ProfessionalMyProfilePage() {
               <div className="flex items-start justify-between gap-4">
                 <ProfileAvatar
                   src={avatarUrl}
-                  fallbackSrc="/80b7f44a49de7bd948953fbe2f81ec3b8ee42169.jpg"
                   alt={`${displayName} portrait`}
                   className="h-[195px] w-full max-w-[186px] rounded-[12px]"
                 />
@@ -451,6 +532,29 @@ export function ProfessionalMyProfilePage() {
             </SectionCard>
           </motion.div>
 
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18, ease: "easeOut" }}>
+            <SectionCard title="Pricing" className="pb-5" onEdit={openPricingEditor}>
+              <div className="px-[15px] pb-1 pt-[11px]">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-center gap-3 py-1">
+                  <span className="text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                    Video Consultation:
+                  </span>
+                  <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                    {formatHourlyRate(profileData?.profile.videoConsultationRateCents)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-center gap-3 py-1">
+                  <span className="text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                    In person visit:
+                  </span>
+                  <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                    {formatHourlyRate(profileData?.profile.inPersonVisitRateCents)}
+                  </span>
+                </div>
+              </div>
+            </SectionCard>
+          </motion.div>
+
           <motion.section
             whileHover={{ y: -2 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
@@ -508,6 +612,109 @@ export function ProfessionalMyProfilePage() {
           </motion.section>
         </div>
       </div>
+
+      {isPricingOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="w-full max-w-[430px] rounded-[16px] bg-[#F8FAFC] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[20px] font-medium tracking-[-0.05em] text-[#334155]">Pricing</h2>
+                <p className="mt-1 text-sm font-light tracking-[-0.04em] text-[#64748B]">
+                  Set hourly rates before accepting consultation requests.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPricingOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#E2E8F0] text-[#334155]"
+                aria-label="Close pricing editor"
+              >
+                x
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-normal tracking-[-0.04em] text-[#334155]">Currency</span>
+                <input
+                  value={pricingDraft.currencyCode}
+                  onChange={(event) =>
+                    setPricingDraft((current) => ({
+                      ...current,
+                      currencyCode: event.target.value.toUpperCase(),
+                    }))
+                  }
+                  maxLength={3}
+                  className="mt-2 h-11 w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-4 text-[16px] font-light tracking-[-0.04em] text-[#334155] outline-none focus:border-[#1565C0]"
+                  placeholder="NGN"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-normal tracking-[-0.04em] text-[#334155]">
+                  Video consultation per hour
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={pricingDraft.videoConsultationRate}
+                  onChange={(event) =>
+                    setPricingDraft((current) => ({
+                      ...current,
+                      videoConsultationRate: event.target.value,
+                    }))
+                  }
+                  className="mt-2 h-11 w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-4 text-[16px] font-light tracking-[-0.04em] text-[#334155] outline-none focus:border-[#1565C0]"
+                  placeholder="200"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-normal tracking-[-0.04em] text-[#334155]">
+                  In-person visit per hour
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={pricingDraft.inPersonVisitRate}
+                  onChange={(event) =>
+                    setPricingDraft((current) => ({
+                      ...current,
+                      inPersonVisitRate: event.target.value,
+                    }))
+                  }
+                  className="mt-2 h-11 w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-4 text-[16px] font-light tracking-[-0.04em] text-[#334155] outline-none focus:border-[#1565C0]"
+                  placeholder="400"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPricingOpen(false)}
+                className="h-10 rounded-[8px] border border-[#94A3B8] px-5 text-sm font-medium tracking-[-0.04em] text-[#334155]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePricing}
+                disabled={isSavingPricing}
+                className="h-10 rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-sm font-medium tracking-[-0.04em] text-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingPricing ? "Saving..." : "Save pricing"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
     </div>
   );
 }

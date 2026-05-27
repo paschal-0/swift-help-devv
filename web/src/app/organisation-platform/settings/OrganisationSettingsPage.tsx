@@ -685,11 +685,11 @@ export function OrganisationSettingsPage() {
 
   const handlePlanAction = (plan: PlanCard) => {
     if (plan.id === "beginner") {
-      toast.info("Subscription cancellation is not available in this mock.");
+      toast.info("Subscription cancellation is managed by the SwiftHelp admin team.");
       return;
     }
 
-    toast.success("Upgrade flow is not connected yet.");
+    toast.info("Plan upgrades are managed by the SwiftHelp admin team.");
   };
 
   const handleDeletePaymentMethod = (id: string) => {
@@ -706,7 +706,7 @@ export function OrganisationSettingsPage() {
 
   const handleExportBillingHistory = async () => {
     try {
-      await exportOrganizationReports({ reportType: "billing", format: "csv" });
+      await exportOrganizationReports({ format: "csv" });
       toast.success("Billing history export started.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export billing history.");

@@ -496,7 +496,7 @@ export function ProfessionalSchedulePage() {
   const { searchText } = useProfessionalPlatformShell();
   const [daySchedule, setDaySchedule] = useState(initialDaySchedule);
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(18);
+  const [selectedDate, setSelectedDate] = useState(() => new Date().getDate());
   const [isAddBlockTimeModalOpen, setIsAddBlockTimeModalOpen] = useState(false);
   const [isAppointmentDetailsModalOpen, setIsAppointmentDetailsModalOpen] =
     useState(false);
@@ -573,19 +573,23 @@ export function ProfessionalSchedulePage() {
         );
         setDaySchedule(nextDaySchedule);
         const enabledDays = nextDaySchedule.filter((day) => day.enabled);
-        const sampleDay = enabledDays[0];
+        const representativeDay = enabledDays[0];
         const availableRule =
-          enabledDays.length >= 6
+          enabledDays.length === 0
+            ? "No days enabled"
+            : enabledDays.length === nextDaySchedule.length
+              ? "Every day"
+              : enabledDays.length >= 6
             ? "Monday - Saturday"
             : enabledDays.length === 5 &&
                 enabledDays[0]?.id === "monday" &&
                 enabledDays[4]?.id === "friday"
               ? "Monday - Friday"
-              : "Tuesday - Saturday";
+              : enabledDays.map((day) => day.day).join(", ");
         const rulesFromBackend: AvailabilityRuleMap = {
           Available: availableRule,
-          "Working hours": sampleDay
-            ? `${sampleDay.from} - ${sampleDay.to}`
+          "Working hours": representativeDay
+            ? `${representativeDay.from} - ${representativeDay.to}`
             : "9:00 AM - 5:00 PM",
           "Booking window": `Up to ${data.availability.bookingWindowDays} days ahead`,
           "Minimum notice": `${Math.max(

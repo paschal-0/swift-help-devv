@@ -10,13 +10,13 @@ import {
   Tooltip,
   type ChartOptions,
 } from "chart.js";
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { toast } from "sonner";
 import {
   exportOrganizationReports,
   formatOrganizationMoney,
+  getOrganizationReportDownloadUrl,
   getOrganizationReports,
   type OrganizationReports,
 } from "@/services/organizationApi";
@@ -37,6 +37,47 @@ function toNumber(value: unknown, fallback = 0) {
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   return fallback;
+}
+
+function reportQueryFromFilters(
+  dateRange: string,
+  departmentFilter: string,
+  roleFilter: string,
+) {
+  const query: {
+    from?: string;
+    to?: string;
+    department?: string;
+    role?: string;
+  } = {};
+  const now = new Date();
+
+  if (dateRange === "Last 7 days") {
+    const from = new Date(now);
+    from.setDate(now.getDate() - 7);
+    query.from = from.toISOString();
+    query.to = now.toISOString();
+  }
+
+  if (dateRange === "This month") {
+    query.from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    query.to = now.toISOString();
+  }
+
+  if (dateRange === "This year") {
+    query.from = new Date(now.getFullYear(), 0, 1).toISOString();
+    query.to = now.toISOString();
+  }
+
+  if (departmentFilter !== "Department") {
+    query.department = departmentFilter;
+  }
+
+  if (roleFilter !== "Role") {
+    query.role = roleFilter;
+  }
+
+  return query;
 }
 
 function ChevronDownIcon() {
@@ -114,6 +155,46 @@ function PaymentStatusPill({ status }: { status: PaymentReportStatus }) {
   );
 }
 
+function InitialsAvatar({ name, size = "h-9 w-9" }: { name: string; size?: string }) {
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "PR";
+
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[13px] font-semibold text-[#1565C0] ${size}`}
+    >
+      {initials}
+    </span>
+  );
+}
+
+function ReportAvatar({
+  src,
+  name,
+  size = "h-9 w-9",
+}: {
+  src: string | null;
+  name: string;
+  size?: string;
+}) {
+  if (!src) {
+    return <InitialsAvatar name={name} size={size} />;
+  }
+
+  return (
+    <span
+      className={`inline-flex shrink-0 rounded-full bg-cover bg-center ${size}`}
+      style={{ backgroundImage: `url("${src}")` }}
+      aria-label={`${name} avatar`}
+    />
+  );
+}
+
 function RatingStarIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-3 w-3 text-white sm:h-3.5 sm:w-3.5" aria-hidden>
@@ -164,7 +245,9 @@ export function OrganisationReportsPage() {
   useEffect(() => {
     let isMounted = true;
 
-    getOrganizationReports()
+    const query = reportQueryFromFilters(dateRange, departmentFilter, roleFilter);
+
+    getOrganizationReports(query)
       .then((data) => {
         if (isMounted) {
           setReports(data);
@@ -177,7 +260,7 @@ export function OrganisationReportsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [dateRange, departmentFilter, roleFilter]);
 
   const departmentOptions = useMemo(
     () => [
@@ -231,7 +314,10 @@ export function OrganisationReportsPage() {
               String(item.currency ?? reports?.summary.currency ?? "NGN"),
             ),
             status: "Successful",
-            avatarSrc: "/doctor.jpg",
+            avatarSrc:
+              typeof professional?.avatarUrl === "string"
+                ? professional.avatarUrl
+                : null,
             department: String(professional?.department ?? "General"),
             role: String(professional?.role ?? "Professional"),
           };
@@ -264,7 +350,10 @@ export function OrganisationReportsPage() {
             name: String(professional?.name ?? "Professional"),
             rating: toNumber(row.rating, 0).toFixed(1),
             shiftsCompleted: toNumber(row.shiftsCompleted, 0),
-            avatarSrc: "/doctor.jpg",
+            avatarSrc:
+              typeof professional?.avatarUrl === "string"
+                ? professional.avatarUrl
+                : null,
             role: String(professional?.role ?? "Professional"),
             department: String(professional?.department ?? "General"),
           };
@@ -483,9 +572,13 @@ export function OrganisationReportsPage() {
 
   const confirmExport = async () => {
     try {
-      await exportOrganizationReports({ reportType: "organization", format: "csv" });
+      const query = reportQueryFromFilters(dateRange, departmentFilter, roleFilter);
+      const response = await exportOrganizationReports({ format: "csv", ...query });
       setIsExportModalOpen(false);
-      toast.success("Report export queued.");
+      window.location.assign(
+        response.downloadUrl ?? getOrganizationReportDownloadUrl(response.exportId),
+      );
+      toast.success("Report export started.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export report.");
     }
@@ -606,9 +699,11 @@ export function OrganisationReportsPage() {
                   <article key={item.id} className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-[#F8FAFC] p-3 transition duration-200 ease-out hover:-translate-y-1 hover:border-[#BFDBFE] hover:shadow-md sm:gap-3 sm:p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full border border-slate-200 sm:h-10 sm:w-10">
-                          <Image src={item.avatarSrc} alt={item.name} fill className="object-cover" />
-                        </div>
+                        <ReportAvatar
+                          src={item.avatarSrc}
+                          name={item.name}
+                          size="h-9 w-9 sm:h-10 sm:w-10"
+                        />
                         <p className="truncate text-[13px] font-medium text-slate-700 sm:text-sm">{item.name}</p>
                       </div>
                       <span className="inline-flex shrink-0 items-center gap-1 rounded bg-[#107D19] px-2 py-0.5 text-[11px] font-medium text-white sm:text-xs">
@@ -669,9 +764,7 @@ export function OrganisationReportsPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full">
-                        <Image src={row.avatarSrc} alt={row.name} fill className="object-cover" />
-                      </div>
+                      <ReportAvatar src={row.avatarSrc} name={row.name} size="h-9 w-9" />
                       <div className="min-w-0">
                         <p className="text-[13px] font-medium leading-tight text-slate-800">{row.name}</p>
                         <p className="mt-0.5 truncate text-[11px] text-slate-500">
@@ -712,9 +805,7 @@ export function OrganisationReportsPage() {
                     <tr key={row.id} className="transition duration-200 ease-out hover:bg-[#F8FAFC]">
                       <td className="py-3 pl-4 pr-2">
                         <div className="flex items-center gap-3">
-                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
-                            <Image src={row.avatarSrc} alt={row.name} fill className="object-cover" />
-                          </div>
+                          <ReportAvatar src={row.avatarSrc} name={row.name} size="h-8 w-8" />
                           <span className="truncate font-medium text-slate-700">{row.name}</span>
                         </div>
                       </td>
