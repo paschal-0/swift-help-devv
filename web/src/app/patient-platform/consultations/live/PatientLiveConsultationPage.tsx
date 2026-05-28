@@ -19,8 +19,14 @@ import {
 } from "@/services/patientApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import {
+  getCommunicationAnalytics,
+  getCommunicationRecordingArchive,
+  getCommunicationRoom,
+  translateCommunicationText,
   updateCommunicationConsent,
   type CommunicationParticipant,
+  type CommunicationRecording,
+  type CommunicationTranscript,
 } from "@/services/communicationApi";
 
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
@@ -70,6 +76,11 @@ export function PatientLiveConsultationPage() {
     canJoin?: boolean;
     waitingRoomStatus?: string;
   } | null>(null);
+  const [recordings, setRecordings] = useState<CommunicationRecording[]>([]);
+  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
+  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [translationLanguage, setTranslationLanguage] = useState("Yoruba");
+  const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -121,6 +132,25 @@ export function PatientLiveConsultationPage() {
       cancelled = true;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!videoAccess?.roomId) return;
+    let cancelled = false;
+    void Promise.all([
+      getCommunicationRoom(videoAccess.roomId),
+      getCommunicationAnalytics(videoAccess.roomId),
+    ])
+      .then(([state, result]) => {
+        if (cancelled) return;
+        setRecordings(state.recordings);
+        setTranscript(state.transcripts[0] ?? null);
+        setAnalytics(result.totals);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [videoAccess?.roomId]);
 
   useEffect(() => {
     if (!consultation) return;
@@ -203,11 +233,29 @@ export function PatientLiveConsultationPage() {
 
     eventSource.addEventListener("communication.participant.updated", handleParticipant);
 
+    const handleRecording = (event: MessageEvent) => {
+      const recording = JSON.parse(event.data) as CommunicationRecording;
+      setRecordings((current) =>
+        current.some((item) => item.id === recording.id)
+          ? current.map((item) => (item.id === recording.id ? recording : item))
+          : [recording, ...current],
+      );
+    };
+
+    const handleTranscript = (event: MessageEvent) => {
+      setTranscript(JSON.parse(event.data) as CommunicationTranscript);
+    };
+
+    eventSource.addEventListener("communication.recording.updated", handleRecording);
+    eventSource.addEventListener("communication.transcript.updated", handleTranscript);
+
     return () => {
       eventSource.removeEventListener("patient.consultation_message.created", handleMessage);
       eventSource.removeEventListener("patient.consultation_presence.updated", handlePresence);
       eventSource.removeEventListener("patient.notification.created", handleNotification);
       eventSource.removeEventListener("communication.participant.updated", handleParticipant);
+      eventSource.removeEventListener("communication.recording.updated", handleRecording);
+      eventSource.removeEventListener("communication.transcript.updated", handleTranscript);
       eventSource.close();
     };
   }, [consultation, router]);
@@ -262,6 +310,29 @@ export function PatientLiveConsultationPage() {
       });
       void participant;
       toast.success("Consultation consent saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const openRecordingArchive = async (recordingId: string) => {
+    try {
+      const archive = await getCommunicationRecordingArchive(recordingId);
+      window.open(archive.archiveUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const translateTranscript = async () => {
+    const text = transcript?.text?.trim();
+    if (!text) return;
+    try {
+      const result = await translateCommunicationText({
+        text,
+        targetLanguage: translationLanguage,
+      });
+      setTranslatedTranscript(result.translatedText);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
@@ -355,6 +426,74 @@ export function PatientLiveConsultationPage() {
                 <p className="mt-2 text-[#64748B]">
                   {room.aiDocument.patientSummary}
                 </p>
+              </section>
+            ) : null}
+            {transcript?.text ? (
+              <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                <p className="font-medium text-[#334155]">Live transcript</p>
+                <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-line text-[#64748B]">
+                  {transcript.text}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={translationLanguage}
+                    onChange={(event) => setTranslationLanguage(event.target.value)}
+                    className="h-9 min-w-0 flex-1 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] outline-none focus:border-[#1565C0]"
+                    aria-label="Target language"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void translateTranscript()}
+                    className="rounded-[8px] bg-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-white"
+                  >
+                    Translate
+                  </button>
+                </div>
+                {translatedTranscript ? (
+                  <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-line rounded-[8px] bg-white p-2 text-[#334155]">
+                    {translatedTranscript}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+            {recordings.length ? (
+              <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+                <p className="font-medium text-[#334155]">Recordings</p>
+                <div className="mt-2 space-y-2">
+                  {recordings.slice(0, 3).map((recording) => (
+                    <div
+                      key={recording.id}
+                      className="flex items-center justify-between gap-2 text-[12px]"
+                    >
+                      <span className="capitalize text-[#64748B]">
+                        {recording.status}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={recording.status !== "ready"}
+                        onClick={() => void openRecordingArchive(recording.id)}
+                        className="rounded-[8px] border border-[#1565C0] px-3 py-1.5 font-medium text-[#1565C0] disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                      >
+                        Open archive
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            {analytics ? (
+              <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+                <p className="font-medium text-[#334155]">Session analytics</p>
+                <dl className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[#64748B]">
+                  <div>
+                    <dt>Joins</dt>
+                    <dd className="font-semibold text-[#334155]">{analytics.joins ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>Leaves</dt>
+                    <dd className="font-semibold text-[#334155]">{analytics.leaves ?? 0}</dd>
+                  </div>
+                </dl>
               </section>
             ) : null}
             <section className="rounded-[12px] bg-[#F8FAFC] p-3">

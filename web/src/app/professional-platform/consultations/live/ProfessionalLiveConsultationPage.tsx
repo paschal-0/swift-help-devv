@@ -11,9 +11,12 @@ import {
   completeCommunicationTranscription,
   denyCommunicationParticipant,
   getCommunicationAnalytics,
+  getCommunicationRecordingArchive,
+  getCommunicationRoom,
   startCommunicationRecording,
   startCommunicationTranscription,
   stopCommunicationRecording,
+  translateCommunicationText,
   updateCommunicationConsent,
   type CommunicationParticipant,
   type CommunicationRecording,
@@ -87,6 +90,8 @@ export function ProfessionalLiveConsultationPage() {
   const [recording, setRecording] = useState<CommunicationRecording | null>(null);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [translationLanguage, setTranslationLanguage] = useState("Yoruba");
+  const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
   const [summary, setSummary] = useState("");
   const [notes, setNotes] = useState("");
@@ -133,6 +138,14 @@ export function ProfessionalLiveConsultationPage() {
         });
         if (access.participant) setParticipants([access.participant]);
         setSummary(nextRoom.consultation.reason ?? "");
+        if (access.roomId) {
+          const state = await getCommunicationRoom(access.roomId).catch(() => null);
+          if (!cancelled && state) {
+            setParticipants(state.participants);
+            setRecording(state.recordings[0] ?? null);
+            setTranscript(state.transcripts[0] ?? null);
+          }
+        }
       } catch (error) {
         if (!cancelled) toast.error(getApiErrorMessage(error));
       }
@@ -454,6 +467,29 @@ export function ProfessionalLiveConsultationPage() {
     setTranscript(saved);
   };
 
+  const openRecordingArchive = async (recordingId: string) => {
+    try {
+      const archive = await getCommunicationRecordingArchive(recordingId);
+      window.open(archive.archiveUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const translateTranscript = async () => {
+    const text = transcript?.text?.trim();
+    if (!text) return;
+    try {
+      const result = await translateCommunicationText({
+        text,
+        targetLanguage: translationLanguage,
+      });
+      setTranslatedTranscript(result.translatedText);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   const waitingParticipants = participants.filter(
     (participant) => participant.status === "waiting",
   );
@@ -628,6 +664,44 @@ export function ProfessionalLiveConsultationPage() {
                 <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-line text-[#64748B]">
                   {transcript.text}
                 </p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={translationLanguage}
+                    onChange={(event) => setTranslationLanguage(event.target.value)}
+                    className="h-9 min-w-0 flex-1 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] outline-none focus:border-[#1565C0]"
+                    aria-label="Target language"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void translateTranscript()}
+                    className="rounded-[8px] bg-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-white"
+                  >
+                    Translate
+                  </button>
+                </div>
+                {translatedTranscript ? (
+                  <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-line rounded-[8px] bg-white p-2 text-[#334155]">
+                    {translatedTranscript}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+            {recording ? (
+              <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+                <p className="font-medium text-[#334155]">Recording archive</p>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[12px]">
+                  <span className="capitalize text-[#64748B]">
+                    {recording.status}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={recording.status !== "ready"}
+                    onClick={() => void openRecordingArchive(recording.id)}
+                    className="rounded-[8px] border border-[#1565C0] px-3 py-1.5 font-medium text-[#1565C0] disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                  >
+                    Open archive
+                  </button>
+                </div>
               </section>
             ) : null}
             {analytics ? (

@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
-  createPatientSymptomCheck,
+  sendPatientAiAssistantMessage,
   type PatientMedicalRecordsRecommendation,
   type PatientSymptomCheck,
 } from "@/services/patientApi";
 
 type AssistantMessage = {
   id: string;
-  sender: "assistant" | "patient";
+  sender: "assistant" | "patient" | "system";
   body: string;
 };
 
@@ -25,16 +25,6 @@ type AssistantDraft = {
   allergies: string;
 };
 
-type AssistantStep =
-  | "intro"
-  | "severity"
-  | "duration"
-  | "associated"
-  | "background"
-  | "submitting"
-  | "result"
-  | "support";
-
 const initialMessages: AssistantMessage[] = [
   {
     id: "welcome",
@@ -42,10 +32,6 @@ const initialMessages: AssistantMessage[] = [
     body: "Hello. I am Swift AI. Tell me what symptom or health concern you want help with today.",
   },
 ];
-
-const severityOptions = ["Mild", "Moderate", "Severe", "Very severe"];
-const durationOptions = ["Today", "1-2 days", "3-7 days", "More than a week"];
-const associatedOptions = ["None", "Dizziness", "Fatigue", "Fever", "Nausea", "Chest pain", "Shortness of breath"];
 
 function createMessage(sender: AssistantMessage["sender"], body: string): AssistantMessage {
   return {
@@ -67,7 +53,7 @@ function urgencyCopy(urgency?: PatientMedicalRecordsRecommendation["urgencyLevel
       return { label: "Emergency", className: "bg-[#FEE2E2] text-[#B91C1C]" };
     case "routine":
     default:
-      return { label: "Moderate risk", className: "bg-[#E3F2FD] text-[#1565C0]" };
+      return { label: "AI triage ready", className: "bg-[#E3F2FD] text-[#1565C0]" };
   }
 }
 
@@ -79,6 +65,23 @@ function recommendationActions(recommendation: PatientMedicalRecordsRecommendati
     recommendation.followUpWindow ? `Follow up: ${recommendation.followUpWindow}` : "",
   ].filter(Boolean);
   return actions.length ? actions.slice(0, 4) : ["Monitor symptoms and seek professional care if they persist."];
+}
+
+function draftFromCollected(collected: Record<string, unknown> | null | undefined): AssistantDraft {
+  const text = (key: string) => {
+    const value = collected?.[key];
+    if (Array.isArray(value)) return value.filter((item) => typeof item === "string").join(", ");
+    return typeof value === "string" ? value : "";
+  };
+
+  return {
+    primarySymptom: text("primarySymptom"),
+    severity: text("severity"),
+    duration: text("duration"),
+    associatedSymptoms: text("associatedSymptoms"),
+    medications: text("medications"),
+    allergies: text("allergies"),
+  };
 }
 
 function ChipButton({
@@ -139,7 +142,9 @@ function ResultPanel({
   return (
     <section className="rounded-[18px] border border-[#D8E2EF] bg-white p-4 shadow-[0_16px_35px_rgba(30,136,229,0.08)]">
       <div className="rounded-[16px] bg-[#FFF8EA] px-4 py-5 text-center">
-        <div className={`mx-auto inline-flex min-h-9 items-center rounded-full px-4 text-[16px] font-semibold tracking-[-0.05em] ${urgency.className}`}>
+        <div
+          className={`mx-auto inline-flex min-h-9 items-center rounded-full px-4 text-[16px] font-semibold tracking-[-0.05em] ${urgency.className}`}
+        >
           {urgency.label}
         </div>
         <h2 className="mt-4 text-[22px] font-semibold leading-7 tracking-[-0.05em] text-[#334155]">
@@ -171,20 +176,26 @@ function ResultPanel({
           <dl className="mt-3 space-y-2 text-[14px] leading-5 tracking-[-0.05em]">
             <div className="flex justify-between gap-4">
               <dt className="text-[#94A3B8]">Primary symptom</dt>
-              <dd className="text-right font-medium text-[#334155]">{summary?.primarySymptom ?? draft.primarySymptom}</dd>
+              <dd className="text-right font-medium text-[#334155]">
+                {(summary?.primarySymptom ?? draft.primarySymptom) || "Not recorded"}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-[#94A3B8]">Duration</dt>
-              <dd className="text-right font-medium text-[#334155]">{summary?.duration ?? draft.duration}</dd>
+              <dd className="text-right font-medium text-[#334155]">
+                {(summary?.duration ?? draft.duration) || "Not recorded"}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-[#94A3B8]">Severity</dt>
-              <dd className="text-right font-medium text-[#334155]">{summary?.severity ?? draft.severity}</dd>
+              <dd className="text-right font-medium text-[#334155]">
+                {(summary?.severity ?? draft.severity) || "Not recorded"}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-[#94A3B8]">Associated symptoms</dt>
               <dd className="text-right font-medium text-[#334155]">
-                {summary?.associatedSymptoms ?? draft.associatedSymptoms}
+                {(summary?.associatedSymptoms ?? draft.associatedSymptoms) || "Not recorded"}
               </dd>
             </div>
           </dl>
@@ -225,9 +236,15 @@ function ResultPanel({
 
 export function PatientAiAssistantPage() {
   const router = useRouter();
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
-  const [step, setStep] = useState<AssistantStep>("intro");
+  const [quickReplies, setQuickReplies] = useState<string[]>([
+    "I have a headache",
+    "I feel tired",
+    "I have a fever",
+    "I need help choosing care",
+  ]);
   const [draft, setDraft] = useState<AssistantDraft>({
     primarySymptom: "",
     severity: "",
@@ -238,9 +255,10 @@ export function PatientAiAssistantPage() {
   });
   const [recommendation, setRecommendation] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [savedCheck, setSavedCheck] = useState<PatientSymptomCheck | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  const canSend = inputValue.trim().length > 1 && step !== "submitting";
+  const canSend = inputValue.trim().length > 1 && !isSending;
   const healthTip = useMemo(
     () => "Stay hydrated, monitor new symptoms, and seek urgent care if breathing, chest pain, fainting, or confusion occurs.",
     [],
@@ -251,159 +269,57 @@ export function PatientAiAssistantPage() {
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 0);
   }
 
-  function saveDraft(nextDraft: AssistantDraft) {
-    setDraft(nextDraft);
-    window.sessionStorage.setItem("patientAiAssistantDraft", JSON.stringify(nextDraft));
-  }
+  async function sendMessage(text: string) {
+    const body = text.trim();
+    if (!body || isSending) return;
 
-  function handlePatientText(value: string) {
-    const text = value.trim();
-    if (!text || step === "submitting") return;
-
-    if (step === "intro") {
-      const nextDraft = { ...draft, primarySymptom: text };
-      saveDraft(nextDraft);
-      addMessages([
-        createMessage("patient", text),
-        createMessage("assistant", "I understand. How severe is this symptom right now?"),
-      ]);
-      setInputValue("");
-      setStep("severity");
-      return;
-    }
-
-    if (step === "associated") {
-      const nextDraft = { ...draft, associatedSymptoms: text };
-      saveDraft(nextDraft);
-      addMessages([
-        createMessage("patient", text),
-        createMessage(
-          "assistant",
-          "Thanks. Add any current medicines, allergies, or health history I should include. If none, type none.",
-        ),
-      ]);
-      setInputValue("");
-      setStep("background");
-      return;
-    }
-
-    if (step === "background" || step === "support" || step === "result") {
-      addMessages([
-        createMessage("patient", text),
-        createMessage(
-          "assistant",
-          step === "result"
-            ? "I can help you book care, log another symptom check, or continue tracking how you feel."
-            : "I have logged that context. If symptoms change or worsen, consider booking care from your recommendation.",
-        ),
-      ]);
-      setInputValue("");
-    }
-  }
-
-  function chooseSeverity(value: string) {
-    const nextDraft = { ...draft, severity: value };
-    saveDraft(nextDraft);
-    addMessages([
-      createMessage("patient", value),
-      createMessage("assistant", "How long has this been happening?"),
-    ]);
-    setStep("duration");
-  }
-
-  function chooseDuration(value: string) {
-    const nextDraft = { ...draft, duration: value };
-    saveDraft(nextDraft);
-    addMessages([
-      createMessage("patient", value),
-      createMessage("assistant", "Are you having any associated symptoms? Select one or type your own."),
-    ]);
-    setStep("associated");
-  }
-
-  function chooseAssociated(value: string) {
-    const nextDraft = { ...draft, associatedSymptoms: value };
-    saveDraft(nextDraft);
-    addMessages([
-      createMessage("patient", value),
-      createMessage(
-        "assistant",
-        "Add any current medicines, allergies, or health history I should include. If none, type none.",
-      ),
-    ]);
-    setStep("background");
-  }
-
-  async function submitAssessment(assessmentDraft = draft) {
-    if (!assessmentDraft.primarySymptom || !assessmentDraft.severity || !assessmentDraft.duration) {
-      toast.error("Add your symptom, severity, and duration first.");
-      return;
-    }
-
-    setStep("submitting");
-    addMessages([createMessage("assistant", "I am reviewing your answers and preparing your care guidance.")]);
+    setInputValue("");
+    setRecommendation(null);
+    setQuickReplies([]);
+    addMessages([createMessage("patient", body)]);
+    setIsSending(true);
 
     try {
-      const check = await createPatientSymptomCheck({
-        title: "Swift AI symptom conversation",
-        symptoms: {
-          primarySymptom: assessmentDraft.primarySymptom,
-          duration: assessmentDraft.duration,
-          severity: assessmentDraft.severity,
-          associatedSymptoms: assessmentDraft.associatedSymptoms || "None recorded",
-          medications: assessmentDraft.medications || "Not recorded",
-          allergies: assessmentDraft.allergies || "Not recorded",
-        },
-        answers: {
-          source: "patient_ai_assistant",
-          primarySymptom: assessmentDraft.primarySymptom,
-          duration: assessmentDraft.duration,
-          severity: assessmentDraft.severity,
-          associatedSymptoms: assessmentDraft.associatedSymptoms,
-          background: assessmentDraft.medications || assessmentDraft.allergies,
-          conversation: messages.map((message) => ({
-            sender: message.sender,
-            body: message.body,
-          })),
-        },
+      const response = await sendPatientAiAssistantMessage({
+        sessionId: sessionId ?? undefined,
+        message: body,
       });
-      const nextRecommendation = check.recommendation as PatientMedicalRecordsRecommendation;
-      setSavedCheck(check);
-      setRecommendation(nextRecommendation);
-      window.sessionStorage.setItem(
-        "patientAiAssistantLatestRecommendation",
-        JSON.stringify({ checkId: check.id, recommendation: nextRecommendation, draft: assessmentDraft }),
-      );
+      setSessionId(response.session.id);
+      const nextDraft = draftFromCollected(response.session.collected);
+      setDraft(nextDraft);
+      window.sessionStorage.setItem("patientAiAssistantDraft", JSON.stringify(nextDraft));
+      setQuickReplies(response.quickReplies ?? []);
       addMessages([
-        createMessage(
-          "assistant",
-          `${nextRecommendation.headline ?? "Your AI assessment is ready."} ${
-            nextRecommendation.shouldBookConsultation ? "I recommend booking care for review." : "You can continue monitoring with care guidance."
-          }`,
-        ),
+        {
+          id: response.message.id,
+          sender: "assistant",
+          body: response.message.body,
+        },
       ]);
-      setStep("result");
+
+      if (response.safetyEscalation) {
+        toast.warning("Swift AI detected possible urgent symptoms. Seek emergency care if you feel unsafe.");
+      }
+
+      if (response.recommendation) {
+        const nextRecommendation = response.recommendation.recommendation as PatientMedicalRecordsRecommendation;
+        setSavedCheck(response.recommendation.symptomCheck);
+        setRecommendation(nextRecommendation);
+        window.sessionStorage.setItem(
+          "patientAiAssistantLatestRecommendation",
+          JSON.stringify({
+            checkId: response.recommendation.symptomCheck.id,
+            recommendation: nextRecommendation,
+            draft: nextDraft,
+          }),
+        );
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error));
-      addMessages([createMessage("assistant", "I could not save that assessment. Please try again.")]);
-      setStep("background");
+      addMessages([createMessage("assistant", "I could not process that message right now. Please try again.")]);
+    } finally {
+      setIsSending(false);
     }
-  }
-
-  function handleBackgroundSubmit() {
-    const text = inputValue.trim();
-    const isNone = text.toLowerCase() === "none";
-    const nextDraft = {
-      ...draft,
-      medications: isNone ? "" : text,
-      allergies: isNone ? "" : draft.allergies,
-    };
-    saveDraft(nextDraft);
-    if (text) {
-      addMessages([createMessage("patient", text)]);
-    }
-    setInputValue("");
-    void submitAssessment(nextDraft);
   }
 
   function bookRecommendedCare() {
@@ -420,6 +336,7 @@ export function PatientAiAssistantPage() {
   }
 
   function restart() {
+    setSessionId(null);
     setMessages(initialMessages);
     setDraft({
       primarySymptom: "",
@@ -429,10 +346,10 @@ export function PatientAiAssistantPage() {
       medications: "",
       allergies: "",
     });
+    setQuickReplies(["I have a headache", "I feel tired", "I have a fever", "I need help choosing care"]);
     setRecommendation(null);
     setSavedCheck(null);
     setInputValue("");
-    setStep("intro");
   }
 
   return (
@@ -447,7 +364,7 @@ export function PatientAiAssistantPage() {
                   Talk to Swift AI
                 </h1>
                 <p className="mt-2 max-w-[620px] text-[16px] leading-5 tracking-[-0.05em] text-[#64748B]">
-                  Get guided symptom intake, AI-supported triage, and a direct handoff into care booking.
+                  Get OpenAI-powered symptom intake, AI-supported triage, and a direct handoff into care booking.
                 </p>
               </div>
               <button
@@ -465,45 +382,30 @@ export function PatientAiAssistantPage() {
                   {messages.map((message) => (
                     <AssistantBubble key={message.id} message={message} />
                   ))}
+                  {isSending ? <AssistantBubble message={{ id: "thinking", sender: "assistant", body: "Swift AI is thinking..." }} /> : null}
                   <div ref={chatEndRef} />
                 </div>
               </div>
 
               <div className="mt-4">
-                {step === "severity" ? (
-                  <div className="flex flex-wrap gap-2">
-                    {severityOptions.map((option) => (
-                      <ChipButton key={option} onClick={() => chooseSeverity(option)}>
-                        {option}
-                      </ChipButton>
-                    ))}
-                  </div>
-                ) : step === "duration" ? (
-                  <div className="flex flex-wrap gap-2">
-                    {durationOptions.map((option) => (
-                      <ChipButton key={option} onClick={() => chooseDuration(option)}>
-                        {option}
-                      </ChipButton>
-                    ))}
-                  </div>
-                ) : step === "associated" ? (
-                  <div className="flex flex-wrap gap-2">
-                    {associatedOptions.map((option) => (
-                      <ChipButton key={option} onClick={() => chooseAssociated(option)}>
+                {quickReplies.length ? (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {quickReplies.map((option) => (
+                      <ChipButton key={option} disabled={isSending} onClick={() => void sendMessage(option)}>
                         {option}
                       </ChipButton>
                     ))}
                   </div>
                 ) : null}
 
-                {step === "result" && recommendation ? (
-                  <div className="mt-4">
+                {recommendation ? (
+                  <div className="mb-4">
                     <ResultPanel
                       recommendation={recommendation}
                       draft={draft}
                       onBook={bookRecommendedCare}
                       onContinue={() => {
-                        setStep("support");
+                        setRecommendation(null);
                         addMessages([
                           createMessage(
                             "assistant",
@@ -516,44 +418,32 @@ export function PatientAiAssistantPage() {
                   </div>
                 ) : null}
 
-                {step !== "severity" && step !== "duration" && step !== "associated" && step !== "result" ? (
-                  <div className="mt-4 flex gap-2">
-                    <input
-                      value={inputValue}
-                      onChange={(event) => setInputValue(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          if (step === "background") {
-                            handleBackgroundSubmit();
-                          } else {
-                            handlePatientText(inputValue);
-                          }
-                        }
-                      }}
-                      disabled={step === "submitting"}
-                      placeholder={
-                        step === "background"
-                          ? "Medicines, allergies, history, or type none"
-                          : step === "support"
-                            ? "Ask Swift AI a follow-up question"
-                            : "Type your symptom..."
+                <div className="flex gap-2">
+                  <input
+                    value={inputValue}
+                    onChange={(event) => setInputValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void sendMessage(inputValue);
                       }
-                      className="h-12 min-w-0 flex-1 rounded-[14px] border border-[#D8E2EF] bg-[#F8FAFC] px-4 text-[15px] tracking-[-0.05em] text-[#334155] outline-none transition focus:border-[#1565C0]"
-                    />
-                    <button
-                      type="button"
-                      disabled={!canSend && step !== "background"}
-                      onClick={() => (step === "background" ? handleBackgroundSubmit() : handlePatientText(inputValue))}
-                      className="inline-flex h-12 w-14 cursor-pointer items-center justify-center rounded-[14px] bg-[#1565C0] text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                      aria-label="Send message"
-                    >
-                      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                        <path fill="currentColor" d="M3 20.5 21 12 3 3.5V10l10 2-10 2v6.5Z" />
-                      </svg>
-                    </button>
-                  </div>
-                ) : null}
+                    }}
+                    disabled={isSending}
+                    placeholder="Ask Swift AI or describe your symptoms..."
+                    className="h-12 min-w-0 flex-1 rounded-[14px] border border-[#D8E2EF] bg-[#F8FAFC] px-4 text-[15px] tracking-[-0.05em] text-[#334155] outline-none transition focus:border-[#1565C0]"
+                  />
+                  <button
+                    type="button"
+                    disabled={!canSend}
+                    onClick={() => void sendMessage(inputValue)}
+                    className="inline-flex h-12 w-14 cursor-pointer items-center justify-center rounded-[14px] bg-[#1565C0] text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                    aria-label="Send message"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+                      <path fill="currentColor" d="M3 20.5 21 12 3 3.5V10l10 2-10 2v6.5Z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -599,7 +489,7 @@ export function PatientAiAssistantPage() {
             <div className="rounded-[20px] border border-[#D8E2EF] bg-white p-5">
               <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">How this flow works</h2>
               <div className="mt-4 space-y-3">
-                {["Describe symptoms", "Answer follow-up questions", "Review AI triage", "Book care if needed"].map(
+                {["Describe symptoms", "Answer OpenAI follow-up questions", "Review AI triage", "Book care if needed"].map(
                   (item, index) => (
                     <div key={item} className="flex gap-3">
                       <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1565C0]">

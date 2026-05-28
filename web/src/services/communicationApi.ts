@@ -150,6 +150,13 @@ export function getCommunicationRoom(roomId: string) {
   );
 }
 
+export function createCommunicationRoomAccess(roomId: string) {
+  return apiRequest<CommunicationRoomAccess>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/access`,
+    { method: "POST" },
+  );
+}
+
 export function admitCommunicationParticipant(roomId: string, userId: string) {
   return apiRequest<CommunicationParticipant>(
     `/communication/rooms/${encodeURIComponent(roomId)}/participants/admit`,
@@ -237,6 +244,19 @@ export function listCommunicationTranscripts(roomId: string) {
     `/communication/rooms/${encodeURIComponent(roomId)}/transcripts`,
     { method: "GET" },
   );
+}
+
+export function getCommunicationRecordingArchive(recordingId: string) {
+  return apiRequest<{
+    recordingId: string;
+    status: CommunicationRecording["status"];
+    archiveUrl: string;
+    providerRecordingId: string | null;
+    startedAt: string | null;
+    stoppedAt: string | null;
+  }>(`/communication/recordings/${encodeURIComponent(recordingId)}/archive`, {
+    method: "GET",
+  });
 }
 
 export function getCommunicationAnalytics(roomId?: string) {

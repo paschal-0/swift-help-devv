@@ -237,6 +237,40 @@ export type PatientSymptomCheck = {
   updatedAt: string;
 };
 
+export type PatientAiAssistantSession = {
+  id: string;
+  patientUserId: string;
+  title: string;
+  status: "active" | "triage_ready" | "completed" | string;
+  collected: Record<string, unknown>;
+  recommendation: Record<string, unknown>;
+  symptomCheckId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PatientAiAssistantMessage = {
+  id: string;
+  sessionId: string;
+  patientUserId: string;
+  sender: "assistant" | "patient" | "system" | string;
+  body: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type PatientAiAssistantMessageResponse = {
+  session: PatientAiAssistantSession;
+  message: PatientAiAssistantMessage;
+  quickReplies: string[];
+  readyForTriage: boolean;
+  safetyEscalation: boolean;
+  recommendation: {
+    symptomCheck: PatientSymptomCheck;
+    recommendation: PatientMedicalRecordsRecommendation;
+  } | null;
+};
+
 export type PatientReferralSummary = {
   referralCode: string;
   referralLink: string;
@@ -669,6 +703,36 @@ export function createPatientSymptomCheck(payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function startPatientAiAssistantSession(payload?: { message?: string }) {
+  return apiRequest<PatientAiAssistantSession | PatientAiAssistantMessageResponse>(
+    "/patient/ai-assistant/sessions",
+    {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
+    },
+  );
+}
+
+export function sendPatientAiAssistantMessage(payload: {
+  sessionId?: string;
+  message: string;
+}) {
+  return apiRequest<PatientAiAssistantMessageResponse>(
+    "/patient/ai-assistant/messages",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function listPatientAiAssistantMessages(sessionId: string) {
+  return apiRequest<PatientAiAssistantMessage[]>(
+    `/patient/ai-assistant/sessions/${encodeURIComponent(sessionId)}/messages`,
+    { method: "GET" },
+  );
 }
 
 export function listPatientSymptomChecks(params?: {
