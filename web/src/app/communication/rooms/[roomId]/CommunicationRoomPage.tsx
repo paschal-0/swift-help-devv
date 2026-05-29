@@ -329,6 +329,52 @@ export function CommunicationRoomPage() {
                   </dl>
                 </section>
               ) : null}
+              {room?.type === "team" ? (
+                <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                  <p className="font-medium text-[#334155]">Team brief</p>
+                  <dl className="mt-2 space-y-2 text-[12px] text-[#64748B]">
+                    {typeof room.metadata?.topic === "string" && room.metadata.topic ? (
+                      <div>
+                        <dt className="font-medium text-[#334155]">Topic</dt>
+                        <dd className="whitespace-pre-line">{room.metadata.topic}</dd>
+                      </div>
+                    ) : null}
+                    {Array.isArray(room.metadata?.invitedProfessionalNames) ? (
+                      <div>
+                        <dt className="font-medium text-[#334155]">Invited</dt>
+                        <dd>{room.metadata.invitedProfessionalNames.join(", ")}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
+              {room?.type === "emergency" ? (
+                <section className="rounded-[12px] border border-[#FCA5A5] bg-[#FEF2F2] p-3">
+                  <p className="font-medium text-[#991B1B]">Emergency brief</p>
+                  <dl className="mt-2 space-y-2 text-[12px] text-[#7F1D1D]">
+                    {typeof room.metadata?.incidentSummary === "string" &&
+                    room.metadata.incidentSummary ? (
+                      <div>
+                        <dt className="font-medium text-[#991B1B]">Incident</dt>
+                        <dd className="whitespace-pre-line">{room.metadata.incidentSummary}</dd>
+                      </div>
+                    ) : null}
+                    {typeof room.metadata?.incidentLocation === "string" &&
+                    room.metadata.incidentLocation ? (
+                      <div>
+                        <dt className="font-medium text-[#991B1B]">Location</dt>
+                        <dd>{room.metadata.incidentLocation}</dd>
+                      </div>
+                    ) : null}
+                    {Array.isArray(room.metadata?.invitedProfessionalNames) ? (
+                      <div>
+                        <dt className="font-medium text-[#991B1B]">Responders</dt>
+                        <dd>{room.metadata.invitedProfessionalNames.join(", ")}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
               <section className="rounded-[12px] bg-[#F8FAFC] p-3">
                 <p className="font-medium text-[#334155]">Consent</p>
                 <p className="mt-1 text-[#64748B]">

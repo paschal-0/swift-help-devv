@@ -124,13 +124,27 @@ function ProfessionalAvatar({
   name: string;
   size?: string;
 }) {
-  if (!src) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [src]);
+
+  if (!src || hasImageError) {
     return <InitialsAvatar name={name} className={`${size} text-[14px]`} />;
   }
 
   return (
-    <span className={`relative shrink-0 overflow-hidden rounded-full ${size}`}>
-      <Image src={src} alt={`${name} avatar`} fill className="object-cover" />
+    <span className={`relative block shrink-0 overflow-hidden rounded-full bg-[#E3F2FD] ${size}`}>
+      <Image
+        src={src}
+        alt={`${name} avatar`}
+        fill
+        sizes="64px"
+        className="object-cover"
+        unoptimized
+        onError={() => setHasImageError(true)}
+      />
     </span>
   );
 }

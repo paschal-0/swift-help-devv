@@ -1,12 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   getOrganizationDashboard,
+  listOrganizationProfessionals,
+  listOrganizationShifts,
   type OrganizationDashboard,
+  type OrganizationProfessional,
   type OrganizationShift,
 } from "@/services/organizationApi";
 import {
@@ -25,6 +28,32 @@ type ShiftRow = {
   status: "Filled" | "Partially Filled" | "Assigned";
   action: string;
   href: string;
+};
+
+type CommunicationCommandKind = "team" | "emergency" | "handover";
+
+const roomCommandCopy: Record<
+  CommunicationCommandKind,
+  { title: string; description: string; noteLabel: string; notePlaceholder: string }
+> = {
+  team: {
+    title: "Start team room",
+    description: "Invite selected professionals into a secure coordination room.",
+    noteLabel: "Team brief",
+    notePlaceholder: "Add the topic, agenda, or urgent coordination notes...",
+  },
+  handover: {
+    title: "Start shift handover",
+    description: "Choose the shift and the professionals who should receive the handover call.",
+    noteLabel: "Handover notes",
+    notePlaceholder: "Add patient context, pending tasks, risks, or next steps...",
+  },
+  emergency: {
+    title: "Start emergency room",
+    description: "Notify responders immediately and open a room for live escalation.",
+    noteLabel: "Emergency brief",
+    notePlaceholder: "Describe the incident, urgency, and what responders should prepare for...",
+  },
 };
 
 function formatShiftTimeRange(shift: OrganizationShift) {
@@ -199,8 +228,18 @@ function StatusText({ status }: { status: ShiftRow["status"] }) {
 
 export function OrganisationDashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { searchText } = useOrganisationPlatformShell();
   const [dashboard, setDashboard] = useState<OrganizationDashboard | null>(null);
+  const [roomModalKind, setRoomModalKind] = useState<CommunicationCommandKind | null>(null);
+  const [roomProfessionals, setRoomProfessionals] = useState<OrganizationProfessional[]>([]);
+  const [roomShifts, setRoomShifts] = useState<OrganizationShift[]>([]);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState("");
+  const [roomNote, setRoomNote] = useState("");
+  const [emergencyLocation, setEmergencyLocation] = useState("");
+  const [isLoadingRoomOptions, setIsLoadingRoomOptions] = useState(false);
+  const [isStartingRoom, setIsStartingRoom] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -271,36 +310,159 @@ export function OrganisationDashboardPage() {
     );
   }, [dashboardAttentionItems, normalizedQuery]);
 
+  const countryPrefix = useMemo(() => {
+    const firstSegment = pathname.split("/").filter(Boolean)[0];
+    return firstSegment && firstSegment.length === 2 ? `/${firstSegment}` : "";
+  }, [pathname]);
+
   const openRoute = (href: string) => router.push(href);
 
-  const openCommunicationRoom = async (
-    kind: "team" | "emergency" | "handover",
-  ) => {
+  const resetRoomCommandForm = () => {
+    setSelectedParticipantIds([]);
+    setSelectedShiftId("");
+    setRoomNote("");
+    setEmergencyLocation("");
+  };
+
+  const openCommunicationModal = async (kind: CommunicationCommandKind) => {
+    setRoomModalKind(kind);
+    resetRoomCommandForm();
+    setIsLoadingRoomOptions(true);
+    try {
+      const [professionals, shiftsResult] = await Promise.all([
+        listOrganizationProfessionals(),
+        listOrganizationShifts(),
+      ]);
+      const activeShifts = (shiftsResult.shifts.length
+        ? shiftsResult.shifts
+        : dashboard?.todayShifts ?? []
+      ).filter((shift) =>
+        ["open", "partially_filled", "filled", "in_progress"].includes(shift.status),
+      );
+      const defaultResponderIds =
+        kind === "emergency"
+          ? professionals
+              .filter((professional) =>
+                ["available", "on shift"].includes(professional.status.toLowerCase()),
+              )
+              .map((professional) => professional.id)
+          : [];
+
+      setRoomProfessionals(professionals);
+      setRoomShifts(activeShifts);
+      setSelectedParticipantIds(defaultResponderIds);
+      if (kind === "handover" && activeShifts[0]) {
+        setSelectedShiftId(activeShifts[0].id);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load room options.");
+      setRoomModalKind(null);
+    } finally {
+      setIsLoadingRoomOptions(false);
+    }
+  };
+
+  const closeCommunicationModal = () => {
+    if (isStartingRoom) return;
+    setRoomModalKind(null);
+    resetRoomCommandForm();
+  };
+
+  const toggleSelectedParticipant = (professionalId: string) => {
+    setSelectedParticipantIds((current) =>
+      current.includes(professionalId)
+        ? current.filter((id) => id !== professionalId)
+        : [...current, professionalId],
+    );
+  };
+
+  const startCommunicationRoom = async () => {
+    if (!roomModalKind) return;
+    if (selectedParticipantIds.length === 0) {
+      toast.error("Choose at least one professional to notify.");
+      return;
+    }
+    if (roomModalKind === "handover" && !selectedShiftId) {
+      toast.error("Choose the shift this handover belongs to.");
+      return;
+    }
+    if (roomModalKind === "emergency" && !roomNote.trim()) {
+      toast.error("Add a short emergency brief before notifying responders.");
+      return;
+    }
+
+    setIsStartingRoom(true);
     try {
       const now = new Date();
-      const title =
-        kind === "emergency"
-          ? "Emergency coordination"
-          : kind === "handover"
-            ? "Shift handover"
-            : "Organization team room";
-      const createRoom =
-        kind === "emergency"
-          ? createEmergencyRoom
-          : kind === "handover"
-            ? createShiftHandoverRoom
-            : createTeamRoom;
-      const state = await createRoom({
-        title,
+      const selectedShift = roomShifts.find((shift) => shift.id === selectedShiftId);
+      const selectedNames = roomProfessionals
+        .filter((professional) => selectedParticipantIds.includes(professional.id))
+        .map((professional) => professional.name);
+      const commonPayload = {
+        participantUserIds: selectedParticipantIds,
         metadata: {
           source: "organization_dashboard",
           startedAt: now.toISOString(),
+          note: roomNote.trim(),
+          invitedProfessionalNames: selectedNames,
+          invitedCount: selectedParticipantIds.length,
         },
-        expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
-      });
-      router.push(`/communication/rooms/${state.room.id}`);
+      };
+      const expiresAt = new Date(
+        now.getTime() + (roomModalKind === "emergency" ? 2 : 4) * 60 * 60 * 1000,
+      ).toISOString();
+      const state =
+        roomModalKind === "emergency"
+          ? await createEmergencyRoom({
+              ...commonPayload,
+              title: "Emergency coordination",
+              metadata: {
+                ...commonPayload.metadata,
+                priority: "emergency",
+                incidentSummary: roomNote.trim(),
+                incidentLocation: emergencyLocation.trim(),
+              },
+              expiresAt,
+            })
+          : roomModalKind === "handover"
+            ? await createShiftHandoverRoom({
+                ...commonPayload,
+                title: selectedShift?.shiftCode
+                  ? `Shift handover - ${selectedShift.shiftCode}`
+                  : "Shift handover",
+                organizationUserId: selectedShift?.organizationUserId ?? undefined,
+                shiftOfferId: selectedShift?.id,
+                metadata: {
+                  ...commonPayload.metadata,
+                  handoverTargetType: "organization_to_professionals",
+                  handoverTargetLabel:
+                    selectedNames.length === 1
+                      ? selectedNames[0]
+                      : `${selectedNames.length} professionals`,
+                  shiftCode: selectedShift?.shiftCode,
+                  facilityName: selectedShift?.facilityName,
+                  department: selectedShift?.department,
+                  role: selectedShift?.role,
+                  startsAt: selectedShift?.startsAt,
+                  endsAt: selectedShift?.endsAt,
+                },
+                expiresAt,
+              })
+            : await createTeamRoom({
+                ...commonPayload,
+                title: "Organization team room",
+                metadata: {
+                  ...commonPayload.metadata,
+                  topic: roomNote.trim(),
+                },
+                expiresAt,
+              });
+      toast.success("Room created and notifications sent.");
+      router.push(`${countryPrefix}/communication/rooms/${state.room.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to start room");
+      toast.error(error instanceof Error ? error.message : "Unable to start room.");
+    } finally {
+      setIsStartingRoom(false);
     }
   };
 
@@ -356,21 +518,21 @@ export function OrganisationDashboardPage() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            onClick={() => void openCommunicationRoom("team")}
+            onClick={() => void openCommunicationModal("team")}
             className="h-10 rounded-[8px] border border-[#1565C0] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
           >
             Team room
           </button>
           <button
             type="button"
-            onClick={() => void openCommunicationRoom("handover")}
+            onClick={() => void openCommunicationModal("handover")}
             className="h-10 rounded-[8px] border border-[#1565C0] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
           >
             Shift handover
           </button>
           <button
             type="button"
-            onClick={() => void openCommunicationRoom("emergency")}
+            onClick={() => void openCommunicationModal("emergency")}
             className="h-10 rounded-[8px] bg-[#C82B33] px-4 text-[13px] font-medium text-white transition hover:-translate-y-0.5 hover:bg-[#9F1F29]"
           >
             Emergency room
@@ -577,6 +739,175 @@ export function OrganisationDashboardPage() {
           ) : null}
         </div>
       </motion.section>
+
+      {roomModalKind ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0F172A]/55 px-4 py-4 backdrop-blur-sm sm:items-center">
+          <div className="max-h-[92vh] w-full max-w-[720px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] p-5 shadow-[0_24px_64px_rgba(15,23,42,0.22)] sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[22px] font-semibold tracking-[-0.05em] text-[#334155]">
+                  {roomCommandCopy[roomModalKind].title}
+                </h2>
+                <p className="mt-1 max-w-[560px] text-sm leading-5 text-[#64748B]">
+                  {roomCommandCopy[roomModalKind].description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCommunicationModal}
+                className="h-10 shrink-0 rounded-[8px] border border-[#CBD5E1] px-4 text-sm font-medium text-[#334155] transition hover:bg-white"
+              >
+                Close
+              </button>
+            </div>
+
+            {isLoadingRoomOptions ? (
+              <div className="mt-6 rounded-[12px] border border-dashed border-[#94A3B8] px-4 py-8 text-center text-sm text-[#64748B]">
+                Loading eligible professionals and shifts...
+              </div>
+            ) : (
+              <div className="mt-6 space-y-5">
+                {roomModalKind === "handover" ? (
+                  <label className="block">
+                    <span className="text-sm font-semibold text-[#334155]">Shift</span>
+                    <select
+                      value={selectedShiftId}
+                      onChange={(event) => setSelectedShiftId(event.target.value)}
+                      className="mt-2 h-12 w-full rounded-[8px] border border-[#94A3B8] bg-white px-4 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                    >
+                      <option value="">Choose shift</option>
+                      {roomShifts.map((shift) => (
+                        <option key={shift.id} value={shift.id}>
+                          {shift.shiftCode} - {shift.facilityName} - {formatShiftTimeRange(shift)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                {roomModalKind === "emergency" ? (
+                  <label className="block">
+                    <span className="text-sm font-semibold text-[#334155]">Incident location</span>
+                    <input
+                      value={emergencyLocation}
+                      onChange={(event) => setEmergencyLocation(event.target.value)}
+                      placeholder="Ward, unit, address, or facility area"
+                      className="mt-2 h-12 w-full rounded-[8px] border border-[#94A3B8] bg-white px-4 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                    />
+                  </label>
+                ) : null}
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#334155]">
+                    {roomCommandCopy[roomModalKind].noteLabel}
+                  </span>
+                  <textarea
+                    value={roomNote}
+                    onChange={(event) => setRoomNote(event.target.value)}
+                    placeholder={roomCommandCopy[roomModalKind].notePlaceholder}
+                    rows={4}
+                    className="mt-2 w-full resize-none rounded-[8px] border border-[#94A3B8] bg-white px-4 py-3 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                  />
+                </label>
+
+                <div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-[#334155]">
+                      Notify professionals
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedParticipantIds(
+                          selectedParticipantIds.length === roomProfessionals.length
+                            ? []
+                            : roomProfessionals.map((professional) => professional.id),
+                        )
+                      }
+                      className="text-left text-sm font-semibold text-[#1565C0] sm:text-right"
+                    >
+                      {selectedParticipantIds.length === roomProfessionals.length
+                        ? "Clear selection"
+                        : "Select all"}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                    {roomProfessionals.map((professional) => {
+                      const selected = selectedParticipantIds.includes(professional.id);
+                      return (
+                        <button
+                          key={professional.id}
+                          type="button"
+                          onClick={() => toggleSelectedParticipant(professional.id)}
+                          className={`flex w-full items-center justify-between gap-3 rounded-[10px] border px-3 py-3 text-left transition ${
+                            selected
+                              ? "border-[#1565C0] bg-[#E3F2FD]"
+                              : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]"
+                          }`}
+                        >
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DCEEFF] text-sm font-semibold text-[#1565C0]">
+                              {getInitials(professional.name)}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-[#334155]">
+                                {professional.name}
+                              </span>
+                              <span className="block truncate text-xs text-[#64748B]">
+                                {professional.department || professional.role} - {professional.status}
+                              </span>
+                            </span>
+                          </span>
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                              selected
+                                ? "border-[#1565C0] bg-[#1565C0]"
+                                : "border-[#94A3B8] bg-white"
+                            }`}
+                            aria-hidden
+                          >
+                            {selected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {roomProfessionals.length === 0 ? (
+                    <div className="mt-3 rounded-[10px] border border-dashed border-[#94A3B8] px-4 py-5 text-sm text-[#64748B]">
+                      No organization professionals are available for this room yet.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeCommunicationModal}
+                disabled={isStartingRoom}
+                className="h-11 rounded-[8px] border border-[#CBD5E1] px-5 text-sm font-semibold text-[#334155] transition hover:bg-white disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void startCommunicationRoom()}
+                disabled={isLoadingRoomOptions || isStartingRoom}
+                className={`h-11 rounded-[8px] px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  roomModalKind === "emergency"
+                    ? "bg-[#C82B33] hover:bg-[#9F1F29]"
+                    : "bg-[#1565C0] hover:bg-[#0f5fa8]"
+                }`}
+              >
+                {isStartingRoom ? "Starting..." : "Start and notify"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
