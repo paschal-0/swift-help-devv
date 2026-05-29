@@ -339,10 +339,17 @@ export function CommunicationRoomPage() {
                         <dd className="whitespace-pre-line">{room.metadata.topic}</dd>
                       </div>
                     ) : null}
-                    {Array.isArray(room.metadata?.invitedProfessionalNames) ? (
+                    {Array.isArray(
+                      room.metadata?.invitedRecipientNames ?? room.metadata?.invitedProfessionalNames,
+                    ) ? (
                       <div>
                         <dt className="font-medium text-[#334155]">Invited</dt>
-                        <dd>{room.metadata.invitedProfessionalNames.join(", ")}</dd>
+                        <dd>
+                          {(
+                            (room.metadata?.invitedRecipientNames ??
+                              room.metadata?.invitedProfessionalNames) as string[]
+                          ).join(", ")}
+                        </dd>
                       </div>
                     ) : null}
                   </dl>
@@ -366,10 +373,17 @@ export function CommunicationRoomPage() {
                         <dd>{room.metadata.incidentLocation}</dd>
                       </div>
                     ) : null}
-                    {Array.isArray(room.metadata?.invitedProfessionalNames) ? (
+                    {Array.isArray(
+                      room.metadata?.invitedRecipientNames ?? room.metadata?.invitedProfessionalNames,
+                    ) ? (
                       <div>
                         <dt className="font-medium text-[#991B1B]">Responders</dt>
-                        <dd>{room.metadata.invitedProfessionalNames.join(", ")}</dd>
+                        <dd>
+                          {(
+                            (room.metadata?.invitedRecipientNames ??
+                              room.metadata?.invitedProfessionalNames) as string[]
+                          ).join(", ")}
+                        </dd>
                       </div>
                     ) : null}
                   </dl>

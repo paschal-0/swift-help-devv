@@ -93,6 +93,20 @@ export type OrganizationProfessional = {
   availability?: unknown;
 };
 
+export type OrganizationTeamMember = {
+  id: string;
+  userId: string | null;
+  name: string;
+  email: string | null;
+  role: "admin" | "staff" | "professional" | string;
+  accountRole: string | null;
+  status: "pending" | "accepted" | "revoked" | "expired" | string;
+  callable: boolean;
+  source: "owner" | "invite" | string;
+  acceptedAt?: string | null;
+  createdAt?: string;
+};
+
 export type OrganizationAssignment = {
   id: string;
   offerId: string;
@@ -642,6 +656,12 @@ export async function listOrganizationProfessionals(params?: {
       method: "GET",
     },
   );
+}
+
+export async function listOrganizationTeamMembers() {
+  return apiRequest<OrganizationTeamMember[]>("/organization/team-members", {
+    method: "GET",
+  });
 }
 
 export async function getOrganizationProfessional(professionalUserId: string) {

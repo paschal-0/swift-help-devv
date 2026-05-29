@@ -8,9 +8,11 @@ import {
   getOrganizationDashboard,
   listOrganizationProfessionals,
   listOrganizationShifts,
+  listOrganizationTeamMembers,
   type OrganizationDashboard,
   type OrganizationProfessional,
   type OrganizationShift,
+  type OrganizationTeamMember,
 } from "@/services/organizationApi";
 import {
   createEmergencyRoom,
@@ -31,6 +33,15 @@ type ShiftRow = {
 };
 
 type CommunicationCommandKind = "team" | "emergency" | "handover";
+type CommunicationRecipient = {
+  id: string;
+  userId: string;
+  name: string;
+  detail: string;
+  status: string;
+  group: "team" | "professional";
+  disabled?: boolean;
+};
 
 const roomCommandCopy: Record<
   CommunicationCommandKind,
@@ -38,19 +49,19 @@ const roomCommandCopy: Record<
 > = {
   team: {
     title: "Start team room",
-    description: "Invite selected professionals into a secure coordination room.",
+    description: "Bring internal admins, managers, and staff into a secure coordination room.",
     noteLabel: "Team brief",
-    notePlaceholder: "Add the topic, agenda, or urgent coordination notes...",
+    notePlaceholder: "Add the topic, agenda, staffing decision, or operational notes...",
   },
   handover: {
     title: "Start shift handover",
-    description: "Choose the shift and the professionals who should receive the handover call.",
+    description: "Choose the shift, receiving professionals, and any coordinator who should stay in the loop.",
     noteLabel: "Handover notes",
     notePlaceholder: "Add patient context, pending tasks, risks, or next steps...",
   },
   emergency: {
     title: "Start emergency room",
-    description: "Notify responders immediately and open a room for live escalation.",
+    description: "Notify internal responders and available professionals for live escalation.",
     noteLabel: "Emergency brief",
     notePlaceholder: "Describe the incident, urgency, and what responders should prepare for...",
   },
@@ -226,12 +237,41 @@ function StatusText({ status }: { status: ShiftRow["status"] }) {
   return <span className="font-medium text-[#19AA4A]">{status}</span>;
 }
 
+function teamMemberToRecipient(member: OrganizationTeamMember): CommunicationRecipient {
+  return {
+    id: `team:${member.id}`,
+    userId: member.userId ?? "",
+    name: member.name || member.email || "Team member",
+    detail:
+      member.source === "owner"
+        ? "Workspace owner"
+        : `${member.role === "staff" ? "Manager" : member.role} team member`,
+    status: member.callable ? "Ready" : member.status,
+    group: "team",
+    disabled: !member.callable,
+  };
+}
+
+function professionalToRecipient(
+  professional: OrganizationProfessional,
+): CommunicationRecipient {
+  return {
+    id: `professional:${professional.id}`,
+    userId: professional.id,
+    name: professional.name,
+    detail: `${professional.department || professional.role} professional`,
+    status: professional.status,
+    group: "professional",
+  };
+}
+
 export function OrganisationDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { searchText } = useOrganisationPlatformShell();
   const [dashboard, setDashboard] = useState<OrganizationDashboard | null>(null);
   const [roomModalKind, setRoomModalKind] = useState<CommunicationCommandKind | null>(null);
+  const [roomTeamMembers, setRoomTeamMembers] = useState<OrganizationTeamMember[]>([]);
   const [roomProfessionals, setRoomProfessionals] = useState<OrganizationProfessional[]>([]);
   const [roomShifts, setRoomShifts] = useState<OrganizationShift[]>([]);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
@@ -309,6 +349,54 @@ export function OrganisationDashboardPage() {
       `${item.title} ${item.tags.join(" ")}`.toLowerCase().includes(normalizedQuery)
     );
   }, [dashboardAttentionItems, normalizedQuery]);
+  const teamRecipients = useMemo(
+    () => roomTeamMembers.map(teamMemberToRecipient),
+    [roomTeamMembers],
+  );
+  const professionalRecipients = useMemo(
+    () => roomProfessionals.map(professionalToRecipient),
+    [roomProfessionals],
+  );
+  const visibleRecipientGroups = useMemo(() => {
+    if (!roomModalKind) {
+      return [] as Array<{ title: string; description: string; recipients: CommunicationRecipient[] }>;
+    }
+    if (roomModalKind === "team") {
+      return [
+        {
+          title: "Internal team",
+          description: "Organization admins, managers, and staff.",
+          recipients: teamRecipients,
+        },
+      ];
+    }
+    if (roomModalKind === "handover") {
+      return [
+        {
+          title: "Receiving professionals",
+          description: "Professionals who can receive the handover.",
+          recipients: professionalRecipients,
+        },
+        {
+          title: "Coordinators",
+          description: "Internal team members who should stay informed.",
+          recipients: teamRecipients.filter((recipient) => recipient.userId),
+        },
+      ];
+    }
+    return [
+      {
+        title: "Internal response team",
+        description: "Admins, managers, and operational staff.",
+        recipients: teamRecipients,
+      },
+      {
+        title: "Clinical responders",
+        description: "On-shift or available professionals.",
+        recipients: professionalRecipients,
+      },
+    ];
+  }, [professionalRecipients, roomModalKind, teamRecipients]);
 
   const countryPrefix = useMemo(() => {
     const firstSegment = pathname.split("/").filter(Boolean)[0];
@@ -329,7 +417,8 @@ export function OrganisationDashboardPage() {
     resetRoomCommandForm();
     setIsLoadingRoomOptions(true);
     try {
-      const [professionals, shiftsResult] = await Promise.all([
+      const [teamMembers, professionals, shiftsResult] = await Promise.all([
+        listOrganizationTeamMembers(),
         listOrganizationProfessionals(),
         listOrganizationShifts(),
       ]);
@@ -339,15 +428,22 @@ export function OrganisationDashboardPage() {
       ).filter((shift) =>
         ["open", "partially_filled", "filled", "in_progress"].includes(shift.status),
       );
+      const callableTeamIds = teamMembers
+        .filter((member) => member.callable && member.userId)
+        .map((member) => member.userId as string);
+      const activeProfessionalIds = professionals
+        .filter((professional) =>
+          ["available", "on shift"].includes(professional.status.toLowerCase()),
+        )
+        .map((professional) => professional.id);
       const defaultResponderIds =
-        kind === "emergency"
-          ? professionals
-              .filter((professional) =>
-                ["available", "on shift"].includes(professional.status.toLowerCase()),
-              )
-              .map((professional) => professional.id)
-          : [];
+        kind === "team"
+          ? callableTeamIds
+          : kind === "emergency"
+            ? [...new Set([...callableTeamIds, ...activeProfessionalIds])]
+            : [];
 
+      setRoomTeamMembers(teamMembers);
       setRoomProfessionals(professionals);
       setRoomShifts(activeShifts);
       setSelectedParticipantIds(defaultResponderIds);
@@ -379,7 +475,7 @@ export function OrganisationDashboardPage() {
   const startCommunicationRoom = async () => {
     if (!roomModalKind) return;
     if (selectedParticipantIds.length === 0) {
-      toast.error("Choose at least one professional to notify.");
+      toast.error("Choose at least one recipient to notify.");
       return;
     }
     if (roomModalKind === "handover" && !selectedShiftId) {
@@ -395,9 +491,11 @@ export function OrganisationDashboardPage() {
     try {
       const now = new Date();
       const selectedShift = roomShifts.find((shift) => shift.id === selectedShiftId);
-      const selectedNames = roomProfessionals
-        .filter((professional) => selectedParticipantIds.includes(professional.id))
-        .map((professional) => professional.name);
+      const allRecipients = [...teamRecipients, ...professionalRecipients];
+      const selectedRecipients = allRecipients.filter((recipient) =>
+        selectedParticipantIds.includes(recipient.userId),
+      );
+      const selectedNames = selectedRecipients.map((recipient) => recipient.name);
       const commonPayload = {
         participantUserIds: selectedParticipantIds,
         metadata: {
@@ -405,6 +503,12 @@ export function OrganisationDashboardPage() {
           startedAt: now.toISOString(),
           note: roomNote.trim(),
           invitedProfessionalNames: selectedNames,
+          invitedRecipientNames: selectedNames,
+          invitedGroups: {
+            team: selectedRecipients.filter((recipient) => recipient.group === "team").length,
+            professionals: selectedRecipients.filter((recipient) => recipient.group === "professional")
+              .length,
+          },
           invitedCount: selectedParticipantIds.length,
         },
       };
@@ -763,7 +867,7 @@ export function OrganisationDashboardPage() {
 
             {isLoadingRoomOptions ? (
               <div className="mt-6 rounded-[12px] border border-dashed border-[#94A3B8] px-4 py-8 text-center text-sm text-[#64748B]">
-                Loading eligible professionals and shifts...
+                Loading eligible recipients and shifts...
               </div>
             ) : (
               <div className="mt-6 space-y-5">
@@ -813,72 +917,100 @@ export function OrganisationDashboardPage() {
                 <div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-semibold text-[#334155]">
-                      Notify professionals
+                      Notify recipients
                     </p>
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        const selectableIds = visibleRecipientGroups
+                          .flatMap((group) => group.recipients)
+                          .filter((recipient) => !recipient.disabled && recipient.userId)
+                          .map((recipient) => recipient.userId);
                         setSelectedParticipantIds(
-                          selectedParticipantIds.length === roomProfessionals.length
+                          selectableIds.every((id) => selectedParticipantIds.includes(id))
                             ? []
-                            : roomProfessionals.map((professional) => professional.id),
-                        )
-                      }
+                            : [...new Set(selectableIds)],
+                        );
+                      }}
                       className="text-left text-sm font-semibold text-[#1565C0] sm:text-right"
                     >
-                      {selectedParticipantIds.length === roomProfessionals.length
+                      {visibleRecipientGroups
+                        .flatMap((group) => group.recipients)
+                        .filter((recipient) => !recipient.disabled && recipient.userId)
+                        .every((recipient) => selectedParticipantIds.includes(recipient.userId))
                         ? "Clear selection"
                         : "Select all"}
                     </button>
                   </div>
 
-                  <div className="mt-3 max-h-[260px] space-y-2 overflow-y-auto pr-1">
-                    {roomProfessionals.map((professional) => {
-                      const selected = selectedParticipantIds.includes(professional.id);
-                      return (
-                        <button
-                          key={professional.id}
-                          type="button"
-                          onClick={() => toggleSelectedParticipant(professional.id)}
-                          className={`flex w-full items-center justify-between gap-3 rounded-[10px] border px-3 py-3 text-left transition ${
-                            selected
-                              ? "border-[#1565C0] bg-[#E3F2FD]"
-                              : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]"
-                          }`}
-                        >
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DCEEFF] text-sm font-semibold text-[#1565C0]">
-                              {getInitials(professional.name)}
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-[#334155]">
-                                {professional.name}
-                              </span>
-                              <span className="block truncate text-xs text-[#64748B]">
-                                {professional.department || professional.role} - {professional.status}
-                              </span>
-                            </span>
-                          </span>
-                          <span
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                              selected
-                                ? "border-[#1565C0] bg-[#1565C0]"
-                                : "border-[#94A3B8] bg-white"
-                            }`}
-                            aria-hidden
-                          >
-                            {selected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="mt-3 max-h-[320px] space-y-4 overflow-y-auto pr-1">
+                    {visibleRecipientGroups.map((group) => (
+                      <section key={group.title}>
+                        <div className="mb-2">
+                          <p className="text-sm font-semibold text-[#334155]">{group.title}</p>
+                          <p className="text-xs text-[#64748B]">{group.description}</p>
+                        </div>
+                        <div className="space-y-2">
+                          {group.recipients.map((recipient) => {
+                            const selected = selectedParticipantIds.includes(recipient.userId);
+                            return (
+                              <button
+                                key={recipient.id}
+                                type="button"
+                                disabled={recipient.disabled}
+                                onClick={() => toggleSelectedParticipant(recipient.userId)}
+                                className={`flex w-full items-center justify-between gap-3 rounded-[10px] border px-3 py-3 text-left transition ${
+                                  selected
+                                    ? "border-[#1565C0] bg-[#E3F2FD]"
+                                    : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]"
+                                } ${recipient.disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                              >
+                                <span className="flex min-w-0 items-center gap-3">
+                                  <span
+                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                                      recipient.group === "team"
+                                        ? "bg-[#E8F5E9] text-[#0D8C24]"
+                                        : "bg-[#DCEEFF] text-[#1565C0]"
+                                    }`}
+                                  >
+                                    {getInitials(recipient.name)}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm font-semibold text-[#334155]">
+                                      {recipient.name}
+                                    </span>
+                                    <span className="block truncate text-xs text-[#64748B]">
+                                      {recipient.detail} - {recipient.status}
+                                    </span>
+                                    {recipient.disabled ? (
+                                      <span className="mt-1 block text-xs text-[#B45309]">
+                                        Invite accepted account was not found yet.
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                </span>
+                                <span
+                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                    selected
+                                      ? "border-[#1565C0] bg-[#1565C0]"
+                                      : "border-[#94A3B8] bg-white"
+                                  }`}
+                                  aria-hidden
+                                >
+                                  {selected ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
+                                </span>
+                              </button>
+                            );
+                          })}
+                          {group.recipients.length === 0 ? (
+                            <div className="rounded-[10px] border border-dashed border-[#94A3B8] px-4 py-4 text-sm text-[#64748B]">
+                              No recipients in this group yet.
+                            </div>
+                          ) : null}
+                        </div>
+                      </section>
+                    ))}
                   </div>
-
-                  {roomProfessionals.length === 0 ? (
-                    <div className="mt-3 rounded-[10px] border border-dashed border-[#94A3B8] px-4 py-5 text-sm text-[#64748B]">
-                      No organization professionals are available for this room yet.
-                    </div>
-                  ) : null}
                 </div>
               </div>
             )}
