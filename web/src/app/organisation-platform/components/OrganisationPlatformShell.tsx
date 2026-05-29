@@ -375,8 +375,12 @@ export function OrganisationPlatformShell({
   };
 
   const openNotificationTarget = (notification: OrganizationNotification) => {
+    const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
+    const roomId = notification.metadata?.roomId;
     const shiftId = notification.metadata?.shiftId;
-    if (typeof shiftId === "string") {
+    if (typeof roomId === "string") {
+      router.push(`${countryPrefix}/communication/rooms/${roomId}`);
+    } else if (typeof shiftId === "string") {
       router.push(`/organisation-platform/shifts/${shiftId}`);
     } else {
       router.push("/organisation-platform/shifts");

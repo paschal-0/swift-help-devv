@@ -10,10 +10,13 @@ import {
   completeCommunicationTranscription,
   createCommunicationRoomAccess,
   getCommunicationAnalytics,
+  getCommunicationComplianceReport,
   getCommunicationRecordingArchive,
   getCommunicationRoom,
+  startAiVoiceBot,
   startCommunicationRecording,
   startCommunicationTranscription,
+  stopAiVoiceBot,
   stopCommunicationRecording,
   translateCommunicationText,
   updateCommunicationConsent,
@@ -28,6 +31,14 @@ function formatRoomType(value?: string | null) {
     .split("_")
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function getRoomHeading(value?: string | null) {
+  if (value === "shift_handover") return "Shift Handover";
+  if (value === "team") return "Team Room";
+  if (value === "emergency") return "Emergency Room";
+  if (value === "ai_triage") return "AI Triage Room";
+  return "Live Consultation";
 }
 
 export function CommunicationRoomPage() {
@@ -45,9 +56,15 @@ export function CommunicationRoomPage() {
   const [recording, setRecording] = useState<CommunicationRecording | null>(null);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [consentDraft, setConsentDraft] = useState({
+    recordingConsent: false,
+    transcriptionConsent: false,
+    translationConsent: false,
+  });
   const [translationLanguage, setTranslationLanguage] = useState("Yoruba");
   const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [ending, setEnding] = useState(false);
+  const [aiBotBusy, setAiBotBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +87,11 @@ export function CommunicationRoomPage() {
           roomToken: nextAccess.roomToken,
           canJoin: nextAccess.canJoin,
         });
+        setConsentDraft({
+          recordingConsent: Boolean(nextAccess.compliance?.recordingConsent),
+          transcriptionConsent: Boolean(nextAccess.compliance?.transcriptionConsent),
+          translationConsent: Boolean(nextAccess.compliance?.translationConsent),
+        });
       } catch (error) {
         if (!cancelled) toast.error(getApiErrorMessage(error));
       }
@@ -80,16 +102,52 @@ export function CommunicationRoomPage() {
     };
   }, [roomId]);
 
-  const allowClinicalSupport = async () => {
+  const saveConsent = async () => {
     try {
-      await updateCommunicationConsent(roomId, {
-        recordingConsent: true,
-        transcriptionConsent: true,
-        translationConsent: true,
-      });
+      await updateCommunicationConsent(roomId, consentDraft);
       toast.success("Consent saved");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const aiVoiceBot = (room?.metadata?.aiVoiceBot ?? null) as
+    | {
+        status?: string;
+        voice?: string;
+        language?: string;
+        callId?: string;
+        profile?: string;
+      }
+    | null;
+
+  const startRoomAiVoiceBot = async () => {
+    setAiBotBusy(true);
+    try {
+      const response = await startAiVoiceBot(roomId, {
+        voice: "marin",
+        language: "en",
+        profile: room?.type === "ai_triage" ? "ai_triage" : undefined,
+      });
+      setRoom(response.room);
+      toast.success("Swift AI is joining the room");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setAiBotBusy(false);
+    }
+  };
+
+  const stopRoomAiVoiceBot = async () => {
+    setAiBotBusy(true);
+    try {
+      const response = await stopAiVoiceBot(roomId);
+      setRoom(response.room);
+      toast.success("Swift AI voice bot stopped");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setAiBotBusy(false);
     }
   };
 
@@ -146,6 +204,24 @@ export function CommunicationRoomPage() {
     }
   };
 
+  const downloadComplianceReport = async () => {
+    try {
+      const report = await getCommunicationComplianceReport(roomId);
+      const blob = new Blob([JSON.stringify(report, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `swifthelp-communication-compliance-${roomId}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success("Compliance report downloaded");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   const leaveRoom = async () => {
     setEnding(true);
     router.back();
@@ -158,6 +234,7 @@ export function CommunicationRoomPage() {
           token={access?.roomToken ?? null}
           meetingUrl={access?.meetingUrl ?? null}
           roomName={access?.roomName ?? null}
+          heading={getRoomHeading(room?.type)}
           canJoin={access?.canJoin !== false}
           waitingRoomContent={
             <div>
@@ -201,22 +278,131 @@ export function CommunicationRoomPage() {
                   {participants.length}
                 </dd>
               </div>
+              {room?.type === "shift_handover" ? (
+                <>
+                  <div className="flex gap-1">
+                    <dt className="text-[#94A3B8]">Recipient:</dt>
+                    <dd className="font-medium text-[#334155]">
+                      {typeof room.metadata?.handoverTargetLabel === "string"
+                        ? room.metadata.handoverTargetLabel
+                        : "Handover recipient"}
+                    </dd>
+                  </div>
+                  {typeof room.metadata?.scheduledFor === "string" ? (
+                    <div className="flex gap-1">
+                      <dt className="text-[#94A3B8]">Scheduled:</dt>
+                      <dd className="font-medium text-[#334155]">
+                        {new Intl.DateTimeFormat("en-US", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }).format(new Date(room.metadata.scheduledFor))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </dl>
           }
           sharedInfoContent={
             <div className="space-y-4">
+              {room?.type === "shift_handover" ? (
+                <section className="rounded-[12px] bg-[#E3F2FD] p-3">
+                  <p className="font-medium text-[#334155]">Handover brief</p>
+                  <dl className="mt-2 space-y-2 text-[12px] text-[#64748B]">
+                    {typeof room.metadata?.shiftCode === "string" ? (
+                      <div>
+                        <dt className="font-medium text-[#334155]">Shift</dt>
+                        <dd>
+                          {room.metadata.shiftCode}
+                          {typeof room.metadata?.facilityName === "string"
+                            ? ` - ${room.metadata.facilityName}`
+                            : ""}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {typeof room.metadata?.note === "string" ? (
+                      <div>
+                        <dt className="font-medium text-[#334155]">Notes</dt>
+                        <dd className="whitespace-pre-line">{room.metadata.note}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
               <section className="rounded-[12px] bg-[#F8FAFC] p-3">
                 <p className="font-medium text-[#334155]">Consent</p>
                 <p className="mt-1 text-[#64748B]">
-                  Recording, transcription, translation, and AI notes require consent.
+                  Recording, transcription, translation, and AI notes are optional.
+                  Your choices are audited for this room.
                 </p>
+                <div className="mt-3 space-y-2">
+                  {[
+                    ["recordingConsent", "Allow recording"],
+                    ["transcriptionConsent", "Allow live transcription and AI notes"],
+                    ["translationConsent", "Allow translation support"],
+                  ].map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center gap-2 rounded-[8px] bg-white px-3 py-2 text-[12px] text-[#334155]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(consentDraft[key as keyof typeof consentDraft])}
+                        onChange={(event) =>
+                          setConsentDraft((current) => ({
+                            ...current,
+                            [key]: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 accent-[#1565C0]"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
                 <button
                   type="button"
-                  onClick={() => void allowClinicalSupport()}
+                  onClick={() => void saveConsent()}
                   className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white"
                 >
-                  Allow communication support
+                  Save consent choices
                 </button>
+              </section>
+              <section className="rounded-[12px] bg-[#F8FAFC] p-3">
+                <p className="font-medium text-[#334155]">Swift AI voice bot</p>
+                <p className="mt-1 text-[#64748B]">
+                  Adds a real OpenAI Realtime voice participant to this Daily room
+                  through SIP dial-out.
+                </p>
+                <div className="mt-3 rounded-[8px] bg-white px-3 py-2 text-[12px] text-[#334155]">
+                  Status:{" "}
+                  <span className="font-semibold capitalize">
+                    {aiVoiceBot?.status ?? "not started"}
+                  </span>
+                  {aiVoiceBot?.profile ? (
+                    <span className="ml-2 text-[#64748B]">
+                      Profile: {aiVoiceBot.profile.replace(/_/g, " ")}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={aiBotBusy || aiVoiceBot?.status === "dialing" || aiVoiceBot?.status === "connected"}
+                    onClick={() => void startRoomAiVoiceBot()}
+                    className="rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Start Swift AI
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aiBotBusy || !aiVoiceBot?.callId}
+                    onClick={() => void stopRoomAiVoiceBot()}
+                    className="rounded-[8px] border border-[#C82B33] px-3 py-2 text-[12px] font-medium text-[#C82B33] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Stop
+                  </button>
+                </div>
               </section>
               {transcript?.text ? (
                 <section className="rounded-[12px] bg-[#E3F2FD] p-3">
@@ -292,7 +478,26 @@ export function CommunicationRoomPage() {
                         {analytics.transcripts ?? 0}
                       </dd>
                     </div>
+                    <div>
+                      <dt>Duration</dt>
+                      <dd className="font-semibold text-[#334155]">
+                        {Math.round((analytics.durationSeconds ?? 0) / 60)}m
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Consent events</dt>
+                      <dd className="font-semibold text-[#334155]">
+                        {analytics.consentEvents ?? 0}
+                      </dd>
+                    </div>
                   </dl>
+                  <button
+                    type="button"
+                    onClick={() => void downloadComplianceReport()}
+                    className="mt-3 rounded-[8px] border border-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-[#1565C0]"
+                  >
+                    Export compliance log
+                  </button>
                 </section>
               ) : null}
             </div>

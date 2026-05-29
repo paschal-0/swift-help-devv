@@ -58,6 +58,7 @@ export type CommunicationRoom = {
   participantUserIds: string[];
   consultationId: string | null;
   status: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type CommunicationRoomType =
@@ -80,11 +81,55 @@ export type CreateCommunicationRoomPayload = {
   expiresAt?: string;
 };
 
+export type ShiftHandoverProfessionalOption = {
+  userId: string;
+  name: string;
+  email: string | null;
+  specialization: string | null;
+  primaryPracticeLocation: string | null;
+  verificationStatus: string | null;
+  source: "same_shift" | "verified";
+};
+
+export type ShiftHandoverActiveShift = {
+  shiftId: string;
+  offerId: string;
+  shiftCode: string;
+  organizationUserId: string | null;
+  organizationName: string;
+  facilityName: string;
+  role: string;
+  department: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  peers: ShiftHandoverProfessionalOption[];
+};
+
+export type ShiftHandoverOptions = {
+  activeShifts: ShiftHandoverActiveShift[];
+  professionals: ShiftHandoverProfessionalOption[];
+};
+
 export type CommunicationRoomState = {
   room: CommunicationRoom;
   participants: CommunicationParticipant[];
   recordings: CommunicationRecording[];
   transcripts: CommunicationTranscript[];
+};
+
+export type CommunicationComplianceReport = {
+  generatedAt: string;
+  room: Record<string, unknown>;
+  retentionPolicy: {
+    recordingRetentionDays: number;
+    transcriptRetentionDays: number;
+    auditLogRetentionDays: number;
+  };
+  participants: Array<Record<string, unknown>>;
+  recordings: Array<Record<string, unknown>>;
+  transcripts: Array<Record<string, unknown>>;
+  auditLog: Array<Record<string, unknown>>;
 };
 
 export type CommunicationRoomAccess = {
@@ -107,28 +152,28 @@ export type CommunicationRoomAccess = {
 };
 
 export function createCommunicationRoom(payload: CreateCommunicationRoomPayload) {
-  return apiRequest<CommunicationRoom>("/communication/rooms", {
+  return apiRequest<CommunicationRoomState>("/communication/rooms", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function createAiTriageRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
-  return apiRequest<CommunicationRoom>("/communication/rooms/ai-triage", {
+  return apiRequest<CommunicationRoomState>("/communication/rooms/ai-triage", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function createEmergencyRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
-  return apiRequest<CommunicationRoom>("/communication/rooms/emergency", {
+  return apiRequest<CommunicationRoomState>("/communication/rooms/emergency", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function createTeamRoom(payload: Omit<CreateCommunicationRoomPayload, "type">) {
-  return apiRequest<CommunicationRoom>("/communication/rooms/team", {
+  return apiRequest<CommunicationRoomState>("/communication/rooms/team", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -137,9 +182,15 @@ export function createTeamRoom(payload: Omit<CreateCommunicationRoomPayload, "ty
 export function createShiftHandoverRoom(
   payload: Omit<CreateCommunicationRoomPayload, "type">,
 ) {
-  return apiRequest<CommunicationRoom>("/communication/rooms/shift-handover", {
+  return apiRequest<CommunicationRoomState>("/communication/rooms/shift-handover", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function listShiftHandoverOptions() {
+  return apiRequest<ShiftHandoverOptions>("/communication/shift-handover/options", {
+    method: "GET",
   });
 }
 
@@ -191,6 +242,28 @@ export function updateCommunicationConsent(
       method: "POST",
       body: JSON.stringify(payload),
     },
+  );
+}
+
+export function startAiVoiceBot(
+  roomId: string,
+  payload: {
+    voice?: string;
+    language?: string;
+    profile?: string;
+    instructions?: string;
+  } = {},
+) {
+  return apiRequest<{ room: CommunicationRoom; aiVoiceBot: Record<string, unknown> }>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/start`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function stopAiVoiceBot(roomId: string) {
+  return apiRequest<{ room: CommunicationRoom; aiVoiceBot: Record<string, unknown> }>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/ai-voice-bot/stop`,
+    { method: "POST" },
   );
 }
 
@@ -265,6 +338,13 @@ export function getCommunicationAnalytics(roomId?: string) {
     rooms: Array<Record<string, unknown>>;
     totals: Record<string, number>;
   }>(`/communication/analytics${suffix}`, { method: "GET" });
+}
+
+export function getCommunicationComplianceReport(roomId: string) {
+  return apiRequest<CommunicationComplianceReport>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/compliance`,
+    { method: "GET" },
+  );
 }
 
 export function translateCommunicationText(payload: {

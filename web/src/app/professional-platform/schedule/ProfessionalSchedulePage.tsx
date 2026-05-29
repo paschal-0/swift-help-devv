@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
@@ -16,6 +16,11 @@ import {
   type WeeklyAvailability,
 } from "@/services/professionalApi";
 import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
+import {
+  createShiftHandoverRoom,
+  listShiftHandoverOptions,
+  type ShiftHandoverOptions,
+} from "@/services/communicationApi";
 
 type MetricItem = {
   id: string;
@@ -92,6 +97,7 @@ type AvailabilityRule = {
 };
 
 type AvailabilityRuleMap = Record<string, string>;
+type HandoverScheduleMode = "now" | "scheduled";
 
 const initialDaySchedule: DaySchedule[] = [
   {
@@ -493,6 +499,7 @@ function SessionPill({ session }: { session: CalendarSession }) {
 
 export function ProfessionalSchedulePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { searchText } = useProfessionalPlatformShell();
   const [daySchedule, setDaySchedule] = useState(initialDaySchedule);
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
@@ -527,6 +534,16 @@ export function ProfessionalSchedulePage() {
   const [blockDate, setBlockDate] = useState(minBlockDate);
   const [blockTime, setBlockTime] = useState(blockTimeOptions[0]);
   const [blockRepeat, setBlockRepeat] = useState(repeatOptions[0]);
+  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [isLoadingHandoverOptions, setIsLoadingHandoverOptions] = useState(false);
+  const [isStartingHandover, setIsStartingHandover] = useState(false);
+  const [handoverOptions, setHandoverOptions] =
+    useState<ShiftHandoverOptions | null>(null);
+  const [selectedHandoverTarget, setSelectedHandoverTarget] = useState("");
+  const [handoverScheduleMode, setHandoverScheduleMode] =
+    useState<HandoverScheduleMode>("now");
+  const [handoverScheduledAt, setHandoverScheduledAt] = useState("");
+  const [handoverNote, setHandoverNote] = useState("");
 
   const query = searchText.trim().toLowerCase();
   const activeAppointmentDetails = useMemo(() => {
@@ -690,6 +707,59 @@ export function ProfessionalSchedulePage() {
     () => scheduleConsultations.slice(0, 8).map(mapConsultationToCalendarSession),
     [scheduleConsultations],
   );
+
+  const handoverTargets = useMemo(() => {
+    const options = handoverOptions;
+    if (!options) {
+      return [];
+    }
+
+    const shiftTargets = options.activeShifts.flatMap((shift) => [
+      ...(shift.organizationUserId
+        ? [
+            {
+              value: `organization:${shift.offerId}`,
+              kind: "organization" as const,
+              offerId: shift.offerId,
+              label: shift.organizationName,
+              detail: `${shift.shiftCode} - ${shift.facilityName}`,
+              organizationUserId: shift.organizationUserId,
+            },
+          ]
+        : []),
+      ...shift.peers.map((peer) => ({
+        value: `professional:${peer.userId}:${shift.offerId}`,
+        kind: "professional" as const,
+        offerId: shift.offerId,
+        label: peer.name,
+        detail: `${shift.shiftCode} - ${peer.specialization ?? shift.role}`,
+        professionalUserId: peer.userId,
+      })),
+    ]);
+
+    const fallbackTargets = options.professionals
+      .filter(
+        (professional) =>
+          !shiftTargets.some(
+            (target) =>
+              target.kind === "professional" &&
+              target.professionalUserId === professional.userId,
+          ),
+      )
+      .map((professional) => ({
+        value: `professional:${professional.userId}:`,
+        kind: "professional" as const,
+        offerId: null,
+        label: professional.name,
+        detail:
+          professional.specialization ??
+          professional.primaryPracticeLocation ??
+          "Verified professional",
+        professionalUserId: professional.userId,
+      }));
+
+    return [...shiftTargets, ...fallbackTargets];
+  }, [handoverOptions]);
 
   const visibleBlocked = useMemo(() => {
     if (!query) {
@@ -883,11 +953,274 @@ export function ProfessionalSchedulePage() {
     }
   };
 
+  const openShiftHandoverModal = async () => {
+    setIsHandoverModalOpen(true);
+    if (handoverOptions) {
+      return;
+    }
+
+    setIsLoadingHandoverOptions(true);
+    try {
+      const options = await listShiftHandoverOptions();
+      setHandoverOptions(options);
+      const firstShift = options.activeShifts[0];
+      const firstTarget =
+        firstShift?.organizationUserId
+          ? `organization:${firstShift.offerId}`
+          : firstShift?.peers[0]
+            ? `professional:${firstShift.peers[0].userId}:${firstShift.offerId}`
+            : options.professionals[0]
+              ? `professional:${options.professionals[0].userId}:`
+              : "";
+      setSelectedHandoverTarget(firstTarget);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load handover options",
+      );
+    } finally {
+      setIsLoadingHandoverOptions(false);
+    }
+  };
+
+  const startShiftHandover = async () => {
+    const target = handoverTargets.find(
+      (item) => item.value === selectedHandoverTarget,
+    );
+    if (!target) {
+      toast.error("Choose who should receive the handover.");
+      return;
+    }
+
+    const linkedShift = handoverOptions?.activeShifts.find(
+      (shift) => shift.offerId === target.offerId,
+    );
+    const scheduledFor =
+      handoverScheduleMode === "scheduled" && handoverScheduledAt
+        ? new Date(handoverScheduledAt).toISOString()
+        : undefined;
+    const expiryBase = scheduledFor ? new Date(scheduledFor).getTime() : Date.now();
+
+    setIsStartingHandover(true);
+    try {
+      const roomState = await createShiftHandoverRoom({
+        title: `Shift handover with ${target.label}`,
+        participantUserIds:
+          target.kind === "professional" ? [target.professionalUserId] : [],
+        organizationUserId:
+          target.kind === "organization" ? target.organizationUserId : undefined,
+        shiftOfferId: linkedShift?.offerId ?? undefined,
+        expiresAt: new Date(expiryBase + 4 * 60 * 60 * 1000).toISOString(),
+        metadata: {
+          source: "professional_schedule",
+          handoverTargetType: target.kind,
+          handoverTargetLabel: target.label,
+          handoverTargetUserId:
+            target.kind === "professional" ? target.professionalUserId : undefined,
+          scheduleDate: selectedDate,
+          scheduledFor,
+          note: handoverNote.trim() || undefined,
+          shiftCode: linkedShift?.shiftCode,
+          facilityName: linkedShift?.facilityName,
+          organizationName: linkedShift?.organizationName,
+        },
+      });
+      const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
+      router.push(`${countryPrefix}/communication/rooms/${roomState.room.id}`);
+      toast.success(
+        handoverScheduleMode === "scheduled"
+          ? "Handover scheduled and notifications sent."
+          : "Handover room opened and notifications sent.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start handover room");
+    } finally {
+      setIsStartingHandover(false);
+    }
+  };
+
   return (
     <section className="mt-[14px] pb-9 xl:mt-[8px]">
-      <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
-        Schedules
-      </h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.05em] text-[#334155] sm:text-[24px] sm:leading-[42px]">
+          Schedules
+        </h1>
+        <button
+          type="button"
+          onClick={() => void openShiftHandoverModal()}
+          className={`rounded-[10px] bg-[#1565C0] px-5 py-2 text-[14px] font-medium tracking-[-0.05em] text-[#F8FAFC] shadow-[0_8px_18px_rgba(30,136,229,0.18)] ${microInteractionClass}`}
+        >
+          Start handover room
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isHandoverModalOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="handover-modal-title"
+              className="max-h-[90vh] w-full max-w-[620px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] p-5 shadow-2xl"
+              initial={{ y: 18, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 18, opacity: 0 }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2
+                    id="handover-modal-title"
+                    className="text-[20px] font-semibold tracking-[-0.04em] text-[#334155]"
+                  >
+                    Start shift handover
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-5 tracking-[-0.03em] text-[#64748B]">
+                    Notify the organization for your active shift, or choose a
+                    professional to receive the handover call.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHandoverModalOpen(false)}
+                  className={`rounded-lg border border-[#CBD5E1] px-3 py-1.5 text-[13px] font-medium text-[#334155] ${microInteractionClass}`}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label
+                    htmlFor="handover-target"
+                    className="text-[13px] font-semibold tracking-[-0.03em] text-[#334155]"
+                  >
+                    Handover recipient
+                  </label>
+                  {isLoadingHandoverOptions ? (
+                    <div className="mt-2 rounded-[10px] border border-dashed border-[#CBD5E1] px-4 py-5 text-[13px] text-[#64748B]">
+                      Loading eligible recipients...
+                    </div>
+                  ) : handoverTargets.length ? (
+                    <select
+                      id="handover-target"
+                      value={selectedHandoverTarget}
+                      onChange={(event) =>
+                        setSelectedHandoverTarget(event.target.value)
+                      }
+                      className="mt-2 h-11 w-full rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                    >
+                      {handoverTargets.map((target) => (
+                        <option key={target.value} value={target.value}>
+                          {target.kind === "organization" ? "Organization" : "Professional"}:{" "}
+                          {target.label} - {target.detail}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="mt-2 rounded-[10px] border border-dashed border-[#CBD5E1] px-4 py-5 text-[13px] text-[#64748B]">
+                      No eligible organization or professional was found yet.
+                    </div>
+                  )}
+                </div>
+
+                {handoverOptions?.activeShifts.length ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {handoverOptions.activeShifts.slice(0, 2).map((shift) => (
+                      <div
+                        key={shift.shiftId}
+                        className="rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-3"
+                      >
+                        <p className="text-[13px] font-semibold text-[#334155]">
+                          {shift.shiftCode}
+                        </p>
+                        <p className="mt-1 text-[12px] leading-4 text-[#64748B]">
+                          {shift.organizationName} - {shift.facilityName}
+                        </p>
+                        <p className="mt-2 text-[12px] text-[#1565C0]">
+                          {shift.peers.length} same-shift professional
+                          {shift.peers.length === 1 ? "" : "s"} available
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+                  <div className="rounded-[10px] bg-white p-1">
+                    {(["now", "scheduled"] as HandoverScheduleMode[]).map(
+                      (mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setHandoverScheduleMode(mode)}
+                          className={`h-9 w-1/2 rounded-lg text-[13px] font-medium tracking-[-0.03em] transition ${
+                            handoverScheduleMode === mode
+                              ? "bg-[#1565C0] text-white"
+                              : "text-[#64748B]"
+                          }`}
+                        >
+                          {mode === "now" ? "Now" : "Schedule"}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                  {handoverScheduleMode === "scheduled" ? (
+                    <input
+                      type="datetime-local"
+                      value={handoverScheduledAt}
+                      onChange={(event) => setHandoverScheduledAt(event.target.value)}
+                      className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                    />
+                  ) : (
+                    <div className="flex min-h-11 items-center rounded-[10px] bg-white px-3 text-[13px] text-[#64748B]">
+                      The recipient is notified immediately and can join as soon as
+                      they are ready.
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  value={handoverNote}
+                  onChange={(event) => setHandoverNote(event.target.value)}
+                  placeholder="Add handover notes, patient context, pending tasks, or urgency..."
+                  className="min-h-[96px] w-full resize-none rounded-[10px] border border-[#CBD5E1] bg-white px-3 py-3 text-[14px] text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+                />
+              </div>
+
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsHandoverModalOpen(false)}
+                  className={`rounded-[10px] border border-[#CBD5E1] px-4 py-2 text-[14px] font-medium text-[#334155] ${microInteractionClass}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void startShiftHandover()}
+                  disabled={
+                    isStartingHandover ||
+                    isLoadingHandoverOptions ||
+                    !selectedHandoverTarget ||
+                    (handoverScheduleMode === "scheduled" && !handoverScheduledAt)
+                  }
+                  className={`rounded-[10px] bg-[#1565C0] px-5 py-2 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:bg-[#94A3B8] ${microInteractionClass}`}
+                >
+                  {isStartingHandover
+                    ? "Sending..."
+                    : handoverScheduleMode === "scheduled"
+                      ? "Schedule handover"
+                      : "Start and notify"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <div className="mt-[14px] grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         {scheduleMetrics.map((metric) => (

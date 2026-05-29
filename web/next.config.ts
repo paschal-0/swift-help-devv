@@ -8,11 +8,11 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
-          source: "/ng",
+          source: "/:country([a-z]{2})",
           destination: "/",
         },
         {
-          source: "/ng/:path*",
+          source: "/:country([a-z]{2})/:path*",
           destination: "/:path*",
         },
         {

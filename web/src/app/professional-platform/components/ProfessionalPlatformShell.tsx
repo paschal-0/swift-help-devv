@@ -384,7 +384,10 @@ export function ProfessionalPlatformShell({
   };
 
   const openNotificationTarget = (notification: ProfessionalNotification) => {
-    if (notification.shiftOfferId) {
+    const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
+    if (typeof notification.metadata?.roomId === "string") {
+      router.push(`${countryPrefix}/communication/rooms/${notification.metadata.roomId}`);
+    } else if (notification.shiftOfferId) {
       router.push(`/professional-platform/shift-offers/${notification.shiftOfferId}`);
     } else if (typeof notification.metadata?.requestId === "string") {
       router.push("/professional-platform/requests");

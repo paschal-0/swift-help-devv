@@ -9,6 +9,11 @@ import {
   type OrganizationDashboard,
   type OrganizationShift,
 } from "@/services/organizationApi";
+import {
+  createEmergencyRoom,
+  createShiftHandoverRoom,
+  createTeamRoom,
+} from "@/services/communicationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
 
 type ShiftRow = {
@@ -268,6 +273,37 @@ export function OrganisationDashboardPage() {
 
   const openRoute = (href: string) => router.push(href);
 
+  const openCommunicationRoom = async (
+    kind: "team" | "emergency" | "handover",
+  ) => {
+    try {
+      const now = new Date();
+      const title =
+        kind === "emergency"
+          ? "Emergency coordination"
+          : kind === "handover"
+            ? "Shift handover"
+            : "Organization team room";
+      const createRoom =
+        kind === "emergency"
+          ? createEmergencyRoom
+          : kind === "handover"
+            ? createShiftHandoverRoom
+            : createTeamRoom;
+      const state = await createRoom({
+        title,
+        metadata: {
+          source: "organization_dashboard",
+          startedAt: now.toISOString(),
+        },
+        expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+      });
+      router.push(`/communication/rooms/${state.room.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start room");
+    }
+  };
+
   return (
     <div className="mt-8 flex flex-col gap-7 xl:mt-[72px] xl:gap-8">
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -306,6 +342,40 @@ export function OrganisationDashboardPage() {
             </motion.article>
           );
         })}
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 rounded-[12px] bg-[#F8FAFC] p-4 shadow-[0_10px_28px_rgba(148,163,184,0.08)] md:grid-cols-[1fr_auto] md:items-center">
+        <div>
+          <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">
+            Communication command
+          </h2>
+          <p className="mt-1 max-w-[640px] text-[14px] leading-5 tracking-[-0.04em] text-[#64748B]">
+            Start secure Daily-powered rooms for team coordination, emergency escalation, or shift handover.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => void openCommunicationRoom("team")}
+            className="h-10 rounded-[8px] border border-[#1565C0] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+          >
+            Team room
+          </button>
+          <button
+            type="button"
+            onClick={() => void openCommunicationRoom("handover")}
+            className="h-10 rounded-[8px] border border-[#1565C0] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+          >
+            Shift handover
+          </button>
+          <button
+            type="button"
+            onClick={() => void openCommunicationRoom("emergency")}
+            className="h-10 rounded-[8px] bg-[#C82B33] px-4 text-[13px] font-medium text-white transition hover:-translate-y-0.5 hover:bg-[#9F1F29]"
+          >
+            Emergency room
+          </button>
+        </div>
       </section>
 
       <motion.section

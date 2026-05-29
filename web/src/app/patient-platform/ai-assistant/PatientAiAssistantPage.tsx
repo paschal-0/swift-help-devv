@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
+import {
+  createAiTriageRoom,
+  createEmergencyRoom,
+} from "@/services/communicationApi";
 import {
   sendPatientAiAssistantMessage,
   type PatientMedicalRecordsRecommendation,
@@ -24,6 +28,27 @@ type AssistantDraft = {
   medications: string;
   allergies: string;
 };
+
+type SpeechRecognitionResultLike = {
+  transcript: string;
+};
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const initialMessages: AssistantMessage[] = [
   {
@@ -122,6 +147,30 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   );
 }
 
+function MicrophoneIcon({ muted = false }: { muted?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm7-3a7 7 0 0 1-14 0m7 7v3m-4 0h8"
+      />
+      {muted ? (
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+          d="M4 4l16 16"
+        />
+      ) : null}
+    </svg>
+  );
+}
+
 function ResultPanel({
   recommendation,
   draft,
@@ -211,7 +260,7 @@ function ResultPanel({
         <button
           type="button"
           onClick={onBook}
-          className="inline-flex h-12 flex-1 cursor-pointer items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-medium tracking-[-0.05em] text-white transition hover:-translate-y-0.5"
+          className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-center text-[14px] font-medium leading-5 tracking-[-0.03em] text-white transition hover:-translate-y-0.5 sm:text-[15px]"
         >
           Book recommended care
         </button>
@@ -236,6 +285,7 @@ function ResultPanel({
 
 export function PatientAiAssistantPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
@@ -256,13 +306,43 @@ export function PatientAiAssistantPage() {
   const [recommendation, setRecommendation] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [savedCheck, setSavedCheck] = useState<PatientSymptomCheck | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceHintVisible, setIsVoiceHintVisible] = useState(false);
+  const [isVoiceHintHovered, setIsVoiceHintHovered] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const canSend = inputValue.trim().length > 1 && !isSending;
   const healthTip = useMemo(
     () => "Stay hydrated, monitor new symptoms, and seek urgent care if breathing, chest pain, fainting, or confusion occurs.",
     [],
   );
+
+  const routeWithCountry = (path: string) => {
+    const firstSegment = pathname.split("/").filter(Boolean)[0];
+    const isCountryRoute = firstSegment && firstSegment.length === 2;
+    return isCountryRoute ? `/${firstSegment}${path}` : path;
+  };
+
+  useEffect(() => {
+    let hideTimeout: number | null = null;
+
+    const showHint = () => {
+      setIsVoiceHintVisible(true);
+      if (hideTimeout) window.clearTimeout(hideTimeout);
+      hideTimeout = window.setTimeout(() => setIsVoiceHintVisible(false), 4200);
+    };
+
+    showHint();
+    const interval = window.setInterval(showHint, 14000);
+
+    return () => {
+      window.clearInterval(interval);
+      if (hideTimeout) window.clearTimeout(hideTimeout);
+    };
+  }, []);
 
   function addMessages(nextMessages: AssistantMessage[]) {
     setMessages((current) => [...current, ...nextMessages]);
@@ -296,6 +376,13 @@ export function PatientAiAssistantPage() {
           body: response.message.body,
         },
       ]);
+      if (voiceMode && typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(response.message.body);
+        utterance.rate = 0.96;
+        utterance.pitch = 1;
+        window.speechSynthesis.speak(utterance);
+      }
 
       if (response.safetyEscalation) {
         toast.warning("Swift AI detected possible urgent symptoms. Seek emergency care if you feel unsafe.");
@@ -332,7 +419,88 @@ export function PatientAiAssistantPage() {
         urgencyLevel: recommendation?.urgencyLevel,
       }),
     );
-    router.push("/patient-platform/appointments/book");
+    router.push(routeWithCountry("/patient-platform/appointments/book"));
+  }
+
+  function getSpeechRecognitionConstructor() {
+    const browserWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
+  }
+
+  function stopVoiceTriage() {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsListening(false);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  function startVoiceTriage() {
+    if (typeof window === "undefined") return;
+    const Recognition = getSpeechRecognitionConstructor();
+    if (!Recognition) {
+      toast.error("Voice triage is not supported in this browser yet.");
+      return;
+    }
+
+    setVoiceMode(true);
+    setVoiceTranscript("");
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
+      setVoiceTranscript(transcript);
+      if (transcript) {
+        void sendMessage(transcript);
+      }
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      toast.error("I could not hear that clearly. Please try again.");
+    };
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
+  async function openAiVoiceRoom() {
+    try {
+      const state = await createAiTriageRoom({
+        title: "Swift AI voice triage",
+        metadata: {
+          source: "patient_ai_assistant",
+          sessionId,
+          primarySymptom: draft.primarySymptom,
+        },
+      });
+      router.push(routeWithCountry(`/communication/rooms/${state.room.id}`));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  }
+
+  async function openEmergencyRoom() {
+    try {
+      const state = await createEmergencyRoom({
+        title: "Emergency escalation",
+        metadata: {
+          source: "patient_ai_assistant",
+          sessionId,
+          primarySymptom: draft.primarySymptom,
+          urgencyLevel: recommendation?.urgencyLevel,
+        },
+      });
+      router.push(routeWithCountry(`/communication/rooms/${state.room.id}`));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   }
 
   function restart() {
@@ -367,16 +535,57 @@ export function PatientAiAssistantPage() {
                   Get OpenAI-powered symptom intake, AI-supported triage, and a direct handoff into care booking.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => router.push("/patient-platform/appointments/book")}
-                className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] px-4 text-[15px] font-medium tracking-[-0.05em] text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
-              >
-                Book care
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push(routeWithCountry("/patient-platform/appointments/book"))}
+                  className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] px-4 text-[15px] font-medium tracking-[-0.05em] text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+                >
+                  Book care
+                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label={isListening ? "Stop voice triage" : "Start voice triage"}
+                    onMouseEnter={() => setIsVoiceHintHovered(true)}
+                    onMouseLeave={() => setIsVoiceHintHovered(false)}
+                    onFocus={() => setIsVoiceHintHovered(true)}
+                    onBlur={() => setIsVoiceHintHovered(false)}
+                    onClick={() => (isListening ? stopVoiceTriage() : startVoiceTriage())}
+                    className={`inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full shadow-[0_12px_24px_rgba(21,101,192,0.20)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#BFDBFE] ${
+                      isListening
+                        ? "bg-[#C82B33] text-white"
+                        : "bg-[#1565C0] text-white"
+                    }`}
+                  >
+                    <MicrophoneIcon muted={isListening} />
+                  </button>
+                  <div
+                    role="tooltip"
+                    className={`pointer-events-none absolute right-0 top-[calc(100%+10px)] z-20 w-[220px] rounded-[12px] bg-[#0F172A] px-3 py-2 text-center text-[12px] font-medium leading-4 text-white shadow-[0_16px_36px_rgba(15,23,42,0.22)] transition duration-200 ${
+                      isVoiceHintVisible || isVoiceHintHovered
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-1 opacity-0"
+                    }`}
+                  >
+                    Use voice to explain yourself
+                    <span className="absolute -top-1 right-5 h-2 w-2 rotate-45 bg-[#0F172A]" />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 rounded-[22px] border border-[#D8E2EF] bg-white p-3 shadow-[0_16px_35px_rgba(30,136,229,0.08)] sm:p-5">
+              {voiceMode ? (
+                <div className="mb-3 rounded-[14px] border border-[#BFDBFE] bg-[#E3F2FD] px-4 py-3 text-[13px] tracking-[-0.04em] text-[#334155]">
+                  <span className="font-semibold text-[#1565C0]">
+                    Voice triage:
+                  </span>{" "}
+                  {isListening
+                    ? "Listening for your symptoms..."
+                    : voiceTranscript || "Ready for the next voice prompt."}
+                </div>
+              ) : null}
               <div className="h-[440px] overflow-y-auto rounded-[18px] bg-[#F8FAFC] p-4">
                 <div className="space-y-4">
                   {messages.map((message) => (
@@ -457,10 +666,24 @@ export function PatientAiAssistantPage() {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => router.push("/patient-platform/appointments/book")}
+                  onClick={() => router.push(routeWithCountry("/patient-platform/appointments/book"))}
                   className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
                 >
                   Book appointment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void openAiVoiceRoom()}
+                  className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
+                >
+                  AI voice room
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void openEmergencyRoom()}
+                  className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
+                >
+                  Emergency room
                 </button>
                 <button
                   type="button"
@@ -468,20 +691,6 @@ export function PatientAiAssistantPage() {
                   className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
                 >
                   Log symptoms
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toast.success("Reminder workflow will use your saved notification preferences.")}
-                  className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
-                >
-                  Medication reminder
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/patient-platform/medical-records")}
-                  className="min-h-[72px] rounded-[14px] bg-[#F8FAFC] px-3 text-left text-[13px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] hover:text-[#1565C0]"
-                >
-                  Health records
                 </button>
               </div>
             </div>

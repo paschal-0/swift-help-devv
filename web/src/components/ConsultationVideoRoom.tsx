@@ -20,6 +20,7 @@ type ConsultationVideoRoomProps = {
   token: string | null;
   meetingUrl: string | null;
   roomName: string | null;
+  heading?: string;
   remoteLabel: string;
   remoteRoleLabel?: string;
   localLabel?: string;
@@ -69,14 +70,14 @@ type DailyCallObject = {
   participants: () => Record<string, DailyParticipant>;
   on: (eventName: string, handler: () => void) => DailyCallObject;
   off: (eventName: string, handler: () => void) => DailyCallObject;
-  setLocalAudio: (enabled: boolean) => Promise<unknown>;
-  setLocalVideo: (enabled: boolean) => Promise<unknown>;
-  startScreenShare?: () => Promise<unknown>;
-  stopScreenShare?: () => Promise<unknown>;
-  startRecording?: (options?: Record<string, unknown>) => Promise<unknown>;
-  stopRecording?: () => Promise<unknown>;
-  startTranscription?: (options?: Record<string, unknown>) => Promise<unknown>;
-  stopTranscription?: () => Promise<unknown>;
+  setLocalAudio: (enabled: boolean) => unknown;
+  setLocalVideo: (enabled: boolean) => unknown;
+  startScreenShare?: () => unknown;
+  stopScreenShare?: () => unknown;
+  startRecording?: (options?: Record<string, unknown>) => unknown;
+  stopRecording?: () => unknown;
+  startTranscription?: (options?: Record<string, unknown>) => unknown;
+  stopTranscription?: () => unknown;
 };
 
 type DailyModule = {
@@ -102,6 +103,14 @@ function getVideoTrack(participant?: DailyParticipant | null) {
 
 function getAudioTrack(participant?: DailyParticipant | null) {
   return participant?.tracks?.audio?.persistentTrack ?? null;
+}
+
+async function ignoreDailyResult(action: (() => unknown) | undefined) {
+  try {
+    await Promise.resolve(action?.());
+  } catch {
+    // Daily control calls can fail when permissions are denied or a call is ending.
+  }
 }
 
 function initials(label: string) {
@@ -273,6 +282,7 @@ export function ConsultationVideoRoom({
   token,
   meetingUrl,
   roomName,
+  heading = "Live Consultation",
   remoteLabel,
   remoteRoleLabel = "Patient",
   localLabel = "You",
@@ -397,7 +407,7 @@ export function ConsultationVideoRoom({
       if (isPoor && networkMode === "auto") {
         setVoiceOnly(true);
         setCameraEnabled(false);
-        void activeCall?.setLocalVideo(false).catch(() => undefined);
+        void ignoreDailyResult(() => activeCall?.setLocalVideo(false));
       }
     };
 
@@ -473,8 +483,8 @@ export function ConsultationVideoRoom({
         call.off("transcription-message", handleTranscription as () => void);
         call.off("app-message", handleTranscription as () => void);
         call.off("error", handleError);
-        void call.leave().catch(() => undefined);
-        void call.destroy().catch(() => undefined);
+        void ignoreDailyResult(() => call.leave());
+        void ignoreDailyResult(() => call.destroy());
       }
       if (callRef.current === call) {
         callRef.current = null;
@@ -505,7 +515,7 @@ export function ConsultationVideoRoom({
     setVoiceOnly(false);
     setCameraEnabled(nextValue);
     presenceChangeRef.current?.({ cameraEnabled: nextValue });
-    await callRef.current?.setLocalVideo(nextValue).catch(() => undefined);
+    await ignoreDailyResult(() => callRef.current?.setLocalVideo(nextValue));
   };
 
   const toggleVoiceOnly = async () => {
@@ -514,7 +524,7 @@ export function ConsultationVideoRoom({
     const cameraValue = !nextValue;
     setCameraEnabled(cameraValue);
     presenceChangeRef.current?.({ cameraEnabled: cameraValue });
-    await callRef.current?.setLocalVideo(cameraValue).catch(() => undefined);
+    await ignoreDailyResult(() => callRef.current?.setLocalVideo(cameraValue));
   };
 
   const toggleScreenShare = async () => {
@@ -526,40 +536,48 @@ export function ConsultationVideoRoom({
     const nextValue = !screenSharing;
     setScreenSharing(nextValue);
     if (nextValue) {
-      await call.startScreenShare().catch(() => setScreenSharing(false));
+      try {
+        await Promise.resolve(call.startScreenShare());
+      } catch {
+        setScreenSharing(false);
+      }
       return;
     }
-    await call.stopScreenShare().catch(() => setScreenSharing(true));
+    try {
+      await Promise.resolve(call.stopScreenShare());
+    } catch {
+      setScreenSharing(true);
+    }
   };
 
   const toggleMicrophone = async () => {
     const nextValue = !microphoneEnabled;
     setMicrophoneEnabled(nextValue);
     presenceChangeRef.current?.({ microphoneEnabled: nextValue });
-    await callRef.current?.setLocalAudio(nextValue).catch(() => undefined);
+    await ignoreDailyResult(() => callRef.current?.setLocalAudio(nextValue));
   };
 
   const toggleRecording = async () => {
     const call = callRef.current;
     if (recordingActive) {
-      await call?.stopRecording?.().catch(() => undefined);
+      await ignoreDailyResult(() => call?.stopRecording?.());
       await onToggleRecording?.();
     } else {
       await onToggleRecording?.();
-      await call
-        ?.startRecording?.({ layout: { preset: "default" } })
-        .catch(() => undefined);
+      await ignoreDailyResult(() =>
+        call?.startRecording?.({ layout: { preset: "default" } }),
+      );
     }
   };
 
   const toggleTranscription = async () => {
     const call = callRef.current;
     if (transcriptionActive) {
-      await call?.stopTranscription?.().catch(() => undefined);
+      await ignoreDailyResult(() => call?.stopTranscription?.());
       await onToggleTranscription?.();
     } else {
       await onToggleTranscription?.();
-      await call?.startTranscription?.().catch(() => undefined);
+      await ignoreDailyResult(() => call?.startTranscription?.());
     }
   };
 
@@ -569,7 +587,7 @@ export function ConsultationVideoRoom({
       cameraEnabled: false,
       microphoneEnabled: false,
     });
-    await callRef.current?.leave().catch(() => undefined);
+    await ignoreDailyResult(() => callRef.current?.leave());
     onEnd();
   };
 
@@ -597,7 +615,7 @@ export function ConsultationVideoRoom({
   return (
     <section className="rounded-[12px] bg-[#F8FAFC] p-[15px] text-[#334155]">
       <h1 className="ml-[13px] text-[24px] font-medium leading-[42px] tracking-[-0.05em]">
-        Live Consultation
+        {heading}
       </h1>
 
       <div className="mt-5 grid gap-[15px] xl:grid-cols-[564px_274px]">
