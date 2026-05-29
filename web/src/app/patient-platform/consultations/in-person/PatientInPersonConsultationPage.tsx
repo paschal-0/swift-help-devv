@@ -14,6 +14,7 @@ import {
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
+import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 type TrackerStatus = "not-started" | "enroute" | "arrived" | "in-progress" | "completed" | "rating";
 
@@ -61,10 +62,10 @@ export function PatientInPersonConsultationPage() {
           consultations.find(
             (consultation) =>
               consultation.id === storedId &&
-              ["scheduled", "ongoing"].includes(consultation.status),
+              ["scheduled", "enroute", "arrived", "in_progress", "ongoing"].includes(consultation.status),
           )?.id ||
           consultations.find((consultation) =>
-            ["scheduled", "ongoing"].includes(consultation.status),
+            ["scheduled", "enroute", "arrived", "in_progress", "ongoing"].includes(consultation.status),
           )?.id;
 
         if (!consultationId) {
@@ -80,8 +81,12 @@ export function PatientInPersonConsultationPage() {
         setStatus(
           nextRoom.consultation.status === "completed"
             ? "completed"
-            : nextRoom.consultation.status === "ongoing"
+            : nextRoom.consultation.status === "in_progress" || nextRoom.consultation.status === "ongoing"
               ? "in-progress"
+              : nextRoom.consultation.status === "arrived"
+                ? "arrived"
+                : nextRoom.consultation.status === "enroute"
+                  ? "enroute"
               : "not-started",
         );
       } catch (error) {
@@ -106,14 +111,24 @@ export function PatientInPersonConsultationPage() {
     const handleNotification = (event: MessageEvent) => {
       const notification = JSON.parse(event.data) as PatientNotification;
       if (
-        notification.consultationId !== consultationId ||
-        notification.metadata?.status !== "completed"
+        notification.consultationId !== consultationId
       ) {
         return;
       }
       void getPatientConsultationRoom(consultationId).then((updatedRoom) => {
         setRoom(updatedRoom);
-        setStatus("completed");
+        const nextStatus = updatedRoom.consultation.status;
+        setStatus(
+          nextStatus === "completed"
+            ? "completed"
+            : nextStatus === "in_progress" || nextStatus === "ongoing"
+              ? "in-progress"
+              : nextStatus === "arrived"
+                ? "arrived"
+                : nextStatus === "enroute"
+                  ? "enroute"
+                  : "not-started",
+        );
       });
     };
     eventSource.addEventListener("patient.notification.created", handleNotification);
@@ -232,6 +247,17 @@ export function PatientInPersonConsultationPage() {
               </div>
             ))}
           </div>
+
+          {consultation ? (
+            <div className="mt-5">
+              <InPersonConsultationMap
+                location={consultation}
+                requireInPersonMode={false}
+                compact
+                title="Visit destination"
+              />
+            </div>
+          ) : null}
 
           {status === "completed" || status === "rating" ? (
             <div className="mt-5 rounded-[12px] bg-[#E3F2FD] p-4">

@@ -104,6 +104,9 @@ export type ProfessionalConsultationRequest = {
 
 export type ConsultationSessionStatus =
   | "scheduled"
+  | "enroute"
+  | "arrived"
+  | "in_progress"
   | "ongoing"
   | "completed"
   | "missed"
@@ -264,6 +267,9 @@ export type ShiftOffer = {
   facilityName: string;
   address: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
   startsAt: string;
   endsAt: string;
   payAmountCents: number;
@@ -283,6 +289,8 @@ export type ProfessionalShift = {
   professionalUserId: string;
   status:
     | "accepted"
+    | "enroute"
+    | "arrived"
     | "checked_in"
     | "started"
     | "completed"
@@ -292,6 +300,8 @@ export type ProfessionalShift = {
   startedAt: string | null;
   completedAt: string | null;
   missedAt: string | null;
+  enrouteAt: string | null;
+  arrivedAt: string | null;
 };
 
 export type ProfessionalShiftMessage = {
@@ -663,6 +673,26 @@ export function startProfessionalConsultation(consultationId: string) {
   );
 }
 
+export function markProfessionalConsultationEnroute(consultationId: string) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/enroute`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function markProfessionalConsultationArrived(consultationId: string) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/arrived`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export function joinProfessionalConsultation(consultationId: string) {
   return apiRequest<CommunicationRoomAccess>(
     `/professional/consultations/${encodeURIComponent(consultationId)}/join`,
@@ -934,6 +964,26 @@ export function checkInProfessionalShift(shiftId: string) {
   return apiRequest<ProfessionalShift>(
     `/professional/shifts/${shiftId}/check-in`,
     { method: "POST" },
+  );
+}
+
+export function startProfessionalShiftTrip(shiftId: string) {
+  return apiRequest<ProfessionalShift>(
+    `/professional/shifts/${encodeURIComponent(shiftId)}/enroute`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function markProfessionalShiftArrived(shiftId: string) {
+  return apiRequest<ProfessionalShift>(
+    `/professional/shifts/${encodeURIComponent(shiftId)}/arrived`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
   );
 }
 

@@ -16,16 +16,20 @@ import {
   listProfessionalShiftMessages,
   markProfessionalShiftMessagesRead,
   missProfessionalShift,
+  markProfessionalShiftArrived,
   sendProfessionalShiftMessage,
   sendProfessionalShiftTyping,
   startProfessionalShift,
+  startProfessionalShiftTrip,
   updateProfessionalShiftMessage,
+  type ProfessionalShift,
   type ProfessionalShiftMessage,
   type ShiftOffer as BackendShiftOffer,
 } from "@/services/professionalApi";
+import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 type PanelView = "updates" | "message";
-type ShiftStage = "traveling" | "arrived" | "in-progress" | "waiting-confirmation" | "completed";
+type ShiftStage = "traveling" | "enroute" | "arrived" | "in-progress" | "waiting-confirmation" | "completed";
 type ChatSender = "self" | "other";
 
 type MessageThread = {
@@ -153,8 +157,11 @@ const mapBackendOffer = (offer: BackendShiftOffer): ShiftOffer => {
     postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
     facilityName: offer.facilityName,
     address: offer.address,
+    latitude: offer.latitude,
+    longitude: offer.longitude,
+    placeId: offer.placeId,
     notes: offer.notes ?? "No extra notes provided.",
-    etaLabel: "40 minutes",
+    etaLabel: offer.latitude && offer.longitude ? "Directions ready" : "Address route",
     dateBucket,
     payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
   };
@@ -211,12 +218,26 @@ export function ProfessionalShiftOfferActivePage() {
   const [backendOffer, setBackendOffer] = useState<ShiftOffer | null>(null);
   const [isLoadingOffer, setIsLoadingOffer] = useState(true);
   const [shiftId, setShiftId] = useState<string | null>(null);
+  const [backendShift, setBackendShift] = useState<ProfessionalShift | null>(null);
 
   const basePath = `/professional-platform/shift-offers/${params.offerId}`;
   const stageParam = searchParams.get("stage");
   const panelView: PanelView = searchParams.get("view") === "message" ? "message" : "updates";
+  const stageFromShift: ShiftStage | null =
+    backendShift?.status === "completed"
+      ? "completed"
+      : backendShift?.status === "started"
+        ? "in-progress"
+        : backendShift?.status === "checked_in"
+          ? "in-progress"
+          : backendShift?.status === "arrived"
+            ? "arrived"
+            : backendShift?.status === "enroute"
+              ? "enroute"
+              : null;
   const stage: ShiftStage =
-    stageParam === "completed"
+    stageFromShift ??
+    (stageParam === "completed"
       ? "completed"
       : stageParam === "waiting-confirmation"
         ? "waiting-confirmation"
@@ -224,7 +245,7 @@ export function ProfessionalShiftOfferActivePage() {
           ? "in-progress"
           : stageParam === "arrived"
             ? "arrived"
-            : "traveling";
+            : "traveling");
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +258,7 @@ export function ProfessionalShiftOfferActivePage() {
         if (!cancelled) {
           setBackendOffer(mapBackendOffer(data.offer));
           setShiftId(data.shift?.id ?? null);
+          setBackendShift(data.shift ?? null);
           setMessages(data.messages.map(messageToChatMessage));
           setHasMoreMessages(data.messages.length >= 50);
           void markProfessionalShiftMessagesRead(params.offerId);
@@ -444,6 +466,7 @@ export function ProfessionalShiftOfferActivePage() {
 
     const data = await acceptProfessionalShiftOffer(offer.id);
     setShiftId(data.shift.id);
+    setBackendShift(data.shift);
     return data.shift.id;
   };
 
@@ -936,7 +959,7 @@ export function ProfessionalShiftOfferActivePage() {
                         Organization
                       </p>
                       <p className="mt-1 text-[16px] font-normal leading-[18px] tracking-[-0.07em] text-[#334155]">
-                        Great health care LTD
+                        {offer.organization}
                       </p>
                     </div>
                     <div className="mt-5">
@@ -944,7 +967,7 @@ export function ProfessionalShiftOfferActivePage() {
                         Role
                       </p>
                       <p className="mt-1 text-[16px] font-normal leading-[18px] tracking-[-0.07em] text-[#334155]">
-                        Doctor
+                        {offer.role}
                       </p>
                     </div>
                   </div>
@@ -954,7 +977,8 @@ export function ProfessionalShiftOfferActivePage() {
                     onClick={async () => {
                       try {
                         const id = await ensureShift();
-                        await completeProfessionalShift(id);
+                        const updated = await completeProfessionalShift(id);
+                        setBackendShift(updated);
                         toast.success("Shift completed. Awaiting patient confirmation.");
                         replaceRoute((next) => {
                           next.set("stage", "waiting-confirmation");
@@ -994,7 +1018,8 @@ export function ProfessionalShiftOfferActivePage() {
                       try {
                         const id = await ensureShift();
                         await checkInProfessionalShift(id);
-                        await startProfessionalShift(id);
+                        const updated = await startProfessionalShift(id);
+                        setBackendShift(updated);
                         const startedAt = Date.now();
                         toast.success("Checked in. Shift started successfully.");
                         replaceRoute((next) => {
@@ -1049,24 +1074,40 @@ export function ProfessionalShiftOfferActivePage() {
                     </div>
                   </div>
 
+                  <div className="mt-4">
+                    <InPersonConsultationMap
+                      location={{
+                        locationName: offer.facilityName,
+                        address: offer.address,
+                        city: offer.location,
+                        latitude: offer.latitude,
+                        longitude: offer.longitude,
+                      }}
+                      requireInPersonMode={false}
+                      compact
+                      title="Shift location"
+                    />
+                  </div>
+
                   <div className="mt-auto flex flex-col gap-2">
                     <button
                       type="button"
                       onClick={async () => {
                         try {
-                          await ensureShift();
-                          toast.success("Trip started. Live updates enabled.");
+                          const id = await ensureShift();
+                          const updated = stage === "enroute"
+                            ? await markProfessionalShiftArrived(id)
+                            : await startProfessionalShiftTrip(id);
+                          setBackendShift(updated);
+                          toast.success(stage === "enroute" ? "Organization notified that you arrived." : "Trip started. Live updates enabled.");
                         } catch (error) {
                           toast.error(error instanceof Error ? error.message : "Unable to start trip");
                           return;
                         }
-                        replaceRoute((next) => {
-                          next.set("stage", "arrived");
-                        });
                       }}
                       className="inline-flex h-[36px] items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
                     >
-                      Start trip
+                      {stage === "enroute" ? "Mark arrived" : "Start trip"}
                     </button>
                     <button
                       type="button"

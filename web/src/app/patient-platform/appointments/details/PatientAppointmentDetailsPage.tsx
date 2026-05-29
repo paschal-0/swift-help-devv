@@ -134,7 +134,7 @@ export function PatientAppointmentDetailsPage() {
     const durationLabel =
       draft.durationLabel ?? formatDurationFromTimes(draft.startTime, draft.endTime);
 
-    return [
+    const items = [
       { label: "Care type:", value: draft.careType ?? draft.reason ?? "-" },
       { label: "Date:", value: formattedDate },
       {
@@ -144,6 +144,17 @@ export function PatientAppointmentDetailsPage() {
       { label: "Time:", value: `${draft.startTime ?? "-"} - ${draft.endTime ?? "-"}` },
       { label: "Duration:", value: durationLabel },
     ];
+
+    if (draft.meetingMode === "in-person") {
+      items.push({
+        label: "Visit location:",
+        value: [draft.locationName, draft.address, draft.city, draft.state, draft.country]
+          .filter(Boolean)
+          .join(", ") || "-",
+      });
+    }
+
+    return items;
   }, [draft]);
 
   const confirmAppointment = async () => {
@@ -166,6 +177,19 @@ export function PatientAppointmentDetailsPage() {
         requestedStartAt: draft.requestedStartAt ?? `${draft.scheduledDate}T${draft.startTime}:00`,
         requestedEndAt: draft.requestedEndAt ?? `${draft.scheduledDate}T${draft.endTime}:00`,
         mode: draft.meetingMode === "in-person" ? "In Person" : "Video consultation",
+        locationName: draft.meetingMode === "in-person" ? draft.locationName : undefined,
+        address: draft.meetingMode === "in-person" ? draft.address : undefined,
+        city: draft.meetingMode === "in-person" ? draft.city : undefined,
+        state: draft.meetingMode === "in-person" ? draft.state : undefined,
+        country: draft.meetingMode === "in-person" ? draft.country : undefined,
+        latitude:
+          draft.meetingMode === "in-person" && draft.latitude
+            ? Number(draft.latitude)
+            : undefined,
+        longitude:
+          draft.meetingMode === "in-person" && draft.longitude
+            ? Number(draft.longitude)
+            : undefined,
         durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
         emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,

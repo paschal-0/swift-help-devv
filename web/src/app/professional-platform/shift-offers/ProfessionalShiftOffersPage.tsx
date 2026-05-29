@@ -13,6 +13,7 @@ import {
   listProfessionalShiftOffers,
   type ShiftOffer as BackendShiftOffer,
 } from "@/services/professionalApi";
+import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 const dateFilterLabels: Record<DateFilter, string> = {
   all: "Date",
@@ -44,8 +45,11 @@ const mapBackendShiftOffer = (offer: BackendShiftOffer): ShiftOffer => {
     postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
     facilityName: offer.facilityName,
     address: offer.address,
+    latitude: offer.latitude,
+    longitude: offer.longitude,
+    placeId: offer.placeId,
     notes: offer.notes ?? "No extra notes provided.",
-    etaLabel: "40 minutes",
+    etaLabel: offer.latitude && offer.longitude ? "Directions ready" : "Address route",
     dateBucket,
     payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
   };
@@ -182,6 +186,21 @@ function ShiftOfferDetailsModal({
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <InPersonConsultationMap
+            location={{
+              locationName: offer.facilityName,
+              address: offer.address,
+              city: offer.location,
+              latitude: offer.latitude,
+              longitude: offer.longitude,
+            }}
+            requireInPersonMode={false}
+            compact
+            title="Shift location"
+          />
         </div>
 
         <div className="mt-6 flex flex-col gap-3 pt-2 sm:mt-auto sm:flex-row sm:pt-6">

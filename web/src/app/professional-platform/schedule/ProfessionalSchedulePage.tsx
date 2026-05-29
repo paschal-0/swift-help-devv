@@ -15,7 +15,7 @@ import {
   type ProfessionalConsultation,
   type WeeklyAvailability,
 } from "@/services/professionalApi";
-import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
+import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
 import {
   createShiftHandoverRoom,
   listShiftHandoverOptions,
@@ -2100,11 +2100,14 @@ export function ProfessionalSchedulePage() {
                       activeConsultationId,
                     );
                     setIsAppointmentDetailsModalOpen(false);
-                    router.push(`/professional-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultationId)}`);
+                    const target = isInPersonConsultation(activeAppointmentDetails.mode)
+                      ? `/professional-platform/consultations/in-person?consultationId=${encodeURIComponent(activeConsultationId)}`
+                      : `/professional-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultationId)}`;
+                    router.push(target);
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
                 >
-                  Join Appointment
+                  {isInPersonConsultation(activeAppointmentDetails.mode) ? "Open Visit" : "Join Appointment"}
                 </button>
               </div>
             </motion.div>

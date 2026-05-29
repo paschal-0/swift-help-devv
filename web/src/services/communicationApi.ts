@@ -88,7 +88,7 @@ export type ShiftHandoverProfessionalOption = {
   specialization: string | null;
   primaryPracticeLocation: string | null;
   verificationStatus: string | null;
-  source: "same_shift" | "verified";
+  source: "same_shift" | "verified" | "available";
 };
 
 export type ShiftHandoverActiveShift = {

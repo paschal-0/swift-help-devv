@@ -144,6 +144,12 @@ export function PatientAppointmentSchedulePage() {
   const [manualStartTime, setManualStartTime] = useState("09:00");
   const [manualEndTime, setManualEndTime] = useState("09:30");
   const [reason, setReason] = useState("");
+  const [locationName, setLocationName] = useState("Patient location");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [stateRegion, setStateRegion] = useState("");
+  const [country, setCountry] = useState("Nigeria");
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [providerTimezone, setProviderTimezone] = useState("Africa/Lagos");
   const patientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const [draft] = useState<Record<string, string> | null>(() => {
@@ -251,6 +257,11 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
+    if (meetingMode === "in-person" && !address.trim()) {
+      toast.error("Enter the visit address for the in-person consultation.");
+      return;
+    }
+
     const selectedDateKey = formatLocalDateKey(selectedDate);
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
@@ -266,6 +277,13 @@ export function PatientAppointmentSchedulePage() {
         durationMinutes: String(durationMinutes),
         durationLabel: formatDurationMinutes(durationMinutes),
         reason: reason.trim() || draft.reason || "General Consultation",
+        locationName: meetingMode === "in-person" ? locationName.trim() || "Patient location" : "",
+        address: meetingMode === "in-person" ? address.trim() : "",
+        city: meetingMode === "in-person" ? city.trim() : "",
+        state: meetingMode === "in-person" ? stateRegion.trim() : "",
+        country: meetingMode === "in-person" ? country.trim() : "",
+        latitude: coordinates ? String(coordinates.latitude) : "",
+        longitude: coordinates ? String(coordinates.longitude) : "",
       }),
     );
     toast.success("Schedule saved.");
@@ -342,6 +360,81 @@ export function PatientAppointmentSchedulePage() {
               </motion.button>
             </div>
           </motion.section>
+
+          {meetingMode === "in-person" ? (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: "easeOut", delay: 0.04 }}
+              className="rounded-[20px] border border-[#E2EDF8] bg-[#FCFEFF] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] xl:rounded-[12px] xl:bg-[#F8FAFC] xl:shadow-[0_0_30px_rgba(30,136,229,0.1)]"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-[18px] font-medium leading-6 tracking-[-0.04em] text-[#334155]">
+                  Visit location
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!("geolocation" in navigator)) {
+                      toast.error("Location is not available in this browser.");
+                      return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setCoordinates({
+                          latitude: position.coords.latitude,
+                          longitude: position.coords.longitude,
+                        });
+                        toast.success("Coordinates added to the appointment.");
+                      },
+                      () => toast.error("Unable to access your current location."),
+                      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+                    );
+                  }}
+                  className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#1565C0] px-3 text-[13px] font-medium text-[#1565C0]"
+                >
+                  Use current location
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input
+                  value={locationName}
+                  onChange={(event) => setLocationName(event.target.value)}
+                  placeholder="Location name"
+                  className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] outline-none focus:border-[#1565C0]"
+                />
+                <input
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                  placeholder="Street address"
+                  className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] outline-none focus:border-[#1565C0]"
+                />
+                <input
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  placeholder="City"
+                  className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] outline-none focus:border-[#1565C0]"
+                />
+                <input
+                  value={stateRegion}
+                  onChange={(event) => setStateRegion(event.target.value)}
+                  placeholder="State"
+                  className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] outline-none focus:border-[#1565C0]"
+                />
+                <input
+                  value={country}
+                  onChange={(event) => setCountry(event.target.value)}
+                  placeholder="Country"
+                  className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] outline-none focus:border-[#1565C0]"
+                />
+                <div className="flex h-11 items-center rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[13px] text-[#64748B]">
+                  {coordinates
+                    ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
+                    : "Coordinates will be geocoded from the address"}
+                </div>
+              </div>
+            </motion.section>
+          ) : null}
 
           <motion.section
             initial={{ opacity: 0, y: 12 }}

@@ -115,6 +115,10 @@ export function OrganisationCreateShiftPage() {
   const [professionalsRequired, setProfessionalsRequired] = useState("10");
   const [priority, setPriority] = useState<"Normal" | "Urgent">("Normal");
   const [payPerHour, setPayPerHour] = useState("300");
+  const [facilityName, setFacilityName] = useState("Primary facility");
+  const [address, setAddress] = useState("");
+  const [location, setLocation] = useState("Lagos, Nigeria");
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shiftOptions, setShiftOptions] =
     useState<OrganizationShiftOptions | null>(null);
@@ -173,6 +177,11 @@ export function OrganisationCreateShiftPage() {
       return;
     }
 
+    if (!address.trim() || !location.trim()) {
+      toast.error("Enter the facility address and location for directions.");
+      return;
+    }
+
     const baseDate = parseShiftDate(shiftDate);
     const startsAt = parseTimeOnDate(baseDate, fromTime);
     let endsAt = parseTimeOnDate(baseDate, toTime);
@@ -191,6 +200,11 @@ export function OrganisationCreateShiftPage() {
         endsAt: endsAt.toISOString(),
         requiredSlots,
         payAmountCents: Math.round(payAmount * 100),
+        facilityName: facilityName.trim() || "Primary facility",
+        address: address.trim(),
+        location: location.trim(),
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
         priority: priority.toLowerCase() as "normal" | "urgent",
         notes: instructions,
       });
@@ -308,6 +322,72 @@ export function OrganisationCreateShiftPage() {
                 </div>
               </div>
             </div>
+          </motion.div>
+
+          <motion.div
+            className="mt-4 space-y-4 rounded-[14px] border border-[#E2E8F0] bg-white/60 p-3.5 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-md sm:mt-5 sm:space-y-5 sm:border-2 sm:p-6"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.2, ease: premiumEase }}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155] sm:text-[18px]">Shift Location</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!("geolocation" in navigator)) {
+                    toast.error("Location is not available in this browser.");
+                    return;
+                  }
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setCoordinates({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                      });
+                      toast.success("Coordinates added to the shift.");
+                    },
+                    () => toast.error("Unable to access your current location."),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+                  );
+                }}
+                className="h-10 rounded-[12px] border border-[#1565C0] px-4 text-[14px] font-medium text-[#1565C0]"
+              >
+                Use current location
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_343px]">
+              <label className="flex flex-col gap-2">
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Facility name</span>
+                <input
+                  value={facilityName}
+                  onChange={(event) => setFacilityName(event.target.value)}
+                  className={`h-12 rounded-[12px] border border-[#94A3B8] bg-white px-4 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-5 sm:text-[18px] ${inputFocusClass}`}
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Area / city</span>
+                <input
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
+                  className={`h-12 rounded-[12px] border border-[#94A3B8] bg-white px-4 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-5 sm:text-[18px] ${inputFocusClass}`}
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-2">
+              <span className="text-[15px] font-medium tracking-[-0.04em] text-[#334155] sm:text-[18px] sm:font-light sm:text-black">Full address</span>
+              <input
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder="Street, facility wing, city, state"
+                className={`h-12 rounded-[12px] border border-[#94A3B8] bg-white px-4 text-[15px] font-light tracking-[-0.04em] text-[#64748B] outline-none sm:h-[56px] sm:px-5 sm:text-[18px] ${inputFocusClass}`}
+              />
+            </label>
+            <p className="text-[13px] leading-5 text-[#64748B]">
+              {coordinates
+                ? `Coordinates: ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
+                : "If coordinates are not added here, the backend will geocode the written address."}
+            </p>
           </motion.div>
 
           <motion.div

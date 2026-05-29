@@ -46,10 +46,27 @@ export type PatientConsultation = {
   consultationLabel: string;
   reason: string;
   mode: string;
+  locationName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
   startsAt: string;
   endsAt: string;
   durationMinutes: number;
-  status: "scheduled" | "ongoing" | "completed" | "missed" | "cancelled" | string;
+  status:
+    | "scheduled"
+    | "enroute"
+    | "arrived"
+    | "in_progress"
+    | "ongoing"
+    | "completed"
+    | "missed"
+    | "cancelled"
+    | string;
   createdAt: string;
   updatedAt: string;
 };
@@ -527,6 +544,14 @@ export function createPatientConsultationRequest(payload: {
   requestedStartAt: string;
   requestedEndAt: string;
   mode?: string;
+  locationName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
   durationMinutes?: number;
   patientNote?: string;
   emailReminderEnabled?: boolean;

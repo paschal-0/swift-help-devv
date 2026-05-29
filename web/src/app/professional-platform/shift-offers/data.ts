@@ -13,6 +13,9 @@ export type ShiftOffer = {
   postedAt: string;
   facilityName: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
   notes: string;
   etaLabel: string;
   dateBucket: Exclude<DateFilter, "all">;

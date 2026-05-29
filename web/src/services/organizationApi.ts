@@ -26,6 +26,9 @@ export type OrganizationShift = {
   facilityName: string;
   address: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
   startsAt: string;
   endsAt: string;
   payAmountCents: number;
@@ -66,6 +69,8 @@ export type OrganizationShift = {
 
 export type OrganizationAssignmentStatus =
   | "accepted"
+  | "enroute"
+  | "arrived"
   | "checked_in"
   | "started"
   | "completed"
@@ -94,6 +99,8 @@ export type OrganizationAssignment = {
   professionalUserId: string;
   professional?: OrganizationProfessional | null;
   status: OrganizationAssignmentStatus;
+  enrouteAt: string | null;
+  arrivedAt: string | null;
   checkedInAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -424,6 +431,9 @@ export async function createOrganizationShift(payload: {
   facilityName?: string;
   address?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
   startsAt: string;
   endsAt: string;
   requiredSlots: number;
@@ -528,6 +538,12 @@ export async function updateOrganizationShift(
     role: string;
     startsAt: string;
     endsAt: string;
+    facilityName: string;
+    address: string;
+    location: string;
+    latitude: number;
+    longitude: number;
+    placeId: string;
     requiredSlots: number;
     payAmountCents: number;
     priority: "normal" | "urgent";
