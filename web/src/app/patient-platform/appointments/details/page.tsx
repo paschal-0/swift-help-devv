@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { PatientAppointmentDetailsPage } from "./PatientAppointmentDetailsPage";
 
+export const dynamic = "force-dynamic";
+
 export default function PatientAppointmentDetailsRoute() {
   return (
     <Suspense
