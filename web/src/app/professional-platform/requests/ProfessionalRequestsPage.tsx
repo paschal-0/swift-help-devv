@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
@@ -162,6 +163,7 @@ function EmptyDetailsPrompt({
 
 export function ProfessionalRequestsPage() {
   const { searchText } = useProfessionalPlatformShell();
+  const searchParams = useSearchParams();
   const [requests, setRequests] = useState<ConsultationRequest[]>([]);
   const [activeTab, setActiveTab] = useState<RequestStatus>("needs-action");
   const [panelSearch, setPanelSearch] = useState("");
@@ -173,6 +175,7 @@ export function ProfessionalRequestsPage() {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const combinedQuery = `${searchText} ${panelSearch}`.trim().toLowerCase();
+  const targetRequestId = searchParams.get("requestId");
 
   useEffect(() => {
     let cancelled = false;
@@ -246,6 +249,18 @@ export function ProfessionalRequestsPage() {
       eventSource.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!targetRequestId || !requests.length) return;
+
+    const targetRequest = requests.find((request) => request.id === targetRequestId);
+    if (!targetRequest) return;
+
+    setActiveTab(targetRequest.status);
+    setSelectedRequestId(targetRequest.id);
+    setPanelSearch("");
+    setUrgentOnly(false);
+  }, [requests, targetRequestId]);
 
   const filteredRequests = useMemo(() => {
     const nextRequests = requests.filter((request) => {

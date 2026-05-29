@@ -82,6 +82,46 @@ function parseDateOnly(value: string) {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
+function textList(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function buildAiPatientNote(draft: Record<string, string>) {
+  if (!draft.aiContext) return draft.primarySymptom ? `Primary symptom: ${draft.primarySymptom}` : undefined;
+
+  try {
+    const context = JSON.parse(draft.aiContext) as Record<string, unknown>;
+    const symptomSummary =
+      context.symptomSummary && typeof context.symptomSummary === "object"
+        ? (context.symptomSummary as Record<string, unknown>)
+        : {};
+    const recommendedActions = textList(context.recommendedActions);
+    const redFlags = textList(context.redFlags);
+
+    return [
+      "Swift AI triage summary",
+      typeof context.headline === "string" ? context.headline : "",
+      typeof context.description === "string" ? context.description : "",
+      context.urgencyLevel ? `Urgency: ${String(context.urgencyLevel)}` : "",
+      symptomSummary.primarySymptom ? `Primary symptom: ${String(symptomSummary.primarySymptom)}` : "",
+      symptomSummary.duration ? `Duration: ${String(symptomSummary.duration)}` : "",
+      symptomSummary.severity ? `Severity: ${String(symptomSummary.severity)}` : "",
+      symptomSummary.associatedSymptoms
+        ? `Associated symptoms: ${String(symptomSummary.associatedSymptoms)}`
+        : "",
+      recommendedActions.length ? `Recommended actions: ${recommendedActions.join("; ")}` : "",
+      redFlags.length ? `Red flags: ${redFlags.join("; ")}` : "",
+      typeof context.disclaimer === "string" ? context.disclaimer : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  } catch {
+    return draft.primarySymptom ? `Primary symptom: ${draft.primarySymptom}` : undefined;
+  }
+}
+
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -173,6 +213,10 @@ export function PatientAppointmentDetailsPage() {
       const request = await createPatientConsultationRequest({
         professionalUserId: draft.professionalId,
         consultationLabel: draft.careType || draft.reason || "General Consultation",
+        urgency:
+          draft.urgencyLevel === "urgent" || draft.urgencyLevel === "emergency"
+            ? "urgent"
+            : "standard",
         reason: draft.reason || draft.careType || "General Consultation",
         requestedStartAt: draft.requestedStartAt ?? `${draft.scheduledDate}T${draft.startTime}:00`,
         requestedEndAt: draft.requestedEndAt ?? `${draft.scheduledDate}T${draft.endTime}:00`,
@@ -191,6 +235,7 @@ export function PatientAppointmentDetailsPage() {
             ? Number(draft.longitude)
             : undefined,
         durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
+        patientNote: buildAiPatientNote(draft),
         emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,
         shareSummaryWithProvider,

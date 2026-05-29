@@ -388,13 +388,15 @@ export function ProfessionalPlatformShell({
     if (typeof notification.metadata?.roomId === "string") {
       router.push(`${countryPrefix}/communication/rooms/${notification.metadata.roomId}`);
     } else if (notification.shiftOfferId) {
-      router.push(`/professional-platform/shift-offers/${notification.shiftOfferId}`);
+      router.push(`${countryPrefix}/professional-platform/shift-offers/${notification.shiftOfferId}`);
     } else if (typeof notification.metadata?.requestId === "string") {
-      router.push("/professional-platform/requests");
+      router.push(
+        `${countryPrefix}/professional-platform/requests?requestId=${encodeURIComponent(notification.metadata.requestId)}`,
+      );
     } else if (typeof notification.metadata?.consultationId === "string") {
-      router.push("/professional-platform/schedule");
+      router.push(`${countryPrefix}/professional-platform/schedule`);
     } else if (typeof notification.metadata?.appointmentId === "string") {
-      router.push("/professional-platform/schedule");
+      router.push(`${countryPrefix}/professional-platform/schedule`);
     }
     setShowNotifications(false);
   };

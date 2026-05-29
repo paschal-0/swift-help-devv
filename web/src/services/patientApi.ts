@@ -540,6 +540,7 @@ export function createPatientAppointment(payload: {
 export function createPatientConsultationRequest(payload: {
   professionalUserId: string;
   consultationLabel: string;
+  urgency?: "standard" | "urgent";
   reason: string;
   requestedStartAt: string;
   requestedEndAt: string;

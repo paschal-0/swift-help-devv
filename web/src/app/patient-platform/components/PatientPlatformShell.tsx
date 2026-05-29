@@ -335,7 +335,19 @@ export function PatientPlatformShell({
       setAvatarUrl(detail?.avatarUrl ?? null);
     };
 
+    const handleLocalNotification = (event: Event) => {
+      const notification = (event as CustomEvent<PatientNotification>).detail;
+      if (!notification?.id) return;
+
+      setNotifications((current) =>
+        current.some((item) => item.id === notification.id)
+          ? current.map((item) => (item.id === notification.id ? { ...item, ...notification, read: false } : item))
+          : [notification, ...current].slice(0, 20),
+      );
+    };
+
     window.addEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+    window.addEventListener("swifthelp:patient-local-notification", handleLocalNotification);
 
     return () => {
       mounted = false;
@@ -343,6 +355,7 @@ export function PatientPlatformShell({
       eventSource.removeEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
       eventSource.close();
       window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
+      window.removeEventListener("swifthelp:patient-local-notification", handleLocalNotification);
     };
   }, []);
 
@@ -360,7 +373,14 @@ export function PatientPlatformShell({
   };
 
   const openNotificationTarget = (notification: PatientNotification) => {
-    if (
+    if (notification.type === "ai_assistant_recommendation" || notification.type === "ai_assistant_critical") {
+      window.dispatchEvent(new CustomEvent("swifthelp:open-ai-critical-reminder"));
+      if (!pathname.includes("/patient-platform/ai-assistant")) {
+        const firstSegment = pathname.split("/").filter(Boolean)[0];
+        const countryPrefix = firstSegment && firstSegment.length === 2 ? `/${firstSegment}` : "";
+        router.push(`${countryPrefix}/patient-platform/ai-assistant`);
+      }
+    } else if (
       notification.metadata?.status === "completed" &&
       notification.consultationId
     ) {

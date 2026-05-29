@@ -1,12 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import { listPatientProviders, type PatientProvider } from "@/services/patientApi";
+import {
+  listPatientProviders,
+  type PatientMedicalRecordsRecommendation,
+  type PatientProvider,
+} from "@/services/patientApi";
 
 type CareType = {
   id: string;
@@ -26,6 +30,19 @@ type ProfessionalCard = {
   imageSrc: string | null;
   nextAvailable: string;
   highlights: string[];
+};
+
+type AiAssistantBookingContext = {
+  source?: string;
+  sessionId?: string | null;
+  symptomCheckId?: string | null;
+  primarySymptom?: string;
+  recommendedCareType?: string;
+  urgencyLevel?: PatientMedicalRecordsRecommendation["urgencyLevel"];
+  headline?: string;
+  description?: string;
+  bookingReason?: string;
+  symptomSummary?: PatientMedicalRecordsRecommendation["symptomSummary"];
 };
 
 const careTypes: CareType[] = [
@@ -64,6 +81,37 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
       provider.verificationStatus === "approved" ? "Verified" : "Profile submitted",
     ],
   };
+}
+
+function readAiAssistantBookingContext() {
+  if (typeof window === "undefined") return null;
+
+  const rawContext = window.sessionStorage.getItem("patientAiAssistantBookingContext");
+  if (!rawContext) return null;
+
+  try {
+    return JSON.parse(rawContext) as AiAssistantBookingContext;
+  } catch {
+    return null;
+  }
+}
+
+function careTypeFromAiContext(context: AiAssistantBookingContext | null) {
+  if (!context) return null;
+  const urgency = context.urgencyLevel ?? "";
+  const careType = context.recommendedCareType?.toLowerCase() ?? "";
+
+  if (urgency === "urgent" || urgency === "emergency") return "general";
+  if (careType.includes("specialist")) return "specialist";
+  return "general";
+}
+
+function professionalTypeFromAiContext(context: AiAssistantBookingContext | null) {
+  const careType = context?.recommendedCareType?.toLowerCase() ?? "";
+
+  if (careType.includes("nurse")) return "np";
+  if (careType.includes("specialist")) return "specialist";
+  return "gp";
 }
 
 function ProviderPicture({ provider }: { provider: ProfessionalCard }) {
@@ -128,10 +176,20 @@ function StepBadge({ step }: { step: string }) {
 
 export function PatientBookAppointmentPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [selectedCareType, setSelectedCareType] = useState("follow-up");
   const [selectedProfessionalType, setSelectedProfessionalType] = useState("gp");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
   const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
+  const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() => readAiAssistantBookingContext());
+
+  useEffect(() => {
+    if (!aiBookingContext) return;
+
+    const nextCareType = careTypeFromAiContext(aiBookingContext);
+    if (nextCareType) setSelectedCareType(nextCareType);
+    setSelectedProfessionalType(professionalTypeFromAiContext(aiBookingContext));
+  }, [aiBookingContext]);
 
   useEffect(() => {
     let isMounted = true;
@@ -179,6 +237,12 @@ export function PatientBookAppointmentPage() {
     [selectedProfessionalId, visibleProfessionals]
   );
 
+  const routeWithCountry = (path: string) => {
+    const firstSegment = pathname.split("/").filter(Boolean)[0];
+    const isCountryRoute = firstSegment && firstSegment.length === 2;
+    return isCountryRoute ? `/${firstSegment}${path}` : path;
+  };
+
   const proceedToSchedule = () => {
     if (!selectedProfessional) {
       toast.error("Select a professional before continuing.");
@@ -192,11 +256,19 @@ export function PatientBookAppointmentPage() {
         professionalType: selectedProfessionalTypeLabel,
         professionalId: selectedProfessional.id,
         professionalName: selectedProfessional.name,
-        reason: selectedCare.title,
+        reason:
+          aiBookingContext?.bookingReason ||
+          aiBookingContext?.primarySymptom ||
+          aiBookingContext?.headline ||
+          selectedCare.title,
+        aiContext: aiBookingContext ? JSON.stringify(aiBookingContext) : "",
+        symptomCheckId: aiBookingContext?.symptomCheckId ?? "",
+        urgencyLevel: aiBookingContext?.urgencyLevel ?? "",
+        primarySymptom: aiBookingContext?.primarySymptom ?? "",
       }),
     );
     toast.success("Selection saved.");
-    router.push("/patient-platform/appointments/schedule");
+    router.push(routeWithCountry("/patient-platform/appointments/schedule"));
   };
 
   return (

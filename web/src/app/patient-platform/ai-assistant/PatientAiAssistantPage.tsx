@@ -92,6 +92,45 @@ function recommendationActions(recommendation: PatientMedicalRecordsRecommendati
   return actions.length ? actions.slice(0, 4) : ["Monitor symptoms and seek professional care if they persist."];
 }
 
+function isCriticalRecommendation(recommendation: PatientMedicalRecordsRecommendation | null) {
+  return ["emergency", "urgent"].includes(recommendation?.urgencyLevel ?? "");
+}
+
+function publishRecommendationNotification({
+  recommendation,
+  symptomCheckId,
+  sessionId,
+}: {
+  recommendation: PatientMedicalRecordsRecommendation;
+  symptomCheckId?: string;
+  sessionId?: string | null;
+}) {
+  if (typeof window === "undefined") return;
+  const isCritical = isCriticalRecommendation(recommendation);
+
+  window.dispatchEvent(
+    new CustomEvent("swifthelp:patient-local-notification", {
+      detail: {
+        id: `ai-recommendation-${symptomCheckId ?? sessionId ?? "latest"}`,
+        type: "ai_assistant_recommendation",
+        title: isCritical ? "Critical appointment reminder" : "AI triage recommendation",
+        message:
+          recommendation.headline ??
+          "Review care guidance from Swift AI and book care if needed.",
+        metadata: {
+          source: "patient_ai_assistant",
+          symptomCheckId,
+          sessionId,
+          urgencyLevel: recommendation.urgencyLevel,
+          critical: isCritical,
+        },
+        read: false,
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  );
+}
+
 function draftFromCollected(collected: Record<string, unknown> | null | undefined): AssistantDraft {
   const text = (key: string) => {
     const value = collected?.[key];
@@ -177,40 +216,43 @@ function ResultPanel({
   onBook,
   onContinue,
   onRestart,
+  variant = "inline",
 }: {
   recommendation: PatientMedicalRecordsRecommendation | null;
   draft: AssistantDraft;
   onBook: () => void;
   onContinue: () => void;
   onRestart: () => void;
+  variant?: "inline" | "modal";
 }) {
   const urgency = urgencyCopy(recommendation?.urgencyLevel);
   const actions = recommendationActions(recommendation);
   const summary = recommendation?.symptomSummary;
+  const isModal = variant === "modal";
 
   return (
-    <section className="rounded-[18px] border border-[#D8E2EF] bg-white p-4 shadow-[0_16px_35px_rgba(30,136,229,0.08)]">
-      <div className="rounded-[16px] bg-[#FFF8EA] px-4 py-5 text-center">
+    <section className={`${isModal ? "" : "rounded-[18px] border border-[#D8E2EF] bg-white p-4 shadow-[0_16px_35px_rgba(30,136,229,0.08)]"}`}>
+      <div className="rounded-[16px] bg-[#FFF8EA] px-4 py-5 text-center sm:px-6">
         <div
-          className={`mx-auto inline-flex min-h-9 items-center rounded-full px-4 text-[16px] font-semibold tracking-[-0.05em] ${urgency.className}`}
+          className={`mx-auto inline-flex min-h-9 items-center rounded-full px-4 text-[15px] font-semibold tracking-[-0.04em] sm:text-[16px] ${urgency.className}`}
         >
           {urgency.label}
         </div>
-        <h2 className="mt-4 text-[22px] font-semibold leading-7 tracking-[-0.05em] text-[#334155]">
+        <h2 className="mx-auto mt-4 max-w-[540px] text-[21px] font-semibold leading-7 tracking-[-0.04em] text-[#334155] sm:text-[24px] sm:leading-8">
           {recommendation?.headline ?? "AI health assessment"}
         </h2>
-        <p className="mx-auto mt-2 max-w-[520px] text-[15px] leading-5 tracking-[-0.05em] text-[#64748B]">
+        <p className="mx-auto mt-2 max-w-[560px] text-[14px] leading-5 tracking-[-0.03em] text-[#64748B] sm:text-[15px]">
           {recommendation?.description ??
             "Based on your answers, Swift AI has prepared a care recommendation for your next step."}
         </p>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-        <div className="rounded-[16px] bg-[#F8FAFC] p-4">
-          <h3 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Recommended actions</h3>
+      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_0.9fr]">
+        <div className="rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5">
+          <h3 className="text-[17px] font-semibold tracking-[-0.04em] text-[#334155] sm:text-[18px]">Recommended actions</h3>
           <div className="mt-3 space-y-3">
             {actions.map((action) => (
-              <div key={action} className="flex gap-3 text-[15px] leading-5 tracking-[-0.05em] text-[#334155]">
+              <div key={action} className="flex gap-3 text-[14px] leading-5 tracking-[-0.03em] text-[#334155] sm:text-[15px]">
                 <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[12px] font-semibold text-[#1565C0]">
                   +
                 </span>
@@ -220,30 +262,30 @@ function ResultPanel({
           </div>
         </div>
 
-        <div className="rounded-[16px] bg-[#F8FAFC] p-4">
-          <h3 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Symptom summary</h3>
-          <dl className="mt-3 space-y-2 text-[14px] leading-5 tracking-[-0.05em]">
-            <div className="flex justify-between gap-4">
+        <div className="rounded-[16px] bg-[#F8FAFC] p-4 sm:p-5">
+          <h3 className="text-[17px] font-semibold tracking-[-0.04em] text-[#334155] sm:text-[18px]">Symptom summary</h3>
+          <dl className="mt-3 space-y-3 text-[14px] leading-5 tracking-[-0.03em]">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(90px,auto)] gap-3">
               <dt className="text-[#94A3B8]">Primary symptom</dt>
-              <dd className="text-right font-medium text-[#334155]">
+              <dd className="text-right font-medium text-[#334155] break-words">
                 {(summary?.primarySymptom ?? draft.primarySymptom) || "Not recorded"}
               </dd>
             </div>
-            <div className="flex justify-between gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(90px,auto)] gap-3">
               <dt className="text-[#94A3B8]">Duration</dt>
-              <dd className="text-right font-medium text-[#334155]">
+              <dd className="text-right font-medium text-[#334155] break-words">
                 {(summary?.duration ?? draft.duration) || "Not recorded"}
               </dd>
             </div>
-            <div className="flex justify-between gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(90px,auto)] gap-3">
               <dt className="text-[#94A3B8]">Severity</dt>
-              <dd className="text-right font-medium text-[#334155]">
+              <dd className="text-right font-medium text-[#334155] break-words">
                 {(summary?.severity ?? draft.severity) || "Not recorded"}
               </dd>
             </div>
-            <div className="flex justify-between gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(90px,auto)] gap-3">
               <dt className="text-[#94A3B8]">Associated symptoms</dt>
-              <dd className="text-right font-medium text-[#334155]">
+              <dd className="text-right font-medium text-[#334155] break-words">
                 {(summary?.associatedSymptoms ?? draft.associatedSymptoms) || "Not recorded"}
               </dd>
             </div>
@@ -256,25 +298,25 @@ function ResultPanel({
           "This is not a diagnosis. If symptoms are severe, worsening, or you feel unsafe, seek urgent medical care."}
       </p>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.75fr]">
         <button
           type="button"
           onClick={onBook}
-          className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-center text-[14px] font-medium leading-5 tracking-[-0.03em] text-white transition hover:-translate-y-0.5 sm:text-[15px]"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center whitespace-nowrap rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#0B5C9D_64%,#073E72_100%)] px-5 py-2 text-center text-[14px] font-semibold leading-5 tracking-[-0.03em] text-white shadow-[0_10px_22px_rgba(21,101,192,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 sm:text-[15px]"
         >
-          Book recommended care
+          Book Appointment
         </button>
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex h-12 flex-1 cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[16px] font-medium tracking-[-0.05em] text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-[#1565C0] px-4 py-2 text-center text-[14px] font-semibold leading-5 tracking-[-0.03em] text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD] sm:text-[15px]"
         >
           Continue with Swift AI
         </button>
         <button
           type="button"
           onClick={onRestart}
-          className="inline-flex h-12 cursor-pointer items-center justify-center rounded-[12px] border border-[#D8E2EF] px-5 text-[16px] font-medium tracking-[-0.05em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#F1F5F9]"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-[#D8E2EF] px-5 py-2 text-center text-[14px] font-semibold leading-5 tracking-[-0.03em] text-[#334155] transition hover:-translate-y-0.5 hover:bg-[#F1F5F9] sm:col-span-2 lg:col-span-1 lg:text-[15px]"
         >
           New check
         </button>
@@ -305,7 +347,9 @@ export function PatientAiAssistantPage() {
   });
   const [recommendation, setRecommendation] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [savedCheck, setSavedCheck] = useState<PatientSymptomCheck | null>(null);
+  const [recommendationReminder, setRecommendationReminder] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isVoiceHintVisible, setIsVoiceHintVisible] = useState(false);
@@ -319,12 +363,23 @@ export function PatientAiAssistantPage() {
     () => "Stay hydrated, monitor new symptoms, and seek urgent care if breathing, chest pain, fainting, or confusion occurs.",
     [],
   );
+  const modalRecommendation = isEmergencyModalOpen ? recommendation ?? recommendationReminder : null;
 
   const routeWithCountry = (path: string) => {
     const firstSegment = pathname.split("/").filter(Boolean)[0];
     const isCountryRoute = firstSegment && firstSegment.length === 2;
     return isCountryRoute ? `/${firstSegment}${path}` : path;
   };
+
+  useEffect(() => {
+    document.documentElement.classList.add("swifthelp-ai-assistant-scrollbar");
+    document.body.classList.add("swifthelp-ai-assistant-scrollbar");
+
+    return () => {
+      document.documentElement.classList.remove("swifthelp-ai-assistant-scrollbar");
+      document.body.classList.remove("swifthelp-ai-assistant-scrollbar");
+    };
+  }, []);
 
   useEffect(() => {
     let hideTimeout: number | null = null;
@@ -343,6 +398,19 @@ export function PatientAiAssistantPage() {
       if (hideTimeout) window.clearTimeout(hideTimeout);
     };
   }, []);
+
+  useEffect(() => {
+    const openCriticalReminder = () => {
+      if (recommendation || recommendationReminder) {
+        setIsEmergencyModalOpen(true);
+      }
+    };
+
+    window.addEventListener("swifthelp:open-ai-critical-reminder", openCriticalReminder);
+    return () => {
+      window.removeEventListener("swifthelp:open-ai-critical-reminder", openCriticalReminder);
+    };
+  }, [recommendationReminder, recommendation]);
 
   function addMessages(nextMessages: AssistantMessage[]) {
     setMessages((current) => [...current, ...nextMessages]);
@@ -384,14 +452,32 @@ export function PatientAiAssistantPage() {
         window.speechSynthesis.speak(utterance);
       }
 
-      if (response.safetyEscalation) {
+      if (response.safetyEscalation && !response.recommendation) {
         toast.warning("Swift AI detected possible urgent symptoms. Seek emergency care if you feel unsafe.");
       }
 
       if (response.recommendation) {
         const nextRecommendation = response.recommendation.recommendation as PatientMedicalRecordsRecommendation;
+        const nextIsCritical = isCriticalRecommendation(nextRecommendation);
         setSavedCheck(response.recommendation.symptomCheck);
         setRecommendation(nextRecommendation);
+        setRecommendationReminder(nextRecommendation);
+        setIsEmergencyModalOpen(true);
+        publishRecommendationNotification({
+          recommendation: nextRecommendation,
+          symptomCheckId: response.recommendation.symptomCheck.id,
+          sessionId: response.session.id,
+        });
+        if (nextIsCritical) {
+          toast.error("One critical appointment reminder", {
+            description: "Review the urgent guidance or book care from the reminder.",
+            action: {
+              label: "Review",
+              onClick: () => setIsEmergencyModalOpen(true),
+            },
+            duration: 10000,
+          });
+        }
         window.sessionStorage.setItem(
           "patientAiAssistantLatestRecommendation",
           JSON.stringify({
@@ -410,13 +496,49 @@ export function PatientAiAssistantPage() {
   }
 
   function bookRecommendedCare() {
+    const activeRecommendation = recommendation ?? recommendationReminder;
+    const symptomSummary = activeRecommendation?.symptomSummary;
+    const primarySymptom =
+      symptomSummary?.primarySymptom || draft.primarySymptom || activeRecommendation?.recommendedCareType || "";
+    const bookingReason = [
+      activeRecommendation?.headline,
+      primarySymptom ? `Primary symptom: ${primarySymptom}` : "",
+      symptomSummary?.duration || draft.duration ? `Duration: ${symptomSummary?.duration ?? draft.duration}` : "",
+      symptomSummary?.severity || draft.severity ? `Severity: ${symptomSummary?.severity ?? draft.severity}` : "",
+      symptomSummary?.associatedSymptoms || draft.associatedSymptoms
+        ? `Associated symptoms: ${symptomSummary?.associatedSymptoms ?? draft.associatedSymptoms}`
+        : "",
+      activeRecommendation?.whyRecommended,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     window.sessionStorage.setItem(
       "patientAiAssistantBookingContext",
       JSON.stringify({
+        source: "patient_ai_assistant",
+        sessionId,
         symptomCheckId: savedCheck?.id,
-        primarySymptom: draft.primarySymptom,
-        recommendedCareType: recommendation?.recommendedCareType,
-        urgencyLevel: recommendation?.urgencyLevel,
+        draft,
+        primarySymptom,
+        recommendedCareType: activeRecommendation?.recommendedCareType,
+        recommendedCareDescription: activeRecommendation?.recommendedCareDescription,
+        urgencyLevel: activeRecommendation?.urgencyLevel,
+        headline: activeRecommendation?.headline,
+        description: activeRecommendation?.description,
+        whyRecommended: activeRecommendation?.whyRecommended,
+        symptomSummary,
+        possibleCauses: activeRecommendation?.possibleCauses ?? [],
+        redFlags: activeRecommendation?.redFlags ?? [],
+        recommendedActions: recommendationActions(activeRecommendation),
+        selfCareAdvice: activeRecommendation?.selfCareAdvice ?? [],
+        followUpWindow: activeRecommendation?.followUpWindow,
+        shouldBookConsultation: activeRecommendation?.shouldBookConsultation,
+        disclaimer: activeRecommendation?.disclaimer,
+        safetyOverride: activeRecommendation?.safetyOverride ?? false,
+        aiGenerated: activeRecommendation?.aiGenerated ?? false,
+        generatedAt: activeRecommendation?.generatedAt,
+        bookingReason,
       }),
     );
     router.push(routeWithCountry("/patient-platform/appointments/book"));
@@ -516,6 +638,8 @@ export function PatientAiAssistantPage() {
     });
     setQuickReplies(["I have a headache", "I feel tired", "I have a fever", "I need help choosing care"]);
     setRecommendation(null);
+    setRecommendationReminder(null);
+    setIsEmergencyModalOpen(false);
     setSavedCheck(null);
     setInputValue("");
   }
@@ -531,47 +655,18 @@ export function PatientAiAssistantPage() {
                 <h1 className="mt-1 text-[28px] font-semibold leading-9 tracking-[-0.06em] text-[#334155]">
                   Talk to Swift AI
                 </h1>
-                <p className="mt-2 max-w-[620px] text-[16px] leading-5 tracking-[-0.05em] text-[#64748B]">
-                  Get OpenAI-powered symptom intake, AI-supported triage, and a direct handoff into care booking.
+                <p className="mt-2 max-w-[620px] text-[16px] font-semibold leading-5 tracking-[-0.05em] text-[#64748B]">
+                  Get AI-powered symptom intake.
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => router.push(routeWithCountry("/patient-platform/appointments/book"))}
-                  className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] px-4 text-[15px] font-medium tracking-[-0.05em] text-[#1565C0] transition hover:-translate-y-0.5 hover:bg-[#E3F2FD]"
+                  className="inline-flex min-h-11 cursor-pointer items-center justify-center whitespace-nowrap rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#0B5C9D_64%,#073E72_100%)] px-5 py-2 text-center text-[14px] font-semibold leading-5 tracking-[-0.03em] text-white shadow-[0_10px_22px_rgba(21,101,192,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 sm:min-w-[150px] sm:px-6 sm:text-[15px]"
                 >
-                  Book care
+                  Book Appointment
                 </button>
-                <div className="relative">
-                  <button
-                    type="button"
-                    aria-label={isListening ? "Stop voice triage" : "Start voice triage"}
-                    onMouseEnter={() => setIsVoiceHintHovered(true)}
-                    onMouseLeave={() => setIsVoiceHintHovered(false)}
-                    onFocus={() => setIsVoiceHintHovered(true)}
-                    onBlur={() => setIsVoiceHintHovered(false)}
-                    onClick={() => (isListening ? stopVoiceTriage() : startVoiceTriage())}
-                    className={`inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full shadow-[0_12px_24px_rgba(21,101,192,0.20)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#BFDBFE] ${
-                      isListening
-                        ? "bg-[#C82B33] text-white"
-                        : "bg-[#1565C0] text-white"
-                    }`}
-                  >
-                    <MicrophoneIcon muted={isListening} />
-                  </button>
-                  <div
-                    role="tooltip"
-                    className={`pointer-events-none absolute right-0 top-[calc(100%+10px)] z-20 w-[220px] rounded-[12px] bg-[#0F172A] px-3 py-2 text-center text-[12px] font-medium leading-4 text-white shadow-[0_16px_36px_rgba(15,23,42,0.22)] transition duration-200 ${
-                      isVoiceHintVisible || isVoiceHintHovered
-                        ? "translate-y-0 opacity-100"
-                        : "-translate-y-1 opacity-0"
-                    }`}
-                  >
-                    Use voice to explain yourself
-                    <span className="absolute -top-1 right-5 h-2 w-2 rotate-45 bg-[#0F172A]" />
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -607,27 +702,7 @@ export function PatientAiAssistantPage() {
                   </div>
                 ) : null}
 
-                {recommendation ? (
-                  <div className="mb-4">
-                    <ResultPanel
-                      recommendation={recommendation}
-                      draft={draft}
-                      onBook={bookRecommendedCare}
-                      onContinue={() => {
-                        setRecommendation(null);
-                        addMessages([
-                          createMessage(
-                            "assistant",
-                            "I can keep helping you track symptoms, set reminders, or prepare questions for your consultation.",
-                          ),
-                        ]);
-                      }}
-                      onRestart={restart}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="flex gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_48px_56px] gap-2">
                   <input
                     value={inputValue}
                     onChange={(event) => setInputValue(event.target.value)}
@@ -641,6 +716,35 @@ export function PatientAiAssistantPage() {
                     placeholder="Ask Swift AI or describe your symptoms..."
                     className="h-12 min-w-0 flex-1 rounded-[14px] border border-[#D8E2EF] bg-[#F8FAFC] px-4 text-[15px] tracking-[-0.05em] text-[#334155] outline-none transition focus:border-[#1565C0]"
                   />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      aria-label={isListening ? "Stop voice triage" : "Start voice triage"}
+                      onMouseEnter={() => setIsVoiceHintHovered(true)}
+                      onMouseLeave={() => setIsVoiceHintHovered(false)}
+                      onFocus={() => setIsVoiceHintHovered(true)}
+                      onBlur={() => setIsVoiceHintHovered(false)}
+                      onClick={() => (isListening ? stopVoiceTriage() : startVoiceTriage())}
+                      className={`inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] shadow-[0_10px_20px_rgba(21,101,192,0.18)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#BFDBFE] ${
+                        isListening
+                          ? "bg-[#C82B33] text-white"
+                          : "bg-[#1565C0] text-white"
+                      }`}
+                    >
+                      <MicrophoneIcon muted={isListening} />
+                    </button>
+                    <div
+                      role="tooltip"
+                      className={`pointer-events-none absolute bottom-[calc(100%+10px)] right-[-58px] z-20 w-[220px] rounded-[12px] bg-[#0F172A] px-3 py-2 text-center text-[12px] font-medium leading-4 text-white shadow-[0_16px_36px_rgba(15,23,42,0.22)] transition duration-200 sm:right-0 ${
+                        isVoiceHintVisible || isVoiceHintHovered
+                          ? "translate-y-0 opacity-100"
+                          : "translate-y-1 opacity-0"
+                      }`}
+                    >
+                      Use voice to explain yourself
+                      <span className="absolute -bottom-1 right-[72px] h-2 w-2 rotate-45 bg-[#0F172A] sm:right-5" />
+                    </div>
+                  </div>
                   <button
                     type="button"
                     disabled={!canSend}
@@ -713,6 +817,85 @@ export function PatientAiAssistantPage() {
           </aside>
         </div>
       </section>
+      {modalRecommendation ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0F172A]/60 px-3 py-4 backdrop-blur-sm sm:items-center sm:px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="emergency-recommendation-title"
+        >
+          <div className="max-h-[92vh] w-full max-w-[720px] overflow-y-auto rounded-t-[24px] bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.30)] sm:rounded-[24px] sm:p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-[#B91C1C]">
+                  Critical care reminder
+                </p>
+                <h2
+                  id="emergency-recommendation-title"
+                  className="mt-1 text-[20px] font-semibold leading-6 tracking-[-0.04em] text-[#334155] sm:text-[22px]"
+                >
+                  Review urgent recommendation
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEmergencyModalOpen(false)}
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[#D8E2EF] px-4 text-[13px] font-semibold text-[#334155] transition hover:bg-[#F1F5F9]"
+              >
+                Close
+              </button>
+            </div>
+            <ResultPanel
+              recommendation={modalRecommendation}
+              draft={draft}
+              variant="modal"
+              onBook={bookRecommendedCare}
+              onContinue={() => {
+                setIsEmergencyModalOpen(false);
+                setRecommendationReminder(modalRecommendation);
+                addMessages([
+                  createMessage(
+                    "assistant",
+                    "I can keep helping you track symptoms, set reminders, or prepare questions for your consultation.",
+                  ),
+                ]);
+              }}
+              onRestart={restart}
+            />
+          </div>
+        </div>
+      ) : null}
+      <style jsx global>{`
+        .swifthelp-ai-assistant-scrollbar,
+        .swifthelp-ai-assistant-scrollbar * {
+          scrollbar-color: #1e88e5 #e3f2fd;
+          scrollbar-width: thin;
+        }
+
+        .swifthelp-ai-assistant-scrollbar::-webkit-scrollbar,
+        .swifthelp-ai-assistant-scrollbar *::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+
+        .swifthelp-ai-assistant-scrollbar::-webkit-scrollbar-track,
+        .swifthelp-ai-assistant-scrollbar *::-webkit-scrollbar-track {
+          background: #e3f2fd;
+          border-radius: 999px;
+        }
+
+        .swifthelp-ai-assistant-scrollbar::-webkit-scrollbar-thumb,
+        .swifthelp-ai-assistant-scrollbar *::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #1e88e5 0%, #1565c0 100%);
+          border: 2px solid #e3f2fd;
+          border-radius: 999px;
+        }
+
+        .swifthelp-ai-assistant-scrollbar::-webkit-scrollbar-thumb:hover,
+        .swifthelp-ai-assistant-scrollbar *::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #1565c0 0%, #0b5c9d 100%);
+        }
+      `}</style>
     </div>
   );
 }
