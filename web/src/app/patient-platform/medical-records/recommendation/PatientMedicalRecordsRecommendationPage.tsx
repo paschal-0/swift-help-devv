@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
-  getPatientMedicalRecordsRecommendation,
+  getPatientMedicalRecordsRecommendationSource,
   type PatientMedicalRecordsRecommendation,
+  type PatientMedicalRecordsRecommendationSource,
 } from "@/services/patientApi";
 
 const fallbackRecommendation: Required<PatientMedicalRecordsRecommendation> = {
@@ -94,6 +95,8 @@ export function PatientMedicalRecordsRecommendationPage() {
   const router = useRouter();
   const [recommendation, setRecommendation] =
     useState<PatientMedicalRecordsRecommendation | null>(null);
+  const [recommendationSource, setRecommendationSource] =
+    useState<PatientMedicalRecordsRecommendationSource["source"]>(null);
   const [isLoading, setIsLoading] = useState(true);
   const data = getRecommendationValue(recommendation);
 
@@ -102,8 +105,11 @@ export function PatientMedicalRecordsRecommendationPage() {
 
     async function loadRecommendation() {
       try {
-        const response = await getPatientMedicalRecordsRecommendation();
-        if (isMounted) setRecommendation(response);
+        const response = await getPatientMedicalRecordsRecommendationSource();
+        if (isMounted) {
+          setRecommendation(response.recommendation);
+          setRecommendationSource(response.source);
+        }
       } catch (error) {
         if (isMounted) toast.error(getApiErrorMessage(error));
       } finally {
@@ -132,6 +138,12 @@ export function PatientMedicalRecordsRecommendationPage() {
             <p className="mt-1 text-[16px] font-light leading-[23px] tracking-[-0.05em] text-[#F8FAFC]">
               Based on the symptoms you shared, here&apos;s the recommended next step.
             </p>
+            {recommendationSource ? (
+              <p className="mt-2 text-[13px] font-light leading-5 tracking-[-0.03em] text-[#DCEBFA]">
+                Source: {recommendationSource.source.split("_").join(" ")} -{" "}
+                {new Date(recommendationSource.createdAt).toLocaleString()}
+              </p>
+            ) : null}
           </div>
 
           <button

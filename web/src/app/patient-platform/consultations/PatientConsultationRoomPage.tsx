@@ -13,6 +13,7 @@ import {
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
+import { isInPersonConsultation } from "@/components/InPersonConsultationMap";
 
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
@@ -45,10 +46,6 @@ function formatTime(value?: string) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function isInPerson(mode?: string) {
-  return mode?.toLowerCase().includes("person") ?? false;
 }
 
 function chooseActiveConsultation(consultations: PatientConsultation[]) {
@@ -140,7 +137,7 @@ export function PatientConsultationRoomPage() {
   }, [router]);
 
   const openInPersonTracker = () => {
-    if (!activeConsultation) return;
+    if (!activeConsultation || !isInPersonConsultation(activeConsultation.mode)) return;
     window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, activeConsultation.id);
     router.push("/patient-platform/consultations/in-person");
   };
@@ -151,8 +148,12 @@ export function PatientConsultationRoomPage() {
     setIsJoining(true);
     try {
       window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, activeConsultation.id);
+      if (isInPersonConsultation(activeConsultation.mode)) {
+        router.push("/patient-platform/consultations/in-person");
+        return;
+      }
       await joinPatientConsultation(activeConsultation.id);
-      router.push(isInPerson(activeConsultation.mode) ? "/patient-platform/consultations/in-person" : "/patient-platform/consultations/live");
+      router.push("/patient-platform/consultations/live");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -176,16 +177,18 @@ export function PatientConsultationRoomPage() {
           </p>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={openInPersonTracker}
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.985 }}
-          disabled={!activeConsultation}
-          className="inline-flex h-11 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[15px] font-medium tracking-[-0.04em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Open In-person Tracker
-        </motion.button>
+        {isInPersonConsultation(activeConsultation?.mode) ? (
+          <motion.button
+            type="button"
+            onClick={openInPersonTracker}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.985 }}
+            disabled={!activeConsultation}
+            className="inline-flex h-11 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[15px] font-medium tracking-[-0.04em] text-[#F8FAFC] shadow-[0_12px_24px_rgba(21,101,192,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Open In-person Tracker
+          </motion.button>
+        ) : null}
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
@@ -260,7 +263,7 @@ export function PatientConsultationRoomPage() {
             disabled={!activeConsultation || isJoining}
             className="mt-7 inline-flex h-11 w-full items-center justify-center rounded-[24px] bg-[#1565C0] text-[16px] font-normal tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isJoining ? "Opening..." : isInPerson(activeConsultation?.mode) ? "Open tracker" : "Join session"}
+            {isJoining ? "Opening..." : isInPersonConsultation(activeConsultation?.mode) ? "Open tracker" : "Join session"}
           </motion.button>
 
           <motion.button

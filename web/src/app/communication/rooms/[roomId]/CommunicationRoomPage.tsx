@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import { getApiErrorMessage } from "@/services/authApi";
@@ -9,6 +9,7 @@ import {
   appendCommunicationTranscript,
   completeCommunicationTranscription,
   createCommunicationRoomAccess,
+  generateAiTriageHandoff,
   getCommunicationAnalytics,
   getCommunicationComplianceReport,
   getCommunicationRecordingArchive,
@@ -24,6 +25,7 @@ import {
   type CommunicationRecording,
   type CommunicationRoom,
   type CommunicationTranscript,
+  type AiTriageHandoff,
 } from "@/services/communicationApi";
 
 function formatRoomType(value?: string | null) {
@@ -44,6 +46,7 @@ function getRoomHeading(value?: string | null) {
 export function CommunicationRoomPage() {
   const params = useParams<{ roomId: string }>();
   const router = useRouter();
+  const pathname = usePathname();
   const roomId = params.roomId;
   const [room, setRoom] = useState<CommunicationRoom | null>(null);
   const [access, setAccess] = useState<{
@@ -65,6 +68,13 @@ export function CommunicationRoomPage() {
   const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [ending, setEnding] = useState(false);
   const [aiBotBusy, setAiBotBusy] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
+
+  const routeWithCountry = (path: string) => {
+    const firstSegment = pathname.split("/").filter(Boolean)[0];
+    const isCountryRoute = firstSegment && firstSegment.length === 2;
+    return isCountryRoute ? `/${firstSegment}${path}` : path;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +129,9 @@ export function CommunicationRoomPage() {
         callId?: string;
         profile?: string;
       }
+    | null;
+  const aiTriageHandoff = (room?.metadata?.aiTriageHandoff ?? null) as
+    | AiTriageHandoff
     | null;
 
   const startRoomAiVoiceBot = async () => {
@@ -197,11 +210,60 @@ export function CommunicationRoomPage() {
       const result = await translateCommunicationText({
         text,
         targetLanguage: translationLanguage,
+        roomId,
+        transcriptId: transcript?.id,
       });
       setTranslatedTranscript(result.translatedText);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
+  };
+
+  const buildAiTriageHandoff = async () => {
+    setHandoffBusy(true);
+    try {
+      const handoff = await generateAiTriageHandoff(roomId);
+      setRoom((current) =>
+        current
+          ? {
+              ...current,
+              metadata: {
+                ...(current.metadata ?? {}),
+                aiTriageHandoff: handoff,
+              },
+            }
+          : current,
+      );
+      toast.success("AI triage handoff is ready");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setHandoffBusy(false);
+    }
+  };
+
+  const bookFromAiTriageHandoff = () => {
+    if (!aiTriageHandoff) return;
+    window.sessionStorage.setItem(
+      "patientAiAssistantBookingContext",
+      JSON.stringify({
+        source: "ai_voice_triage",
+        roomId,
+        transcriptId: aiTriageHandoff.transcriptId ?? transcript?.id,
+        recommendedCareType: "General Practitioner",
+        urgencyLevel: aiTriageHandoff.urgencyLevel,
+        headline: aiTriageHandoff.headline,
+        description: aiTriageHandoff.summary,
+        symptomSummary: aiTriageHandoff.symptomSummary,
+        redFlags: aiTriageHandoff.redFlags ?? [],
+        recommendedActions: aiTriageHandoff.recommendedActions ?? [],
+        disclaimer: aiTriageHandoff.disclaimer,
+        aiGenerated: aiTriageHandoff.aiGenerated,
+        generatedAt: aiTriageHandoff.generatedAt,
+        bookingReason: aiTriageHandoff.bookingReason,
+      }),
+    );
+    router.push(routeWithCountry("/patient-platform/appointments/book"));
   };
 
   const downloadComplianceReport = async () => {
@@ -464,6 +526,55 @@ export function CommunicationRoomPage() {
                   </button>
                 </div>
               </section>
+              {room?.type === "ai_triage" ? (
+                <section className="rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] p-3">
+                  <p className="font-medium text-[#334155]">AI triage handoff</p>
+                  <p className="mt-1 text-[#64748B]">
+                    Convert the voice transcript into booking-ready context for the
+                    next professional.
+                  </p>
+                  {aiTriageHandoff ? (
+                    <div className="mt-3 rounded-[10px] bg-white p-3 text-[12px] text-[#334155]">
+                      <p className="font-semibold">{aiTriageHandoff.headline}</p>
+                      <p className="mt-1 max-h-24 overflow-y-auto whitespace-pre-line text-[#64748B]">
+                        {aiTriageHandoff.summary}
+                      </p>
+                      <dl className="mt-2 grid grid-cols-2 gap-2">
+                        <div>
+                          <dt className="text-[#94A3B8]">Urgency</dt>
+                          <dd className="font-semibold capitalize">
+                            {aiTriageHandoff.urgencyLevel}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[#94A3B8]">Symptom</dt>
+                          <dd className="font-semibold">
+                            {aiTriageHandoff.symptomSummary?.primarySymptom ?? "Not documented"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={handoffBusy || !transcript?.text}
+                      onClick={() => void buildAiTriageHandoff()}
+                      className="rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {aiTriageHandoff ? "Regenerate handoff" : "Generate handoff"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!aiTriageHandoff}
+                      onClick={bookFromAiTriageHandoff}
+                      className="rounded-[8px] border border-[#1565C0] px-3 py-2 text-[12px] font-medium text-[#1565C0] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                    >
+                      Book from handoff
+                    </button>
+                  </div>
+                </section>
+              ) : null}
               {transcript?.text ? (
                 <section className="rounded-[12px] bg-[#E3F2FD] p-3">
                   <p className="font-medium text-[#334155]">Transcript</p>

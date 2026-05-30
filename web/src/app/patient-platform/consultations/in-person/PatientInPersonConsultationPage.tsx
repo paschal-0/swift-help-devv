@@ -14,7 +14,7 @@ import {
   type PatientConsultationRoom,
 } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
-import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
+import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
 
 type TrackerStatus = "not-started" | "enroute" | "arrived" | "in-progress" | "completed" | "rating";
 
@@ -58,15 +58,17 @@ export function PatientInPersonConsultationPage() {
       try {
         const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
         const consultations = await listPatientConsultations();
-        const consultationId =
-          consultations.find(
-            (consultation) =>
-              consultation.id === storedId &&
-              ["scheduled", "enroute", "arrived", "in_progress", "ongoing"].includes(consultation.status),
-          )?.id ||
-          consultations.find((consultation) =>
+        const activeInPersonConsultations = consultations.filter(
+          (consultation) =>
+            isInPersonConsultation(consultation.mode) &&
             ["scheduled", "enroute", "arrived", "in_progress", "ongoing"].includes(consultation.status),
-          )?.id;
+        );
+        const consultationId =
+          activeInPersonConsultations.find(
+            (consultation) =>
+              consultation.id === storedId,
+          )?.id ||
+          activeInPersonConsultations[0]?.id;
 
         if (!consultationId) {
           window.sessionStorage.removeItem(ACTIVE_CONSULTATION_STORAGE_KEY);
@@ -183,24 +185,25 @@ export function PatientInPersonConsultationPage() {
       </section>
 
       <section className="mt-5 grid gap-4 xl:grid-cols-[1fr_300px]">
-        <div className="relative min-h-[560px] overflow-hidden rounded-[12px] bg-[#D5DCE5] p-6 shadow-[0_0_22px_rgba(15,23,42,0.05)]">
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.45),rgba(148,163,184,0.2))]" />
-          <svg viewBox="0 0 900 540" className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
-            <path
-              d="M210 92 C300 160, 332 250, 292 316 C258 372, 206 410, 184 486"
-              fill="none"
-              stroke={status === "not-started" ? "#94A3B8" : "#1565C0"}
-              strokeLinecap="round"
-              strokeWidth="10"
+        <div className="relative min-h-[560px] overflow-hidden rounded-[12px] bg-[#D5DCE5] shadow-[0_0_22px_rgba(15,23,42,0.05)]">
+          {consultation ? (
+            <InPersonConsultationMap
+              location={consultation}
+              title="In-person visit tracker map"
+              showDirections={false}
+              hideFooter
+              className="absolute inset-0 rounded-[12px] border-0 bg-transparent p-0"
+              mapClassName="h-full rounded-[12px]"
             />
-          </svg>
+          ) : (
+            <div className="absolute inset-0 bg-[#D5DCE5]" />
+          )}
 
-          <div className="relative z-10 flex h-full min-h-[520px] flex-col justify-between">
-            <div>
+          <div className="absolute left-4 right-4 top-4 z-10 rounded-[14px] bg-white/90 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.14)] backdrop-blur sm:left-6 sm:right-auto sm:max-w-[500px] sm:p-5">
               <span className="inline-flex rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium capitalize text-[#1565C0]">
                 {status.replace("-", " ")}
               </span>
-              <h2 className="mt-5 max-w-[420px] text-[34px] font-semibold leading-[40px] tracking-[-0.05em] text-[#334155]">
+              <h2 className="mt-3 text-[24px] font-semibold leading-[30px] tracking-[-0.05em] text-[#334155] sm:text-[30px] sm:leading-[36px]">
                 {status === "completed"
                   ? "Your consultation has been completed"
                   : status === "in-progress"
@@ -211,20 +214,19 @@ export function PatientInPersonConsultationPage() {
                         ? "Your provider is on the way"
                         : "Your professional has not started the trip yet"}
               </h2>
-              <p className="mt-3 max-w-[440px] text-[17px] font-light leading-6 tracking-[-0.05em] text-[#334155]">
-                {providerName} is assigned to this appointment. Use the controls when the visit progresses.
+              <p className="mt-2 text-[14px] font-light leading-5 tracking-[-0.05em] text-[#334155] sm:text-[16px] sm:leading-6">
+                {providerName} is assigned to this appointment. The map shows the visit location while the visit status updates.
               </p>
-            </div>
+          </div>
 
-            <div className="flex flex-wrap gap-3">
+          <div className="absolute bottom-4 left-4 z-10 sm:bottom-6 sm:left-6">
               <button
                 type="button"
                 onClick={() => router.push("/patient-platform/consultations")}
-                className="h-11 rounded-[12px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC]"
+                className="h-11 rounded-[12px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC] shadow-[0_12px_26px_rgba(21,101,192,0.25)]"
               >
                 Leave appointment
               </button>
-            </div>
           </div>
         </div>
 
@@ -247,17 +249,6 @@ export function PatientInPersonConsultationPage() {
               </div>
             ))}
           </div>
-
-          {consultation ? (
-            <div className="mt-5">
-              <InPersonConsultationMap
-                location={consultation}
-                requireInPersonMode={false}
-                compact
-                title="Visit destination"
-              />
-            </div>
-          ) : null}
 
           {status === "completed" || status === "rating" ? (
             <div className="mt-5 rounded-[12px] bg-[#E3F2FD] p-4">

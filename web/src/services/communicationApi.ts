@@ -151,6 +151,26 @@ export type CommunicationRoomAccess = {
   };
 };
 
+export type AiTriageHandoff = {
+  headline: string;
+  summary: string;
+  urgencyLevel: "routine" | "soon" | "urgent" | "emergency" | string;
+  symptomSummary: {
+    primarySymptom: string;
+    duration: string;
+    severity: string;
+    associatedSymptoms: string;
+  };
+  recommendedActions: string[];
+  redFlags: string[];
+  bookingReason: string;
+  disclaimer: string;
+  generatedAt: string;
+  aiGenerated: boolean;
+  transcriptId?: string;
+  source?: string;
+};
+
 export function createCommunicationRoom(payload: CreateCommunicationRoomPayload) {
   return apiRequest<CommunicationRoomState>("/communication/rooms", {
     method: "POST",
@@ -319,6 +339,13 @@ export function listCommunicationTranscripts(roomId: string) {
   );
 }
 
+export function generateAiTriageHandoff(roomId: string) {
+  return apiRequest<AiTriageHandoff>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/ai-triage/handoff`,
+    { method: "POST" },
+  );
+}
+
 export function getCommunicationRecordingArchive(recordingId: string) {
   return apiRequest<{
     recordingId: string;
@@ -351,8 +378,16 @@ export function translateCommunicationText(payload: {
   text: string;
   targetLanguage: string;
   sourceLanguage?: string;
+  roomId?: string;
+  transcriptId?: string;
 }) {
-  return apiRequest<{ translatedText: string; targetLanguage: string }>(
+  return apiRequest<{
+    translatedText: string;
+    targetLanguage: string;
+    sourceLanguage: string;
+    roomId: string | null;
+    transcriptId: string | null;
+  }>(
     "/communication/translate",
     {
       method: "POST",

@@ -9,7 +9,10 @@ import {
   createEmergencyRoom,
 } from "@/services/communicationApi";
 import {
+  listPatientAiAssistantMessages,
+  listPatientAiAssistantSessions,
   sendPatientAiAssistantMessage,
+  type PatientAiAssistantSession,
   type PatientMedicalRecordsRecommendation,
   type PatientSymptomCheck,
 } from "@/services/patientApi";
@@ -146,6 +149,12 @@ function draftFromCollected(collected: Record<string, unknown> | null | undefine
     medications: text("medications"),
     allergies: text("allergies"),
   };
+}
+
+function recommendationFromSession(session: PatientAiAssistantSession) {
+  return Object.keys(session.recommendation ?? {}).length
+    ? (session.recommendation as PatientMedicalRecordsRecommendation)
+    : null;
 }
 
 function ChipButton({
@@ -347,6 +356,10 @@ export function PatientAiAssistantPage() {
   });
   const [recommendation, setRecommendation] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [savedCheck, setSavedCheck] = useState<PatientSymptomCheck | null>(null);
+  const [activeSymptomCheckId, setActiveSymptomCheckId] = useState<string | null>(null);
+  const [recentSessions, setRecentSessions] = useState<PatientAiAssistantSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isRecentSessionsOpen, setIsRecentSessionsOpen] = useState(false);
   const [recommendationReminder, setRecommendationReminder] = useState<PatientMedicalRecordsRecommendation | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
@@ -371,6 +384,51 @@ export function PatientAiAssistantPage() {
     return isCountryRoute ? `/${firstSegment}${path}` : path;
   };
 
+  async function refreshRecentSessions() {
+    setIsLoadingSessions(true);
+    try {
+      const sessions = await listPatientAiAssistantSessions();
+      setRecentSessions(sessions);
+    } catch {
+      setRecentSessions([]);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }
+
+  async function resumeSession(session: PatientAiAssistantSession) {
+    try {
+      const sessionMessages = await listPatientAiAssistantMessages(session.id);
+      const nextDraft = draftFromCollected(session.collected);
+      const nextRecommendation = recommendationFromSession(session);
+      setSessionId(session.id);
+      setMessages(
+        sessionMessages.length
+          ? sessionMessages.map((message) => ({
+              id: message.id,
+              sender:
+                message.sender === "patient" || message.sender === "assistant"
+                  ? message.sender
+                  : "system",
+              body: message.body,
+            }))
+          : initialMessages,
+      );
+      setDraft(nextDraft);
+      setRecommendation(nextRecommendation);
+      setRecommendationReminder(nextRecommendation);
+      setActiveSymptomCheckId(session.symptomCheckId);
+      setSavedCheck(null);
+      setQuickReplies(session.status === "completed" ? [] : ["Continue", "Book care", "Start over"]);
+      setIsEmergencyModalOpen(false);
+      setIsRecentSessionsOpen(false);
+      window.sessionStorage.setItem("patientAiAssistantDraft", JSON.stringify(nextDraft));
+      window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 0);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  }
+
   useEffect(() => {
     document.documentElement.classList.add("swifthelp-ai-assistant-scrollbar");
     document.body.classList.add("swifthelp-ai-assistant-scrollbar");
@@ -379,6 +437,10 @@ export function PatientAiAssistantPage() {
       document.documentElement.classList.remove("swifthelp-ai-assistant-scrollbar");
       document.body.classList.remove("swifthelp-ai-assistant-scrollbar");
     };
+  }, []);
+
+  useEffect(() => {
+    void refreshRecentSessions();
   }, []);
 
   useEffect(() => {
@@ -435,6 +497,7 @@ export function PatientAiAssistantPage() {
       setSessionId(response.session.id);
       const nextDraft = draftFromCollected(response.session.collected);
       setDraft(nextDraft);
+      setActiveSymptomCheckId(response.session.symptomCheckId);
       window.sessionStorage.setItem("patientAiAssistantDraft", JSON.stringify(nextDraft));
       setQuickReplies(response.quickReplies ?? []);
       addMessages([
@@ -460,6 +523,7 @@ export function PatientAiAssistantPage() {
         const nextRecommendation = response.recommendation.recommendation as PatientMedicalRecordsRecommendation;
         const nextIsCritical = isCriticalRecommendation(nextRecommendation);
         setSavedCheck(response.recommendation.symptomCheck);
+        setActiveSymptomCheckId(response.recommendation.symptomCheck.id);
         setRecommendation(nextRecommendation);
         setRecommendationReminder(nextRecommendation);
         setIsEmergencyModalOpen(true);
@@ -487,6 +551,7 @@ export function PatientAiAssistantPage() {
           }),
         );
       }
+      void refreshRecentSessions();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       addMessages([createMessage("assistant", "I could not process that message right now. Please try again.")]);
@@ -518,7 +583,7 @@ export function PatientAiAssistantPage() {
       JSON.stringify({
         source: "patient_ai_assistant",
         sessionId,
-        symptomCheckId: savedCheck?.id,
+        symptomCheckId: savedCheck?.id ?? activeSymptomCheckId,
         draft,
         primarySymptom,
         recommendedCareType: activeRecommendation?.recommendedCareType,
@@ -609,14 +674,22 @@ export function PatientAiAssistantPage() {
   }
 
   async function openEmergencyRoom() {
+    const activeRecommendation = recommendation ?? recommendationReminder;
     try {
       const state = await createEmergencyRoom({
-        title: "Emergency escalation",
+        title: activeRecommendation?.headline ?? "Emergency escalation",
         metadata: {
           source: "patient_ai_assistant",
           sessionId,
+          symptomCheckId: savedCheck?.id ?? activeSymptomCheckId,
+          draft,
+          symptomSummary: activeRecommendation?.symptomSummary,
           primarySymptom: draft.primarySymptom,
-          urgencyLevel: recommendation?.urgencyLevel,
+          urgencyLevel: activeRecommendation?.urgencyLevel,
+          redFlags: activeRecommendation?.redFlags ?? [],
+          recommendedActions: recommendationActions(activeRecommendation),
+          followUpWindow: activeRecommendation?.followUpWindow,
+          generatedAt: activeRecommendation?.generatedAt,
         },
       });
       router.push(routeWithCountry(`/communication/rooms/${state.room.id}`));
@@ -641,6 +714,7 @@ export function PatientAiAssistantPage() {
     setRecommendationReminder(null);
     setIsEmergencyModalOpen(false);
     setSavedCheck(null);
+    setActiveSymptomCheckId(null);
     setInputValue("");
   }
 
@@ -799,6 +873,31 @@ export function PatientAiAssistantPage() {
               </div>
             </div>
 
+            <button
+              type="button"
+              onClick={() => {
+                setIsRecentSessionsOpen(true);
+                void refreshRecentSessions();
+              }}
+              className="group flex w-full items-center justify-between gap-3 rounded-[18px] border border-[#D8E2EF] bg-white p-4 text-left shadow-[0_12px_28px_rgba(30,136,229,0.07)] transition hover:-translate-y-0.5 hover:border-[#1565C0] hover:bg-[#F8FAFC]"
+            >
+              <span>
+                <span className="block text-[15px] font-semibold tracking-[-0.04em] text-[#334155]">
+                  Recent AI sessions
+                </span>
+                <span className="mt-1 block text-[12px] tracking-[-0.03em] text-[#64748B]">
+                  {isLoadingSessions
+                    ? "Loading sessions..."
+                    : recentSessions.length
+                      ? `${recentSessions.length} saved conversation${recentSessions.length === 1 ? "" : "s"}`
+                      : "No saved sessions yet"}
+                </span>
+              </span>
+              <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-[#E3F2FD] text-[18px] font-semibold text-[#1565C0] transition group-hover:bg-[#1565C0] group-hover:text-white">
+                +
+              </span>
+            </button>
+
             <div className="rounded-[20px] border border-[#D8E2EF] bg-white p-5">
               <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">How this flow works</h2>
               <div className="mt-4 space-y-3">
@@ -862,6 +961,91 @@ export function PatientAiAssistantPage() {
               }}
               onRestart={restart}
             />
+          </div>
+        </div>
+      ) : null}
+      {isRecentSessionsOpen ? (
+        <div
+          className="fixed inset-0 z-[75] flex items-end justify-center bg-[#0F172A]/55 px-3 py-4 backdrop-blur-sm sm:items-center sm:px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recent-ai-sessions-title"
+        >
+          <div className="max-h-[88vh] w-full max-w-[560px] overflow-hidden rounded-t-[24px] bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)] sm:rounded-[24px]">
+            <div className="flex items-start justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
+              <div>
+                <h2
+                  id="recent-ai-sessions-title"
+                  className="text-[20px] font-semibold tracking-[-0.05em] text-[#334155]"
+                >
+                  Recent AI sessions
+                </h2>
+                <p className="mt-1 text-[13px] tracking-[-0.03em] text-[#64748B]">
+                  Resume a saved symptom conversation with its booking context.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRecentSessionsOpen(false)}
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[#D8E2EF] px-4 text-[13px] font-semibold text-[#334155] transition hover:bg-[#F1F5F9]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[62vh] overflow-y-auto px-5 py-4">
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void refreshRecentSessions()}
+                  className="rounded-full bg-[#E3F2FD] px-4 py-2 text-[13px] font-semibold tracking-[-0.04em] text-[#1565C0] transition hover:bg-[#D9ECFF]"
+                >
+                  Refresh
+                </button>
+              </div>
+              {isLoadingSessions ? (
+                <p className="rounded-[16px] border border-dashed border-[#D8E2EF] px-4 py-6 text-center text-[14px] tracking-[-0.04em] text-[#64748B]">
+                  Loading recent sessions...
+                </p>
+              ) : recentSessions.length ? (
+                <div className="space-y-3">
+                  {recentSessions.map((session) => {
+                    const sessionRecommendation = recommendationFromSession(session);
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => void resumeSession(session)}
+                        className={`w-full rounded-[16px] border px-4 py-4 text-left transition hover:-translate-y-0.5 hover:border-[#1565C0] hover:bg-[#E3F2FD] ${
+                          session.id === sessionId
+                            ? "border-[#1565C0] bg-[#E3F2FD]"
+                            : "border-[#E2E8F0] bg-[#F8FAFC]"
+                        }`}
+                      >
+                        <span className="block truncate text-[15px] font-semibold tracking-[-0.04em] text-[#334155]">
+                          {session.title}
+                        </span>
+                        <span className="mt-1 block text-[13px] tracking-[-0.03em] text-[#64748B]">
+                          {session.status.split("_").join(" ")}
+                          {sessionRecommendation?.urgencyLevel ? ` - ${sessionRecommendation.urgencyLevel}` : ""}
+                        </span>
+                        <span className="mt-1 block text-[12px] tracking-[-0.03em] text-[#94A3B8]">
+                          {new Date(session.updatedAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-[16px] border border-dashed border-[#D8E2EF] px-4 py-6 text-center text-[14px] tracking-[-0.04em] text-[#64748B]">
+                  Completed AI triage sessions will appear here for follow-up and booking context.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       ) : null}

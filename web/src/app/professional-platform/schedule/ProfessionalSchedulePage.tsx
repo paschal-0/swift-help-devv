@@ -15,7 +15,7 @@ import {
   type ProfessionalConsultation,
   type WeeklyAvailability,
 } from "@/services/professionalApi";
-import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
+import { formatConsultationAddress, isInPersonConsultation } from "@/components/InPersonConsultationMap";
 import {
   createShiftHandoverRoom,
   listShiftHandoverOptions,
@@ -908,6 +908,18 @@ export function ProfessionalSchedulePage() {
     setIsAppointmentDetailsModalOpen(true);
   };
 
+  const openConsultationWorkflow = (consultationId: string, mode: string) => {
+    window.sessionStorage.setItem(
+      "professionalActiveConsultationId",
+      consultationId,
+    );
+    setIsAppointmentDetailsModalOpen(false);
+    const target = isInPersonConsultation(mode)
+      ? `/professional-platform/consultations/in-person?consultationId=${encodeURIComponent(consultationId)}`
+      : `/professional-platform/consultations/live?consultationId=${encodeURIComponent(consultationId)}`;
+    router.push(target);
+  };
+
   const saveBlockedTime = async () => {
     const [startLabel, endLabel] = blockTime.split(" - ");
     const startsAt = new Date(
@@ -1558,7 +1570,7 @@ export function ProfessionalSchedulePage() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        router.push("/professional-platform/schedule");
+                        openConsultationWorkflow(consultation.id, consultation.mode);
                       }}
                       className={`inline-flex h-[30px] min-w-[74px] shrink-0 self-end items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#F8FAFC] sm:h-[28px] sm:self-auto ${microInteractionClass}`}
                     >
@@ -2059,9 +2071,30 @@ export function ProfessionalSchedulePage() {
                 </div>
               </div>
 
-              <div className="mt-5 sm:mt-6">
-                <InPersonConsultationMap location={activeAppointmentDetails} />
-              </div>
+              {isInPersonConsultation(activeAppointmentDetails.mode) ? (
+                <div className="mt-5 rounded-[14px] border border-[#94A3B8] bg-white px-4 py-4 sm:mt-6">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-[#1565C0]">
+                    Visit location
+                  </p>
+                  <p className="mt-2 text-[13px] leading-5 tracking-[-0.05em] text-[#334155]">
+                    {formatConsultationAddress(activeAppointmentDetails) ||
+                      "Patient location has not been provided yet."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!activeConsultationId) return;
+                      openConsultationWorkflow(
+                        activeConsultationId,
+                        activeAppointmentDetails.mode,
+                      );
+                    }}
+                    className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[11px] bg-[#1565C0] px-3 text-[13px] font-medium tracking-[-0.05em] text-[#F8FAFC]"
+                  >
+                    Open embedded visit map
+                  </button>
+                </div>
+              ) : null}
 
               <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7">
                 <button
@@ -2095,15 +2128,10 @@ export function ProfessionalSchedulePage() {
                   type="button"
                   onClick={async () => {
                     if (!activeConsultationId) return;
-                    window.sessionStorage.setItem(
-                      "professionalActiveConsultationId",
+                    openConsultationWorkflow(
                       activeConsultationId,
+                      activeAppointmentDetails.mode,
                     );
-                    setIsAppointmentDetailsModalOpen(false);
-                    const target = isInPersonConsultation(activeAppointmentDetails.mode)
-                      ? `/professional-platform/consultations/in-person?consultationId=${encodeURIComponent(activeConsultationId)}`
-                      : `/professional-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultationId)}`;
-                    router.push(target);
                   }}
                   className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
                 >

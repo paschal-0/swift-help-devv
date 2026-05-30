@@ -144,7 +144,9 @@ export function PatientAppointmentDetailsPage() {
             scheduledDate: appointment.scheduledDate,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
-            meetingMode: appointment.meetingUrl ? "video" : "in-person",
+            meetingMode: appointment.mode?.toLowerCase().includes("person")
+              ? "in-person"
+              : "video",
           });
           setEmailReminder(appointment.emailReminderEnabled ?? true);
           setSmsReminder(appointment.smsReminderEnabled ?? false);

@@ -26,6 +26,7 @@ export type PatientAppointment = {
   scheduledDate: string;
   startTime: string;
   endTime: string;
+  mode: string;
   status: "upcoming" | "completed" | "cancelled" | string;
   meetingUrl: string | null;
   emailReminderEnabled?: boolean;
@@ -285,6 +286,19 @@ export type PatientAiAssistantMessageResponse = {
   recommendation: {
     symptomCheck: PatientSymptomCheck;
     recommendation: PatientMedicalRecordsRecommendation;
+  } | null;
+};
+
+export type PatientMedicalRecordsRecommendationSource = {
+  recommendation: PatientMedicalRecordsRecommendation;
+  source: {
+    symptomCheckId: string;
+    title: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    source: string;
+    aiAssistantSessionId: string | null;
   } | null;
 };
 
@@ -719,6 +733,13 @@ export function getPatientMedicalRecordsRecommendation() {
   });
 }
 
+export function getPatientMedicalRecordsRecommendationSource() {
+  return apiRequest<PatientMedicalRecordsRecommendationSource>(
+    "/patient/medical-records/recommendation/source",
+    { method: "GET" },
+  );
+}
+
 export function createPatientSymptomCheck(payload: {
   title?: string;
   symptoms: Record<string, unknown>;
@@ -739,6 +760,12 @@ export function startPatientAiAssistantSession(payload?: { message?: string }) {
       body: JSON.stringify(payload ?? {}),
     },
   );
+}
+
+export function listPatientAiAssistantSessions() {
+  return apiRequest<PatientAiAssistantSession[]>("/patient/ai-assistant/sessions", {
+    method: "GET",
+  });
 }
 
 export function sendPatientAiAssistantMessage(payload: {

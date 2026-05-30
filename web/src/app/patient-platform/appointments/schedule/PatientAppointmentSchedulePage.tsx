@@ -166,6 +166,12 @@ export function PatientAppointmentSchedulePage() {
   });
 
   useEffect(() => {
+    if (draft?.meetingMode === "in-person" || draft?.meetingMode === "video") {
+      setMeetingMode(draft.meetingMode);
+    }
+  }, [draft?.meetingMode]);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function loadAvailability() {

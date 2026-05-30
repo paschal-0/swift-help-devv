@@ -194,7 +194,7 @@ export function PatientDashboardPage() {
       time: formatTimeRange(appointment.startTime, appointment.endTime),
       status: appointmentStatus(appointment.status),
       specialty: appointment.reason || "General consultation",
-      mode: appointment.meetingUrl ? "Video consultation" : "In-person consultation",
+      mode: appointment.mode || (appointment.meetingUrl ? "Video consultation" : "In-person consultation"),
       duration: formatDurationFromTimes(appointment.startTime, appointment.endTime),
       avatarUrl: appointment.professionalAvatarUrl ?? null,
     }));
@@ -445,7 +445,13 @@ export function PatientDashboardPage() {
                 </motion.button>
                 <motion.button
                   type="button"
-                  onClick={() => router.push("/patient-platform/consultations/live")}
+                  onClick={() =>
+                    router.push(
+                      activeAppointment?.mode?.toLowerCase().includes("person")
+                        ? "/patient-platform/consultations/in-person"
+                        : "/patient-platform/consultations/live",
+                    )
+                  }
                   className="inline-flex h-[26px] flex-1 cursor-pointer items-center justify-center rounded-[4.76px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] tracking-[-0.05em] text-[#E3F2FD]"
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.97 }}

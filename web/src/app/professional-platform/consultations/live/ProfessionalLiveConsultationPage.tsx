@@ -483,6 +483,8 @@ export function ProfessionalLiveConsultationPage() {
       const result = await translateCommunicationText({
         text,
         targetLanguage: translationLanguage,
+        roomId: videoAccess?.roomId,
+        transcriptId: transcript?.id,
       });
       setTranslatedTranscript(result.translatedText);
     } catch (error) {

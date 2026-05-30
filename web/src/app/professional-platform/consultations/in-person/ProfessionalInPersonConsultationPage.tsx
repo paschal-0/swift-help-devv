@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
+import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
 import {
   completeProfessionalConsultation,
   getProfessionalConsultation,
@@ -42,7 +42,15 @@ export function ProfessionalInPersonConsultationPage() {
     }
     window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, consultationId);
     getProfessionalConsultation(consultationId)
-      .then(setConsultation)
+      .then((nextConsultation) => {
+        if (!isInPersonConsultation(nextConsultation.mode)) {
+          router.replace(
+            `/professional-platform/consultations/live?consultationId=${encodeURIComponent(nextConsultation.id)}`,
+          );
+          return;
+        }
+        setConsultation(nextConsultation);
+      })
       .catch((error) => toast.error(error instanceof Error ? error.message : "Unable to load visit"));
   }, [consultationId, router]);
 
@@ -72,7 +80,7 @@ export function ProfessionalInPersonConsultationPage() {
             {consultation?.consultationLabel ?? "Visit"}
           </h1>
           <p className="mt-1 max-w-[620px] text-[14px] leading-6 text-[#64748B]">
-            {consultation?.patientName ?? "Patient"} · {statusLabel(consultation?.status)}
+            {consultation?.patientName ?? "Patient"} - {statusLabel(consultation?.status)}
           </p>
         </div>
         <span className="inline-flex h-9 items-center rounded-full bg-[#E3F2FD] px-4 text-[13px] font-medium text-[#1565C0]">
@@ -81,15 +89,17 @@ export function ProfessionalInPersonConsultationPage() {
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div>
+        <div className="min-h-[560px]">
           {consultation ? (
             <InPersonConsultationMap
               location={consultation}
-              requireInPersonMode={false}
               title="Patient visit location"
+              directionsLabel="Open Google directions"
+              className="min-h-[560px]"
+              mapClassName="h-[492px] rounded-[12px]"
             />
           ) : (
-            <div className="h-[240px] rounded-[14px] bg-[#E2E8F0]" />
+            <div className="h-[560px] rounded-[14px] bg-[#E2E8F0]" />
           )}
         </div>
 

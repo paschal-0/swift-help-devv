@@ -11,6 +11,7 @@ type ConsultationLocation = {
   country?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  placeId?: string | null;
 };
 
 type InPersonConsultationMapProps = {
@@ -18,6 +19,12 @@ type InPersonConsultationMapProps = {
   compact?: boolean;
   requireInPersonMode?: boolean;
   title?: string;
+  showDirections?: boolean;
+  directionsLabel?: string;
+  onDirectionsClick?: () => void;
+  className?: string;
+  mapClassName?: string;
+  hideFooter?: boolean;
 };
 
 export function isInPersonConsultation(mode?: string | null) {
@@ -25,9 +32,11 @@ export function isInPersonConsultation(mode?: string | null) {
   return (
     value.includes("in-person") ||
     value.includes("in person") ||
+    value.includes("in_person") ||
     value.includes("physical") ||
     value.includes("onsite") ||
-    value.includes("on-site")
+    value.includes("on-site") ||
+    value.includes("visit")
   );
 }
 
@@ -48,6 +57,12 @@ export function InPersonConsultationMap({
   compact = false,
   requireInPersonMode = true,
   title = "In-person consultation location",
+  showDirections = true,
+  directionsLabel = "Directions",
+  onDirectionsClick,
+  className = "",
+  mapClassName,
+  hideFooter = false,
 }: InPersonConsultationMapProps) {
   const [currentPosition, setCurrentPosition] = useState<{
     latitude: number;
@@ -89,7 +104,7 @@ export function InPersonConsultationMap({
   }
 
   const encodedQuery = encodeURIComponent(query);
-  const mapUrl = `https://maps.google.com/maps?q=${encodedQuery}&output=embed`;
+  const mapUrl = buildGoogleMapEmbedUrl(location, query, encodedQuery);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedQuery}`;
   const distanceKm =
     hasCoordinates && currentPosition
@@ -106,10 +121,10 @@ export function InPersonConsultationMap({
         : `${distanceKm.toFixed(1)} km away`;
 
   return (
-    <div className="rounded-[14px] border border-[#94A3B8] bg-white p-2">
+    <div className={`rounded-[14px] border border-[#94A3B8] bg-white p-2 ${className}`}>
       <div
-        className={`relative overflow-hidden rounded-[10px] bg-[#E2E8F0] ${
-          compact ? "h-[150px]" : "h-[190px]"
+        className={`relative overflow-hidden bg-[#E2E8F0] ${
+          mapClassName ?? `rounded-[10px] ${compact ? "h-[150px]" : "h-[190px]"}`
         }`}
       >
         <iframe
@@ -120,6 +135,7 @@ export function InPersonConsultationMap({
           referrerPolicy="no-referrer-when-downgrade"
         />
       </div>
+      {hideFooter ? null : (
       <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="min-w-0 text-[12px] leading-4 tracking-[-0.05em] text-[#334155]">
           {address || query}
@@ -127,15 +143,28 @@ export function InPersonConsultationMap({
             <span className="ml-2 font-medium text-[#1565C0]">{distanceLabel}</span>
           ) : null}
         </p>
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-8 shrink-0 items-center justify-center rounded-[10px] bg-[#1565C0] px-3 text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#F8FAFC]"
-        >
-          Directions
-        </a>
+        {showDirections ? (
+          onDirectionsClick ? (
+            <button
+              type="button"
+              onClick={onDirectionsClick}
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-[10px] bg-[#1565C0] px-3 text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#F8FAFC]"
+            >
+              {directionsLabel}
+            </button>
+          ) : (
+            <a
+              href={directionsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-[10px] bg-[#1565C0] px-3 text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#F8FAFC]"
+            >
+              {directionsLabel}
+            </a>
+          )
+        ) : null}
       </div>
+      )}
     </div>
   );
 }
@@ -159,4 +188,25 @@ function getDistanceKm(
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
+}
+
+function buildGoogleMapEmbedUrl(
+  location: ConsultationLocation,
+  query: string,
+  encodedQuery: string,
+) {
+  const apiKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
+  if (!apiKey) {
+    return `https://maps.google.com/maps?q=${encodedQuery}&output=embed`;
+  }
+
+  const url = new URL("https://www.google.com/maps/embed/v1/place");
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("q", location.placeId ? `place_id:${location.placeId}` : query);
+  url.searchParams.set("zoom", "15");
+  return url.toString();
 }

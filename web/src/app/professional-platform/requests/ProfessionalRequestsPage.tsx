@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
@@ -11,7 +12,7 @@ import {
   listProfessionalRequests,
   type ProfessionalConsultationRequest,
 } from "@/services/professionalApi";
-import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
+import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
 
 type RequestStatus = "needs-action" | "accepted" | "declined" | "closed";
 
@@ -165,6 +166,7 @@ export function ProfessionalRequestsPage({
 }: {
   targetRequestId?: string | null;
 }) {
+  const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
   const [requests, setRequests] = useState<ConsultationRequest[]>([]);
   const [activeTab, setActiveTab] = useState<RequestStatus>("needs-action");
@@ -327,9 +329,13 @@ export function ProfessionalRequestsPage({
     const previous = requests.find((request) => request.id === id);
     if (!previous) return;
 
+    let acceptedSessionId: string | null = null;
+    let acceptedMode: string | null = null;
     try {
       if (status === "accepted") {
-        await acceptProfessionalRequest(id);
+        const response = await acceptProfessionalRequest(id);
+        acceptedSessionId = response.session.id;
+        acceptedMode = response.session.mode;
       } else if (status === "declined") {
         const reason = window.prompt("Reason for declining this request (optional)")?.trim();
         await declineProfessionalRequest(id, reason || undefined);
@@ -369,6 +375,15 @@ export function ProfessionalRequestsPage({
 
     if (status === "accepted") {
       toast.success("Request accepted.");
+      if (acceptedSessionId && isInPersonConsultation(acceptedMode)) {
+        window.sessionStorage.setItem(
+          "professionalActiveConsultationId",
+          acceptedSessionId,
+        );
+        router.push(
+          `/professional-platform/consultations/in-person?consultationId=${encodeURIComponent(acceptedSessionId)}`,
+        );
+      }
     } else if (status === "declined") {
       toast.warning("Request declined.");
     }
@@ -751,7 +766,11 @@ export function ProfessionalRequestsPage({
               </div>
 
               <div className="mt-4">
-                <InPersonConsultationMap location={selectedRequest} compact />
+                <InPersonConsultationMap
+                  location={selectedRequest}
+                  compact
+                  showDirections={false}
+                />
               </div>
 
               {detailsExpanded ? (
