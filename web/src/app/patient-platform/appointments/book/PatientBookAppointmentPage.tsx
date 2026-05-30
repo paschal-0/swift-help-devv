@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { API_BASE_URL, getApiErrorMessage } from "@/services/authApi";
 import {
   listPatientProviders,
   type PatientMedicalRecordsRecommendation,
@@ -74,13 +74,36 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     id: provider.userId,
     name: provider.name,
     role: provider.specialization,
-    imageSrc: provider.avatarUrl ?? null,
+    imageSrc: normalizeAvatarUrl(provider.avatarUrl),
     nextAvailable: "Select to view schedule",
     highlights: [
       provider.consultationType || "Consultation",
       provider.verificationStatus === "approved" ? "Verified" : "Profile submitted",
     ],
   };
+}
+
+function normalizeAvatarUrl(avatarUrl?: string | null) {
+  const value = avatarUrl?.trim();
+  if (!value) return null;
+
+  if (value.startsWith("/")) {
+    return `${API_BASE_URL}${value}`;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(parsed.hostname);
+    const apiBase = new URL(API_BASE_URL);
+
+    if (isLocalhost && !["localhost", "127.0.0.1"].includes(apiBase.hostname)) {
+      return new URL(`${parsed.pathname}${parsed.search}`, apiBase).toString();
+    }
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function readAiAssistantBookingContext() {
@@ -115,8 +138,21 @@ function professionalTypeFromAiContext(context: AiAssistantBookingContext | null
 }
 
 function ProviderPicture({ provider }: { provider: ProfessionalCard }) {
-  if (provider.imageSrc) {
-    return <Image src={provider.imageSrc} alt={provider.name} fill className="object-cover" />;
+  const [hasImageError, setHasImageError] = useState(false);
+  const imageSrc = provider.imageSrc;
+  const shouldShowImage = Boolean(imageSrc) && !hasImageError;
+
+  if (shouldShowImage && imageSrc) {
+    return (
+      <Image
+        src={imageSrc}
+        alt={provider.name}
+        fill
+        sizes="(max-width: 768px) 80px, 150px"
+        className="object-cover"
+        onError={() => setHasImageError(true)}
+      />
+    );
   }
 
   return (
