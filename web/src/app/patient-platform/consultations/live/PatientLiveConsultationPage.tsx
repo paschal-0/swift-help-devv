@@ -76,6 +76,7 @@ export function PatientLiveConsultationPage() {
     canJoin?: boolean;
     waitingRoomStatus?: string;
   } | null>(null);
+  const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<CommunicationRecording[]>([]);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
@@ -114,6 +115,7 @@ export function PatientLiveConsultationPage() {
 
         if (cancelled) return;
         setRoom(nextRoom);
+        setVideoAccessError(null);
         setVideoAccess({
           roomId: access.roomId,
           roomName: access.roomName,
@@ -123,7 +125,11 @@ export function PatientLiveConsultationPage() {
           waitingRoomStatus: access.waitingRoomStatus,
         });
       } catch (error) {
-        if (!cancelled) toast.error(getApiErrorMessage(error));
+        if (!cancelled) {
+          const message = getApiErrorMessage(error);
+          setVideoAccessError(message);
+          toast.error(message);
+        }
       }
     }
 
@@ -218,6 +224,7 @@ export function PatientLiveConsultationPage() {
       if (participant.status === "admitted") {
         void joinPatientConsultation(consultation.id)
           .then((access) => {
+            setVideoAccessError(null);
             setVideoAccess({
               roomId: access.roomId,
               roomName: access.roomName,
@@ -344,14 +351,44 @@ export function PatientLiveConsultationPage() {
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}
         roomName={videoAccess?.roomName ?? null}
-        canJoin={videoAccess?.canJoin !== false}
+        canJoin={Boolean(videoAccess?.canJoin)}
         waitingRoomContent={
+          videoAccessError ? (
+            <div>
+              <p className="text-[20px] font-medium tracking-[-0.05em]">
+                Video room unavailable
+              </p>
+              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                {videoAccessError}
+              </p>
+            </div>
+          ) : videoAccess ? (
+            <div>
+              <p className="text-[20px] font-medium tracking-[-0.05em]">
+                Waiting room
+              </p>
+              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                Your professional has been notified. You will enter automatically once admitted.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[20px] font-medium tracking-[-0.05em]">
+                Preparing waiting room
+              </p>
+              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                Swifthelp is checking your appointment and secure video access.
+              </p>
+            </div>
+          )
+        }
+        preparingRoomContent={
           <div>
             <p className="text-[20px] font-medium tracking-[-0.05em]">
-              Waiting room
+              Preparing video room
             </p>
             <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-              Your professional has been notified. You will enter automatically once admitted.
+              You will enter automatically once Daily returns secure access.
             </p>
           </div>
         }

@@ -86,6 +86,7 @@ export function ProfessionalLiveConsultationPage() {
     roomToken: string | null;
     canJoin?: boolean;
   } | null>(null);
+  const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
   const [participants, setParticipants] = useState<CommunicationParticipant[]>([]);
   const [recording, setRecording] = useState<CommunicationRecording | null>(null);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
@@ -129,6 +130,7 @@ export function ProfessionalLiveConsultationPage() {
 
         if (cancelled) return;
         setRoom(nextRoom);
+        setVideoAccessError(null);
         setVideoAccess({
           roomId: access.roomId,
           roomName: access.roomName,
@@ -147,7 +149,11 @@ export function ProfessionalLiveConsultationPage() {
           }
         }
       } catch (error) {
-        if (!cancelled) toast.error(getApiErrorMessage(error));
+        if (!cancelled) {
+          const message = getApiErrorMessage(error);
+          setVideoAccessError(message);
+          toast.error(message);
+        }
       }
     }
 
@@ -529,7 +535,38 @@ export function ProfessionalLiveConsultationPage() {
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}
         roomName={videoAccess?.roomName ?? null}
-        canJoin={videoAccess?.canJoin !== false}
+        canJoin={Boolean(videoAccess?.canJoin)}
+        waitingRoomContent={
+          videoAccessError ? (
+            <div>
+              <p className="text-[20px] font-medium tracking-[-0.05em]">
+                Video room unavailable
+              </p>
+              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                {videoAccessError}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[20px] font-medium tracking-[-0.05em]">
+                Starting secure room
+              </p>
+              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                Swifthelp is preparing your Daily consultation access.
+              </p>
+            </div>
+          )
+        }
+        preparingRoomContent={
+          <div>
+            <p className="text-[20px] font-medium tracking-[-0.05em]">
+              Preparing video room
+            </p>
+            <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+              Daily is returning a secure meeting URL and owner token.
+            </p>
+          </div>
+        }
         remoteLabel={patientName}
         remoteRoleLabel="Patient"
         localLabel="Professional"

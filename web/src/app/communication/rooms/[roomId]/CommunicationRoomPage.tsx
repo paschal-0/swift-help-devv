@@ -55,6 +55,7 @@ export function CommunicationRoomPage() {
     roomToken: string | null;
     canJoin?: boolean;
   } | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const [participants, setParticipants] = useState<CommunicationParticipant[]>([]);
   const [recording, setRecording] = useState<CommunicationRecording | null>(null);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
@@ -97,13 +98,18 @@ export function CommunicationRoomPage() {
           roomToken: nextAccess.roomToken,
           canJoin: nextAccess.canJoin,
         });
+        setAccessError(null);
         setConsentDraft({
           recordingConsent: Boolean(nextAccess.compliance?.recordingConsent),
           transcriptionConsent: Boolean(nextAccess.compliance?.transcriptionConsent),
           translationConsent: Boolean(nextAccess.compliance?.translationConsent),
         });
       } catch (error) {
-        if (!cancelled) toast.error(getApiErrorMessage(error));
+        if (!cancelled) {
+          const message = getApiErrorMessage(error);
+          setAccessError(message);
+          toast.error(message);
+        }
       }
     }
     void loadRoom();
@@ -297,16 +303,36 @@ export function CommunicationRoomPage() {
           meetingUrl={access?.meetingUrl ?? null}
           roomName={access?.roomName ?? null}
           heading={getRoomHeading(room?.type)}
-          canJoin={access?.canJoin !== false}
+          canJoin={Boolean(access?.canJoin)}
           waitingRoomContent={
-            <div>
-              <p className="text-[20px] font-medium tracking-[-0.05em]">
-                Waiting room
-              </p>
-              <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                A moderator must admit you before you can join.
-              </p>
-            </div>
+            accessError ? (
+              <div>
+                <p className="text-[20px] font-medium tracking-[-0.05em]">
+                  Video room unavailable
+                </p>
+                <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                  {accessError}
+                </p>
+              </div>
+            ) : access ? (
+              <div>
+                <p className="text-[20px] font-medium tracking-[-0.05em]">
+                  Waiting room
+                </p>
+                <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                  A moderator must admit you before you can join.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[20px] font-medium tracking-[-0.05em]">
+                  Preparing room
+                </p>
+                <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                  Swifthelp is requesting secure room access.
+                </p>
+              </div>
+            )
           }
           remoteLabel={room?.title ?? "Swifthelp room"}
           remoteRoleLabel={formatRoomType(room?.type)}

@@ -34,6 +34,7 @@ type ConsultationVideoRoomProps = {
   summaryContent?: ReactNode;
   sharedInfoContent?: ReactNode;
   waitingRoomContent?: ReactNode;
+  preparingRoomContent?: ReactNode;
   canJoin?: boolean;
   networkMode?: "auto" | "video" | "voice";
   recordingEnabled?: boolean;
@@ -296,6 +297,7 @@ export function ConsultationVideoRoom({
   summaryContent,
   sharedInfoContent,
   waitingRoomContent,
+  preparingRoomContent,
   canJoin = true,
   networkMode = "auto",
   recordingEnabled,
@@ -747,6 +749,19 @@ export function ConsultationVideoRoom({
                   </p>
                   <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
                     Your professional will admit you into the secure room.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : !token || !meetingUrl ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.72)] px-8 text-center text-white">
+              {preparingRoomContent ?? (
+                <div>
+                  <p className="text-[20px] font-medium tracking-[-0.05em]">
+                    Preparing video room
+                  </p>
+                  <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
+                    Swifthelp is requesting secure video access.
                   </p>
                 </div>
               )}
