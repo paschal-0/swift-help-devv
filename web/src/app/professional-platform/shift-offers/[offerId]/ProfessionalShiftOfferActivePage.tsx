@@ -873,7 +873,35 @@ export function ProfessionalShiftOfferActivePage() {
               )}
             </svg>
 
-            <aside className="absolute right-[22px] top-[26px] flex h-[596px] w-full max-w-[270px] flex-col rounded-[12px] bg-[#F8FAFC] px-[14px] pb-6 pt-[19px] shadow-[0_16px_38px_rgba(15,23,42,0.08)]">
+            <InPersonConsultationMap
+              location={{
+                locationName: offer.facilityName,
+                address: offer.address,
+                city: offer.location,
+                latitude: offer.latitude,
+                longitude: offer.longitude,
+              }}
+              requireInPersonMode={false}
+              title="Shift travel map"
+              showDirections={false}
+              hideFooter
+              className="absolute inset-0 z-0 rounded-none border-0 bg-[#E2E8F0] p-0"
+              mapClassName="h-full rounded-none"
+            />
+
+            <div className="absolute left-4 top-4 z-10 max-w-[calc(100%-32px)] rounded-[12px] bg-[#F8FAFC]/95 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.16)] backdrop-blur sm:left-6 sm:top-6 sm:max-w-[420px]">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
+                {stage === "enroute" ? "Travel in progress" : stage === "arrived" ? "Arrived" : "Shift location"}
+              </p>
+              <h2 className="mt-1 text-[18px] font-semibold leading-6 tracking-[-0.05em] text-[#334155]">
+                {offer.facilityName}
+              </h2>
+              <p className="mt-1 text-[13px] leading-5 tracking-[-0.04em] text-[#64748B]">
+                {offer.address || offer.location}
+              </p>
+            </div>
+
+            <aside className="absolute right-[22px] top-[26px] z-10 flex h-[596px] w-full max-w-[270px] flex-col rounded-[12px] bg-[#F8FAFC] px-[14px] pb-6 pt-[19px] shadow-[0_16px_38px_rgba(15,23,42,0.08)]">
               <div className="flex items-center gap-[17px]">
                 <PanelTabButton
                   label="Shift Updates"
@@ -1072,21 +1100,6 @@ export function ProfessionalShiftOfferActivePage() {
                         <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">{offer.pay}</p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <InPersonConsultationMap
-                      location={{
-                        locationName: offer.facilityName,
-                        address: offer.address,
-                        city: offer.location,
-                        latitude: offer.latitude,
-                        longitude: offer.longitude,
-                      }}
-                      requireInPersonMode={false}
-                      compact
-                      title="Shift location"
-                    />
                   </div>
 
                   <div className="mt-auto flex flex-col gap-2">

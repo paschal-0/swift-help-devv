@@ -105,12 +105,14 @@ const metricCardMeta: Omit<MetricCard, "value" | "subtitle">[] = [
   },
 ];
 
-const formatDashboardMoney = (value: number, currency = "NGN") =>
+const formatDashboardMoney = (amountCents: number, currency = "NGN") =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(amountCents / 100);
+
+const toCurrencyUnits = (amountCents: number) => amountCents / 100;
 
 const formatNaira = (value: number) => formatDashboardMoney(value, "NGN");
 
@@ -733,8 +735,8 @@ export function ProfessionalDashboardPage() {
 
     return labels.map((label, index) => ({
       label,
-      earned: index === labels.length - 1 ? totalEarned : 0,
-      pending: index === labels.length - 1 ? pending : 0,
+      earned: index === labels.length - 1 ? toCurrencyUnits(totalEarned) : 0,
+      pending: index === labels.length - 1 ? toCurrencyUnits(pending) : 0,
       sessions: index === labels.length - 1 ? sessions : 0,
     }));
   }, [dashboard, earningsRange]);
@@ -777,7 +779,7 @@ export function ProfessionalDashboardPage() {
         },
         {
           label: "Sessions",
-          data: earningsSeries.map((point) => point.sessions * 3000),
+          data: earningsSeries.map((point) => point.sessions * 30),
           borderColor: "#3CC3DF",
           backgroundColor: "rgba(60, 195, 223, 0.12)",
           fill: true,
@@ -812,10 +814,14 @@ export function ProfessionalDashboardPage() {
               const parsedY = typeof context.parsed.y === "number" ? context.parsed.y : 0;
 
               if (context.dataset.label === "Sessions") {
-                return `Sessions ${Math.round(parsedY / 3000)}`;
+                return `Sessions ${Math.round(parsedY / 30)}`;
               }
 
-              return `${context.dataset.label} ${formatDashboardMoney(parsedY, earningsMetrics.currency)}`;
+              return `${context.dataset.label} ${new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: earningsMetrics.currency,
+                maximumFractionDigits: 0,
+              }).format(parsedY)}`;
             },
           },
         },
@@ -1238,7 +1244,7 @@ export function ProfessionalDashboardPage() {
                   <div className="relative flex h-[121px] items-center justify-center overflow-hidden rounded-lg bg-[#E3F2FD]">
                     <span className="text-4xl font-semibold text-[#1565C0]">{getInitials(activeAppointment.patient)}</span>
                     <span className="absolute right-2 top-2 inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[7.5px] font-medium leading-4 tracking-[-0.05em] text-[#1E88E5]">
-                      Ongoing
+                      {activeAppointment.status}
                     </span>
                   </div>
 

@@ -11,6 +11,7 @@ import {
   declineProfessionalShiftOffer,
   formatApiMoney,
   listProfessionalShiftOffers,
+  type ProfessionalShift as BackendProfessionalShift,
   type ShiftOffer as BackendShiftOffer,
 } from "@/services/professionalApi";
 import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
@@ -53,6 +54,30 @@ const mapBackendShiftOffer = (offer: BackendShiftOffer): ShiftOffer => {
     dateBucket,
     payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
   };
+};
+
+type AcceptedShiftCard = ShiftOffer & {
+  shiftId: string;
+  shiftStatus: BackendProfessionalShift["status"];
+};
+
+const activeShiftStatuses: BackendProfessionalShift["status"][] = [
+  "accepted",
+  "enroute",
+  "arrived",
+  "checked_in",
+  "started",
+];
+
+const shiftStatusLabels: Record<BackendProfessionalShift["status"], string> = {
+  accepted: "Accepted",
+  enroute: "En route",
+  arrived: "Arrived",
+  checked_in: "Checked in",
+  started: "Started",
+  completed: "Completed",
+  missed: "Missed",
+  cancelled: "Cancelled",
 };
 
 function FilterButton({
@@ -231,6 +256,7 @@ export function ProfessionalShiftOffersPage() {
   const [payFilter, setPayFilter] = useState<PayFilter>("all");
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [offers, setOffers] = useState<ShiftOffer[]>([]);
+  const [acceptedShifts, setAcceptedShifts] = useState<AcceptedShiftCard[]>([]);
 
   const query = searchText.trim().toLowerCase();
 
@@ -242,6 +268,15 @@ export function ProfessionalShiftOffersPage() {
         const data = await listProfessionalShiftOffers();
         if (!cancelled) {
           setOffers(data.offers.map(mapBackendShiftOffer));
+          setAcceptedShifts(
+            (data.acceptedAssignments ?? [])
+              .filter((assignment) => activeShiftStatuses.includes(assignment.shift.status))
+              .map((assignment) => ({
+                ...mapBackendShiftOffer(assignment.offer),
+                shiftId: assignment.shift.id,
+                shiftStatus: assignment.shift.status,
+              })),
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -319,6 +354,60 @@ export function ProfessionalShiftOffersPage() {
           />
         </div>
       </div>
+
+      {acceptedShifts.length ? (
+        <div className="mt-6 rounded-[12px] bg-[#F8FAFC] px-4 py-4 shadow-[0_10px_30px_rgba(148,163,184,0.12)] sm:mt-8 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-[18px] font-semibold leading-6 tracking-[-0.05em] text-[#334155]">
+                Your accepted shifts
+              </h2>
+              <p className="text-[13px] leading-5 tracking-[-0.04em] text-[#94A3B8]">
+                Open the shift workspace when you are ready to travel, check in, message the organization, or complete the shift.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {acceptedShifts.map((shift) => (
+              <article
+                key={shift.shiftId}
+                className="rounded-[12px] border border-[#D6E4F2] bg-white px-4 py-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-[16px] font-semibold leading-5 tracking-[-0.05em] text-[#334155]">
+                        {shift.organization}
+                      </h3>
+                      <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#1565C0]">
+                        {shiftStatusLabels[shift.shiftStatus]}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[13px] leading-5 tracking-[-0.04em] text-[#334155]">
+                      {shift.role} at {shift.facilityName}
+                    </p>
+                    <p className="text-[13px] leading-5 tracking-[-0.04em] text-[#64748B]">
+                      {shift.date} · {shift.time}
+                    </p>
+                    <p className="mt-1 text-[13px] leading-5 tracking-[-0.04em] text-[#64748B]">
+                      {shift.address || shift.location}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/professional-platform/shift-offers/${shift.id}`)}
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[13px] font-medium tracking-[-0.04em] text-[#F8FAFC] transition hover:-translate-y-0.5 hover:brightness-105"
+                  >
+                    Open shift
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-4 sm:mt-8 sm:gap-5 md:grid-cols-2 2xl:grid-cols-3">
         {visibleOffers.map((offer) => (

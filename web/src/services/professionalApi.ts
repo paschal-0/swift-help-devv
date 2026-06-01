@@ -823,6 +823,10 @@ export function listProfessionalShiftOffers() {
   return apiRequest<{
     offers: ShiftOffer[];
     acceptedShifts: ProfessionalShift[];
+    acceptedAssignments?: Array<{
+      shift: ProfessionalShift;
+      offer: ShiftOffer;
+    }>;
   }>("/professional/shift-offers", {
     method: "GET",
   });

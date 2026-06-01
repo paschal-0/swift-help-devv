@@ -122,6 +122,10 @@ function buildAiPatientNote(draft: Record<string, string>) {
   }
 }
 
+function timezoneLabel(timezone?: string) {
+  return timezone?.replaceAll("_", " ") ?? "";
+}
+
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -186,6 +190,13 @@ export function PatientAppointmentDetailsPage() {
       { label: "Time:", value: `${draft.startTime ?? "-"} - ${draft.endTime ?? "-"}` },
       { label: "Duration:", value: durationLabel },
     ];
+
+    if (draft.providerStartTime && draft.providerEndTime && draft.providerTimezone) {
+      items.push({
+        label: "Provider time:",
+        value: `${draft.providerStartTime} - ${draft.providerEndTime} (${timezoneLabel(draft.providerTimezone)})`,
+      });
+    }
 
     if (draft.meetingMode === "in-person") {
       items.push({

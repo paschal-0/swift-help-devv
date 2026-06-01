@@ -105,7 +105,11 @@ const mapPayout = (payout: ProfessionalPayout): TransactionItem => ({
   status: payoutStatusLabel[payout.status],
 });
 
-const buildSummaryCards = (summary: EarningsSummary | null): EarningsSummaryCard[] => {
+const buildSummaryCards = (
+  summary: EarningsSummary | null,
+  periodTotalCents: number,
+  periodLabel: string,
+): EarningsSummaryCard[] => {
   const currentSummary: EarningsSummary = summary ?? {
     totalEarned: 0,
     availableBalance: 0,
@@ -118,8 +122,8 @@ const buildSummaryCards = (summary: EarningsSummary | null): EarningsSummaryCard
     {
       id: "total",
       title: "Total Earnings",
-      value: formatApiMoney(currentSummary.totalEarned, currentSummary.currency),
-      note: "All completed consultations",
+      value: formatApiMoney(periodTotalCents, currentSummary.currency),
+      note: `${periodLabel} completed earnings`,
     },
     {
       id: "available",
@@ -166,30 +170,32 @@ export function ProfessionalEarningsPage() {
 
   const query = searchText.trim().toLowerCase();
 
-  const searchedTransactions = useMemo(() => {
+  const periodTransactions = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const periodFiltered = transactionItems.filter((transaction) => {
+    return transactionItems.filter((transaction) => {
       const createdAt = new Date(transaction.createdAt);
       if (period === "Last month") {
         return createdAt >= previousMonthStart && createdAt < monthStart;
       }
       return createdAt >= monthStart && createdAt < nextMonthStart;
     });
+  }, [period, transactionItems]);
 
+  const searchedTransactions = useMemo(() => {
     if (!query) {
-      return periodFiltered;
+      return periodTransactions;
     }
 
-    return periodFiltered.filter((transaction) =>
+    return periodTransactions.filter((transaction) =>
       [transaction.consultation, transaction.patient, transaction.date, transaction.amount, transaction.status]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
-  }, [period, query, transactionItems]);
+  }, [periodTransactions, query]);
 
   const transactionsForTab = useMemo(() => {
     if (transactionStatusFilter === "All Statuses") {
@@ -208,8 +214,7 @@ export function ProfessionalEarningsPage() {
   }, [payoutItems, payoutFilter]);
 
   const overviewTransactions = searchedTransactions.slice(0, 9);
-  const summaryCards = buildSummaryCards(walletSummary);
-  const completedPeriodTransactions = searchedTransactions.filter((transaction) =>
+  const completedPeriodTransactions = periodTransactions.filter((transaction) =>
     ["Completed", "Available", "Paid out"].includes(transaction.status),
   );
   const completedConsultationCount = completedPeriodTransactions.length;
@@ -226,6 +231,7 @@ export function ProfessionalEarningsPage() {
     0,
   );
   const periodCurrency = walletSummary?.currency ?? "NGN";
+  const summaryCards = buildSummaryCards(walletSummary, completedPeriodTotal, period);
   const selectedTransaction =
     transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
@@ -566,7 +572,7 @@ export function ProfessionalEarningsPage() {
 
               <article className="rounded-[16px] border border-[#E2E8F0] bg-white p-4 shadow-sm md:border-none md:bg-[#F8FAFC] md:px-3 md:py-[11px] md:shadow-none">
                 <h3 className="text-[18px] font-semibold leading-[22px] tracking-[-0.05em] text-[#334155] md:text-[16px] md:font-medium">
-                  This Month
+                  {period}
                 </h3>
                 <p className="mt-3 text-[14px] font-normal leading-[26px] tracking-[-0.05em] text-[#64748B] md:mt-2 md:text-[12px] md:font-light md:leading-[22px] md:text-[#334155]">
                   Completed earnings: <span className="font-semibold text-[#334155]">{completedConsultationCount}</span>

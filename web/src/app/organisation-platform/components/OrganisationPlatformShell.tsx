@@ -251,11 +251,12 @@ export function OrganisationPlatformShell({
   );
 
   const isActiveNavItem = (href: string) => {
+    const normalizedPathname = pathname.replace(/^\/[a-z]{2}(?=\/)/, "");
     if (href === "/organisation-platform") {
-      return pathname === "/organisation-platform" || pathname === "/organisation-platform/dashboard";
+      return normalizedPathname === "/organisation-platform" || normalizedPathname === "/organisation-platform/dashboard";
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
   };
 
   useEffect(() => {
@@ -405,28 +406,19 @@ export function OrganisationPlatformShell({
             />
           ) : null}
         </AnimatePresence>
-
         <div className="flex w-full flex-col bg-[#E2E8F0] xl:min-h-screen xl:flex-row">
           <motion.aside
             initial={false}
             animate={{
-              width: isMobileNavExpanded ? 264 : 72,
+              x: isMobileNavExpanded ? 0 : -288,
+              width: 264,
               boxShadow: isMobileNavExpanded
                 ? "0 24px 64px rgba(15,23,42,0.24)"
-                : "0 8px 24px rgba(148,163,184,0.18)",
+                : "0 0 0 rgba(148,163,184,0)",
             }}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
+            className="fixed inset-y-0 left-0 z-50 box-border flex flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
           >
-            {!isMobileNavExpanded ? (
-              <button
-                type="button"
-                className="absolute inset-0 z-10 xl:hidden"
-                onClick={() => setIsMobileNavExpanded(true)}
-                aria-label="Open navigation"
-              />
-            ) : null}
-
             <div
               className={`relative z-20 flex w-full items-center gap-1 ${
                 isMobileNavExpanded ? "px-2" : "justify-center"
@@ -574,9 +566,21 @@ export function OrganisationPlatformShell({
             </LayoutGroup>
           </aside>
 
-          <main className="ml-[72px] w-[calc(100%-72px)] px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12 xl:pb-12 xl:pt-9">
+          <main className="w-full px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12 xl:pb-12 xl:pt-9">
             <div className="w-full">
               <div className="flex items-center justify-between gap-3">
+                <motion.button
+                  type="button"
+                  onClick={() => setIsMobileNavExpanded(true)}
+                  className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-white/75 bg-[#F8FAFC] shadow-[0_10px_24px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(30,136,229,0.16)] xl:hidden"
+                  aria-label="Open navigation"
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <Image src="/jam_medical.png" alt="Swifthelp menu" width={34} height={34} priority />
+                  <span className="absolute -right-4 -top-2 inline-flex h-5 animate-pulse items-center rounded-full bg-[#1565C0] px-2 text-[9px] font-semibold leading-none tracking-normal text-white shadow-[0_0_0_0_rgba(21,101,192,0.45)]">
+                    Menu
+                  </span>
+                </motion.button>
                 <label className="relative block h-[42px] w-full max-w-[194px] rounded-[20px] bg-[#F8FAFC] shadow-[0_0_18px_rgba(148,163,184,0.14)] transition duration-200 focus-within:-translate-y-0.5 focus-within:shadow-[0_10px_28px_rgba(30,136,229,0.16)] hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(148,163,184,0.18)] sm:h-[48px] sm:max-w-[250px] xl:h-[57px] xl:max-w-[344px] xl:rounded-[24px] xl:shadow-[0_0_25px_rgba(148,163,184,0.15)]">
                   <svg
                     viewBox="0 0 24 24"

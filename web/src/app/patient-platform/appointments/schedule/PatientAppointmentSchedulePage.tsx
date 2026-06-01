@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientProviderAvailability } from "@/services/patientApi";
-import { formatDurationMinutes, getDurationMinutes } from "@/utils/appointmentTime";
+import { formatDurationMinutes } from "@/utils/appointmentTime";
 
 type MeetingMode = "video" | "in-person";
 
@@ -134,6 +134,22 @@ function timezoneLabel(timezone: string) {
   return timezone.replaceAll("_", " ");
 }
 
+function getDateKeyInZone(isoDate: string, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date(isoDate))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
   const [meetingMode, setMeetingMode] = useState<MeetingMode>("video");
@@ -225,21 +241,54 @@ export function PatientAppointmentSchedulePage() {
   );
   const selectedTime = useMemo(() => {
     if (selectedSlot === "custom") {
+      const selectedDateKey = formatLocalDateKey(selectedDate);
+      const startsAt = zonedDateTimeToIso(selectedDateKey, manualStartTime, patientTimezone);
+      const endsAt = zonedDateTimeToIso(selectedDateKey, manualEndTime, patientTimezone);
       return {
         startTime: manualStartTime,
         endTime: manualEndTime,
-        label: `${manualStartTime} - ${manualEndTime}`,
+        requestedStartAt: startsAt,
+        requestedEndAt: endsAt,
+        scheduledDate: selectedDateKey,
+        providerStartTime: formatTimeInZone(startsAt, providerTimezone),
+        providerEndTime: formatTimeInZone(endsAt, providerTimezone),
+        label: `${manualStartTime} - ${manualEndTime} (${timezoneLabel(patientTimezone)})`,
       };
     }
 
     if (!selectedTimeSlot) return null;
 
+    const selectedDateKey = formatLocalDateKey(selectedDate);
+    const startsAt = zonedDateTimeToIso(
+      selectedDateKey,
+      selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
+      providerTimezone,
+    );
+    const endsAt = zonedDateTimeToIso(
+      selectedDateKey,
+      selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      providerTimezone,
+    );
+
     return {
       startTime: selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
       endTime: selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      requestedStartAt: startsAt,
+      requestedEndAt: endsAt,
+      scheduledDate: selectedDateKey,
+      providerStartTime: selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
+      providerEndTime: selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
       label: selectedTimeSlot.patient,
     };
-  }, [manualEndTime, manualStartTime, selectedSlot, selectedTimeSlot]);
+  }, [
+    manualEndTime,
+    manualStartTime,
+    patientTimezone,
+    providerTimezone,
+    selectedDate,
+    selectedSlot,
+    selectedTimeSlot,
+  ]);
   const formattedDate = useMemo(
     () =>
       selectedDate.toLocaleDateString("en-US", {
@@ -256,10 +305,22 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
-    const durationMinutes = getDurationMinutes(selectedTime.startTime, selectedTime.endTime);
+    const durationMinutes = Math.max(
+      0,
+      Math.round(
+        (new Date(selectedTime.requestedEndAt).getTime() -
+          new Date(selectedTime.requestedStartAt).getTime()) /
+          60000,
+      ),
+    );
 
     if (!durationMinutes) {
       toast.error("End time must be after start time.");
+      return;
+    }
+
+    if (new Date(selectedTime.requestedEndAt).getTime() <= Date.now()) {
+      toast.error("Choose a future appointment time.");
       return;
     }
 
@@ -268,18 +329,30 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
-    const selectedDateKey = formatLocalDateKey(selectedDate);
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
       JSON.stringify({
         ...draft,
         meetingMode,
-        scheduledDate: selectedDateKey,
-        startTime: selectedTime.startTime,
-        endTime: selectedTime.endTime,
-        requestedStartAt: zonedDateTimeToIso(selectedDateKey, selectedTime.startTime, providerTimezone),
-        requestedEndAt: zonedDateTimeToIso(selectedDateKey, selectedTime.endTime, providerTimezone),
+        scheduledDate:
+          selectedSlot === "custom"
+            ? selectedTime.scheduledDate
+            : getDateKeyInZone(selectedTime.requestedStartAt, patientTimezone),
+        providerScheduledDate: getDateKeyInZone(selectedTime.requestedStartAt, providerTimezone),
+        startTime:
+          selectedSlot === "custom"
+            ? selectedTime.startTime
+            : formatTimeInZone(selectedTime.requestedStartAt, patientTimezone),
+        endTime:
+          selectedSlot === "custom"
+            ? selectedTime.endTime
+            : formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
+        providerStartTime: selectedTime.providerStartTime,
+        providerEndTime: selectedTime.providerEndTime,
+        requestedStartAt: selectedTime.requestedStartAt,
+        requestedEndAt: selectedTime.requestedEndAt,
         providerTimezone,
+        patientTimezone,
         durationMinutes: String(durationMinutes),
         durationLabel: formatDurationMinutes(durationMinutes),
         reason: reason.trim() || draft.reason || "General Consultation",
