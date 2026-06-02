@@ -61,8 +61,32 @@ function formatAppointmentTime(value: string) {
   });
 }
 
+function formatInstantTime(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatInstantDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function isOverdueUncompletedAppointment(appointment: PatientAppointment) {
   if (appointment.status !== "upcoming") return false;
+  if (appointment.endsAt) {
+    return new Date(appointment.endsAt).getTime() + 30 * 60 * 1000 <= Date.now();
+  }
 
   const endsAt = parseAppointmentDate(appointment.scheduledDate);
   const [hourText, minuteText = "00"] = appointment.endTime.split(":");
@@ -90,8 +114,8 @@ function mapAppointment(appointment: PatientAppointment): AppointmentItem {
     professional: professional?.fullName ?? "Assigned professional",
     specialty: "Healthcare professional",
     consultationType: appointment.reason,
-    time: formatAppointmentTime(appointment.startTime),
-    date: formatAppointmentDate(appointment.scheduledDate),
+    time: formatInstantTime(appointment.startsAt) ?? formatAppointmentTime(appointment.startTime),
+    date: formatInstantDate(appointment.startsAt) ?? formatAppointmentDate(appointment.scheduledDate),
     status,
   };
 }

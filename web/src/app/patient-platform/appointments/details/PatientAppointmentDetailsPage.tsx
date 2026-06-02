@@ -126,6 +126,27 @@ function timezoneLabel(timezone?: string) {
   return timezone?.replaceAll("_", " ") ?? "";
 }
 
+function formatLocalDate(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatLocalTime(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -148,6 +169,8 @@ export function PatientAppointmentDetailsPage() {
             scheduledDate: appointment.scheduledDate,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
+            startsAt: appointment.startsAt ?? "",
+            endsAt: appointment.endsAt ?? "",
             meetingMode: appointment.mode?.toLowerCase().includes("person")
               ? "in-person"
               : "video",
@@ -169,16 +192,19 @@ export function PatientAppointmentDetailsPage() {
 
     const date = draft.scheduledDate ? parseDateOnly(draft.scheduledDate) : null;
     const formattedDate =
-      date && !Number.isNaN(date.getTime())
+      formatLocalDate(draft.startsAt) ??
+      (date && !Number.isNaN(date.getTime())
         ? date.toLocaleDateString("en-US", {
             weekday: "long",
             month: "long",
             day: "numeric",
           })
-        : "-";
+        : "-");
 
     const durationLabel =
       draft.durationLabel ?? formatDurationFromTimes(draft.startTime, draft.endTime);
+    const localStartTime = formatLocalTime(draft.startsAt) ?? draft.startTime ?? "-";
+    const localEndTime = formatLocalTime(draft.endsAt) ?? draft.endTime ?? "-";
 
     const items = [
       { label: "Care type:", value: draft.careType ?? draft.reason ?? "-" },
@@ -187,7 +213,7 @@ export function PatientAppointmentDetailsPage() {
         label: "Appointment mode",
         value: draft.meetingMode === "in-person" ? "In Person" : "Video Consultation",
       },
-      { label: "Time:", value: `${draft.startTime ?? "-"} - ${draft.endTime ?? "-"}` },
+      { label: "Time:", value: `${localStartTime} - ${localEndTime}` },
       { label: "Duration:", value: durationLabel },
     ];
 

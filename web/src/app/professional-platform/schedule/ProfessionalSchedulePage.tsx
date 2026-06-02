@@ -48,6 +48,7 @@ type CalendarSession = {
 
 type UpcomingConsultation = {
   id: string;
+  status: ProfessionalConsultation["status"];
   dayLabel: string;
   timeLabel: string;
   patient: string;
@@ -339,6 +340,7 @@ const mapConsultationToUpcoming = (
   consultation: ProfessionalConsultation,
 ): UpcomingConsultation => ({
   id: consultation.id,
+  status: consultation.status,
   dayLabel: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
     new Date(consultation.startsAt),
   ),
@@ -364,6 +366,13 @@ const mapConsultationToUpcoming = (
             ? "Cancelled"
             : "Upcoming",
 });
+
+const isJoinableConsultationStatus = (status: ProfessionalConsultation["status"]) =>
+  status === "scheduled" ||
+  status === "enroute" ||
+  status === "arrived" ||
+  status === "in_progress" ||
+  status === "ongoing";
 
 const mapConsultationToDetails = (
   consultation: ProfessionalConsultation,
@@ -1503,14 +1512,15 @@ export function ProfessionalSchedulePage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className={`hidden h-[21px] items-center rounded-lg bg-[#E2E8F0] px-[8px] text-[10px] leading-[10px] text-[#64748B] sm:inline-flex ${microInteractionClass}`}
+                onClick={() => toast.info("Showing today's consultations.")}
+                className={`hidden h-[21px] cursor-pointer items-center rounded-lg bg-[#E2E8F0] px-[8px] text-[10px] leading-[10px] text-[#64748B] sm:inline-flex ${microInteractionClass}`}
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => router.push("/professional-platform/requests")}
-                className={`text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] sm:text-[14px] ${microInteractionClass}`}
+                className={`cursor-pointer text-[12px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] sm:text-[14px] ${microInteractionClass}`}
               >
                 View all
               </button>
@@ -1528,18 +1538,21 @@ export function ProfessionalSchedulePage() {
               <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] px-4 text-center text-[13px] tracking-[-0.05em] text-[#94A3B8]">
                 No upcoming consultations found.
               </div>
-            ) : visibleUpcoming.map((consultation) => (
-              <motion.article
-                key={consultation.id}
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                onClick={() => openAppointmentDetails(consultation.id)}
-                className="cursor-pointer rounded-lg bg-[#E3F2FD] px-3 pb-[14px] pt-[10px]"
-              >
-                <div className="flex items-center gap-2 text-[10px] leading-[10px] tracking-[-0.05em] text-[#334155]">
-                  <span>{consultation.dayLabel}</span>
-                  <span>{consultation.timeLabel}</span>
-                </div>
+            ) : visibleUpcoming.map((consultation) => {
+              const canJoinConsultation = isJoinableConsultationStatus(consultation.status);
+              return (
+                <motion.article
+                  key={consultation.id}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.992 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  onClick={() => openAppointmentDetails(consultation.id)}
+                  className="cursor-pointer rounded-lg bg-[#E3F2FD] px-3 pb-[14px] pt-[10px] transition hover:shadow-[0_12px_24px_rgba(21,101,192,0.12)] active:scale-[0.992]"
+                >
+                  <div className="flex items-center gap-2 text-[10px] leading-[10px] tracking-[-0.05em] text-[#334155]">
+                    <span>{consultation.dayLabel}</span>
+                    <span>{consultation.timeLabel}</span>
+                  </div>
 
                 <div className="mt-[10px] flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div className="flex min-w-0 items-center gap-[8px]">
@@ -1570,16 +1583,25 @@ export function ProfessionalSchedulePage() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
+                        if (!canJoinConsultation) {
+                          toast.info("This appointment is not available to join.");
+                          return;
+                        }
                         openConsultationWorkflow(consultation.id, consultation.mode);
                       }}
-                      className={`inline-flex h-[30px] min-w-[74px] shrink-0 self-end items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] text-[#F8FAFC] sm:h-[28px] sm:self-auto ${microInteractionClass}`}
+                      className={`inline-flex h-[30px] min-w-[92px] shrink-0 cursor-pointer self-end items-center justify-center rounded-[20px] px-[14px] text-[12px] font-normal leading-4 tracking-[-0.05em] sm:h-[28px] sm:self-auto ${
+                        canJoinConsultation
+                          ? `bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[#F8FAFC] ${microInteractionClass}`
+                          : "bg-[#E2E8F0] text-[#64748B] hover:bg-[#CBD5E1] active:scale-[0.98]"
+                      }`}
                     >
-                      Join
+                      {canJoinConsultation ? "Join" : "Not available"}
                     </button>
                   </div>
                 </div>
               </motion.article>
-            ))}
+              );
+            })}
           </div>
         </article>
       </div>
@@ -2128,14 +2150,34 @@ export function ProfessionalSchedulePage() {
                   type="button"
                   onClick={async () => {
                     if (!activeConsultationId) return;
+                    if (
+                      ["Cancelled", "Missed", "Completed"].includes(
+                        activeAppointmentDetails.status,
+                      )
+                    ) {
+                      toast.info("This appointment is not available to join.");
+                      return;
+                    }
                     openConsultationWorkflow(
                       activeConsultationId,
                       activeAppointmentDetails.mode,
                     );
                   }}
-                  className="inline-flex h-[38px] items-center justify-center rounded-[11px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px]"
+                  className={`inline-flex h-[38px] cursor-pointer items-center justify-center rounded-[11px] px-2 text-[13px] font-medium leading-4 tracking-[-0.05em] transition active:scale-[0.98] sm:h-[33px] sm:rounded-[9.52381px] sm:text-[14px] ${
+                    ["Cancelled", "Missed", "Completed"].includes(
+                      activeAppointmentDetails.status,
+                    )
+                      ? "bg-[#E2E8F0] text-[#64748B] hover:bg-[#CBD5E1]"
+                      : "bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[#E3F2FD] hover:brightness-105"
+                  }`}
                 >
-                  {isInPersonConsultation(activeAppointmentDetails.mode) ? "Open Visit" : "Join Appointment"}
+                  {["Cancelled", "Missed", "Completed"].includes(
+                    activeAppointmentDetails.status,
+                  )
+                    ? "Not available"
+                    : isInPersonConsultation(activeAppointmentDetails.mode)
+                      ? "Open Visit"
+                      : "Join Appointment"}
                 </button>
               </div>
             </motion.div>

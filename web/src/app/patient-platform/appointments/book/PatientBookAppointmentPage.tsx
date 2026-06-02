@@ -433,11 +433,14 @@ export function PatientBookAppointmentPage() {
                       <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100 xl:h-[77px] xl:w-full xl:rounded-[8px] xl:bg-[#E3F2FD]">
                         <ProviderPicture provider={prof} />
                       </div>
-                      <div className="flex-1 xl:mt-[2px]">
-                        <h3 className="text-[16px] font-semibold text-[#334155] xl:text-[16px] xl:font-normal xl:leading-[25px]">
+                      <div className="min-w-0 flex-1 xl:mt-[2px]">
+                        <h3
+                          className="overflow-hidden break-words text-[16px] font-semibold leading-5 text-[#334155] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] xl:text-[16px] xl:font-normal xl:leading-[25px]"
+                          title={prof.name}
+                        >
                           {prof.name}
                         </h3>
-                        <p className="text-[12px] text-[#64748B] xl:-mt-1 xl:leading-4 xl:text-[#334155]">
+                        <p className="truncate text-[12px] text-[#64748B] xl:-mt-1 xl:leading-4 xl:text-[#334155]" title={prof.role}>
                           {prof.role}
                         </p>
                         <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 xl:mt-[4px] xl:bg-transparent xl:px-0 xl:py-0 xl:font-normal xl:text-[#94A3B8]">
@@ -452,11 +455,14 @@ export function PatientBookAppointmentPage() {
                         <ProviderPicture provider={prof} />
                       </div>
 
-                      <div className="mt-[2px]">
-                        <p className="text-[16px] font-normal leading-[25px] tracking-[-0.05em] text-[#334155]">
+                      <div className="mt-[2px] min-w-0">
+                        <p
+                          className="truncate text-[16px] font-normal leading-[25px] tracking-[-0.05em] text-[#334155]"
+                          title={prof.name}
+                        >
                           {prof.name}
                         </p>
-                        <p className="-mt-1 text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                        <p className="-mt-1 truncate text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]" title={prof.role}>
                           {prof.role}
                         </p>
                       </div>
@@ -464,12 +470,14 @@ export function PatientBookAppointmentPage() {
                       <div className="mt-[2px] rounded-[8px] bg-[#E3F2FD] px-[5px] py-[5px]">
                         <div className="text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#1565C0]">
                           {prof.highlights.map((line) => (
-                            <p key={`${prof.id}-${line}`}>{line}</p>
+                            <p key={`${prof.id}-${line}`} className="truncate" title={line}>
+                              {line}
+                            </p>
                           ))}
                         </div>
                       </div>
 
-                      <p className="mt-[4px] text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
+                      <p className="mt-[4px] truncate text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]" title={`Next available: ${prof.nextAvailable}`}>
                         Next available: {prof.nextAvailable}
                       </p>
 

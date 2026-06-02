@@ -55,6 +55,23 @@ function formatTimeRange(start: string, end: string) {
   return `${start} - ${end}`;
 }
 
+function formatInstantTime(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatInstantDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 function formatActivityDateTime(value: string | null) {
   if (!value) return "No consultation yet";
   const date = new Date(value);
@@ -188,10 +205,16 @@ export function PatientDashboardPage() {
   const appointments = useMemo<Appointment[]>(() => {
     return (dashboard?.appointments ?? []).map((appointment) => ({
       id: appointment.id,
-      day: formatDay(appointment.scheduledDate),
-      date: formatFullDate(appointment.scheduledDate),
+      day: appointment.startsAt ? formatDay(appointment.startsAt) : formatDay(appointment.scheduledDate),
+      date: formatInstantDate(appointment.startsAt) ?? formatFullDate(appointment.scheduledDate),
       doctor: appointment.professional?.fullName ?? "Assigned professional",
-      time: formatTimeRange(appointment.startTime, appointment.endTime),
+      time:
+        appointment.startsAt && appointment.endsAt
+          ? formatTimeRange(
+              formatInstantTime(appointment.startsAt) ?? appointment.startTime,
+              formatInstantTime(appointment.endsAt) ?? appointment.endTime,
+            )
+          : formatTimeRange(appointment.startTime, appointment.endTime),
       status: appointmentStatus(appointment.status),
       specialty: appointment.reason || "General consultation",
       mode: appointment.mode || (appointment.meetingUrl ? "Video consultation" : "In-person consultation"),

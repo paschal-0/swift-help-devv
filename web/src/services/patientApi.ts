@@ -26,6 +26,8 @@ export type PatientAppointment = {
   scheduledDate: string;
   startTime: string;
   endTime: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
   mode: string;
   status: "upcoming" | "completed" | "cancelled" | string;
   meetingUrl: string | null;

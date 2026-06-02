@@ -606,17 +606,23 @@ export function PatientAppointmentSchedulePage() {
               </div>
 
               <div className="w-full max-w-none lg:max-w-[231px]">
-                <div className="mb-1 flex items-center justify-between px-[2px]">
-                  <p className="w-[76px] text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
-                    {timezoneLabel(providerTimezone)}
-                    <br />
-                    Consultant Time
-                  </p>
-                  <p className="w-[55px] text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155]">
-                    {timezoneLabel(patientTimezone)}
-                    <br />
-                    Patient time
-                  </p>
+                <div className="mb-2 grid grid-cols-2 gap-3 px-[2px]">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
+                      Consultant time
+                    </p>
+                    <p className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]" title={timezoneLabel(providerTimezone)}>
+                      {timezoneLabel(providerTimezone)}
+                    </p>
+                  </div>
+                  <div className="min-w-0 text-right">
+                    <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
+                      Patient time
+                    </p>
+                    <p className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]" title={timezoneLabel(patientTimezone)}>
+                      {timezoneLabel(patientTimezone)}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-[6px]">
