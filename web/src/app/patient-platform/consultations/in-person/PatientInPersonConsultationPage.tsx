@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
 import {
   getPatientLiveUrl,
   getPatientConsultationRoom,
@@ -106,9 +106,8 @@ export function PatientInPersonConsultationPage() {
   useEffect(() => {
     if (!room?.consultation) return;
 
-    const eventSource = new EventSource(getPatientLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
     const consultationId = room.consultation.id;
     const handleNotification = (event: MessageEvent) => {
       const notification = JSON.parse(event.data) as PatientNotification;
@@ -133,10 +132,18 @@ export function PatientInPersonConsultationPage() {
         );
       });
     };
-    eventSource.addEventListener("patient.notification.created", handleNotification);
+    void createAuthenticatedEventSource(getPatientLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("patient.notification.created", handleNotification);
+    });
     return () => {
-      eventSource.removeEventListener("patient.notification.created", handleNotification);
-      eventSource.close();
+      cancelled = true;
+      eventSource?.removeEventListener("patient.notification.created", handleNotification);
+      eventSource?.close();
     };
   }, [room?.consultation]);
 

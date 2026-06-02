@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
 import {
   cancelPatientConsultationRequest,
   getPatientLiveUrl,
@@ -319,9 +319,8 @@ export function PatientAppointmentsPage() {
   }, []);
 
   useEffect(() => {
-    const eventSource = new EventSource(getPatientLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
     const handleNotification = async () => {
       try {
         setFetchedAppointments(await fetchAppointmentItems());
@@ -330,10 +329,18 @@ export function PatientAppointmentsPage() {
       }
     };
 
-    eventSource.addEventListener("patient.notification.created", handleNotification);
+    void createAuthenticatedEventSource(getPatientLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("patient.notification.created", handleNotification);
+    });
     return () => {
-      eventSource.removeEventListener("patient.notification.created", handleNotification);
-      eventSource.close();
+      cancelled = true;
+      eventSource?.removeEventListener("patient.notification.created", handleNotification);
+      eventSource?.close();
     };
   }, []);
 

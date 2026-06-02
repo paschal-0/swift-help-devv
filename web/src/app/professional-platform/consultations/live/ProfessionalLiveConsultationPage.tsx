@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import {
   admitCommunicationParticipant,
@@ -166,9 +166,8 @@ export function ProfessionalLiveConsultationPage() {
   useEffect(() => {
     if (!consultation) return;
 
-    const eventSource = new EventSource(getProfessionalLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data) as ProfessionalConsultationMessage;
@@ -202,9 +201,6 @@ export function ProfessionalLiveConsultationPage() {
       );
     };
 
-    eventSource.addEventListener("professional.consultation_message.created", handleMessage);
-    eventSource.addEventListener("professional.consultation_presence.updated", handlePresence);
-
     const handleAiDocument = (event: MessageEvent) => {
       const document = JSON.parse(event.data) as ProfessionalConsultationAiDocument;
       if (document.consultationId !== consultation.id) return;
@@ -217,11 +213,6 @@ export function ProfessionalLiveConsultationPage() {
           : current,
       );
     };
-
-    eventSource.addEventListener(
-      "professional.consultation_ai_document.updated",
-      handleAiDocument,
-    );
 
     const handleParticipant = (event: MessageEvent) => {
       const participant = JSON.parse(event.data) as CommunicationParticipant;
@@ -240,27 +231,41 @@ export function ProfessionalLiveConsultationPage() {
       setTranscript(JSON.parse(event.data) as CommunicationTranscript);
     };
 
-    eventSource.addEventListener("communication.participant.updated", handleParticipant);
-    eventSource.addEventListener("communication.recording.updated", handleRecording);
-    eventSource.addEventListener("communication.transcript.updated", handleTranscript);
-
-    return () => {
-      eventSource.removeEventListener(
-        "professional.consultation_message.created",
-        handleMessage,
-      );
-      eventSource.removeEventListener(
-        "professional.consultation_presence.updated",
-        handlePresence,
-      );
-      eventSource.removeEventListener(
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("professional.consultation_message.created", handleMessage);
+      source.addEventListener("professional.consultation_presence.updated", handlePresence);
+      source.addEventListener(
         "professional.consultation_ai_document.updated",
         handleAiDocument,
       );
-      eventSource.removeEventListener("communication.participant.updated", handleParticipant);
-      eventSource.removeEventListener("communication.recording.updated", handleRecording);
-      eventSource.removeEventListener("communication.transcript.updated", handleTranscript);
-      eventSource.close();
+      source.addEventListener("communication.participant.updated", handleParticipant);
+      source.addEventListener("communication.recording.updated", handleRecording);
+      source.addEventListener("communication.transcript.updated", handleTranscript);
+    });
+
+    return () => {
+      cancelled = true;
+      eventSource?.removeEventListener(
+        "professional.consultation_message.created",
+        handleMessage,
+      );
+      eventSource?.removeEventListener(
+        "professional.consultation_presence.updated",
+        handlePresence,
+      );
+      eventSource?.removeEventListener(
+        "professional.consultation_ai_document.updated",
+        handleAiDocument,
+      );
+      eventSource?.removeEventListener("communication.participant.updated", handleParticipant);
+      eventSource?.removeEventListener("communication.recording.updated", handleRecording);
+      eventSource?.removeEventListener("communication.transcript.updated", handleTranscript);
+      eventSource?.close();
     };
   }, [consultation]);
 

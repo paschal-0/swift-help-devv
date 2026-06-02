@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import {
   getProfessionalProfile,
   getProfessionalLiveUrl,
@@ -325,9 +325,7 @@ export function ProfessionalPlatformShell({
 
     void loadShellData();
 
-    const eventSource = new EventSource(getProfessionalLiveUrl(), {
-      withCredentials: true,
-    });
+    let eventSource: EventSource | null = null;
 
     const handleNotification = (event: MessageEvent) => {
       const notification = JSON.parse(event.data) as ProfessionalNotification;
@@ -346,11 +344,18 @@ export function ProfessionalPlatformShell({
       );
     };
 
-    eventSource.addEventListener("professional.notification.created", handleNotification);
-    eventSource.addEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("professional.notification.created", handleNotification);
+      source.addEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
+      source.onerror = () => {
+        source.close();
+      };
+    });
 
     const handleAvatarUpdated = (event: Event) => {
       const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
@@ -364,9 +369,9 @@ export function ProfessionalPlatformShell({
 
     return () => {
       cancelled = true;
-      eventSource.removeEventListener("professional.notification.created", handleNotification);
-      eventSource.removeEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
-      eventSource.close();
+      eventSource?.removeEventListener("professional.notification.created", handleNotification);
+      eventSource?.removeEventListener("professional.notification.delivery_updated", handleDeliveryUpdate);
+      eventSource?.close();
       window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
     };
   }, []);

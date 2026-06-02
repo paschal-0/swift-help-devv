@@ -259,6 +259,11 @@ export async function refreshSession() {
   });
 }
 
+export async function createAuthenticatedEventSource(url: string) {
+  await refreshSession().catch(() => undefined);
+  return new EventSource(url, { withCredentials: true });
+}
+
 export async function logout() {
   return apiRequest<MessageResponse>("/auth/logout", {
     method: "POST",

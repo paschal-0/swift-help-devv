@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { createAuthenticatedEventSource } from "@/services/authApi";
 import type { ShiftOffer } from "../data";
 import {
   acceptProfessionalShiftOffer,
@@ -358,9 +359,8 @@ export function ProfessionalShiftOfferActivePage() {
   }, [params.offerId]);
 
   useEffect(() => {
-    const eventSource = new EventSource(getProfessionalLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data) as ProfessionalShiftMessage;
@@ -405,24 +405,32 @@ export function ProfessionalShiftOfferActivePage() {
       toast.info(update.title);
     };
 
-    eventSource.addEventListener("professional.shift_message.created", handleMessage);
-    eventSource.addEventListener("professional.shift_message.updated", handleMutatedMessage);
-    eventSource.addEventListener("professional.shift_message.deleted", handleMutatedMessage);
-    eventSource.addEventListener("professional.shift_messages.read", handleRead);
-    eventSource.addEventListener("professional.shift_typing", handleTyping);
-    eventSource.addEventListener("professional.shift_update.created", handleUpdate);
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("professional.shift_message.created", handleMessage);
+      source.addEventListener("professional.shift_message.updated", handleMutatedMessage);
+      source.addEventListener("professional.shift_message.deleted", handleMutatedMessage);
+      source.addEventListener("professional.shift_messages.read", handleRead);
+      source.addEventListener("professional.shift_typing", handleTyping);
+      source.addEventListener("professional.shift_update.created", handleUpdate);
+      source.onerror = () => {
+        source.close();
+      };
+    });
 
     return () => {
-      eventSource.removeEventListener("professional.shift_message.created", handleMessage);
-      eventSource.removeEventListener("professional.shift_message.updated", handleMutatedMessage);
-      eventSource.removeEventListener("professional.shift_message.deleted", handleMutatedMessage);
-      eventSource.removeEventListener("professional.shift_messages.read", handleRead);
-      eventSource.removeEventListener("professional.shift_typing", handleTyping);
-      eventSource.removeEventListener("professional.shift_update.created", handleUpdate);
-      eventSource.close();
+      cancelled = true;
+      eventSource?.removeEventListener("professional.shift_message.created", handleMessage);
+      eventSource?.removeEventListener("professional.shift_message.updated", handleMutatedMessage);
+      eventSource?.removeEventListener("professional.shift_message.deleted", handleMutatedMessage);
+      eventSource?.removeEventListener("professional.shift_messages.read", handleRead);
+      eventSource?.removeEventListener("professional.shift_typing", handleTyping);
+      eventSource?.removeEventListener("professional.shift_update.created", handleUpdate);
+      eventSource?.close();
     };
   }, [params.offerId]);
 

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import {
   getOrganizationLiveUrl,
   getOrganizationSettings,
@@ -279,9 +279,7 @@ export function OrganisationPlatformShell({
         }
       });
 
-    const eventSource = new EventSource(getOrganizationLiveUrl(), {
-      withCredentials: true,
-    });
+    let eventSource: EventSource | null = null;
 
     const handleNotification = (event: MessageEvent) => {
       const notification = JSON.parse(event.data) as OrganizationNotification;
@@ -300,17 +298,24 @@ export function OrganisationPlatformShell({
       );
     };
 
-    eventSource.addEventListener("organization.notification.created", handleNotification);
-    eventSource.addEventListener("organization.notification.delivery_updated", handleDeliveryUpdate);
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    void createAuthenticatedEventSource(getOrganizationLiveUrl()).then((source) => {
+      if (!mounted) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("organization.notification.created", handleNotification);
+      source.addEventListener("organization.notification.delivery_updated", handleDeliveryUpdate);
+      source.onerror = () => {
+        source.close();
+      };
+    });
 
     return () => {
       mounted = false;
-      eventSource.removeEventListener("organization.notification.created", handleNotification);
-      eventSource.removeEventListener("organization.notification.delivery_updated", handleDeliveryUpdate);
-      eventSource.close();
+      eventSource?.removeEventListener("organization.notification.created", handleNotification);
+      eventSource?.removeEventListener("organization.notification.delivery_updated", handleDeliveryUpdate);
+      eventSource?.close();
     };
   }, []);
 

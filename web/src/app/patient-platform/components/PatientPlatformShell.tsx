@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { toast } from "sonner";
-import { getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import {
   getPatientLiveUrl,
   getPatientProfile,
@@ -304,9 +304,7 @@ export function PatientPlatformShell({
         }
       });
 
-    const eventSource = new EventSource(getPatientLiveUrl(), {
-      withCredentials: true,
-    });
+    let eventSource: EventSource | null = null;
 
     const handleNotification = (event: MessageEvent) => {
       const notification = JSON.parse(event.data) as PatientNotification;
@@ -325,11 +323,18 @@ export function PatientPlatformShell({
       );
     };
 
-    eventSource.addEventListener("patient.notification.created", handleNotification);
-    eventSource.addEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    void createAuthenticatedEventSource(getPatientLiveUrl()).then((source) => {
+      if (!mounted) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("patient.notification.created", handleNotification);
+      source.addEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
+      source.onerror = () => {
+        source.close();
+      };
+    });
 
     const handleAvatarUpdated = (event: Event) => {
       const detail = (event as CustomEvent<{ avatarUrl?: string | null }>).detail;
@@ -352,9 +357,9 @@ export function PatientPlatformShell({
 
     return () => {
       mounted = false;
-      eventSource.removeEventListener("patient.notification.created", handleNotification);
-      eventSource.removeEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
-      eventSource.close();
+      eventSource?.removeEventListener("patient.notification.created", handleNotification);
+      eventSource?.removeEventListener("patient.notification.delivery_updated", handleDeliveryUpdate);
+      eventSource?.close();
       window.removeEventListener("swifthelp:avatar-updated", handleAvatarUpdated);
       window.removeEventListener("swifthelp:patient-local-notification", handleLocalNotification);
     };

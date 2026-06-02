@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/services/authApi";
+import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
 import {
   getPatientLiveUrl,
   getPatientConsultationRoom,
@@ -164,9 +164,8 @@ export function PatientLiveConsultationPage() {
   useEffect(() => {
     if (!consultation) return;
 
-    const eventSource = new EventSource(getPatientLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data) as PatientConsultationMessage;
@@ -213,10 +212,6 @@ export function PatientLiveConsultationPage() {
       router.push("/patient-platform/consultations/rate");
     };
 
-    eventSource.addEventListener("patient.consultation_message.created", handleMessage);
-    eventSource.addEventListener("patient.consultation_presence.updated", handlePresence);
-    eventSource.addEventListener("patient.notification.created", handleNotification);
-
     const handleParticipant = (event: MessageEvent) => {
       const participant = JSON.parse(event.data) as CommunicationParticipant;
       if (participant.status === "denied") {
@@ -241,8 +236,6 @@ export function PatientLiveConsultationPage() {
       }
     };
 
-    eventSource.addEventListener("communication.participant.updated", handleParticipant);
-
     const handleRecording = (event: MessageEvent) => {
       const recording = JSON.parse(event.data) as CommunicationRecording;
       setRecordings((current) =>
@@ -256,17 +249,29 @@ export function PatientLiveConsultationPage() {
       setTranscript(JSON.parse(event.data) as CommunicationTranscript);
     };
 
-    eventSource.addEventListener("communication.recording.updated", handleRecording);
-    eventSource.addEventListener("communication.transcript.updated", handleTranscript);
+    void createAuthenticatedEventSource(getPatientLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("patient.consultation_message.created", handleMessage);
+      source.addEventListener("patient.consultation_presence.updated", handlePresence);
+      source.addEventListener("patient.notification.created", handleNotification);
+      source.addEventListener("communication.participant.updated", handleParticipant);
+      source.addEventListener("communication.recording.updated", handleRecording);
+      source.addEventListener("communication.transcript.updated", handleTranscript);
+    });
 
     return () => {
-      eventSource.removeEventListener("patient.consultation_message.created", handleMessage);
-      eventSource.removeEventListener("patient.consultation_presence.updated", handlePresence);
-      eventSource.removeEventListener("patient.notification.created", handleNotification);
-      eventSource.removeEventListener("communication.participant.updated", handleParticipant);
-      eventSource.removeEventListener("communication.recording.updated", handleRecording);
-      eventSource.removeEventListener("communication.transcript.updated", handleTranscript);
-      eventSource.close();
+      cancelled = true;
+      eventSource?.removeEventListener("patient.consultation_message.created", handleMessage);
+      eventSource?.removeEventListener("patient.consultation_presence.updated", handlePresence);
+      eventSource?.removeEventListener("patient.notification.created", handleNotification);
+      eventSource?.removeEventListener("communication.participant.updated", handleParticipant);
+      eventSource?.removeEventListener("communication.recording.updated", handleRecording);
+      eventSource?.removeEventListener("communication.transcript.updated", handleTranscript);
+      eventSource?.close();
     };
   }, [consultation, router]);
 

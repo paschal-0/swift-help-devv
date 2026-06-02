@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { createAuthenticatedEventSource } from "@/services/authApi";
 import {
   deleteOrganizationShiftMessage,
   getOrganizationLiveUrl,
@@ -219,9 +220,8 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
   }, [shiftId]);
 
   useEffect(() => {
-    const eventSource = new EventSource(getOrganizationLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data) as OrganizationShiftMessage;
@@ -290,25 +290,32 @@ export function OrganisationShiftUpdatesPage({ shiftId }: { shiftId: string }) {
       );
     };
 
-    eventSource.addEventListener("organization.shift_message.created", handleMessage);
-    eventSource.addEventListener("organization.shift_message.updated", handleMutatedMessage);
-    eventSource.addEventListener("organization.shift_message.deleted", handleMutatedMessage);
-    eventSource.addEventListener("organization.shift_messages.read", handleRead);
-    eventSource.addEventListener("organization.shift_typing", handleTyping);
-    eventSource.addEventListener("organization.shift_update.created", handleUpdate);
-
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    void createAuthenticatedEventSource(getOrganizationLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener("organization.shift_message.created", handleMessage);
+      source.addEventListener("organization.shift_message.updated", handleMutatedMessage);
+      source.addEventListener("organization.shift_message.deleted", handleMutatedMessage);
+      source.addEventListener("organization.shift_messages.read", handleRead);
+      source.addEventListener("organization.shift_typing", handleTyping);
+      source.addEventListener("organization.shift_update.created", handleUpdate);
+      source.onerror = () => {
+        source.close();
+      };
+    });
 
     return () => {
-      eventSource.removeEventListener("organization.shift_message.created", handleMessage);
-      eventSource.removeEventListener("organization.shift_message.updated", handleMutatedMessage);
-      eventSource.removeEventListener("organization.shift_message.deleted", handleMutatedMessage);
-      eventSource.removeEventListener("organization.shift_messages.read", handleRead);
-      eventSource.removeEventListener("organization.shift_typing", handleTyping);
-      eventSource.removeEventListener("organization.shift_update.created", handleUpdate);
-      eventSource.close();
+      cancelled = true;
+      eventSource?.removeEventListener("organization.shift_message.created", handleMessage);
+      eventSource?.removeEventListener("organization.shift_message.updated", handleMutatedMessage);
+      eventSource?.removeEventListener("organization.shift_message.deleted", handleMutatedMessage);
+      eventSource?.removeEventListener("organization.shift_messages.read", handleRead);
+      eventSource?.removeEventListener("organization.shift_typing", handleTyping);
+      eventSource?.removeEventListener("organization.shift_update.created", handleUpdate);
+      eventSource?.close();
     };
   }, [shiftId]);
 

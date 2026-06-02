@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
+import { createAuthenticatedEventSource } from "@/services/authApi";
 import {
   acceptProfessionalRequest,
   declineProfessionalRequest,
@@ -593,9 +594,8 @@ export function ProfessionalDashboardPage() {
   }, [earningsRange]);
 
   useEffect(() => {
-    const eventSource = new EventSource(getProfessionalLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
 
     const handleSessionCreated = (event: MessageEvent) => {
       const session = JSON.parse(event.data) as ProfessionalConsultation;
@@ -658,33 +658,41 @@ export function ProfessionalDashboardPage() {
       }
     };
 
-    eventSource.addEventListener(
-      "professional.consultation_session.created",
-      handleSessionCreated,
-    );
-    eventSource.addEventListener(
-      "professional.consultation_request.created",
-      handleRequestCreated,
-    );
-    eventSource.addEventListener(
-      "professional.consultation_request.updated",
-      handleRequestUpdated,
-    );
-
-    return () => {
-      eventSource.removeEventListener(
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener(
         "professional.consultation_session.created",
         handleSessionCreated,
       );
-      eventSource.removeEventListener(
+      source.addEventListener(
         "professional.consultation_request.created",
         handleRequestCreated,
       );
-      eventSource.removeEventListener(
+      source.addEventListener(
         "professional.consultation_request.updated",
         handleRequestUpdated,
       );
-      eventSource.close();
+    });
+
+    return () => {
+      cancelled = true;
+      eventSource?.removeEventListener(
+        "professional.consultation_session.created",
+        handleSessionCreated,
+      );
+      eventSource?.removeEventListener(
+        "professional.consultation_request.created",
+        handleRequestCreated,
+      );
+      eventSource?.removeEventListener(
+        "professional.consultation_request.updated",
+        handleRequestUpdated,
+      );
+      eventSource?.close();
     };
   }, []);
 

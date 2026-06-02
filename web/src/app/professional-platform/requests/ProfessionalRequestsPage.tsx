@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { createAuthenticatedEventSource } from "@/services/authApi";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
   acceptProfessionalRequest,
@@ -207,9 +208,8 @@ export function ProfessionalRequestsPage({
   }, []);
 
   useEffect(() => {
-    const eventSource = new EventSource(getProfessionalLiveUrl(), {
-      withCredentials: true,
-    });
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
     const handleCreated = (event: MessageEvent) => {
       const request = mapBackendRequest(
         JSON.parse(event.data) as ProfessionalConsultationRequest,
@@ -231,24 +231,32 @@ export function ProfessionalRequestsPage({
       );
     };
 
-    eventSource.addEventListener(
-      "professional.consultation_request.created",
-      handleCreated,
-    );
-    eventSource.addEventListener(
-      "professional.consultation_request.updated",
-      handleUpdated,
-    );
-    return () => {
-      eventSource.removeEventListener(
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
+      if (cancelled) {
+        source.close();
+        return;
+      }
+      eventSource = source;
+      source.addEventListener(
         "professional.consultation_request.created",
         handleCreated,
       );
-      eventSource.removeEventListener(
+      source.addEventListener(
         "professional.consultation_request.updated",
         handleUpdated,
       );
-      eventSource.close();
+    });
+    return () => {
+      cancelled = true;
+      eventSource?.removeEventListener(
+        "professional.consultation_request.created",
+        handleCreated,
+      );
+      eventSource?.removeEventListener(
+        "professional.consultation_request.updated",
+        handleUpdated,
+      );
+      eventSource?.close();
     };
   }, []);
 
