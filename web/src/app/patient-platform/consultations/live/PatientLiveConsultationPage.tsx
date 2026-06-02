@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
@@ -67,6 +67,7 @@ function isActive(consultation: PatientConsultation) {
 
 export function PatientLiveConsultationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [room, setRoom] = useState<PatientConsultationRoom | null>(null);
   const [videoAccess, setVideoAccess] = useState<{
     roomId?: string;
@@ -95,9 +96,11 @@ export function PatientLiveConsultationPage() {
 
     async function loadRoom() {
       try {
+        const requestedId = searchParams.get("consultationId") ?? searchParams.get("id");
         const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
         const consultations = await listPatientConsultations();
         const consultationId =
+          consultations.find((item) => item.id === requestedId && isActive(item))?.id ||
           consultations.find((item) => item.id === storedId && isActive(item))?.id ||
           consultations.find(isActive)?.id;
 
@@ -137,7 +140,7 @@ export function PatientLiveConsultationPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!videoAccess?.roomId) return;

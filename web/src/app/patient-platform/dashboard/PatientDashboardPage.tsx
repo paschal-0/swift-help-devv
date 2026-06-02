@@ -15,6 +15,7 @@ type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled
 
 type Appointment = {
   id: string;
+  consultationId: string | null;
   day: string;
   date: string;
   doctor: string;
@@ -203,8 +204,15 @@ export function PatientDashboardPage() {
   }, []);
 
   const appointments = useMemo<Appointment[]>(() => {
+    const consultationByAppointmentId = new Map(
+      (dashboard?.consultations ?? [])
+        .filter((consultation) => consultation.appointmentId)
+        .map((consultation) => [consultation.appointmentId, consultation.id]),
+    );
+
     return (dashboard?.appointments ?? []).map((appointment) => ({
       id: appointment.id,
+      consultationId: consultationByAppointmentId.get(appointment.id) ?? null,
       day: appointment.startsAt ? formatDay(appointment.startsAt) : formatDay(appointment.scheduledDate),
       date: formatInstantDate(appointment.startsAt) ?? formatFullDate(appointment.scheduledDate),
       doctor: appointment.professional?.fullName ?? "Assigned professional",
@@ -221,7 +229,7 @@ export function PatientDashboardPage() {
       duration: formatDurationFromTimes(appointment.startTime, appointment.endTime),
       avatarUrl: appointment.professionalAvatarUrl ?? null,
     }));
-  }, [dashboard?.appointments]);
+  }, [dashboard?.appointments, dashboard?.consultations]);
 
   const dashboardDays = useMemo(() => Array.from(new Set(appointments.map((item) => item.day))), [appointments]);
   const selectedDay = dashboardDays[Math.min(selectedDayIndex, Math.max(0, dashboardDays.length - 1))] ?? "";
@@ -471,7 +479,9 @@ export function PatientDashboardPage() {
                     router.push(
                       activeAppointment.mode.toLowerCase().includes("person")
                         ? "/patient-platform/consultations/in-person"
-                        : "/patient-platform/consultations/live",
+                        : activeAppointment.consultationId
+                          ? `/patient-platform/consultations/live?consultationId=${encodeURIComponent(activeAppointment.consultationId)}`
+                          : "/patient-platform/consultations/live",
                     )
                   }
                   className="inline-flex h-[26px] flex-1 cursor-pointer items-center justify-center rounded-[4.76px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] tracking-[-0.05em] text-[#E3F2FD]"

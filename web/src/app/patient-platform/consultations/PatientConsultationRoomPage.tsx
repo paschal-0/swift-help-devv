@@ -153,7 +153,9 @@ export function PatientConsultationRoomPage() {
         return;
       }
       await joinPatientConsultation(activeConsultation.id);
-      router.push("/patient-platform/consultations/live");
+      router.push(
+        `/patient-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultation.id)}`,
+      );
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
