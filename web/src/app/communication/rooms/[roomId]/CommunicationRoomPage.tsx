@@ -144,8 +144,6 @@ export function CommunicationRoomPage() {
     setAiBotBusy(true);
     try {
       const response = await startAiVoiceBot(roomId, {
-        voice: "marin",
-        language: "en",
         profile: room?.type === "ai_triage" ? "ai_triage" : undefined,
       });
       setRoom(response.room);

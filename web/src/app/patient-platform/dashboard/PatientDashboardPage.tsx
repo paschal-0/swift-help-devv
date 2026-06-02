@@ -365,7 +365,7 @@ export function PatientDashboardPage() {
             </button>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[52px_245px_1fr]">
+          <div className={`mt-4 grid gap-4 ${activeAppointment ? "lg:grid-cols-[52px_245px_1fr]" : "lg:grid-cols-[52px_minmax(0,1fr)]"}`}>
             <div className="hidden flex-col items-center gap-2 pt-3 text-[14px] font-medium leading-[10px] tracking-[-0.05em] lg:flex">
               {dayAppointments.slice(0, 5).map((appointment) => (
                 <div key={`${appointment.id}-time`} className="flex h-[50px] items-center text-[#94A3B8]">
@@ -374,7 +374,7 @@ export function PatientDashboardPage() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className={dayAppointments.length ? "flex flex-col gap-2" : "flex min-h-[254px] items-center justify-center"}>
               {dayAppointments.length ? (
                 dayAppointments.slice(0, 5).map((appointment) => (
                   <motion.button
@@ -399,43 +399,42 @@ export function PatientDashboardPage() {
                   </motion.button>
                 ))
               ) : (
-                <div className="rounded-xl border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">
+                <div className="flex min-h-[86px] w-full items-center justify-center rounded-xl border border-dashed border-[#94A3B8] px-6 py-5 text-center text-sm text-[#64748B]">
                   No appointments found.
                 </div>
               )}
             </div>
 
+            {activeAppointment ? (
             <div className="rounded-xl border border-[#94A3B8] p-3">
               <div className="relative h-[121px] overflow-hidden rounded-lg bg-[#F8FAFC]">
                 <ProfileAvatar
-                  src={activeAppointment?.avatarUrl}
-                  alt={activeAppointment?.doctor ?? "Assigned professional"}
+                  src={activeAppointment.avatarUrl}
+                  alt={activeAppointment.doctor}
                   className="h-full w-full brightness-[0.45]"
                 />
                 <div className="absolute right-2 top-2 rounded-[15px] bg-[#E3F2FD] px-2 py-1 text-[7.5px] font-medium tracking-[-0.05em] text-[#1E88E5]">
-                  {activeAppointment?.status ?? "Upcoming"}
+                  {activeAppointment.status}
                 </div>
                 <div className="absolute bottom-3 left-2 text-[10px] font-semibold leading-[15px] tracking-[-0.05em] text-[#F8FAFC]">
-                  <p>Name: Dr {activeAppointment?.doctor ?? "Assigned professional"}</p>
-                  <p>specialty: {activeAppointment?.specialty ?? "Doctor"}</p>
+                  <p>Name: Dr {activeAppointment.doctor}</p>
+                  <p>specialty: {activeAppointment.specialty}</p>
                 </div>
               </div>
 
               <div className="mt-4 space-y-2 text-[14px] font-medium leading-3 tracking-[-0.05em] text-[#334155]">
-                <p>Date: {activeAppointment?.date ?? "-"}</p>
-                <p>Time: {activeAppointment?.time.split("-")[0]?.trim() ?? "-"}</p>
-                <p>Care type: {activeAppointment?.specialty ?? "-"}</p>
-                <p>Duration: {activeAppointment?.duration ?? "-"}</p>
-                <p className="leading-[18px]">Appointment mode: {activeAppointment?.mode ?? "-"}</p>
+                <p>Date: {activeAppointment.date}</p>
+                <p>Time: {activeAppointment.time.split("-")[0]?.trim()}</p>
+                <p>Care type: {activeAppointment.specialty}</p>
+                <p>Duration: {activeAppointment.duration}</p>
+                <p className="leading-[18px]">Appointment mode: {activeAppointment.mode}</p>
               </div>
 
               <div className="mt-3 flex gap-[19px]">
                 <motion.button
                   type="button"
                   onClick={() =>
-                    activeAppointment?.id
-                      ? router.push(`/patient-platform/appointments/details?appointmentId=${encodeURIComponent(activeAppointment.id)}`)
-                      : router.push("/patient-platform/appointments")
+                    router.push(`/patient-platform/appointments/details?appointmentId=${encodeURIComponent(activeAppointment.id)}`)
                   }
                   className="inline-flex h-[25px] flex-1 cursor-pointer items-center justify-center rounded-[4.63px] border border-[#334155] text-[10px] tracking-[-0.05em] text-[#334155]"
                   whileHover={{ y: -1 }}
@@ -447,7 +446,7 @@ export function PatientDashboardPage() {
                   type="button"
                   onClick={() =>
                     router.push(
-                      activeAppointment?.mode?.toLowerCase().includes("person")
+                      activeAppointment.mode.toLowerCase().includes("person")
                         ? "/patient-platform/consultations/in-person"
                         : "/patient-platform/consultations/live",
                     )
@@ -460,6 +459,7 @@ export function PatientDashboardPage() {
                 </motion.button>
               </div>
             </div>
+            ) : null}
           </div>
         </article>
 

@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/services/authApi";
 import {
   createAiTriageRoom,
   createEmergencyRoom,
+  startAiVoiceBot,
 } from "@/services/communicationApi";
 import {
   listPatientAiAssistantMessages,
@@ -667,6 +668,19 @@ export function PatientAiAssistantPage() {
           primarySymptom: draft.primarySymptom,
         },
       });
+      try {
+        await startAiVoiceBot(state.room.id, {
+          profile: "ai_triage",
+          instructions: draft.primarySymptom
+            ? `The patient started from Swift AI assistant with primary symptom: ${draft.primarySymptom}.`
+            : undefined,
+        });
+        toast.success("Swift AI voice is joining the room.");
+      } catch (error) {
+        toast.warning(
+          `Voice room created, but Swift AI could not join yet: ${getApiErrorMessage(error)}`,
+        );
+      }
       router.push(routeWithCountry(`/communication/rooms/${state.room.id}`));
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -748,7 +762,7 @@ export function PatientAiAssistantPage() {
               {voiceMode ? (
                 <div className="mb-3 rounded-[14px] border border-[#BFDBFE] bg-[#E3F2FD] px-4 py-3 text-[13px] tracking-[-0.04em] text-[#334155]">
                   <span className="font-semibold text-[#1565C0]">
-                    Voice triage:
+                    Swift AI:
                   </span>{" "}
                   {isListening
                     ? "Listening for your symptoms..."

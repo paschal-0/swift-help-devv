@@ -795,7 +795,7 @@ export function PatientAppointmentSchedulePage() {
       </div>
 
       <div
-        className="fixed bottom-0 left-[72px] right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:left-0 md:px-4 xl:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md xl:hidden"
       >
         <div className="mx-auto max-w-[640px]">
           <div className="mb-3 flex items-start justify-between gap-3">
