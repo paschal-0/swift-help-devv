@@ -8,7 +8,9 @@ import {
 } from "./authApi";
 import type { CommunicationRoomAccess } from "./communicationApi";
 
-function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
+function buildQuery(
+  params?: Record<string, string | number | boolean | undefined>,
+) {
   if (!params) return "";
 
   const query = new URLSearchParams();
@@ -70,6 +72,9 @@ export type PatientConsultation = {
     | "missed"
     | "cancelled"
     | string;
+  liveStartedAt?: string | null;
+  liveEndedAt?: string | null;
+  endReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -519,7 +524,9 @@ export function updatePatientAccount(payload: {
 }
 
 export function listPatientAppointments() {
-  return apiRequest<PatientAppointment[]>("/patient/appointments", { method: "GET" });
+  return apiRequest<PatientAppointment[]>("/patient/appointments", {
+    method: "GET",
+  });
 }
 
 export function getPatientAppointment(appointmentId: string) {
@@ -575,16 +582,22 @@ export function createPatientConsultationRequest(payload: {
   smsReminderEnabled?: boolean;
   shareSummaryWithProvider?: boolean;
 }) {
-  return apiRequest<PatientConsultationRequest>("/patient/consultation-requests", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiRequest<PatientConsultationRequest>(
+    "/patient/consultation-requests",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function listPatientConsultationRequests() {
-  return apiRequest<PatientConsultationRequest[]>("/patient/consultation-requests", {
-    method: "GET",
-  });
+  return apiRequest<PatientConsultationRequest[]>(
+    "/patient/consultation-requests",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function cancelPatientConsultationRequest(requestId: string) {
@@ -641,22 +654,34 @@ export function updatePatientSecurityPreferences(payload: {
 }
 
 export function getPatientSubscription() {
-  return apiRequest<{ autoRenew: boolean; status: string }>("/profile/subscriptions", {
-    method: "GET",
-  });
+  return apiRequest<{ autoRenew: boolean; status: string }>(
+    "/profile/subscriptions",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function updatePatientSubscriptionAutoRenew(enabled: boolean) {
-  return apiRequest<Record<string, unknown>>("/profile/subscriptions/auto-renew", {
-    method: "PATCH",
-    body: JSON.stringify({ enabled }),
-  });
+  return apiRequest<Record<string, unknown>>(
+    "/profile/subscriptions/auto-renew",
+    {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    },
+  );
 }
 
-export function listPatientConsultations(params?: { from?: string; to?: string }) {
-  return apiRequest<PatientConsultation[]>(`/patient/consultations${buildQuery(params)}`, {
-    method: "GET",
-  });
+export function listPatientConsultations(params?: {
+  from?: string;
+  to?: string;
+}) {
+  return apiRequest<PatientConsultation[]>(
+    `/patient/consultations${buildQuery(params)}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getPatientConsultation(consultationId: string) {
@@ -671,9 +696,12 @@ export function listPatientProviders(params?: {
   specialization?: string;
   consultationType?: string;
 }) {
-  return apiRequest<PatientProvider[]>(`/patient/providers${buildQuery(params)}`, {
-    method: "GET",
-  });
+  return apiRequest<PatientProvider[]>(
+    `/patient/providers${buildQuery(params)}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getPatientProviderAvailability(
@@ -697,9 +725,12 @@ export function listPatientMedicalRecords(params?: {
 }
 
 export function getPatientMedicalRecordsSummary() {
-  return apiRequest<PatientMedicalRecordsSummary>("/patient/medical-records/summary", {
-    method: "GET",
-  });
+  return apiRequest<PatientMedicalRecordsSummary>(
+    "/patient/medical-records/summary",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getPatientMedicalRecord(recordId: string) {
@@ -709,7 +740,9 @@ export function getPatientMedicalRecord(recordId: string) {
   );
 }
 
-export function createPatientMedicalRecord(payload: PatientMedicalRecordPayload) {
+export function createPatientMedicalRecord(
+  payload: PatientMedicalRecordPayload,
+) {
   return apiRequest<PatientMedicalRecord>("/patient/medical-records", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -730,9 +763,12 @@ export function updatePatientMedicalRecord(
 }
 
 export function getPatientMedicalRecordsRecommendation() {
-  return apiRequest<PatientMedicalRecordsRecommendation>("/patient/medical-records/recommendation", {
-    method: "GET",
-  });
+  return apiRequest<PatientMedicalRecordsRecommendation>(
+    "/patient/medical-records/recommendation",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getPatientMedicalRecordsRecommendationSource() {
@@ -755,19 +791,21 @@ export function createPatientSymptomCheck(payload: {
 }
 
 export function startPatientAiAssistantSession(payload?: { message?: string }) {
-  return apiRequest<PatientAiAssistantSession | PatientAiAssistantMessageResponse>(
-    "/patient/ai-assistant/sessions",
-    {
-      method: "POST",
-      body: JSON.stringify(payload ?? {}),
-    },
-  );
+  return apiRequest<
+    PatientAiAssistantSession | PatientAiAssistantMessageResponse
+  >("/patient/ai-assistant/sessions", {
+    method: "POST",
+    body: JSON.stringify(payload ?? {}),
+  });
 }
 
 export function listPatientAiAssistantSessions() {
-  return apiRequest<PatientAiAssistantSession[]>("/patient/ai-assistant/sessions", {
-    method: "GET",
-  });
+  return apiRequest<PatientAiAssistantSession[]>(
+    "/patient/ai-assistant/sessions",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function sendPatientAiAssistantMessage(payload: {
@@ -801,11 +839,15 @@ export function listPatientSymptomChecks(params?: {
 }
 
 export function getPatientReferrals() {
-  return apiRequest<PatientReferralSummary>("/patient/referrals", { method: "GET" });
+  return apiRequest<PatientReferralSummary>("/patient/referrals", {
+    method: "GET",
+  });
 }
 
 export function getPatientReferralTiers() {
-  return apiRequest<PatientReferralTier[]>("/patient/referrals/tiers", { method: "GET" });
+  return apiRequest<PatientReferralTier[]>("/patient/referrals/tiers", {
+    method: "GET",
+  });
 }
 
 export function getPatientReferralWallet() {
@@ -842,7 +884,10 @@ export function requestPatientReferralWithdrawal(payload: {
   );
 }
 
-export function listPatientReferralPeople(params?: { role?: BackendRole; search?: string }) {
+export function listPatientReferralPeople(params?: {
+  role?: BackendRole;
+  search?: string;
+}) {
   return apiRequest<PatientReferralPerson[]>(
     `/patient/referrals/people${buildQuery(params)}`,
     { method: "GET" },
@@ -959,11 +1004,24 @@ export function updatePatientConsultationPresence(
   );
 }
 
+export function leavePatientConsultation(consultationId: string) {
+  return apiRequest<{
+    consultation: PatientConsultation;
+    presence: PatientConsultationPresence;
+    message: string;
+  }>(`/patient/consultations/${encodeURIComponent(consultationId)}/leave`, {
+    method: "POST",
+  });
+}
+
 export function getPatientLiveUrl() {
   return `${API_BASE_URL}/patient/live`;
 }
 
-export function listPatientNotifications(params?: { unreadOnly?: boolean; limit?: number }) {
+export function listPatientNotifications(params?: {
+  unreadOnly?: boolean;
+  limit?: number;
+}) {
   return apiRequest<PatientNotification[]>(
     `/patient/notifications${buildQuery(params)}`,
     { method: "GET" },

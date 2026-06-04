@@ -60,6 +60,8 @@ type DailyTrackState = {
 
 type DailyParticipant = {
   local?: boolean;
+  participantType?: string;
+  user_id?: string;
   user_name?: string;
   tracks?: Record<string, DailyTrackState | undefined>;
 };
@@ -104,6 +106,33 @@ function getVideoTrack(participant?: DailyParticipant | null) {
 
 function getAudioTrack(participant?: DailyParticipant | null) {
   return participant?.tracks?.audio?.persistentTrack ?? null;
+}
+
+function hasPlayableMedia(participant: DailyParticipant) {
+  return Boolean(getVideoTrack(participant) || getAudioTrack(participant));
+}
+
+function pickRemoteParticipant(participants: DailyParticipant[]) {
+  const remoteParticipants = participants.filter(
+    (participant) => !participant.local,
+  );
+
+  return (
+    remoteParticipants.find(
+      (participant) =>
+        !participant.participantType &&
+        participant.tracks?.video?.state === "playable" &&
+        getVideoTrack(participant),
+    ) ??
+    remoteParticipants.find(
+      (participant) =>
+        !participant.participantType && hasPlayableMedia(participant),
+    ) ??
+    remoteParticipants.find((participant) => hasPlayableMedia(participant)) ??
+    remoteParticipants.find((participant) => !participant.participantType) ??
+    remoteParticipants[0] ??
+    null
+  );
 }
 
 async function ignoreDailyResult(action: (() => unknown) | undefined) {
@@ -313,7 +342,10 @@ export function ConsultationVideoRoom({
 }: ConsultationVideoRoomProps) {
   const callRef = useRef<DailyCallObject | null>(null);
   const presenceChangeRef = useRef(onPresenceChange);
-  const [participants, setParticipants] = useState<Record<string, DailyParticipant>>({});
+  const transcriptTextRef = useRef(onTranscriptText);
+  const [participants, setParticipants] = useState<
+    Record<string, DailyParticipant>
+  >({});
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
@@ -331,10 +363,14 @@ export function ConsultationVideoRoom({
   const [joinedAt, setJoinedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const participantList = useMemo(() => Object.values(participants), [participants]);
-  const localParticipant = participantList.find((participant) => participant.local);
-  const remoteParticipant =
-    participantList.find((participant) => !participant.local) ?? null;
+  const participantList = useMemo(
+    () => Object.values(participants),
+    [participants],
+  );
+  const localParticipant = participantList.find(
+    (participant) => participant.local,
+  );
+  const remoteParticipant = pickRemoteParticipant(participantList);
   const localVideoTrack = getVideoTrack(localParticipant);
   const remoteVideoTrack = getVideoTrack(remoteParticipant);
   const remoteAudioTrack = getAudioTrack(remoteParticipant);
@@ -344,6 +380,10 @@ export function ConsultationVideoRoom({
   useEffect(() => {
     presenceChangeRef.current = onPresenceChange;
   }, [onPresenceChange]);
+
+  useEffect(() => {
+    transcriptTextRef.current = onTranscriptText;
+  }, [onTranscriptText]);
 
   useEffect(() => {
     cameraEnabledRef.current = cameraEnabled;
@@ -429,7 +469,7 @@ export function ConsultationVideoRoom({
         })
         .join(" ")
         .trim();
-      if (text) void onTranscriptText?.(text);
+      if (text) void transcriptTextRef.current?.(text);
     };
 
     setConnectionStatus("connecting");
@@ -497,7 +537,7 @@ export function ConsultationVideoRoom({
         microphoneEnabled: false,
       });
     };
-  }, [canJoin, meetingUrl, networkMode, onTranscriptText, token]);
+  }, [canJoin, meetingUrl, networkMode, token]);
 
   useEffect(() => {
     if (!joinedAt) {
@@ -511,6 +551,22 @@ export function ConsultationVideoRoom({
 
     return () => window.clearInterval(intervalId);
   }, [joinedAt]);
+
+  useEffect(() => {
+    if (connectionStatus !== "connected") return;
+
+    const sendHeartbeat = () => {
+      presenceChangeRef.current?.({
+        inCall: true,
+        cameraEnabled: cameraEnabledRef.current,
+        microphoneEnabled: microphoneEnabledRef.current,
+      });
+    };
+
+    sendHeartbeat();
+    const intervalId = window.setInterval(sendHeartbeat, 20_000);
+    return () => window.clearInterval(intervalId);
+  }, [connectionStatus]);
 
   const toggleCamera = async () => {
     const nextValue = !cameraEnabled;
@@ -593,7 +649,11 @@ export function ConsultationVideoRoom({
     onEnd();
   };
 
-  const renderAvatar = (src: string | null | undefined, label: string, size: string) => {
+  const renderAvatar = (
+    src: string | null | undefined,
+    label: string,
+    size: string,
+  ) => {
     if (src) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
@@ -630,7 +690,11 @@ export function ConsultationVideoRoom({
           <RemoteAudio track={remoteAudioTrack} volume={audioVolume} />
 
           <div className="absolute left-[18px] top-[15px] flex h-12 w-[142px] items-center gap-[3px] rounded-[12px] bg-[#F8FAFC] p-1">
-            {renderAvatar(remoteAvatarUrl, effectiveRemoteLabel, "h-10 w-10 rounded-[12px]")}
+            {renderAvatar(
+              remoteAvatarUrl,
+              effectiveRemoteLabel,
+              "h-10 w-10 rounded-[12px]",
+            )}
             <div className="min-w-0">
               <p className="truncate text-[10px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
                 {remoteRoleLabel}
@@ -687,7 +751,9 @@ export function ConsultationVideoRoom({
                   cameraEnabled ? "bg-[rgba(255,255,255,0.3)]" : "bg-[#64748B]"
                 }`}
                 aria-pressed={cameraEnabled}
-                aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+                aria-label={
+                  cameraEnabled ? "Turn camera off" : "Turn camera on"
+                }
               >
                 <CameraIcon />
               </button>
@@ -707,7 +773,9 @@ export function ConsultationVideoRoom({
                   screenSharing ? "bg-[#1565C0]" : "bg-[rgba(255,255,255,0.3)]"
                 }`}
                 aria-pressed={screenSharing}
-                aria-label={screenSharing ? "Stop screen sharing" : "Share screen"}
+                aria-label={
+                  screenSharing ? "Stop screen sharing" : "Share screen"
+                }
               >
                 <ScreenIcon />
               </button>
@@ -715,7 +783,9 @@ export function ConsultationVideoRoom({
                 type="button"
                 onClick={() => void toggleMicrophone()}
                 className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
-                  microphoneEnabled ? "bg-[rgba(255,255,255,0.3)]" : "bg-[#64748B]"
+                  microphoneEnabled
+                    ? "bg-[rgba(255,255,255,0.3)]"
+                    : "bg-[#64748B]"
                 }`}
                 aria-pressed={microphoneEnabled}
                 aria-label={
@@ -853,7 +923,9 @@ export function ConsultationVideoRoom({
                       >
                         {message.body}
                       </span>
-                      {isMine ? renderAvatar(localAvatarUrl, label, "h-6 w-6") : null}
+                      {isMine
+                        ? renderAvatar(localAvatarUrl, label, "h-6 w-6")
+                        : null}
                     </div>
                   );
                 })}
@@ -870,7 +942,9 @@ export function ConsultationVideoRoom({
               >
                 <input
                   value={messageDraft}
-                  onChange={(event) => onMessageDraftChange?.(event.target.value)}
+                  onChange={(event) =>
+                    onMessageDraftChange?.(event.target.value)
+                  }
                   placeholder="Write your message"
                   className="h-full w-[206px] rounded-[12px] bg-transparent px-[11px] pt-[3px] text-[10px] font-light tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
                 />
@@ -891,7 +965,9 @@ export function ConsultationVideoRoom({
                 <>
                   <p className="font-medium">Consultation room</p>
                   <p className="mt-2 text-[#94A3B8]">
-                    {roomName ? `Room ${roomName}` : "Live session details will appear here."}
+                    {roomName
+                      ? `Room ${roomName}`
+                      : "Live session details will appear here."}
                   </p>
                 </>
               )}
@@ -924,7 +1000,9 @@ export function ConsultationVideoRoom({
                         : "bg-[#E3F2FD] text-[#1565C0]"
                     }`}
                   >
-                    {transcriptionActive ? "Stop transcript" : "Start transcript"}
+                    {transcriptionActive
+                      ? "Stop transcript"
+                      : "Start transcript"}
                   </button>
                 ) : null}
               </div>

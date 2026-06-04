@@ -3,11 +3,15 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
+import {
+  createAuthenticatedEventSource,
+  getApiErrorMessage,
+} from "@/services/authApi";
 import {
   getPatientLiveUrl,
   getPatientConsultationRoom,
   joinPatientConsultation,
+  leavePatientConsultation,
   listPatientConsultations,
   sendPatientConsultationMessage,
   updatePatientConsultationPresence,
@@ -79,8 +83,12 @@ export function PatientLiveConsultationPage() {
   } | null>(null);
   const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<CommunicationRecording[]>([]);
-  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
-  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(
+    null,
+  );
+  const [analytics, setAnalytics] = useState<Record<string, number> | null>(
+    null,
+  );
   const [translationLanguage, setTranslationLanguage] = useState("Yoruba");
   const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
@@ -96,12 +104,18 @@ export function PatientLiveConsultationPage() {
 
     async function loadRoom() {
       try {
-        const requestedId = searchParams.get("consultationId") ?? searchParams.get("id");
-        const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+        const requestedId =
+          searchParams.get("consultationId") ?? searchParams.get("id");
+        const storedId = window.sessionStorage.getItem(
+          ACTIVE_CONSULTATION_STORAGE_KEY,
+        );
         const consultations = await listPatientConsultations();
         const consultationId =
-          consultations.find((item) => item.id === requestedId && isActive(item))?.id ||
-          consultations.find((item) => item.id === storedId && isActive(item))?.id ||
+          consultations.find(
+            (item) => item.id === requestedId && isActive(item),
+          )?.id ||
+          consultations.find((item) => item.id === storedId && isActive(item))
+            ?.id ||
           consultations.find(isActive)?.id;
 
         if (!consultationId) {
@@ -110,7 +124,10 @@ export function PatientLiveConsultationPage() {
           return;
         }
 
-        window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, consultationId);
+        window.sessionStorage.setItem(
+          ACTIVE_CONSULTATION_STORAGE_KEY,
+          consultationId,
+        );
         const [nextRoom, access] = await Promise.all([
           getPatientConsultationRoom(consultationId),
           joinPatientConsultation(consultationId),
@@ -207,9 +224,32 @@ export function PatientLiveConsultationPage() {
       ) {
         return;
       }
-      window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, consultation.id);
-      toast.success("Your professional has completed the consultation.");
-      router.push("/patient-platform/consultations/rate");
+      window.sessionStorage.setItem(
+        ACTIVE_CONSULTATION_STORAGE_KEY,
+        consultation.id,
+      );
+      if (notification.metadata?.endReason === "professional_completed") {
+        toast.success("Your professional has completed the consultation.");
+        router.push("/patient-platform/consultations/rate");
+        return;
+      }
+      toast.info(notification.title);
+      router.push("/patient-platform/consultations");
+    };
+
+    const handleSession = (event: MessageEvent) => {
+      const updatedConsultation = JSON.parse(event.data) as PatientConsultation;
+      if (updatedConsultation.id !== consultation.id) return;
+      setRoom((current) =>
+        current ? { ...current, consultation: updatedConsultation } : current,
+      );
+      if (
+        ["missed", "cancelled"].includes(updatedConsultation.status) ||
+        (updatedConsultation.status === "completed" &&
+          updatedConsultation.endReason !== "professional_completed")
+      ) {
+        router.push("/patient-platform/consultations");
+      }
     };
 
     const handleParticipant = (event: MessageEvent) => {
@@ -255,22 +295,66 @@ export function PatientLiveConsultationPage() {
         return;
       }
       eventSource = source;
-      source.addEventListener("patient.consultation_message.created", handleMessage);
-      source.addEventListener("patient.consultation_presence.updated", handlePresence);
-      source.addEventListener("patient.notification.created", handleNotification);
-      source.addEventListener("communication.participant.updated", handleParticipant);
-      source.addEventListener("communication.recording.updated", handleRecording);
-      source.addEventListener("communication.transcript.updated", handleTranscript);
+      source.addEventListener(
+        "patient.consultation_message.created",
+        handleMessage,
+      );
+      source.addEventListener(
+        "patient.consultation_presence.updated",
+        handlePresence,
+      );
+      source.addEventListener(
+        "patient.consultation_session.updated",
+        handleSession,
+      );
+      source.addEventListener(
+        "patient.notification.created",
+        handleNotification,
+      );
+      source.addEventListener(
+        "communication.participant.updated",
+        handleParticipant,
+      );
+      source.addEventListener(
+        "communication.recording.updated",
+        handleRecording,
+      );
+      source.addEventListener(
+        "communication.transcript.updated",
+        handleTranscript,
+      );
     });
 
     return () => {
       cancelled = true;
-      eventSource?.removeEventListener("patient.consultation_message.created", handleMessage);
-      eventSource?.removeEventListener("patient.consultation_presence.updated", handlePresence);
-      eventSource?.removeEventListener("patient.notification.created", handleNotification);
-      eventSource?.removeEventListener("communication.participant.updated", handleParticipant);
-      eventSource?.removeEventListener("communication.recording.updated", handleRecording);
-      eventSource?.removeEventListener("communication.transcript.updated", handleTranscript);
+      eventSource?.removeEventListener(
+        "patient.consultation_message.created",
+        handleMessage,
+      );
+      eventSource?.removeEventListener(
+        "patient.consultation_presence.updated",
+        handlePresence,
+      );
+      eventSource?.removeEventListener(
+        "patient.consultation_session.updated",
+        handleSession,
+      );
+      eventSource?.removeEventListener(
+        "patient.notification.created",
+        handleNotification,
+      );
+      eventSource?.removeEventListener(
+        "communication.participant.updated",
+        handleParticipant,
+      );
+      eventSource?.removeEventListener(
+        "communication.recording.updated",
+        handleRecording,
+      );
+      eventSource?.removeEventListener(
+        "communication.transcript.updated",
+        handleTranscript,
+      );
       eventSource?.close();
     };
   }, [consultation, router]);
@@ -281,7 +365,9 @@ export function PatientLiveConsultationPage() {
     if (!consultation || !body) return;
 
     try {
-      const message = await sendPatientConsultationMessage(consultation.id, { body });
+      const message = await sendPatientConsultationMessage(consultation.id, {
+        body,
+      });
       setRoom((current) =>
         current
           ? {
@@ -300,12 +386,7 @@ export function PatientLiveConsultationPage() {
     if (!consultation || isLeaving) return;
     setIsLeaving(true);
     try {
-      await updatePatientConsultationPresence(consultation.id, {
-        online: false,
-        inCall: false,
-        cameraEnabled: false,
-        microphoneEnabled: false,
-      });
+      await leavePatientConsultation(consultation.id);
       toast.success("You left the consultation.");
       router.push("/patient-platform/consultations");
     } catch (error) {
@@ -376,7 +457,8 @@ export function PatientLiveConsultationPage() {
                 Waiting room
               </p>
               <p className="mt-2 text-[13px] font-light tracking-[-0.04em] text-[#E2E8F0]">
-                Your professional has been notified. You will enter automatically once admitted.
+                Your professional has been notified. You will enter
+                automatically once admitted.
               </p>
             </div>
           ) : (
@@ -419,7 +501,9 @@ export function PatientLiveConsultationPage() {
               </div>
               <div className="flex gap-1">
                 <dt className="text-[#94A3B8]">Specialty:</dt>
-                <dd className="font-medium text-[#334155]">{providerSpecialty}</dd>
+                <dd className="font-medium text-[#334155]">
+                  {providerSpecialty}
+                </dd>
               </div>
               <div className="flex gap-1">
                 <dt className="text-[#94A3B8]">Date:</dt>
@@ -482,7 +566,9 @@ export function PatientLiveConsultationPage() {
                 <div className="mt-3 flex gap-2">
                   <input
                     value={translationLanguage}
-                    onChange={(event) => setTranslationLanguage(event.target.value)}
+                    onChange={(event) =>
+                      setTranslationLanguage(event.target.value)
+                    }
                     className="h-9 min-w-0 flex-1 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] outline-none focus:border-[#1565C0]"
                     aria-label="Target language"
                   />
@@ -532,11 +618,15 @@ export function PatientLiveConsultationPage() {
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[#64748B]">
                   <div>
                     <dt>Joins</dt>
-                    <dd className="font-semibold text-[#334155]">{analytics.joins ?? 0}</dd>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.joins ?? 0}
+                    </dd>
                   </div>
                   <div>
                     <dt>Leaves</dt>
-                    <dd className="font-semibold text-[#334155]">{analytics.leaves ?? 0}</dd>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.leaves ?? 0}
+                    </dd>
                   </div>
                 </dl>
               </section>
@@ -544,7 +634,8 @@ export function PatientLiveConsultationPage() {
             <section className="rounded-[12px] bg-[#F8FAFC] p-3">
               <p className="font-medium text-[#334155]">Consent</p>
               <p className="mt-1 text-[#64748B]">
-                Allow recording, transcription, and AI notes only when you are comfortable.
+                Allow recording, transcription, and AI notes only when you are
+                comfortable.
               </p>
               <button
                 type="button"

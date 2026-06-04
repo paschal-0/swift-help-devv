@@ -3,7 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { createAuthenticatedEventSource, getApiErrorMessage } from "@/services/authApi";
+import {
+  createAuthenticatedEventSource,
+  getApiErrorMessage,
+} from "@/services/authApi";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import {
   admitCommunicationParticipant,
@@ -23,7 +26,7 @@ import {
   type CommunicationTranscript,
 } from "@/services/communicationApi";
 import {
-  completeProfessionalConsultation,
+  endProfessionalConsultationSession,
   generateProfessionalConsultationAiDocument,
   getProfessionalLiveUrl,
   getProfessionalConsultationRoom,
@@ -87,10 +90,18 @@ export function ProfessionalLiveConsultationPage() {
     canJoin?: boolean;
   } | null>(null);
   const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
-  const [participants, setParticipants] = useState<CommunicationParticipant[]>([]);
-  const [recording, setRecording] = useState<CommunicationRecording | null>(null);
-  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
-  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [participants, setParticipants] = useState<CommunicationParticipant[]>(
+    [],
+  );
+  const [recording, setRecording] = useState<CommunicationRecording | null>(
+    null,
+  );
+  const [transcript, setTranscript] = useState<CommunicationTranscript | null>(
+    null,
+  );
+  const [analytics, setAnalytics] = useState<Record<string, number> | null>(
+    null,
+  );
   const [translationLanguage, setTranslationLanguage] = useState("Yoruba");
   const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
@@ -102,15 +113,19 @@ export function ProfessionalLiveConsultationPage() {
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
 
   const consultation = room?.consultation ?? null;
-  const patientName = room?.patient?.name ?? consultation?.patientName ?? "Patient";
+  const patientName =
+    room?.patient?.name ?? consultation?.patientName ?? "Patient";
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadRoom() {
       try {
-        const requestedId = searchParams.get("consultationId") ?? searchParams.get("id");
-        const storedId = window.sessionStorage.getItem(ACTIVE_CONSULTATION_STORAGE_KEY);
+        const requestedId =
+          searchParams.get("consultationId") ?? searchParams.get("id");
+        const storedId = window.sessionStorage.getItem(
+          ACTIVE_CONSULTATION_STORAGE_KEY,
+        );
         const consultationId =
           requestedId ||
           storedId ||
@@ -122,7 +137,10 @@ export function ProfessionalLiveConsultationPage() {
           return;
         }
 
-        window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, consultationId);
+        window.sessionStorage.setItem(
+          ACTIVE_CONSULTATION_STORAGE_KEY,
+          consultationId,
+        );
         const [nextRoom, access] = await Promise.all([
           getProfessionalConsultationRoom(consultationId),
           joinProfessionalConsultation(consultationId),
@@ -141,7 +159,9 @@ export function ProfessionalLiveConsultationPage() {
         if (access.participant) setParticipants([access.participant]);
         setSummary(nextRoom.consultation.reason ?? "");
         if (access.roomId) {
-          const state = await getCommunicationRoom(access.roomId).catch(() => null);
+          const state = await getCommunicationRoom(access.roomId).catch(
+            () => null,
+          );
           if (!cancelled && state) {
             setParticipants(state.participants);
             setRecording(state.recordings[0] ?? null);
@@ -185,7 +205,9 @@ export function ProfessionalLiveConsultationPage() {
     };
 
     const handlePresence = (event: MessageEvent) => {
-      const presence = JSON.parse(event.data) as ProfessionalConsultationPresence;
+      const presence = JSON.parse(
+        event.data,
+      ) as ProfessionalConsultationPresence;
       if (presence.consultationId !== consultation.id) return;
       setRoom((current) =>
         current
@@ -202,7 +224,9 @@ export function ProfessionalLiveConsultationPage() {
     };
 
     const handleAiDocument = (event: MessageEvent) => {
-      const document = JSON.parse(event.data) as ProfessionalConsultationAiDocument;
+      const document = JSON.parse(
+        event.data,
+      ) as ProfessionalConsultationAiDocument;
       if (document.consultationId !== consultation.id) return;
       setRoom((current) =>
         current
@@ -214,11 +238,30 @@ export function ProfessionalLiveConsultationPage() {
       );
     };
 
+    const handleSession = (event: MessageEvent) => {
+      const updatedConsultation = JSON.parse(
+        event.data,
+      ) as ProfessionalConsultation;
+      if (updatedConsultation.id !== consultation.id) return;
+      setRoom((current) =>
+        current ? { ...current, consultation: updatedConsultation } : current,
+      );
+      if (
+        ["completed", "missed", "cancelled"].includes(
+          updatedConsultation.status,
+        )
+      ) {
+        router.push("/professional-platform/schedule");
+      }
+    };
+
     const handleParticipant = (event: MessageEvent) => {
       const participant = JSON.parse(event.data) as CommunicationParticipant;
       setParticipants((current) =>
         current.some((item) => item.id === participant.id)
-          ? current.map((item) => (item.id === participant.id ? participant : item))
+          ? current.map((item) =>
+              item.id === participant.id ? participant : item,
+            )
           : [...current, participant],
       );
     };
@@ -231,22 +274,43 @@ export function ProfessionalLiveConsultationPage() {
       setTranscript(JSON.parse(event.data) as CommunicationTranscript);
     };
 
-    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
-      if (cancelled) {
-        source.close();
-        return;
-      }
-      eventSource = source;
-      source.addEventListener("professional.consultation_message.created", handleMessage);
-      source.addEventListener("professional.consultation_presence.updated", handlePresence);
-      source.addEventListener(
-        "professional.consultation_ai_document.updated",
-        handleAiDocument,
-      );
-      source.addEventListener("communication.participant.updated", handleParticipant);
-      source.addEventListener("communication.recording.updated", handleRecording);
-      source.addEventListener("communication.transcript.updated", handleTranscript);
-    });
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then(
+      (source) => {
+        if (cancelled) {
+          source.close();
+          return;
+        }
+        eventSource = source;
+        source.addEventListener(
+          "professional.consultation_message.created",
+          handleMessage,
+        );
+        source.addEventListener(
+          "professional.consultation_presence.updated",
+          handlePresence,
+        );
+        source.addEventListener(
+          "professional.consultation_ai_document.updated",
+          handleAiDocument,
+        );
+        source.addEventListener(
+          "professional.consultation_session.updated",
+          handleSession,
+        );
+        source.addEventListener(
+          "communication.participant.updated",
+          handleParticipant,
+        );
+        source.addEventListener(
+          "communication.recording.updated",
+          handleRecording,
+        );
+        source.addEventListener(
+          "communication.transcript.updated",
+          handleTranscript,
+        );
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -262,12 +326,25 @@ export function ProfessionalLiveConsultationPage() {
         "professional.consultation_ai_document.updated",
         handleAiDocument,
       );
-      eventSource?.removeEventListener("communication.participant.updated", handleParticipant);
-      eventSource?.removeEventListener("communication.recording.updated", handleRecording);
-      eventSource?.removeEventListener("communication.transcript.updated", handleTranscript);
+      eventSource?.removeEventListener(
+        "professional.consultation_session.updated",
+        handleSession,
+      );
+      eventSource?.removeEventListener(
+        "communication.participant.updated",
+        handleParticipant,
+      );
+      eventSource?.removeEventListener(
+        "communication.recording.updated",
+        handleRecording,
+      );
+      eventSource?.removeEventListener(
+        "communication.transcript.updated",
+        handleTranscript,
+      );
       eventSource?.close();
     };
-  }, [consultation]);
+  }, [consultation, router]);
 
   useEffect(() => {
     if (!videoAccess?.roomId) return;
@@ -280,7 +357,12 @@ export function ProfessionalLiveConsultationPage() {
     return () => {
       cancelled = true;
     };
-  }, [videoAccess?.roomId, participants.length, recording?.status, transcript?.status]);
+  }, [
+    videoAccess?.roomId,
+    participants.length,
+    recording?.status,
+    transcript?.status,
+  ]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
@@ -288,7 +370,10 @@ export function ProfessionalLiveConsultationPage() {
     if (!consultation || !body) return;
 
     try {
-      const message = await sendProfessionalConsultationMessage(consultation.id, { body });
+      const message = await sendProfessionalConsultationMessage(
+        consultation.id,
+        { body },
+      );
       setRoom((current) =>
         current
           ? {
@@ -316,7 +401,7 @@ export function ProfessionalLiveConsultationPage() {
           ]
         : [];
 
-      await completeProfessionalConsultation(consultation.id, {
+      await endProfessionalConsultationSession(consultation.id, {
         summary: summary.trim() || consultation.reason,
         consultationNotes: notes
           .split("\n")
@@ -371,9 +456,12 @@ export function ProfessionalLiveConsultationPage() {
     if (!consultation || isGeneratingDocument) return;
     setIsGeneratingDocument(true);
     try {
-      const document = await generateProfessionalConsultationAiDocument(consultation.id, {
-        transcript: transcript?.text ?? undefined,
-      });
+      const document = await generateProfessionalConsultationAiDocument(
+        consultation.id,
+        {
+          transcript: transcript?.text ?? undefined,
+        },
+      );
       setRoom((current) =>
         current
           ? {
@@ -391,7 +479,9 @@ export function ProfessionalLiveConsultationPage() {
     }
   };
 
-  const admitWaitingParticipant = async (participant: CommunicationParticipant) => {
+  const admitWaitingParticipant = async (
+    participant: CommunicationParticipant,
+  ) => {
     if (!videoAccess?.roomId) return;
     try {
       const saved = await admitCommunicationParticipant(
@@ -409,7 +499,9 @@ export function ProfessionalLiveConsultationPage() {
     }
   };
 
-  const denyWaitingParticipant = async (participant: CommunicationParticipant) => {
+  const denyWaitingParticipant = async (
+    participant: CommunicationParticipant,
+  ) => {
     if (!videoAccess?.roomId) return;
     try {
       const saved = await denyCommunicationParticipant(
@@ -435,7 +527,9 @@ export function ProfessionalLiveConsultationPage() {
       });
       setParticipants((current) =>
         current.some((item) => item.id === participant.id)
-          ? current.map((item) => (item.id === participant.id ? participant : item))
+          ? current.map((item) =>
+              item.id === participant.id ? participant : item,
+            )
           : [...current, participant],
       );
       toast.success("Consent saved");
@@ -474,7 +568,9 @@ export function ProfessionalLiveConsultationPage() {
 
   const appendTranscriptText = async (text: string) => {
     if (!videoAccess?.roomId) return;
-    const saved = await appendCommunicationTranscript(videoAccess.roomId, { text });
+    const saved = await appendCommunicationTranscript(videoAccess.roomId, {
+      text,
+    });
     setTranscript(saved);
   };
 
@@ -671,14 +767,18 @@ export function ProfessionalLiveConsultationPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => void denyWaitingParticipant(participant)}
+                          onClick={() =>
+                            void denyWaitingParticipant(participant)
+                          }
                           className="rounded-[8px] border border-[#94A3B8] px-3 py-1.5 text-[12px] font-medium text-[#334155]"
                         >
                           Deny
                         </button>
                         <button
                           type="button"
-                          onClick={() => void admitWaitingParticipant(participant)}
+                          onClick={() =>
+                            void admitWaitingParticipant(participant)
+                          }
                           className="rounded-[8px] bg-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-white"
                         >
                           Admit
@@ -692,7 +792,8 @@ export function ProfessionalLiveConsultationPage() {
             <section className="rounded-[12px] bg-[#F8FAFC] p-3">
               <p className="font-medium text-[#334155]">Compliance controls</p>
               <p className="mt-1 text-[#64748B]">
-                Recording and transcription require participant consent before they start.
+                Recording and transcription require participant consent before
+                they start.
               </p>
               <button
                 type="button"
@@ -711,7 +812,9 @@ export function ProfessionalLiveConsultationPage() {
                 <div className="mt-3 flex gap-2">
                   <input
                     value={translationLanguage}
-                    onChange={(event) => setTranslationLanguage(event.target.value)}
+                    onChange={(event) =>
+                      setTranslationLanguage(event.target.value)
+                    }
                     className="h-9 min-w-0 flex-1 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] outline-none focus:border-[#1565C0]"
                     aria-label="Target language"
                   />
@@ -754,11 +857,15 @@ export function ProfessionalLiveConsultationPage() {
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[#64748B]">
                   <div>
                     <dt>Joins</dt>
-                    <dd className="font-semibold text-[#334155]">{analytics.joins ?? 0}</dd>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.joins ?? 0}
+                    </dd>
                   </div>
                   <div>
                     <dt>Leaves</dt>
-                    <dd className="font-semibold text-[#334155]">{analytics.leaves ?? 0}</dd>
+                    <dd className="font-semibold text-[#334155]">
+                      {analytics.leaves ?? 0}
+                    </dd>
                   </div>
                   <div>
                     <dt>Recordings</dt>
@@ -841,7 +948,9 @@ export function ProfessionalLiveConsultationPage() {
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] text-[#64748B]">Notes, one per line</span>
+                <span className="text-[12px] text-[#64748B]">
+                  Notes, one per line
+                </span>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
@@ -858,7 +967,9 @@ export function ProfessionalLiveConsultationPage() {
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] text-[#64748B]">Next steps, one per line</span>
+                <span className="text-[12px] text-[#64748B]">
+                  Next steps, one per line
+                </span>
                 <textarea
                   value={nextSteps}
                   onChange={(event) => setNextSteps(event.target.value)}

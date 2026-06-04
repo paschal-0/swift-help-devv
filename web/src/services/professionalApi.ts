@@ -139,6 +139,9 @@ export type ProfessionalConsultation = {
   earningsStatus: "pending" | "available" | "paid_out";
   startedAt: string | null;
   completedAt: string | null;
+  liveStartedAt?: string | null;
+  liveEndedAt?: string | null;
+  endReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -803,6 +806,19 @@ export function completeProfessionalConsultation(
 ) {
   return apiRequest<ProfessionalConsultation>(
     `/professional/consultations/${consultationId}/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function endProfessionalConsultationSession(
+  consultationId: string,
+  payload: ProfessionalConsultationCompletionPayload = {},
+) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/end-session`,
     {
       method: "POST",
       body: JSON.stringify(payload),
