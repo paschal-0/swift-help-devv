@@ -133,6 +133,10 @@ function hasPlayableMedia(participant: DailyParticipant) {
   return Boolean(getVideoTrack(participant) || getAudioTrack(participant));
 }
 
+function hasPlayableVideo(participant: DailyParticipant) {
+  return Boolean(getVideoTrack(participant));
+}
+
 function summarizeParticipant(participant: DailyParticipant) {
   const video = participant.tracks?.video;
   const audio = participant.tracks?.audio;
@@ -163,25 +167,28 @@ function pickRemoteParticipant(
     (participant) => !participant.local,
   );
   const expectedLabel = normalizeLabel(expectedRemoteLabel);
-  const expectedParticipant = expectedLabel
-    ? remoteParticipants.find(
-        (participant) =>
-          normalizeLabel(participant.user_name) === expectedLabel &&
-          hasPlayableMedia(participant),
-      ) ??
-      remoteParticipants.find(
+  const expectedParticipants = expectedLabel
+    ? remoteParticipants.filter(
         (participant) => normalizeLabel(participant.user_name) === expectedLabel,
       )
-    : null;
+    : [];
 
   return (
-    expectedParticipant ??
+    expectedParticipants.find(
+      (participant) =>
+        participant.tracks?.video?.state === "playable" &&
+        hasPlayableVideo(participant),
+    ) ??
+    expectedParticipants.find((participant) => hasPlayableVideo(participant)) ??
     remoteParticipants.find(
       (participant) =>
         !participant.participantType &&
         participant.tracks?.video?.state === "playable" &&
-        getVideoTrack(participant),
+        hasPlayableVideo(participant),
     ) ??
+    remoteParticipants.find((participant) => hasPlayableVideo(participant)) ??
+    expectedParticipants.find((participant) => hasPlayableMedia(participant)) ??
+    expectedParticipants[0] ??
     remoteParticipants.find(
       (participant) =>
         !participant.participantType && hasPlayableMedia(participant),
