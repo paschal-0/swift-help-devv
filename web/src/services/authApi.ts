@@ -13,6 +13,16 @@ type ApiErrorBody = {
   message?: string | { message?: string | string[] };
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 export type SignupPayload = {
   fullName: string;
   email: string;
@@ -113,7 +123,11 @@ export type OrganizationProfilePayload = {
 };
 
 export type OrganizationInviteRole = "admin" | "staff" | "professional";
-export type OrganizationInviteStatus = "pending" | "accepted" | "revoked" | "expired";
+export type OrganizationInviteStatus =
+  | "pending"
+  | "accepted"
+  | "revoked"
+  | "expired";
 
 export type OrganizationOperatingHours = Record<
   string,
@@ -195,7 +209,11 @@ export async function getPostAuthRedirectPath(role: BackendRole) {
   try {
     const status = await getOnboardingStatus();
     return status.onboardingCompleted ? fallbackPath : status.nextPath;
-  } catch {
+  } catch (error) {
+    if (isUnauthorizedError(error)) {
+      return "/get-started/login";
+    }
+
     return onboardingStartPathForRole(role);
   }
 }
@@ -206,6 +224,24 @@ export function getApiErrorMessage(error: unknown) {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+export function isUnauthorizedError(error: unknown) {
+  return error instanceof ApiRequestError && error.status === 401;
+}
+
+function redirectToLoginOnUnauthorized(path: string) {
+  if (
+    typeof window === "undefined" ||
+    path === "/auth/login" ||
+    path === "/auth/refresh"
+  ) {
+    return;
+  }
+
+  if (window.location.pathname !== "/get-started/login") {
+    window.location.assign("/get-started/login");
+  }
 }
 
 export async function signup(payload: SignupPayload) {
@@ -354,9 +390,12 @@ export async function createOrganizationInviteLink(payload: {
 export async function listOrganizationInvites(role?: OrganizationInviteRole) {
   const query = role ? `?role=${encodeURIComponent(role)}` : "";
 
-  return apiRequest<OrganizationInvite[]>(`/profile/organization/invites${query}`, {
-    method: "GET",
-  });
+  return apiRequest<OrganizationInvite[]>(
+    `/profile/organization/invites${query}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export async function completeOrganizationTeamOnboarding() {
@@ -404,7 +443,14 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw new Error(extractErrorMessage(body) ?? "Request failed.");
+    if (response.status === 401) {
+      redirectToLoginOnUnauthorized(path);
+    }
+
+    throw new ApiRequestError(
+      extractErrorMessage(body) ?? "Request failed.",
+      response.status,
+    );
   }
 
   if (!body || !("data" in body)) {
@@ -449,7 +495,14 @@ async function apiFormRequest<T>(
   }
 
   if (!response.ok) {
-    throw new Error(extractErrorMessage(body) ?? "Request failed.");
+    if (response.status === 401) {
+      redirectToLoginOnUnauthorized(path);
+    }
+
+    throw new ApiRequestError(
+      extractErrorMessage(body) ?? "Request failed.",
+      response.status,
+    );
   }
 
   if (!body || !("data" in body)) {
