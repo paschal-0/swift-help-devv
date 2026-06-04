@@ -3,6 +3,7 @@
 import {
   type FormEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -54,15 +55,20 @@ type ConsultationVideoRoomProps = {
 };
 
 type DailyTrackState = {
+  track?: MediaStreamTrack | null;
   persistentTrack?: MediaStreamTrack | null;
+  subscribed?: boolean | "staged";
   state?: string;
 };
 
 type DailyParticipant = {
   local?: boolean;
   participantType?: string;
+  session_id?: string;
   user_id?: string;
   user_name?: string;
+  audioTrack?: MediaStreamTrack | false;
+  videoTrack?: MediaStreamTrack | false;
   tracks?: Record<string, DailyTrackState | undefined>;
 };
 
@@ -75,6 +81,8 @@ type DailyCallObject = {
   off: (eventName: string, handler: () => void) => DailyCallObject;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
+  getNetworkStats?: () => Promise<unknown>;
+  getNetworkTopology?: () => Promise<unknown>;
   startScreenShare?: () => unknown;
   stopScreenShare?: () => unknown;
   startRecording?: (options?: Record<string, unknown>) => unknown;
@@ -101,15 +109,46 @@ function formatCallDuration(totalSeconds: number) {
 }
 
 function getVideoTrack(participant?: DailyParticipant | null) {
-  return participant?.tracks?.video?.persistentTrack ?? null;
+  return getMediaTrack(participant?.tracks?.video, participant?.videoTrack);
 }
 
 function getAudioTrack(participant?: DailyParticipant | null) {
-  return participant?.tracks?.audio?.persistentTrack ?? null;
+  return getMediaTrack(participant?.tracks?.audio, participant?.audioTrack);
+}
+
+function getMediaTrack(
+  trackState?: DailyTrackState,
+  legacyTrack?: MediaStreamTrack | false,
+) {
+  const track =
+    trackState?.track ??
+    trackState?.persistentTrack ??
+    (legacyTrack || null);
+
+  if (!track || track.readyState === "ended") return null;
+  return track;
 }
 
 function hasPlayableMedia(participant: DailyParticipant) {
   return Boolean(getVideoTrack(participant) || getAudioTrack(participant));
+}
+
+function summarizeParticipant(participant: DailyParticipant) {
+  const video = participant.tracks?.video;
+  const audio = participant.tracks?.audio;
+
+  return {
+    local: Boolean(participant.local),
+    type: participant.participantType ?? "user",
+    id: participant.session_id ?? participant.user_id ?? participant.user_name,
+    name: participant.user_name,
+    videoState: video?.state ?? "missing",
+    videoSubscribed: video?.subscribed ?? null,
+    hasVideoTrack: Boolean(getVideoTrack(participant)),
+    audioState: audio?.state ?? "missing",
+    audioSubscribed: audio?.subscribed ?? null,
+    hasAudioTrack: Boolean(getAudioTrack(participant)),
+  };
 }
 
 function pickRemoteParticipant(participants: DailyParticipant[]) {
@@ -141,6 +180,24 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
   } catch {
     // Daily control calls can fail when permissions are denied or a call is ending.
   }
+}
+
+function playMediaElement(element: HTMLMediaElement) {
+  const retry = () => {
+    void element.play().catch(() => undefined);
+  };
+
+  void element.play().catch(() => {
+    window.addEventListener("click", retry, { once: true });
+    window.addEventListener("keydown", retry, { once: true });
+    window.addEventListener("touchstart", retry, { once: true });
+  });
+
+  return () => {
+    window.removeEventListener("click", retry);
+    window.removeEventListener("keydown", retry);
+    window.removeEventListener("touchstart", retry);
+  };
 }
 
 function initials(label: string) {
@@ -177,9 +234,10 @@ function VideoSurface({
     }
 
     video.srcObject = new MediaStream([track]);
-    void video.play().catch(() => undefined);
+    const cleanupPlaybackRetry = playMediaElement(video);
 
     return () => {
+      cleanupPlaybackRetry();
       video.srcObject = null;
     };
   }, [track]);
@@ -226,9 +284,10 @@ function RemoteAudio({
     }
 
     audio.srcObject = new MediaStream([track]);
-    void audio.play().catch(() => undefined);
+    const cleanupPlaybackRetry = playMediaElement(audio);
 
     return () => {
+      cleanupPlaybackRetry();
       audio.srcObject = null;
     };
   }, [track]);
@@ -354,6 +413,7 @@ export function ConsultationVideoRoom({
   const [voiceOnly, setVoiceOnly] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [networkNotice, setNetworkNotice] = useState<string | null>(null);
+  const [callDiagnostics, setCallDiagnostics] = useState<string[]>([]);
   const cameraEnabledRef = useRef(cameraEnabled);
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
@@ -373,9 +433,55 @@ export function ConsultationVideoRoom({
   const remoteParticipant = pickRemoteParticipant(participantList);
   const localVideoTrack = getVideoTrack(localParticipant);
   const remoteVideoTrack = getVideoTrack(remoteParticipant);
-  const remoteAudioTrack = getAudioTrack(remoteParticipant);
+  const remoteAudioTracks = useMemo(
+    () =>
+      participantList
+        .filter((participant) => !participant.local)
+        .map((participant) => ({
+          id:
+            participant.session_id ??
+            participant.user_id ??
+            participant.user_name ??
+            "remote",
+          track: getAudioTrack(participant),
+        }))
+        .filter(
+          (item): item is { id: string; track: MediaStreamTrack } =>
+            Boolean(item.track),
+        )
+        .filter(
+          (item, index, items) =>
+            items.findIndex(({ track }) => track.id === item.track.id) ===
+            index,
+        ),
+    [participantList],
+  );
   const effectiveRemoteLabel = remoteParticipant?.user_name || remoteLabel;
   const isReady = Boolean(canJoin && token && meetingUrl);
+  const callDebugEnabled =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("callDebug") === "1";
+
+  const addCallDiagnostic = useCallback((message: string, details?: unknown) => {
+    if (!callDebugEnabled) return;
+
+    const suffix =
+      details === undefined
+        ? ""
+        : ` ${JSON.stringify(details, (_key, value) =>
+            value instanceof MediaStreamTrack
+              ? {
+                  id: value.id,
+                  kind: value.kind,
+                  readyState: value.readyState,
+                  enabled: value.enabled,
+                }
+              : value,
+          )}`;
+    const line = `${new Date().toLocaleTimeString()} ${message}${suffix}`;
+    setCallDiagnostics((current) => [...current.slice(-7), line]);
+    console.info("[ConsultationVideoRoom]", message, details ?? "");
+  }, [callDebugEnabled]);
 
   useEffect(() => {
     presenceChangeRef.current = onPresenceChange;
@@ -404,7 +510,12 @@ export function ConsultationVideoRoom({
 
     const syncParticipants = () => {
       if (!activeCall || cancelled) return;
-      setParticipants(activeCall.participants());
+      const nextParticipants = activeCall.participants();
+      setParticipants(nextParticipants);
+      addCallDiagnostic(
+        "participants",
+        Object.values(nextParticipants).map(summarizeParticipant),
+      );
     };
 
     const handleJoined = () => {
@@ -431,10 +542,28 @@ export function ConsultationVideoRoom({
     };
 
     const handleError = () => {
-      if (!cancelled) setConnectionStatus("error");
+      if (!cancelled) {
+        addCallDiagnostic("daily error");
+        setConnectionStatus("error");
+      }
+    };
+
+    const handleNetworkConnection = (...args: unknown[]) => {
+      addCallDiagnostic("network connection", args);
+      const statusText = JSON.stringify(args).toLowerCase();
+      if (
+        statusText.includes("disconnected") ||
+        statusText.includes("failed") ||
+        statusText.includes("closed")
+      ) {
+        setNetworkNotice(
+          "Daily media transport disconnected. Check network, TURN, and room connectivity.",
+        );
+      }
     };
 
     const handleNetworkQuality = (...args: unknown[]) => {
+      addCallDiagnostic("network quality", args);
       const quality = JSON.stringify(args).toLowerCase();
       const isPoor =
         quality.includes("very-low") ||
@@ -486,6 +615,7 @@ export function ConsultationVideoRoom({
         activeCall = DailyIframe.createCallObject({
           audioSource: true,
           videoSource: true,
+          subscribeToTracksAutomatically: true,
         });
         callRef.current = activeCall;
 
@@ -497,14 +627,25 @@ export function ConsultationVideoRoom({
           .on("participant-left", syncParticipants)
           .on("track-started", syncParticipants)
           .on("track-stopped", syncParticipants)
+          .on("network-connection", handleNetworkConnection as () => void)
           .on("network-quality-change", handleNetworkQuality as () => void)
+          .on("receive-settings-updated", handleNetworkConnection as () => void)
           .on("transcription-message", handleTranscription as () => void)
           .on("app-message", handleTranscription as () => void)
           .on("error", handleError);
 
-        void activeCall.join({ url: meetingUrl, token }).catch(() => {
-          if (!cancelled) setConnectionStatus("error");
-        });
+        void activeCall
+          .join({ url: meetingUrl, token })
+          .then(() => {
+            addCallDiagnostic("joined daily room", {
+              meetingUrl,
+              roomName,
+            });
+          })
+          .catch((error) => {
+            addCallDiagnostic("daily join failed", error);
+            if (!cancelled) setConnectionStatus("error");
+          });
       })
       .catch(() => {
         if (!cancelled) setConnectionStatus("error");
@@ -521,7 +662,12 @@ export function ConsultationVideoRoom({
         call.off("participant-left", syncParticipants);
         call.off("track-started", syncParticipants);
         call.off("track-stopped", syncParticipants);
+        call.off("network-connection", handleNetworkConnection as () => void);
         call.off("network-quality-change", handleNetworkQuality as () => void);
+        call.off(
+          "receive-settings-updated",
+          handleNetworkConnection as () => void,
+        );
         call.off("transcription-message", handleTranscription as () => void);
         call.off("app-message", handleTranscription as () => void);
         call.off("error", handleError);
@@ -537,7 +683,7 @@ export function ConsultationVideoRoom({
         microphoneEnabled: false,
       });
     };
-  }, [canJoin, meetingUrl, networkMode, token]);
+  }, [addCallDiagnostic, canJoin, meetingUrl, networkMode, roomName, token]);
 
   useEffect(() => {
     if (!joinedAt) {
@@ -687,7 +833,13 @@ export function ConsultationVideoRoom({
             label={effectiveRemoteLabel}
             muted={false}
           />
-          <RemoteAudio track={remoteAudioTrack} volume={audioVolume} />
+          {remoteAudioTracks.map(({ id, track }) => (
+            <RemoteAudio
+              key={`${id}:${track.id}`}
+              track={track}
+              volume={audioVolume}
+            />
+          ))}
 
           <div className="absolute left-[18px] top-[15px] flex h-12 w-[142px] items-center gap-[3px] rounded-[12px] bg-[#F8FAFC] p-1">
             {renderAvatar(
@@ -857,6 +1009,21 @@ export function ConsultationVideoRoom({
           {networkNotice ? (
             <div className="absolute left-4 right-4 top-[74px] rounded-[12px] bg-[rgba(15,23,42,0.68)] px-4 py-2 text-center text-[12px] font-medium tracking-[-0.04em] text-white">
               {networkNotice}
+            </div>
+          ) : null}
+
+          {callDebugEnabled ? (
+            <div className="absolute bottom-4 left-4 right-4 max-h-40 overflow-y-auto rounded-[8px] bg-[rgba(15,23,42,0.88)] p-3 text-left font-mono text-[10px] leading-4 text-[#E2E8F0]">
+              <p>Daily diagnostics</p>
+              {callDiagnostics.length ? (
+                callDiagnostics.map((line, index) => (
+                  <p key={`${line}-${index}`} className="break-words">
+                    {line}
+                  </p>
+                ))
+              ) : (
+                <p>No Daily events yet.</p>
+              )}
             </div>
           ) : null}
         </div>
