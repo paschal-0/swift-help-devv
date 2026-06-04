@@ -151,12 +151,31 @@ function summarizeParticipant(participant: DailyParticipant) {
   };
 }
 
-function pickRemoteParticipant(participants: DailyParticipant[]) {
+function normalizeLabel(value?: string | null) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function pickRemoteParticipant(
+  participants: DailyParticipant[],
+  expectedRemoteLabel?: string,
+) {
   const remoteParticipants = participants.filter(
     (participant) => !participant.local,
   );
+  const expectedLabel = normalizeLabel(expectedRemoteLabel);
+  const expectedParticipant = expectedLabel
+    ? remoteParticipants.find(
+        (participant) =>
+          normalizeLabel(participant.user_name) === expectedLabel &&
+          hasPlayableMedia(participant),
+      ) ??
+      remoteParticipants.find(
+        (participant) => normalizeLabel(participant.user_name) === expectedLabel,
+      )
+    : null;
 
   return (
+    expectedParticipant ??
     remoteParticipants.find(
       (participant) =>
         !participant.participantType &&
@@ -200,6 +219,10 @@ function playMediaElement(element: HTMLMediaElement) {
   };
 }
 
+function buildParticipantSnapshot(call: DailyCallObject) {
+  return { ...call.participants() };
+}
+
 function initials(label: string) {
   return label
     .split(" ")
@@ -233,6 +256,8 @@ function VideoSurface({
       return;
     }
 
+    video.muted = Boolean(muted);
+    video.playsInline = true;
     video.srcObject = new MediaStream([track]);
     const cleanupPlaybackRetry = playMediaElement(video);
 
@@ -240,12 +265,13 @@ function VideoSurface({
       cleanupPlaybackRetry();
       video.srcObject = null;
     };
-  }, [track]);
+  }, [muted, track]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#94A3B8]">
       {track ? (
         <video
+          key={track.id}
           ref={videoRef}
           autoPlay
           muted={muted}
@@ -430,7 +456,7 @@ export function ConsultationVideoRoom({
   const localParticipant = participantList.find(
     (participant) => participant.local,
   );
-  const remoteParticipant = pickRemoteParticipant(participantList);
+  const remoteParticipant = pickRemoteParticipant(participantList, remoteLabel);
   const localVideoTrack = getVideoTrack(localParticipant);
   const remoteVideoTrack = getVideoTrack(remoteParticipant);
   const remoteAudioTracks = useMemo(
@@ -510,7 +536,7 @@ export function ConsultationVideoRoom({
 
     const syncParticipants = () => {
       if (!activeCall || cancelled) return;
-      const nextParticipants = activeCall.participants();
+      const nextParticipants = buildParticipantSnapshot(activeCall);
       setParticipants(nextParticipants);
       addCallDiagnostic(
         "participants",
@@ -831,7 +857,7 @@ export function ConsultationVideoRoom({
           <VideoSurface
             track={remoteVideoTrack}
             label={effectiveRemoteLabel}
-            muted={false}
+            muted
           />
           {remoteAudioTracks.map(({ id, track }) => (
             <RemoteAudio
