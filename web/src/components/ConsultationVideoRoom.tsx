@@ -47,6 +47,7 @@ type ConsultationVideoRoomProps = {
   onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
   onEnd: () => void;
+  playAllRemoteAudio?: boolean;
   onPresenceChange?: (presence: {
     inCall?: boolean;
     cameraEnabled?: boolean;
@@ -81,6 +82,9 @@ type DailyCallObject = {
   off: (eventName: string, handler: () => void) => DailyCallObject;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
+  updateInputSettings?: (
+    inputSettings: Record<string, unknown>,
+  ) => Promise<unknown>;
   getNetworkStats?: () => Promise<unknown>;
   getNetworkTopology?: () => Promise<unknown>;
   startScreenShare?: () => unknown;
@@ -96,6 +100,26 @@ type DailyModule = {
     createCallObject: (options?: Record<string, unknown>) => DailyCallObject;
   };
   createCallObject?: (options?: Record<string, unknown>) => DailyCallObject;
+};
+
+const CLEAN_AUDIO_CONSTRAINTS = {
+  echoCancellation: { ideal: true },
+  noiseSuppression: { ideal: true },
+  autoGainControl: { ideal: true },
+  channelCount: { ideal: 1 },
+} satisfies MediaTrackConstraints;
+
+const BROWSER_CLEAN_AUDIO_INPUT_SETTINGS = {
+  audio: {
+    settings: CLEAN_AUDIO_CONSTRAINTS,
+  },
+};
+
+const DAILY_NOISE_CANCELLATION_INPUT_SETTINGS = {
+  audio: {
+    settings: CLEAN_AUDIO_CONSTRAINTS,
+    processor: { type: "noise-cancellation" },
+  },
 };
 
 function formatCallDuration(totalSeconds: number) {
@@ -116,14 +140,21 @@ function getAudioTrack(participant?: DailyParticipant | null) {
   return getMediaTrack(participant?.tracks?.audio, participant?.audioTrack);
 }
 
+function getParticipantId(participant: DailyParticipant) {
+  return (
+    participant.session_id ??
+    participant.user_id ??
+    participant.user_name ??
+    "remote"
+  );
+}
+
 function getMediaTrack(
   trackState?: DailyTrackState,
   legacyTrack?: MediaStreamTrack | false,
 ) {
   const track =
-    trackState?.track ??
-    trackState?.persistentTrack ??
-    (legacyTrack || null);
+    trackState?.track ?? trackState?.persistentTrack ?? (legacyTrack || null);
 
   if (!track || track.readyState === "ended") return null;
   return track;
@@ -169,7 +200,8 @@ function pickRemoteParticipant(
   const expectedLabel = normalizeLabel(expectedRemoteLabel);
   const expectedParticipants = expectedLabel
     ? remoteParticipants.filter(
-        (participant) => normalizeLabel(participant.user_name) === expectedLabel,
+        (participant) =>
+          normalizeLabel(participant.user_name) === expectedLabel,
       )
     : [];
 
@@ -208,6 +240,34 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
   }
 }
 
+async function enableCleanMicrophoneAudio(
+  call: DailyCallObject,
+  addDiagnostic: (message: string, details?: unknown) => void,
+) {
+  if (!call.updateInputSettings) {
+    addDiagnostic("daily input settings unavailable");
+    return;
+  }
+
+  try {
+    await call.updateInputSettings(DAILY_NOISE_CANCELLATION_INPUT_SETTINGS);
+    addDiagnostic("noise cancellation enabled");
+    return;
+  } catch (error) {
+    addDiagnostic(
+      "noise cancellation unavailable; using browser cleanup",
+      error,
+    );
+  }
+
+  try {
+    await call.updateInputSettings(BROWSER_CLEAN_AUDIO_INPUT_SETTINGS);
+    addDiagnostic("browser microphone cleanup enabled");
+  } catch (error) {
+    addDiagnostic("browser microphone cleanup unavailable", error);
+  }
+}
+
 function playMediaElement(element: HTMLMediaElement) {
   const retry = () => {
     void element.play().catch(() => undefined);
@@ -228,6 +288,63 @@ function playMediaElement(element: HTMLMediaElement) {
 
 function buildParticipantSnapshot(call: DailyCallObject) {
   return { ...call.participants() };
+}
+
+function buildRemoteAudioTracks(
+  participants: DailyParticipant[],
+  remoteParticipant: DailyParticipant | null,
+  expectedRemoteLabel: string,
+  playAllRemoteAudio: boolean,
+) {
+  const remoteParticipants = participants.filter(
+    (participant) => !participant.local,
+  );
+  const participantsWithAudio = remoteParticipants
+    .map((participant) => ({
+      participant,
+      id: getParticipantId(participant),
+      track: getAudioTrack(participant),
+    }))
+    .filter(
+      (item): item is {
+        participant: DailyParticipant;
+        id: string;
+        track: MediaStreamTrack;
+      } => Boolean(item.track),
+    );
+
+  if (playAllRemoteAudio) {
+    return participantsWithAudio.filter(
+      (item, index, items) =>
+        items.findIndex(({ track }) => track.id === item.track.id) === index,
+    );
+  }
+
+  const expectedLabel = normalizeLabel(expectedRemoteLabel);
+  const selectedParticipantId = remoteParticipant
+    ? getParticipantId(remoteParticipant)
+    : null;
+  const selectedTrack =
+    (selectedParticipantId
+      ? participantsWithAudio.find(({ id }) => id === selectedParticipantId)
+      : null) ??
+    participantsWithAudio.find(
+      ({ participant }) =>
+        expectedLabel &&
+        normalizeLabel(participant.user_name) === expectedLabel &&
+        hasPlayableVideo(participant),
+    ) ??
+    participantsWithAudio.find(
+      ({ participant }) =>
+        expectedLabel && normalizeLabel(participant.user_name) === expectedLabel,
+    ) ??
+    participantsWithAudio.find(({ participant }) =>
+      hasPlayableVideo(participant),
+    ) ??
+    participantsWithAudio[0] ??
+    null;
+
+  return selectedTrack ? [selectedTrack] : [];
 }
 
 function initials(label: string) {
@@ -430,6 +547,7 @@ export function ConsultationVideoRoom({
   onTranscriptText,
   isEnding,
   onEnd,
+  playAllRemoteAudio = false,
   onPresenceChange,
 }: ConsultationVideoRoomProps) {
   const callRef = useRef<DailyCallObject | null>(null);
@@ -468,26 +586,13 @@ export function ConsultationVideoRoom({
   const remoteVideoTrack = getVideoTrack(remoteParticipant);
   const remoteAudioTracks = useMemo(
     () =>
-      participantList
-        .filter((participant) => !participant.local)
-        .map((participant) => ({
-          id:
-            participant.session_id ??
-            participant.user_id ??
-            participant.user_name ??
-            "remote",
-          track: getAudioTrack(participant),
-        }))
-        .filter(
-          (item): item is { id: string; track: MediaStreamTrack } =>
-            Boolean(item.track),
-        )
-        .filter(
-          (item, index, items) =>
-            items.findIndex(({ track }) => track.id === item.track.id) ===
-            index,
-        ),
-    [participantList],
+      buildRemoteAudioTracks(
+        participantList,
+        remoteParticipant,
+        remoteLabel,
+        playAllRemoteAudio,
+      ),
+    [participantList, playAllRemoteAudio, remoteLabel, remoteParticipant],
   );
   const effectiveRemoteLabel = remoteParticipant?.user_name || remoteLabel;
   const isReady = Boolean(canJoin && token && meetingUrl);
@@ -495,26 +600,29 @@ export function ConsultationVideoRoom({
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("callDebug") === "1";
 
-  const addCallDiagnostic = useCallback((message: string, details?: unknown) => {
-    if (!callDebugEnabled) return;
+  const addCallDiagnostic = useCallback(
+    (message: string, details?: unknown) => {
+      if (!callDebugEnabled) return;
 
-    const suffix =
-      details === undefined
-        ? ""
-        : ` ${JSON.stringify(details, (_key, value) =>
-            value instanceof MediaStreamTrack
-              ? {
-                  id: value.id,
-                  kind: value.kind,
-                  readyState: value.readyState,
-                  enabled: value.enabled,
-                }
-              : value,
-          )}`;
-    const line = `${new Date().toLocaleTimeString()} ${message}${suffix}`;
-    setCallDiagnostics((current) => [...current.slice(-7), line]);
-    console.info("[ConsultationVideoRoom]", message, details ?? "");
-  }, [callDebugEnabled]);
+      const suffix =
+        details === undefined
+          ? ""
+          : ` ${JSON.stringify(details, (_key, value) =>
+              value instanceof MediaStreamTrack
+                ? {
+                    id: value.id,
+                    kind: value.kind,
+                    readyState: value.readyState,
+                    enabled: value.enabled,
+                  }
+                : value,
+            )}`;
+      const line = `${new Date().toLocaleTimeString()} ${message}${suffix}`;
+      setCallDiagnostics((current) => [...current.slice(-7), line]);
+      console.info("[ConsultationVideoRoom]", message, details ?? "");
+    },
+    [callDebugEnabled],
+  );
 
   useEffect(() => {
     presenceChangeRef.current = onPresenceChange;
@@ -648,6 +756,10 @@ export function ConsultationVideoRoom({
         activeCall = DailyIframe.createCallObject({
           audioSource: true,
           videoSource: true,
+          dailyConfig: {
+            micAudioMode: "speech",
+          },
+          inputSettings: BROWSER_CLEAN_AUDIO_INPUT_SETTINGS,
           subscribeToTracksAutomatically: true,
         });
         callRef.current = activeCall;
@@ -669,7 +781,11 @@ export function ConsultationVideoRoom({
 
         void activeCall
           .join({ url: meetingUrl, token })
-          .then(() => {
+          .then(async () => {
+            await enableCleanMicrophoneAudio(
+              activeCall as DailyCallObject,
+              addCallDiagnostic,
+            );
             addCallDiagnostic("joined daily room", {
               meetingUrl,
               roomName,

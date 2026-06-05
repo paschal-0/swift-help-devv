@@ -335,6 +335,7 @@ export function CommunicationRoomPage() {
           remoteLabel={room?.title ?? "Swifthelp room"}
           remoteRoleLabel={formatRoomType(room?.type)}
           localLabel="You"
+          playAllRemoteAudio
           recordingEnabled={Boolean(room)}
           transcriptionEnabled={Boolean(room)}
           recordingActive={recording?.status === "recording"}
