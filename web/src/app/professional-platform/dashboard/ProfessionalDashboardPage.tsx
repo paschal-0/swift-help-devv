@@ -369,11 +369,11 @@ function MobileDashboardView({
           <motion.article
             key={card.id}
             whileTap={{ scale: 0.98 }}
-            className="min-h-[150px] rounded-2xl bg-[#F8FAFC] px-3 py-3 shadow-sm"
+            className="min-h-[154px] rounded-2xl bg-[#F8FAFC] px-3 py-3 shadow-sm"
           >
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2.5">
               <div
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl [&_svg]:h-6 [&_svg]:w-6 ${
                   card.icon === "consultations"
                     ? "bg-[#E3F2FD]"
                     : card.icon === "requests"
@@ -386,14 +386,18 @@ function MobileDashboardView({
                 <MetricIcon type={card.icon} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium leading-[13px] tracking-[-0.04em] text-[#94A3B8]">
+                <p className="line-clamp-2 text-[10px] font-medium leading-3 text-[#94A3B8]">
                   {card.title}
-                </p>
-                <p className="mt-2 break-words text-[17px] font-semibold leading-5 tracking-[-0.05em] text-[#0F172A]">
-                  {card.value}
                 </p>
               </div>
             </div>
+
+            <p
+              className="mt-3 line-clamp-2 min-h-[36px] text-[16px] font-semibold leading-[18px] text-[#0F172A]"
+              title={card.value}
+            >
+              {card.value}
+            </p>
 
             <button
               type="button"
@@ -408,7 +412,7 @@ function MobileDashboardView({
                 }
                 onOpenEarnings();
               }}
-              className={`mt-3 block text-left text-[11px] font-semibold leading-4 tracking-[-0.04em] text-[#1565C0] underline ${microInteractionClass}`}
+              className={`mt-2 line-clamp-1 block text-left text-[10px] font-semibold leading-4 text-[#1565C0] underline ${microInteractionClass}`}
             >
               {card.subtitle}
             </button>
@@ -426,7 +430,7 @@ function MobileDashboardView({
                 }
                 onOpenEarnings();
               }}
-              className={`mt-2 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-xl border border-[#1565C0] px-2 text-[12px] font-medium leading-none tracking-[-0.04em] text-[#1565C0] ${microInteractionClass}`}
+              className={`mt-2 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-xl border border-[#1565C0] px-2 text-[11px] font-medium leading-none text-[#1565C0] ${microInteractionClass}`}
             >
               {card.cta}
             </button>

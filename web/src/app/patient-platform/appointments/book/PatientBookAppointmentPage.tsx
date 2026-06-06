@@ -540,7 +540,7 @@ export function PatientBookAppointmentPage() {
                       if (prof.acceptingBookings)
                         setSelectedProfessionalId(prof.id);
                     }}
-                    className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:min-h-[285px] xl:rounded-[12px] xl:p-[7px] ${
+                    className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:min-h-[205px] xl:rounded-[12px] xl:p-[7px] ${
                       selectedProfessionalId === prof.id
                         ? "border-[#1565C0] bg-[#F2F8FF] ring-2 ring-[#1565C0]/20 xl:border-2 xl:border-[#1E88E5] xl:bg-[#F8FAFC] xl:ring-0 xl:shadow-[0_0_25px_rgba(34,132,217,0.25)]"
                         : prof.acceptingBookings
@@ -569,20 +569,6 @@ export function PatientBookAppointmentPage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                           {prof.nextAvailable}
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-medium text-[#1565C0]">
-                          <span
-                            className="truncate rounded-md bg-[#E3F2FD] px-2 py-1"
-                            title={`Video: ${prof.videoRateLabel}`}
-                          >
-                            Video {prof.videoRateLabel}
-                          </span>
-                          <span
-                            className="truncate rounded-md bg-[#E3F2FD] px-2 py-1"
-                            title={`Visit: ${prof.inPersonRateLabel}`}
-                          >
-                            Visit {prof.inPersonRateLabel}
-                          </span>
-                        </div>
                       </div>
                     </div>
 
@@ -604,31 +590,6 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.role}
                         </p>
-                      </div>
-
-                      <div className="mt-2 grid gap-1.5">
-                        <div className="rounded-[8px] border border-[#B9D7F4] bg-white px-2 py-1.5">
-                          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
-                            Video
-                          </p>
-                          <p
-                            className="truncate text-[12px] font-semibold text-[#1565C0]"
-                            title={prof.videoRateLabel}
-                          >
-                            {prof.videoRateLabel}
-                          </p>
-                        </div>
-                        <div className="rounded-[8px] border border-[#B9D7F4] bg-white px-2 py-1.5">
-                          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
-                            In-person
-                          </p>
-                          <p
-                            className="truncate text-[12px] font-semibold text-[#1565C0]"
-                            title={prof.inPersonRateLabel}
-                          >
-                            {prof.inPersonRateLabel}
-                          </p>
-                        </div>
                       </div>
 
                       <p
