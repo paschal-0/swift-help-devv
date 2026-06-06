@@ -248,7 +248,6 @@ export function PatientPlatformShell({
   const [searchText, setSearchText] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<PatientNotification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
@@ -366,41 +365,19 @@ export function PatientPlatformShell({
   }, []);
 
   const openNotifications = async () => {
-    setShowNotifications((value) => !value);
+    const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
     const unread = notifications.filter((notification) => !notification.read);
-    if (!unread.length) return;
 
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, read: true })),
-    );
-    await Promise.allSettled(
-      unread.map((notification) => markPatientNotificationRead(notification.id)),
-    );
-  };
-
-  const openNotificationTarget = (notification: PatientNotification) => {
-    if (notification.type === "ai_assistant_recommendation" || notification.type === "ai_assistant_critical") {
-      window.dispatchEvent(new CustomEvent("swifthelp:open-ai-critical-reminder"));
-      if (!pathname.includes("/patient-platform/ai-assistant")) {
-        const firstSegment = pathname.split("/").filter(Boolean)[0];
-        const countryPrefix = firstSegment && firstSegment.length === 2 ? `/${firstSegment}` : "";
-        router.push(`${countryPrefix}/patient-platform/ai-assistant`);
-      }
-    } else if (
-      notification.metadata?.status === "completed" &&
-      notification.consultationId
-    ) {
-      window.sessionStorage.setItem(
-        "patientActiveConsultationId",
-        notification.consultationId,
+    if (unread.length) {
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, read: true })),
       );
-      router.push("/patient-platform/consultations/rate");
-    } else if (notification.appointmentId || notification.type === "appointment") {
-      router.push("/patient-platform/appointments");
-    } else if (notification.consultationId || notification.type === "consultation") {
-      router.push("/patient-platform/consultations");
+      await Promise.allSettled(
+        unread.map((notification) => markPatientNotificationRead(notification.id)),
+      );
     }
-    setShowNotifications(false);
+
+    router.push(`${countryPrefix}/patient-platform/notifications`);
   };
 
   return (
@@ -617,39 +594,6 @@ export function PatientPlatformShell({
                       </span>
                     ) : null}
                   </motion.button>
-
-                  {showNotifications ? (
-                    <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[280px] rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
-                      <p className="px-2 text-[13px] font-semibold tracking-[-0.04em] text-[#334155]">
-                        Notifications
-                      </p>
-                      <div className="mt-2 max-h-[280px] space-y-2 overflow-y-auto">
-                        {notifications.length ? (
-                          notifications.slice(0, 8).map((notification) => (
-                            <button
-                              key={notification.id}
-                              type="button"
-                              onClick={() => openNotificationTarget(notification)}
-                              className="block w-full rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-left hover:bg-[#d7ecff]"
-                            >
-                              <span className="block text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
-                                {notification.title}
-                              </span>
-                              {notification.message ? (
-                                <span className="mt-1 block text-[12px] font-light leading-4 tracking-[-0.04em] text-[#64748B]">
-                                  {notification.message}
-                                </span>
-                              ) : null}
-                            </button>
-                          ))
-                        ) : (
-                          <p className="px-2 py-3 text-[12px] font-light tracking-[-0.04em] text-[#94A3B8]">
-                            No notifications yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
                 <motion.button
                   type="button"

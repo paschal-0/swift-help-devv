@@ -252,7 +252,6 @@ export function ProfessionalPlatformShell({
   const [searchText, setSearchText] = useState("");
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
   const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [profileSummary, setProfileSummary] = useState({
     name: "Professional",
     availabilityLabel: "Availability not set",
@@ -377,34 +376,19 @@ export function ProfessionalPlatformShell({
   }, []);
 
   const openNotifications = async () => {
-    setShowNotifications((value) => !value);
-    const unread = notifications.filter((notification) => !notification.read);
-    if (!unread.length) return;
-
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, read: true })),
-    );
-    await Promise.allSettled(
-      unread.map((notification) => markProfessionalNotificationRead(notification.id)),
-    );
-  };
-
-  const openNotificationTarget = (notification: ProfessionalNotification) => {
     const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
-    if (typeof notification.metadata?.roomId === "string") {
-      router.push(`${countryPrefix}/communication/rooms/${notification.metadata.roomId}`);
-    } else if (notification.shiftOfferId) {
-      router.push(`${countryPrefix}/professional-platform/shift-offers/${notification.shiftOfferId}`);
-    } else if (typeof notification.metadata?.requestId === "string") {
-      router.push(
-        `${countryPrefix}/professional-platform/requests?requestId=${encodeURIComponent(notification.metadata.requestId)}`,
+    const unread = notifications.filter((notification) => !notification.read);
+
+    if (unread.length) {
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, read: true })),
       );
-    } else if (typeof notification.metadata?.consultationId === "string") {
-      router.push(`${countryPrefix}/professional-platform/schedule`);
-    } else if (typeof notification.metadata?.appointmentId === "string") {
-      router.push(`${countryPrefix}/professional-platform/schedule`);
+      await Promise.allSettled(
+        unread.map((notification) => markProfessionalNotificationRead(notification.id)),
+      );
     }
-    setShowNotifications(false);
+
+    router.push(`${countryPrefix}/professional-platform/notifications`);
   };
 
   return (
@@ -621,39 +605,6 @@ export function ProfessionalPlatformShell({
                         </span>
                       ) : null}
                     </motion.button>
-
-                    {showNotifications ? (
-                      <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[280px] rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
-                        <p className="px-2 text-[13px] font-semibold tracking-[-0.04em] text-[#334155]">
-                          Notifications
-                        </p>
-                        <div className="mt-2 max-h-[280px] space-y-2 overflow-y-auto">
-                          {notifications.length ? (
-                            notifications.slice(0, 8).map((notification) => (
-                              <button
-                                key={notification.id}
-                                type="button"
-                                onClick={() => openNotificationTarget(notification)}
-                                className="block w-full rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-left hover:bg-[#d7ecff]"
-                              >
-                                <span className="block text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
-                                  {notification.title}
-                                </span>
-                                {notification.message ? (
-                                  <span className="mt-1 block text-[12px] font-light leading-4 tracking-[-0.04em] text-[#64748B]">
-                                    {notification.message}
-                                  </span>
-                                ) : null}
-                              </button>
-                            ))
-                          ) : (
-                            <p className="px-2 py-3 text-[12px] font-light tracking-[-0.04em] text-[#94A3B8]">
-                              No notifications yet.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
 
                   <motion.button
