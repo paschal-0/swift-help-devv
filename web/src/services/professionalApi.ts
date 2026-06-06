@@ -26,6 +26,7 @@ export type ProfessionalProfile = {
   id: string;
   userId: string;
   professionalName?: string | null;
+  professionalBio?: string | null;
   dateOfBirth?: string | null;
   gender?: string | null;
   address?: string | null;

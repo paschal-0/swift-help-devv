@@ -39,7 +39,7 @@ const mainNav: NavItem[] = [
   { label: "Shift offers", href: "/professional-platform/shift-offers", icon: "shift-offers" },
   { label: "Requests", href: "/professional-platform/requests", icon: "requests" },
   { label: "Earnings", href: "/professional-platform/earnings", icon: "earnings" },
-  { label: "Reports", href: "/professional-platform/reports", icon: "reports" },
+  { label: "Records", href: "/professional-platform/reports", icon: "reports" },
   { label: "Referrals", href: "/professional-platform/referrals", icon: "referrals" },
 ];
 
@@ -432,7 +432,7 @@ export function ProfessionalPlatformShell({
                 : "0 0 0 rgba(148,163,184,0)",
             }}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="fixed inset-y-0 left-0 z-50 box-border flex flex-col overflow-hidden bg-[#F8FAFC] px-2 py-5 xl:hidden"
+            className="fixed inset-y-0 left-0 z-50 box-border flex flex-col overflow-y-auto bg-[#F8FAFC] px-2 py-4 xl:hidden"
           >
             <div className={`relative z-20 flex w-full items-center gap-1 ${isMobileNavExpanded ? "px-2" : "justify-center"} xl:mx-auto xl:max-w-[208px] xl:justify-start`}>
               <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
@@ -468,7 +468,7 @@ export function ProfessionalPlatformShell({
                 ))}
               </div>
 
-              <div className="relative z-20 mt-auto flex w-full flex-col gap-2 pb-3 xl:mx-auto xl:max-w-[208px]">
+              <div className="relative z-20 mt-3 flex w-full flex-col gap-2 pb-3 xl:mx-auto xl:mt-auto xl:max-w-[208px]">
                 {lowerNav.map((item) => (
                   <SidebarNavItem
                     key={item.label}
