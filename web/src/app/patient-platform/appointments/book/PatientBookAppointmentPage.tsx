@@ -29,7 +29,6 @@ type ProfessionalCard = {
   role: string;
   imageSrc: string | null;
   nextAvailable: string;
-  highlights: string[];
   acceptingBookings: boolean;
   currencyCode: string;
   videoConsultationRateCents: number | null;
@@ -152,12 +151,6 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     inPersonVisitRateCents: provider.inPersonVisitRateCents ?? null,
     videoRateLabel,
     inPersonRateLabel,
-    highlights: [
-      provider.consultationType || "Consultation",
-      provider.verificationStatus === "approved"
-        ? "Verified"
-        : "Profile submitted",
-    ],
   };
 }
 
@@ -613,20 +606,6 @@ export function PatientBookAppointmentPage() {
                         </p>
                       </div>
 
-                      <div className="mt-2 rounded-[8px] bg-[#E3F2FD] px-2 py-1.5">
-                        <div className="space-y-0.5 text-[10px] font-medium leading-3 text-[#1565C0]">
-                          {prof.highlights.map((line) => (
-                            <p
-                              key={`${prof.id}-${line}`}
-                              className="truncate"
-                              title={line}
-                            >
-                              {line}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-
                       <div className="mt-2 grid gap-1.5">
                         <div className="rounded-[8px] border border-[#B9D7F4] bg-white px-2 py-1.5">
                           <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
@@ -736,13 +715,23 @@ export function PatientBookAppointmentPage() {
               <p className="text-[16px] font-light leading-[42px] tracking-[-0.05em] text-[#334155]">
                 Price:
               </p>
-              <div className="min-h-9 rounded-[12px] bg-[#F8FAFC] px-[13px] py-2">
-                <span className="block text-[13px] font-light leading-5 tracking-[-0.04em] text-[#1565C0]">
-                  Video {selectedProfessional?.videoRateLabel ?? "-"}
-                </span>
-                <span className="block text-[13px] font-light leading-5 tracking-[-0.04em] text-[#1565C0]">
-                  Visit {selectedProfessional?.inPersonRateLabel ?? "-"}
-                </span>
+              <div className="grid gap-2">
+                <div className="rounded-[12px] bg-[#F8FAFC] px-[13px] py-2">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+                    Video
+                  </span>
+                  <span className="block truncate text-[15px] font-semibold leading-5 text-[#1565C0]">
+                    {selectedProfessional?.videoRateLabel ?? "-"}
+                  </span>
+                </div>
+                <div className="rounded-[12px] bg-[#F8FAFC] px-[13px] py-2">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+                    In-person
+                  </span>
+                  <span className="block truncate text-[15px] font-semibold leading-5 text-[#1565C0]">
+                    {selectedProfessional?.inPersonRateLabel ?? "-"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
