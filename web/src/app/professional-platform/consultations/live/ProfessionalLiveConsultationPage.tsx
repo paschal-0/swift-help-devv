@@ -111,10 +111,33 @@ export function ProfessionalLiveConsultationPage() {
   const [nextSteps, setNextSteps] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
+  const [isSavingConsent, setIsSavingConsent] = useState(false);
+  const [isTogglingRecording, setIsTogglingRecording] = useState(false);
+  const [isTogglingTranscription, setIsTogglingTranscription] =
+    useState(false);
 
   const consultation = room?.consultation ?? null;
   const patientName =
     room?.patient?.name ?? consultation?.patientName ?? "Patient";
+  const consentParticipants = participants.filter(
+    (participant) => participant.status !== "denied",
+  );
+  const professionalConsent = consentParticipants.some(
+    (participant) =>
+      participant.role.toLowerCase() === "professional" &&
+      participant.recordingConsent &&
+      participant.transcriptionConsent &&
+      participant.translationConsent,
+  );
+  const clinicalAiConsentReady =
+    consentParticipants.length > 0 &&
+    consentParticipants.every(
+      (participant) =>
+        participant.recordingConsent && participant.transcriptionConsent,
+    );
+  const clinicalAiDisabledReason = clinicalAiConsentReady
+    ? undefined
+    : "Clinical AI support requires recording and transcription consent from all room participants.";
 
   useEffect(() => {
     let cancelled = false;
@@ -518,7 +541,8 @@ export function ProfessionalLiveConsultationPage() {
   };
 
   const allowClinicalAi = async () => {
-    if (!videoAccess?.roomId) return;
+    if (!videoAccess?.roomId || isSavingConsent) return;
+    setIsSavingConsent(true);
     try {
       const participant = await updateCommunicationConsent(videoAccess.roomId, {
         recordingConsent: true,
@@ -532,14 +556,21 @@ export function ProfessionalLiveConsultationPage() {
             )
           : [...current, participant],
       );
-      toast.success("Consent saved");
+      toast.success("Clinical AI consent saved");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSavingConsent(false);
     }
   };
 
   const toggleRecording = async () => {
-    if (!videoAccess?.roomId) return;
+    if (!videoAccess?.roomId || isTogglingRecording) return;
+    if (!clinicalAiConsentReady && recording?.status !== "recording") {
+      toast.error(clinicalAiDisabledReason);
+      return;
+    }
+    setIsTogglingRecording(true);
     try {
       const saved =
         recording?.status === "recording"
@@ -548,11 +579,18 @@ export function ProfessionalLiveConsultationPage() {
       setRecording(saved);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsTogglingRecording(false);
     }
   };
 
   const toggleTranscription = async () => {
-    if (!videoAccess?.roomId) return;
+    if (!videoAccess?.roomId || isTogglingTranscription) return;
+    if (!clinicalAiConsentReady && transcript?.status !== "transcribing") {
+      toast.error(clinicalAiDisabledReason);
+      return;
+    }
+    setIsTogglingTranscription(true);
     try {
       const saved =
         transcript?.status === "transcribing"
@@ -563,6 +601,8 @@ export function ProfessionalLiveConsultationPage() {
       setTranscript(saved);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsTogglingTranscription(false);
     }
   };
 
@@ -680,6 +720,16 @@ export function ProfessionalLiveConsultationPage() {
         transcriptionEnabled={Boolean(videoAccess?.roomId)}
         recordingActive={recording?.status === "recording"}
         transcriptionActive={transcript?.status === "transcribing"}
+        recordingBusy={isTogglingRecording}
+        transcriptionBusy={isTogglingTranscription}
+        recordingDisabled={
+          !clinicalAiConsentReady && recording?.status !== "recording"
+        }
+        transcriptionDisabled={
+          !clinicalAiConsentReady && transcript?.status !== "transcribing"
+        }
+        recordingDisabledReason={clinicalAiDisabledReason}
+        transcriptionDisabledReason={clinicalAiDisabledReason}
         onToggleRecording={toggleRecording}
         onToggleTranscription={toggleTranscription}
         onTranscriptText={appendTranscriptText}
@@ -792,15 +842,32 @@ export function ProfessionalLiveConsultationPage() {
             <section className="rounded-[12px] bg-[#F8FAFC] p-3">
               <p className="font-medium text-[#334155]">Compliance controls</p>
               <p className="mt-1 text-[#64748B]">
-                Recording and transcription require participant consent before
-                they start.
+                Clinical AI support enables consented recording,
+                transcription, translation, and AI documentation drafts.
               </p>
+              <div className="mt-3 rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-[12px] leading-4">
+                <p className="font-medium text-[#334155]">
+                  {clinicalAiConsentReady
+                    ? "All participant consent is complete."
+                    : "Waiting for participant consent."}
+                </p>
+                <p className="mt-1 text-[#64748B]">
+                  {professionalConsent
+                    ? "Your consent is saved."
+                    : "Tap below to save your professional consent."}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => void allowClinicalAi()}
-                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white"
+                disabled={isSavingConsent || professionalConsent}
+                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
               >
-                Allow clinical AI support
+                {isSavingConsent
+                  ? "Saving consent..."
+                  : professionalConsent
+                    ? "Clinical AI consent saved"
+                    : "Allow clinical AI support"}
               </button>
             </section>
             {transcript?.text ? (

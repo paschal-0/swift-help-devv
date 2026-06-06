@@ -83,6 +83,9 @@ export function PatientLiveConsultationPage() {
   } | null>(null);
   const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<CommunicationRecording[]>([]);
+  const [participants, setParticipants] = useState<CommunicationParticipant[]>(
+    [],
+  );
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(
     null,
   );
@@ -93,11 +96,19 @@ export function PatientLiveConsultationPage() {
   const [translatedTranscript, setTranslatedTranscript] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isSavingConsent, setIsSavingConsent] = useState(false);
 
   const consultation = room?.consultation ?? null;
   const providerName = room?.provider?.name ?? "Provider";
   const providerSpecialty =
     room?.provider?.specialization ?? consultation?.consultationLabel ?? "-";
+  const patientConsentSaved = participants.some(
+    (participant) =>
+      participant.role.toLowerCase() === "patient" &&
+      participant.recordingConsent &&
+      participant.transcriptionConsent &&
+      participant.translationConsent,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +179,7 @@ export function PatientLiveConsultationPage() {
     ])
       .then(([state, result]) => {
         if (cancelled) return;
+        setParticipants(state.participants);
         setRecordings(state.recordings);
         setTranscript(state.transcripts[0] ?? null);
         setAnalytics(result.totals);
@@ -254,6 +266,13 @@ export function PatientLiveConsultationPage() {
 
     const handleParticipant = (event: MessageEvent) => {
       const participant = JSON.parse(event.data) as CommunicationParticipant;
+      setParticipants((current) =>
+        current.some((item) => item.id === participant.id)
+          ? current.map((item) =>
+              item.id === participant.id ? participant : item,
+            )
+          : [...current, participant],
+      );
       if (participant.status === "denied") {
         toast.info("The professional did not admit this waiting room session.");
         router.push("/patient-platform/consultations");
@@ -397,17 +416,26 @@ export function PatientLiveConsultationPage() {
   };
 
   const allowClinicalAi = async () => {
-    if (!videoAccess?.roomId) return;
+    if (!videoAccess?.roomId || isSavingConsent || patientConsentSaved) return;
+    setIsSavingConsent(true);
     try {
       const participant = await updateCommunicationConsent(videoAccess.roomId, {
         recordingConsent: true,
         transcriptionConsent: true,
         translationConsent: true,
       });
-      void participant;
+      setParticipants((current) =>
+        current.some((item) => item.id === participant.id)
+          ? current.map((item) =>
+              item.id === participant.id ? participant : item,
+            )
+          : [...current, participant],
+      );
       toast.success("Consultation consent saved");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSavingConsent(false);
     }
   };
 
@@ -637,12 +665,22 @@ export function PatientLiveConsultationPage() {
                 Allow recording, transcription, and AI notes only when you are
                 comfortable.
               </p>
+              <p className="mt-2 rounded-[10px] bg-[#E3F2FD] px-3 py-2 text-[12px] text-[#64748B]">
+                {patientConsentSaved
+                  ? "Your consent is saved for this consultation."
+                  : "Recording and AI notes cannot start until consent is saved."}
+              </p>
               <button
                 type="button"
                 onClick={() => void allowClinicalAi()}
-                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white"
+                disabled={isSavingConsent || patientConsentSaved}
+                className="mt-3 rounded-[8px] bg-[#1565C0] px-3 py-2 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
               >
-                Allow clinical AI support
+                {isSavingConsent
+                  ? "Saving consent..."
+                  : patientConsentSaved
+                    ? "Clinical AI consent saved"
+                    : "Allow clinical AI support"}
               </button>
             </section>
           </div>

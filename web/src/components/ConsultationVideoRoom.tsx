@@ -42,6 +42,12 @@ type ConsultationVideoRoomProps = {
   transcriptionEnabled?: boolean;
   recordingActive?: boolean;
   transcriptionActive?: boolean;
+  recordingBusy?: boolean;
+  transcriptionBusy?: boolean;
+  recordingDisabled?: boolean;
+  transcriptionDisabled?: boolean;
+  recordingDisabledReason?: string;
+  transcriptionDisabledReason?: string;
   onToggleRecording?: () => Promise<void> | void;
   onToggleTranscription?: () => Promise<void> | void;
   onTranscriptText?: (text: string) => Promise<void> | void;
@@ -577,6 +583,12 @@ export function ConsultationVideoRoom({
   transcriptionEnabled,
   recordingActive,
   transcriptionActive,
+  recordingBusy,
+  transcriptionBusy,
+  recordingDisabled,
+  transcriptionDisabled,
+  recordingDisabledReason,
+  transcriptionDisabledReason,
   onToggleRecording,
   onToggleTranscription,
   onTranscriptText,
@@ -601,7 +613,13 @@ export function ConsultationVideoRoom({
   const [networkNotice, setNetworkNotice] = useState<string | null>(null);
   const [controlNotice, setControlNotice] = useState<string | null>(null);
   const [busyControl, setBusyControl] = useState<
-    "camera" | "microphone" | "screen" | "leave" | null
+    | "camera"
+    | "microphone"
+    | "screen"
+    | "recording"
+    | "transcription"
+    | "leave"
+    | null
   >(null);
   const [callDiagnostics, setCallDiagnostics] = useState<string[]>([]);
   const cameraEnabledRef = useRef(cameraEnabled);
@@ -1043,26 +1061,52 @@ export function ConsultationVideoRoom({
   };
 
   const toggleRecording = async () => {
-    const call = callRef.current;
-    if (recordingActive) {
-      await ignoreDailyResult(() => call?.stopRecording?.());
-      await onToggleRecording?.();
-    } else {
-      await onToggleRecording?.();
-      await ignoreDailyResult(() =>
-        call?.startRecording?.({ layout: { preset: "default" } }),
+    if (busyControl || recordingBusy) return;
+    if (recordingDisabled) {
+      setControlNotice(
+        recordingDisabledReason ?? "Recording is not available yet.",
       );
+      return;
+    }
+    const call = callRef.current;
+    setBusyControl("recording");
+    setControlNotice(null);
+    try {
+      if (recordingActive) {
+        await ignoreDailyResult(() => call?.stopRecording?.());
+        await onToggleRecording?.();
+      } else {
+        await onToggleRecording?.();
+        await ignoreDailyResult(() =>
+          call?.startRecording?.({ layout: { preset: "default" } }),
+        );
+      }
+    } finally {
+      setBusyControl(null);
     }
   };
 
   const toggleTranscription = async () => {
+    if (busyControl || transcriptionBusy) return;
+    if (transcriptionDisabled) {
+      setControlNotice(
+        transcriptionDisabledReason ?? "Transcript is not available yet.",
+      );
+      return;
+    }
     const call = callRef.current;
-    if (transcriptionActive) {
-      await ignoreDailyResult(() => call?.stopTranscription?.());
-      await onToggleTranscription?.();
-    } else {
-      await onToggleTranscription?.();
-      await ignoreDailyResult(() => call?.startTranscription?.());
+    setBusyControl("transcription");
+    setControlNotice(null);
+    try {
+      if (transcriptionActive) {
+        await ignoreDailyResult(() => call?.stopTranscription?.());
+        await onToggleTranscription?.();
+      } else {
+        await onToggleTranscription?.();
+        await ignoreDailyResult(() => call?.startTranscription?.());
+      }
+    } finally {
+      setBusyControl(null);
     }
   };
 
@@ -1499,31 +1543,55 @@ export function ConsultationVideoRoom({
                   <button
                     type="button"
                     onClick={() => void toggleRecording()}
-                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium ${
+                    disabled={Boolean(
+                      recordingDisabled || recordingBusy || busyControl,
+                    )}
+                    title={recordingDisabled ? recordingDisabledReason : ""}
+                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
                       recordingActive
                         ? "bg-[#C82B33] text-white"
                         : "bg-[#E3F2FD] text-[#1565C0]"
                     }`}
                   >
-                    {recordingActive ? "Stop recording" : "Start recording"}
+                    {recordingBusy || busyControl === "recording"
+                      ? "Working..."
+                      : recordingActive
+                        ? "Stop recording"
+                        : "Start recording"}
                   </button>
                 ) : null}
                 {transcriptionEnabled ? (
                   <button
                     type="button"
                     onClick={() => void toggleTranscription()}
-                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium ${
+                    disabled={Boolean(
+                      transcriptionDisabled ||
+                        transcriptionBusy ||
+                        busyControl,
+                    )}
+                    title={
+                      transcriptionDisabled ? transcriptionDisabledReason : ""
+                    }
+                    className={`rounded-[8px] px-3 py-2 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
                       transcriptionActive
                         ? "bg-[#0F172A] text-white"
                         : "bg-[#E3F2FD] text-[#1565C0]"
                     }`}
                   >
-                    {transcriptionActive
-                      ? "Stop transcript"
-                      : "Start transcript"}
+                    {transcriptionBusy || busyControl === "transcription"
+                      ? "Working..."
+                      : transcriptionActive
+                        ? "Stop transcript"
+                        : "Start transcript"}
                   </button>
                 ) : null}
               </div>
+              {(recordingDisabledReason || transcriptionDisabledReason) &&
+              (recordingDisabled || transcriptionDisabled) ? (
+                <p className="mb-4 rounded-[10px] bg-[#FFF7ED] px-3 py-2 text-[11px] leading-4 text-[#9A3412]">
+                  {recordingDisabledReason ?? transcriptionDisabledReason}
+                </p>
+              ) : null}
               {sharedInfoContent ?? (
                 <p className="text-[#94A3B8]">
                   Shared consultation information will appear here.

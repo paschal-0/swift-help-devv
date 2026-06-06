@@ -250,14 +250,14 @@ export function PatientConsultationCompletePage() {
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative mt-12 overflow-hidden rounded-[24px] bg-[#0F172A] p-6 shadow-2xl md:p-10"
+        className="relative mt-12 overflow-hidden rounded-[24px] border border-[#BBDDFB] bg-[#E3F2FD] p-5 shadow-[0_18px_45px_rgba(30,136,229,0.14)] md:p-8"
       >
-        <div className="relative z-10 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-center">
+        <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center">
           <div>
-            <h3 className="text-[24px] font-bold leading-tight text-white md:text-[28px]">
+            <h3 className="text-[24px] font-semibold leading-tight tracking-[-0.04em] text-[#334155] md:text-[28px]">
               What would you like to do next?
             </h3>
-            <p className="mt-2 text-[14px] text-slate-400">
+            <p className="mt-2 text-[14px] leading-5 text-[#64748B]">
               All your records have been safely synced to your profile.
             </p>
           </div>
@@ -267,7 +267,7 @@ export function PatientConsultationCompletePage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => router.push("/patient-platform/appointments/book")}
-              className="h-[52px] rounded-full bg-blue-600 font-semibold text-white shadow-lg shadow-blue-500/20"
+              className="h-[52px] rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[16px] font-semibold tracking-[-0.04em] text-[#F8FAFC] shadow-[0_14px_28px_rgba(17,75,127,0.24)] transition duration-200 hover:shadow-[0_18px_34px_rgba(17,75,127,0.28)]"
             >
               Book Follow-Up
             </motion.button>
@@ -275,14 +275,14 @@ export function PatientConsultationCompletePage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => router.push("/patient-platform/medical-records")}
-              className="h-[52px] rounded-full border border-slate-700 bg-slate-800 font-semibold text-white"
+              className="h-[52px] rounded-full border border-[#1565C0] bg-[#F8FAFC] px-5 text-[16px] font-semibold tracking-[-0.04em] text-[#1565C0] shadow-[0_10px_24px_rgba(30,136,229,0.08)] transition duration-200 hover:bg-white"
             >
               View Medical Records
             </motion.button>
           </div>
         </div>
 
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#F8FAFC]/60 blur-2xl" />
       </motion.section>
     </article>
   );
