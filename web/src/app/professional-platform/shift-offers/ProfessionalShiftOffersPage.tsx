@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -158,35 +158,98 @@ const shiftStatusLabels: Record<BackendProfessionalShift["status"], string> = {
   cancelled: "Cancelled",
 };
 
-function FilterSelect({
-  label,
+type DropdownOption<T extends string> = {
+  value: T;
+  label: string;
+};
+
+function ThemedDropdown<T extends string>({
+  ariaLabel,
+  className = "",
   value,
   onChange,
-  children,
+  options,
 }: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
+  ariaLabel: string;
+  className?: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: DropdownOption<T>[];
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const selected =
+    options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
   return (
-    <label className="relative inline-flex h-9 shrink-0 items-center rounded-[8px] border border-[#94A3B8] bg-transparent pl-3 pr-8 text-[#334155] transition duration-200 hover:-translate-y-0.5 hover:bg-[#edf3fb] sm:h-8">
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-full appearance-none bg-transparent text-[14px] font-normal leading-[19px] tracking-[-0.05em] outline-none sm:text-[15px]"
+    <div ref={ref} className={`relative min-w-0 shrink-0 ${className}`}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex h-11 w-full min-w-0 items-center gap-2 rounded-2xl border border-[#94A3B8] bg-[#F8FAFC] px-3 text-left text-[14px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:-translate-y-0.5 hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4] sm:h-10 sm:px-4 sm:text-[15px]"
       >
-        {children}
-      </select>
-      <svg
-        viewBox="0 0 24 24"
-        className="pointer-events-none absolute right-2 h-5 w-5 text-[#334155]"
-        aria-hidden
-      >
-        <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
-      </svg>
-    </label>
+        <span className="min-w-0 flex-1 truncate">{selected?.label}</span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-5 w-5 shrink-0 text-[#64748B] transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
+        </svg>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 z-40 mt-2 max-h-[260px] overflow-y-auto rounded-2xl border border-[#B9CBE0] bg-white p-1.5 shadow-[0_20px_44px_rgba(15,23,42,0.18)]">
+          {options.map((option) => {
+            const selectedOption = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[14px] font-medium leading-5 transition ${
+                  selectedOption
+                    ? "bg-[#1565C0] text-white"
+                    : "text-[#334155] hover:bg-[#E3F2FD]"
+                }`}
+              >
+                <span className="min-w-0 flex-1">{option.label}</span>
+                {selectedOption ? (
+                  <svg
+                    viewBox="0 0 20 20"
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden
+                  >
+                    <path
+                      fill="currentColor"
+                      d="m8.3 13.6-3.2-3.2 1.2-1.2 2 2 5.4-5.4 1.2 1.2-6.6 6.6Z"
+                    />
+                  </svg>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -413,6 +476,13 @@ export function ProfessionalShiftOffersPage() {
     () => Array.from(new Set(offers.map((offer) => offer.role))).sort(),
     [offers],
   );
+  const roleDropdownOptions = useMemo<Array<DropdownOption<string>>>(
+    () => [
+      { value: "all", label: "Role: All" },
+      ...roleOptions.map((role) => ({ value: role, label: `Role: ${role}` })),
+    ],
+    [roleOptions],
+  );
 
   const visibleOffers = useMemo(() => {
     const nextOffers = offers.filter((offer) => {
@@ -498,42 +568,29 @@ export function ProfessionalShiftOffersPage() {
             All
           </button>
 
-          <FilterSelect
-            label="Filter shift offers"
+          <ThemedDropdown<ShiftFilterMode>
+            ariaLabel="Filter shift offers"
+            className="w-[210px] max-w-[72vw] sm:w-[215px]"
             value={filterMode}
-            onChange={(value) => setFilterMode(value as ShiftFilterMode)}
-          >
-            {shiftFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
+            onChange={setFilterMode}
+            options={shiftFilterOptions}
+          />
 
-          <FilterSelect
-            label="Filter by role"
+          <ThemedDropdown<string>
+            ariaLabel="Filter by role"
+            className="w-[190px] max-w-[68vw] sm:w-[200px]"
             value={roleFilter}
             onChange={setRoleFilter}
-          >
-            <option value="all">Role: All</option>
-            {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                Role: {role}
-              </option>
-            ))}
-          </FilterSelect>
+            options={roleDropdownOptions}
+          />
 
-          <FilterSelect
-            label="Sort shift offers"
+          <ThemedDropdown<ShiftSortMode>
+            ariaLabel="Sort shift offers"
+            className="w-[220px] max-w-[74vw] sm:w-[230px]"
             value={sortMode}
-            onChange={(value) => setSortMode(value as ShiftSortMode)}
-          >
-            {shiftSortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
+            onChange={setSortMode}
+            options={shiftSortOptions}
+          />
         </div>
       </div>
 

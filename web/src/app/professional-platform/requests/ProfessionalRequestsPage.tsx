@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createAuthenticatedEventSource } from "@/services/authApi";
@@ -207,6 +207,108 @@ const mapBackendRequest = (
 
 const filterIconPath =
   "M3.33333 1.33497C3.15652 1.33497 2.98695 1.40521 2.86193 1.53023C2.7369 1.65525 2.66667 1.82482 2.66667 2.00163C2.66667 2.17844 2.7369 2.34801 2.86193 2.47304C2.98695 2.59806 3.15652 2.6683 3.33333 2.6683C3.51014 2.6683 3.67971 2.59806 3.80474 2.47304C3.92976 2.34801 4 2.17844 4 2.00163C4 1.82482 3.92976 1.65525 3.80474 1.53023C3.67971 1.40521 3.51014 1.33497 3.33333 1.33497ZM1.44667 1.33497C1.5844 0.944612 1.83983 0.606589 2.17773 0.367493C2.51564 0.128397 2.91939 0 3.33333 0C3.74728 0 4.15103 0.128397 4.48893 0.367493C4.82684 0.606589 5.08227 0.944612 5.22 1.33497H10C10.1768 1.33497 10.3464 1.40521 10.4714 1.53023C10.5964 1.65525 10.6667 1.82482 10.6667 2.00163C10.6667 2.17844 10.5964 2.34801 10.4714 2.47304C10.3464 2.59806 10.1768 2.6683 10 2.6683H5.22C5.08227 3.05866 4.82684 3.39668 4.48893 3.63577C4.15103 3.87487 3.74728 4.00327 3.33333 4.00327C2.91939 4.00327 2.51564 3.87487 2.17773 3.63577C1.83983 3.39668 1.5844 3.05866 1.44667 2.6683H0.666667C0.489856 2.6683 0.320287 2.59806 0.195262 2.47304C0.070238 2.34801 0 2.17844 0 2.00163C0 1.82482 0.070238 1.65525 0.195262 1.53023C0.320287 1.40521 0.489856 1.33497 0.666667 1.33497H1.44667ZM7.33333 5.33497C7.15652 5.33497 6.98695 5.4052 6.86193 5.53023C6.73691 5.65525 6.66667 5.82482 6.66667 6.00163C6.66667 6.17845 6.73691 6.34801 6.86193 6.47304C6.98695 6.59806 7.15652 6.6683 7.33333 6.6683C7.51014 6.6683 7.67971 6.59806 7.80474 6.47304C7.92976 6.34801 8 6.17845 8 6.00163C8 5.82482 7.92976 5.65525 7.80474 5.53023C7.67971 5.4052 7.51014 5.33497 7.33333 5.33497ZM5.44667 5.33497C5.5844 4.94461 5.83983 4.60659 6.17773 4.36749C6.51564 4.1284 6.91939 4 7.33333 4C7.74728 4 8.15103 4.1284 8.48893 4.36749C8.82684 4.60659 9.08227 4.94461 9.22 5.33497H10C10.1768 5.33497 10.3464 5.4052 10.4714 5.53023C10.5964 5.65525 10.6667 5.82482 10.6667 6.00163C10.6667 6.17845 10.5964 6.34801 10.4714 6.47304C10.3464 6.59806 10.1768 6.6683 10 6.6683H9.22C9.08227 7.05866 8.82684 7.39668 8.48893 7.63577C8.15103 7.87487 7.74728 8.00327 7.33333 8.00327C6.91939 8.00327 6.51564 7.87487 6.17773 7.63577C5.83983 7.39668 5.5844 7.05866 5.44667 6.6683H0.666667C0.489856 6.6683 0.320287 6.59806 0.195262 6.47304C0.070238 6.34801 0 6.17845 0 6.00163C0 5.82482 0.070238 5.65525 0.195262 5.53023C0.320287 5.4052 0.489856 5.33497 0.666667 5.33497H5.44667ZM3.33333 9.33497C3.15652 9.33497 2.98695 9.4052 2.86193 9.53023C2.7369 9.65525 2.66667 9.82482 2.66667 10.0016C2.66667 10.1784 2.7369 10.348 2.86193 10.473C2.98695 10.5981 3.15652 10.6683 3.33333 10.6683C3.51014 10.6683 3.67971 10.5981 3.80474 10.473C3.92976 10.348 4 10.1784 4 10.0016C4 9.82482 3.92976 9.65525 3.80474 9.53023C3.67971 9.4052 3.51014 9.33497 3.33333 9.33497ZM1.44667 9.33497C1.5844 8.94461 1.83983 8.60659 2.17773 8.36749C2.51564 8.1284 2.91939 8 3.33333 8C3.74728 8 4.15103 8.1284 4.48893 8.36749C4.82684 8.60659 5.08227 8.94461 5.22 9.33497H10C10.1768 9.33497 10.3464 9.4052 10.4714 9.53023C10.5964 9.65525 10.6667 9.82482 10.6667 10.0016C10.6667 10.1784 10.5964 10.348 10.4714 10.473C10.3464 10.5981 10.1768 10.6683 10 10.6683H5.22C5.08227 11.0587 4.82684 11.3967 4.48893 11.6358C4.15103 11.8749 3.74728 12.0033 3.33333 12.0033C2.91939 12.0033 2.51564 11.8749 2.17773 11.6358C1.83983 11.3967 1.5844 11.0587 1.44667 10.6683H0.666667C0.489856 10.6683 0.320287 10.5981 0.195262 10.473C0.070238 10.348 0 10.1784 0 10.0016C0 9.82482 0.070238 9.65525 0.195262 9.53023C0.320287 9.4052 0.489856 9.33497 0.666667 9.33497H1.44667Z";
+
+type DropdownOption<T extends string> = {
+  value: T;
+  label: string;
+};
+
+function ThemedDropdown<T extends string>({
+  ariaLabel,
+  className = "",
+  icon,
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  className?: string;
+  icon?: boolean;
+  onChange: (value: T) => void;
+  options: DropdownOption<T>[];
+  value: T;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const selected =
+    options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className={`relative min-w-0 ${className}`}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={`inline-flex h-11 w-full min-w-0 items-center gap-2 rounded-2xl border border-[#94A3B8] bg-[#F8FAFC] px-3 text-left text-[14px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:-translate-y-0.5 hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4] sm:h-10 sm:px-4 sm:text-[15px] ${microInteractionClass}`}
+      >
+        {icon ? (
+          <svg viewBox="0 0 11 12" className="h-4 w-4 shrink-0" aria-hidden>
+            <path fill="#334155" d={filterIconPath} />
+          </svg>
+        ) : null}
+        <span className="min-w-0 flex-1 truncate">{selected?.label}</span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-5 w-5 shrink-0 text-[#64748B] transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
+        </svg>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 z-40 mt-2 max-h-[260px] overflow-y-auto rounded-2xl border border-[#B9CBE0] bg-white p-1.5 shadow-[0_20px_44px_rgba(15,23,42,0.18)]">
+          {options.map((option) => {
+            const selectedOption = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[14px] font-medium leading-5 transition ${
+                  selectedOption
+                    ? "bg-[#1565C0] text-white"
+                    : "text-[#334155] hover:bg-[#E3F2FD]"
+                }`}
+              >
+                <span className="min-w-0 flex-1">{option.label}</span>
+                {selectedOption ? (
+                  <svg
+                    viewBox="0 0 20 20"
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden
+                  >
+                    <path
+                      fill="currentColor"
+                      d="m8.3 13.6-3.2-3.2 1.2-1.2 2 2 5.4-5.4 1.2 1.2-6.6 6.6Z"
+                    />
+                  </svg>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function EmptyDetailsPrompt({
   title,
@@ -517,60 +619,22 @@ export function ProfessionalRequestsPage({
           <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">
             Requests
           </h1>
-          <div className="requests-header-controls flex items-center gap-2">
-            <label
-              className={`requests-filter-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}
-            >
-              <svg viewBox="0 0 11 12" className="h-4 w-4 shrink-0" aria-hidden>
-                <path fill="#334155" d={filterIconPath} />
-              </svg>
-              <select
-                value={filterMode}
-                onChange={(event) =>
-                  setFilterMode(event.target.value as RequestFilterMode)
-                }
-                className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
-                aria-label="Filter requests"
-              >
-                {requestFilterOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <svg
-                viewBox="0 0 24 24"
-                className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
-                aria-hidden
-              >
-                <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
-              </svg>
-            </label>
-            <label
-              className={`requests-sort-control relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-4 pr-8 ${microInteractionClass}`}
-            >
-              <select
-                value={sortMode}
-                onChange={(event) =>
-                  setSortMode(event.target.value as RequestSortMode)
-                }
-                className="h-full appearance-none bg-transparent pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
-                aria-label="Sort requests"
-              >
-                {requestSortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <svg
-                viewBox="0 0 24 24"
-                className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
-                aria-hidden
-              >
-                <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
-              </svg>
-            </label>
+          <div className="requests-header-controls grid w-full grid-cols-1 gap-2 sm:w-auto sm:min-w-[500px] sm:grid-cols-2">
+            <ThemedDropdown<RequestFilterMode>
+              ariaLabel="Filter requests"
+              className="requests-filter-control"
+              icon
+              options={requestFilterOptions}
+              value={filterMode}
+              onChange={setFilterMode}
+            />
+            <ThemedDropdown<RequestSortMode>
+              ariaLabel="Sort requests"
+              className="requests-sort-control"
+              options={requestSortOptions}
+              value={sortMode}
+              onChange={setSortMode}
+            />
           </div>
         </div>
       </div>
@@ -627,38 +691,14 @@ export function ProfessionalRequestsPage({
                 />
               </label>
 
-              <label
-                className={`requests-toolbar-filter relative inline-flex h-10 items-center rounded-[16px] border border-[#94A3B8] bg-[#F8FAFC] pl-3 pr-8 ${microInteractionClass}`}
-              >
-                <svg
-                  viewBox="0 0 11 12"
-                  className="h-4 w-4 shrink-0"
-                  aria-hidden
-                >
-                  <path fill="#334155" d={filterIconPath} />
-                </svg>
-                <select
-                  value={filterMode}
-                  onChange={(event) =>
-                    setFilterMode(event.target.value as RequestFilterMode)
-                  }
-                  className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
-                  aria-label="Filter requests in list"
-                >
-                  {requestFilterOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <svg
-                  viewBox="0 0 24 24"
-                  className="pointer-events-none absolute right-2 h-4 w-4 text-[#64748B]"
-                  aria-hidden
-                >
-                  <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
-                </svg>
-              </label>
+              <ThemedDropdown<RequestFilterMode>
+                ariaLabel="Filter requests in list"
+                className="requests-toolbar-filter w-full sm:w-[210px]"
+                icon
+                options={requestFilterOptions}
+                value={filterMode}
+                onChange={setFilterMode}
+              />
             </div>
           ) : null}
 
