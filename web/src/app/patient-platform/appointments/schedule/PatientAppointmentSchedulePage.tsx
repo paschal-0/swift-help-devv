@@ -186,6 +186,17 @@ function formatHourlyRate(cents?: number | null, currencyCode = "NGN") {
   return amount === "Price not set" ? amount : `${amount}/hr`;
 }
 
+function formatNoticePeriod(minutes: number) {
+  if (minutes <= 0) return "No advance notice required";
+  if (minutes < 60) return `${minutes} minutes advance notice`;
+  if (minutes % (24 * 60) === 0) {
+    const days = minutes / (24 * 60);
+    return `${days} ${days === 1 ? "day" : "days"} advance notice`;
+  }
+  const hours = minutes / 60;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} hours advance notice`;
+}
+
 function getDateKeyInZone(isoDate: string, timeZone: string) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
@@ -222,6 +233,8 @@ export function PatientAppointmentSchedulePage() {
     longitude: number;
   } | null>(null);
   const [providerTimezone, setProviderTimezone] = useState("Africa/Lagos");
+  const [minimumNoticeMinutes, setMinimumNoticeMinutes] = useState(120);
+  const [bookingWindowDays, setBookingWindowDays] = useState(14);
   const [providerPricing, setProviderPricing] = useState<ProviderPricing>({
     currencyCode: "NGN",
     videoConsultationRateCents: null,
@@ -266,6 +279,8 @@ export function PatientAppointmentSchedulePage() {
         );
         if (!isMounted) return;
         setProviderTimezone(response.timezone || "Africa/Lagos");
+        setMinimumNoticeMinutes(response.minimumNoticeMinutes ?? 120);
+        setBookingWindowDays(response.bookingWindowDays ?? 14);
         setProviderPricing({
           currencyCode: response.currencyCode || draft.currencyCode || "NGN",
           videoConsultationRateCents:
@@ -445,8 +460,29 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
-    if (new Date(selectedTime.requestedEndAt).getTime() <= Date.now()) {
+    const requestedStart = new Date(selectedTime.requestedStartAt).getTime();
+    const requestedEnd = new Date(selectedTime.requestedEndAt).getTime();
+    const earliestStart = Date.now() + minimumNoticeMinutes * 60_000;
+    const latestStart = Date.now() + bookingWindowDays * 24 * 60 * 60_000;
+
+    if (requestedEnd <= Date.now()) {
       toast.error("Choose a future appointment time.");
+      return;
+    }
+
+    if (requestedStart < earliestStart) {
+      toast.error(
+        minimumNoticeMinutes > 0
+          ? `This professional requires ${formatNoticePeriod(minimumNoticeMinutes)}.`
+          : "Choose a future appointment time.",
+      );
+      return;
+    }
+
+    if (requestedStart > latestStart) {
+      toast.error(
+        `This professional accepts bookings up to ${bookingWindowDays} days ahead.`,
+      );
       return;
     }
 
@@ -806,6 +842,9 @@ export function PatientAppointmentSchedulePage() {
                     >
                       {timezoneLabel(providerTimezone)}
                     </p>
+                    <p className="mt-1 text-[10px] font-medium leading-3 text-[#1565C0]">
+                      {formatNoticePeriod(minimumNoticeMinutes)}
+                    </p>
                   </div>
                   {!showsSingleTimeColumn ? (
                     <div className="min-w-0 text-right">
@@ -877,8 +916,8 @@ export function PatientAppointmentSchedulePage() {
                   })}
                   {availableSlots.length === 0 ? (
                     <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B] xl:col-span-2">
-                      No preset slots for this day. Enter a preferred time
-                      below.
+                      No selectable slots for this day after the professional&apos;s
+                      booking notice and existing bookings.
                     </div>
                   ) : null}
 

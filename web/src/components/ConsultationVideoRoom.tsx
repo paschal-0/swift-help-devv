@@ -68,6 +68,8 @@ type DailyParticipant = {
   session_id?: string;
   user_id?: string;
   user_name?: string;
+  audio?: boolean;
+  video?: boolean;
   audioTrack?: MediaStreamTrack | false;
   videoTrack?: MediaStreamTrack | false;
   tracks?: Record<string, DailyTrackState | undefined>;
@@ -138,6 +140,30 @@ function getVideoTrack(participant?: DailyParticipant | null) {
 
 function getAudioTrack(participant?: DailyParticipant | null) {
   return getMediaTrack(participant?.tracks?.audio, participant?.audioTrack);
+}
+
+function isParticipantTrackEnabled(
+  participant: DailyParticipant | undefined,
+  kind: "audio" | "video",
+) {
+  if (!participant) return null;
+
+  const explicitValue = participant[kind];
+  if (typeof explicitValue === "boolean") return explicitValue;
+
+  const state = participant.tracks?.[kind]?.state;
+  if (state === "off" || state === "blocked" || state === "interrupted") {
+    return false;
+  }
+  if (state === "playable" || state === "loading" || state === "sendable") {
+    return true;
+  }
+
+  const track =
+    kind === "audio"
+      ? getAudioTrack(participant)
+      : getVideoTrack(participant);
+  return track ? track.enabled : null;
 }
 
 function getParticipantId(participant: DailyParticipant) {
@@ -495,6 +521,15 @@ function SpeakerIcon() {
   );
 }
 
+function ControlSlash() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute h-[2px] w-7 rotate-45 rounded-full bg-current shadow-[0_0_0_1px_rgba(15,23,42,0.18)]"
+    />
+  );
+}
+
 function ScreenIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -564,10 +599,15 @@ export function ConsultationVideoRoom({
   const [voiceOnly, setVoiceOnly] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [networkNotice, setNetworkNotice] = useState<string | null>(null);
+  const [controlNotice, setControlNotice] = useState<string | null>(null);
+  const [busyControl, setBusyControl] = useState<
+    "camera" | "microphone" | "screen" | "leave" | null
+  >(null);
   const [callDiagnostics, setCallDiagnostics] = useState<string[]>([]);
   const cameraEnabledRef = useRef(cameraEnabled);
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
+  const [speakerMuted, setSpeakerMuted] = useState(false);
   const [activeTab, setActiveTab] = useState<"messages" | "summary" | "shared">(
     "messages",
   );
@@ -582,8 +622,13 @@ export function ConsultationVideoRoom({
     (participant) => participant.local,
   );
   const remoteParticipant = pickRemoteParticipant(participantList, remoteLabel);
-  const localVideoTrack = getVideoTrack(localParticipant);
-  const remoteVideoTrack = getVideoTrack(remoteParticipant);
+  const localVideoTrack = cameraEnabled
+    ? getVideoTrack(localParticipant)
+    : null;
+  const remoteVideoTrack =
+    isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") === false
+      ? null
+      : getVideoTrack(remoteParticipant);
   const remoteAudioTracks = useMemo(
     () =>
       buildRemoteAudioTracks(
@@ -653,6 +698,23 @@ export function ConsultationVideoRoom({
       if (!activeCall || cancelled) return;
       const nextParticipants = buildParticipantSnapshot(activeCall);
       setParticipants(nextParticipants);
+      const nextLocalParticipant = Object.values(nextParticipants).find(
+        (participant) => participant.local,
+      );
+      const nextCameraEnabled = isParticipantTrackEnabled(
+        nextLocalParticipant,
+        "video",
+      );
+      const nextMicrophoneEnabled = isParticipantTrackEnabled(
+        nextLocalParticipant,
+        "audio",
+      );
+      if (nextCameraEnabled !== null) {
+        setCameraEnabled(nextCameraEnabled);
+      }
+      if (nextMicrophoneEnabled !== null) {
+        setMicrophoneEnabled(nextMicrophoneEnabled);
+      }
       addCallDiagnostic(
         "participants",
         Object.values(nextParticipants).map(summarizeParticipant),
@@ -742,6 +804,14 @@ export function ConsultationVideoRoom({
       if (text) void transcriptTextRef.current?.(text);
     };
 
+    const handleScreenShareStarted = () => {
+      if (!cancelled) setScreenSharing(true);
+    };
+
+    const handleScreenShareStopped = () => {
+      if (!cancelled) setScreenSharing(false);
+    };
+
     setConnectionStatus("connecting");
 
     void import("@daily-co/daily-js")
@@ -772,6 +842,8 @@ export function ConsultationVideoRoom({
           .on("participant-left", syncParticipants)
           .on("track-started", syncParticipants)
           .on("track-stopped", syncParticipants)
+          .on("local-screen-share-started", handleScreenShareStarted)
+          .on("local-screen-share-stopped", handleScreenShareStopped)
           .on("network-connection", handleNetworkConnection as () => void)
           .on("network-quality-change", handleNetworkQuality as () => void)
           .on("receive-settings-updated", handleNetworkConnection as () => void)
@@ -811,6 +883,8 @@ export function ConsultationVideoRoom({
         call.off("participant-left", syncParticipants);
         call.off("track-started", syncParticipants);
         call.off("track-stopped", syncParticipants);
+        call.off("local-screen-share-started", handleScreenShareStarted);
+        call.off("local-screen-share-stopped", handleScreenShareStopped);
         call.off("network-connection", handleNetworkConnection as () => void);
         call.off("network-quality-change", handleNetworkQuality as () => void);
         call.off(
@@ -864,35 +938,75 @@ export function ConsultationVideoRoom({
   }, [connectionStatus]);
 
   const toggleCamera = async () => {
+    const call = callRef.current;
+    if (!call || connectionStatus !== "connected" || busyControl) return;
     const nextValue = !cameraEnabled;
+    setBusyControl("camera");
+    setControlNotice(null);
     setVoiceOnly(false);
     setCameraEnabled(nextValue);
-    presenceChangeRef.current?.({ cameraEnabled: nextValue });
-    await ignoreDailyResult(() => callRef.current?.setLocalVideo(nextValue));
+    try {
+      await Promise.resolve(call.setLocalVideo(nextValue));
+      presenceChangeRef.current?.({ cameraEnabled: nextValue });
+    } catch {
+      setCameraEnabled(!nextValue);
+      setControlNotice(
+        nextValue
+          ? "Camera could not be started. Check browser permissions."
+          : "Camera could not be paused.",
+      );
+    } finally {
+      setBusyControl(null);
+    }
   };
 
   const toggleVoiceOnly = async () => {
+    const call = callRef.current;
+    if (!call || connectionStatus !== "connected" || busyControl) return;
     const nextValue = !voiceOnly;
+    setBusyControl("camera");
+    setControlNotice(null);
     setVoiceOnly(nextValue);
     const cameraValue = !nextValue;
     setCameraEnabled(cameraValue);
-    presenceChangeRef.current?.({ cameraEnabled: cameraValue });
-    await ignoreDailyResult(() => callRef.current?.setLocalVideo(cameraValue));
+    try {
+      await Promise.resolve(call.setLocalVideo(cameraValue));
+      presenceChangeRef.current?.({ cameraEnabled: cameraValue });
+    } catch {
+      setVoiceOnly(!nextValue);
+      setCameraEnabled(!cameraValue);
+      setControlNotice("Voice-only mode could not be changed.");
+    } finally {
+      setBusyControl(null);
+    }
   };
 
   const toggleScreenShare = async () => {
     const call = callRef.current;
-    if (!call?.startScreenShare || !call.stopScreenShare) {
+    if (
+      !call?.startScreenShare ||
+      !call.stopScreenShare ||
+      connectionStatus !== "connected" ||
+      busyControl
+    ) {
+      setControlNotice("Screen sharing is not available on this device.");
       return;
     }
 
     const nextValue = !screenSharing;
+    setBusyControl("screen");
+    setControlNotice(null);
     setScreenSharing(nextValue);
     if (nextValue) {
       try {
         await Promise.resolve(call.startScreenShare());
       } catch {
         setScreenSharing(false);
+        setControlNotice(
+          "Screen sharing could not start. Check browser permissions.",
+        );
+      } finally {
+        setBusyControl(null);
       }
       return;
     }
@@ -900,14 +1014,32 @@ export function ConsultationVideoRoom({
       await Promise.resolve(call.stopScreenShare());
     } catch {
       setScreenSharing(true);
+      setControlNotice("Screen sharing could not be stopped.");
+    } finally {
+      setBusyControl(null);
     }
   };
 
   const toggleMicrophone = async () => {
+    const call = callRef.current;
+    if (!call || connectionStatus !== "connected" || busyControl) return;
     const nextValue = !microphoneEnabled;
+    setBusyControl("microphone");
+    setControlNotice(null);
     setMicrophoneEnabled(nextValue);
-    presenceChangeRef.current?.({ microphoneEnabled: nextValue });
-    await ignoreDailyResult(() => callRef.current?.setLocalAudio(nextValue));
+    try {
+      await Promise.resolve(call.setLocalAudio(nextValue));
+      presenceChangeRef.current?.({ microphoneEnabled: nextValue });
+    } catch {
+      setMicrophoneEnabled(!nextValue);
+      setControlNotice(
+        nextValue
+          ? "Microphone could not be unmuted. Check browser permissions."
+          : "Microphone could not be muted.",
+      );
+    } finally {
+      setBusyControl(null);
+    }
   };
 
   const toggleRecording = async () => {
@@ -935,6 +1067,8 @@ export function ConsultationVideoRoom({
   };
 
   const handleEnd = async () => {
+    if (busyControl === "leave") return;
+    setBusyControl("leave");
     presenceChangeRef.current?.({
       inCall: false,
       cameraEnabled: false,
@@ -969,14 +1103,17 @@ export function ConsultationVideoRoom({
     );
   };
 
+  const controlsDisabled =
+    connectionStatus !== "connected" || Boolean(busyControl);
+
   return (
-    <section className="rounded-[12px] bg-[#F8FAFC] p-[15px] text-[#334155]">
-      <h1 className="ml-[13px] text-[24px] font-medium leading-[42px] tracking-[-0.05em]">
+    <section className="overflow-hidden rounded-[12px] bg-[#F8FAFC] p-3 text-[#334155] sm:p-[15px]">
+      <h1 className="px-1 text-[20px] font-medium leading-8 tracking-[-0.04em] sm:ml-[13px] sm:px-0 sm:text-[24px] sm:leading-[42px]">
         {heading}
       </h1>
 
-      <div className="mt-5 grid gap-[15px] xl:grid-cols-[564px_274px]">
-        <div className="relative h-[554px] overflow-hidden rounded-[12px] bg-[#94A3B8]">
+      <div className="mt-3 grid gap-[15px] sm:mt-5 xl:grid-cols-[minmax(0,564px)_274px]">
+        <div className="relative h-[calc(100svh-150px)] min-h-[480px] max-h-[720px] overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[600px] xl:h-[554px]">
           <VideoSurface
             track={remoteVideoTrack}
             label={effectiveRemoteLabel}
@@ -986,32 +1123,32 @@ export function ConsultationVideoRoom({
             <RemoteAudio
               key={`${id}:${track.id}`}
               track={track}
-              volume={audioVolume}
+              volume={speakerMuted ? 0 : audioVolume}
             />
           ))}
 
-          <div className="absolute left-[18px] top-[15px] flex h-12 w-[142px] items-center gap-[3px] rounded-[12px] bg-[#F8FAFC] p-1">
+          <div className="absolute left-3 top-3 flex h-11 max-w-[58%] items-center gap-2 rounded-[10px] bg-[rgba(248,250,252,0.92)] p-1 pr-3 shadow-sm backdrop-blur-sm sm:left-[18px] sm:top-[15px] sm:h-12 sm:max-w-[220px] sm:rounded-[12px]">
             {renderAvatar(
               remoteAvatarUrl,
               effectiveRemoteLabel,
-              "h-10 w-10 rounded-[12px]",
+              "h-9 w-9 rounded-[9px] sm:h-10 sm:w-10 sm:rounded-[12px]",
             )}
             <div className="min-w-0">
               <p className="truncate text-[10px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
                 {remoteRoleLabel}
               </p>
-              <p className="truncate text-[16px] font-normal leading-4 tracking-[-0.05em] text-[#334155]">
+              <p className="truncate text-[13px] font-medium leading-4 tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:font-normal">
                 {effectiveRemoteLabel}
               </p>
             </div>
           </div>
 
-          <div className="absolute right-[15px] top-[15px] flex h-[46px] w-[109px] items-center justify-center rounded-[70px] bg-[rgba(51,65,85,0.3)]">
-            <div className="flex items-center gap-2">
+          <div className="absolute right-3 top-3 flex h-10 min-w-[88px] items-center justify-center rounded-full bg-[rgba(15,23,42,0.58)] px-3 backdrop-blur-sm sm:right-[15px] sm:top-[15px] sm:h-[46px] sm:min-w-[109px]">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F8FAFC]">
                 <span className="h-2 w-2 rounded-full bg-[#F20E0E]" />
               </span>
-              <span className="text-[16px] font-medium leading-4 tracking-[-0.05em] text-white">
+              <span className="text-[13px] font-medium leading-4 text-white sm:text-[16px]">
                 {connectionStatus === "connected"
                   ? formatCallDuration(elapsedSeconds)
                   : "--:--"}
@@ -1019,7 +1156,7 @@ export function ConsultationVideoRoom({
             </div>
           </div>
 
-          <div className="absolute bottom-[145px] right-[15px] h-[187px] w-[125px] overflow-hidden rounded-[12px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)]">
+          <div className="absolute bottom-[104px] right-3 h-[126px] w-[92px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px]">
             <VideoSurface
               track={localVideoTrack}
               label={localLabel}
@@ -1027,10 +1164,29 @@ export function ConsultationVideoRoom({
               mirror
               compact
             />
+            <div className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-md bg-[rgba(15,23,42,0.62)] px-1.5 py-0.5 text-[9px] font-medium text-white">
+              {cameraEnabled ? localLabel : "Camera off"}
+            </div>
           </div>
 
-          <div className="absolute bottom-[23px] left-[17px] flex h-[144px] items-end gap-24">
-            <div className="flex h-[144px] w-[51px] flex-col items-center justify-between rounded-[32px] bg-[rgba(51,65,85,0.3)] px-0 py-[17px] text-[#F8FAFC]">
+          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-[22px] bg-[rgba(15,23,42,0.68)] p-2 text-[#F8FAFC] shadow-[0_12px_30px_rgba(15,23,42,0.28)] backdrop-blur-md sm:bottom-[23px] sm:gap-3 sm:rounded-[30px] sm:p-3">
+            <div className="group relative hidden sm:block">
+              <button
+                type="button"
+                onClick={() => setSpeakerMuted((current) => !current)}
+                className={`relative flex h-[48px] w-[48px] items-center justify-center rounded-full transition ${
+                  speakerMuted
+                    ? "bg-[#64748B]"
+                    : "bg-[rgba(255,255,255,0.2)]"
+                }`}
+                aria-pressed={!speakerMuted}
+                aria-label={speakerMuted ? "Unmute speaker" : "Mute speaker"}
+                title={speakerMuted ? "Unmute speaker" : "Mute speaker"}
+              >
+                <SpeakerIcon />
+                {speakerMuted ? <ControlSlash /> : null}
+              </button>
+              <div className="absolute bottom-[58px] left-1/2 hidden h-[132px] w-11 -translate-x-1/2 flex-col items-center justify-between rounded-[24px] bg-[rgba(15,23,42,0.78)] py-3 group-hover:flex group-focus-within:flex">
               <input
                 aria-label="Speaker volume"
                 type="range"
@@ -1038,70 +1194,105 @@ export function ConsultationVideoRoom({
                 max="1"
                 step="0.05"
                 value={audioVolume}
-                onChange={(event) => setAudioVolume(Number(event.target.value))}
+                onChange={(event) => {
+                  const nextVolume = Number(event.target.value);
+                  setAudioVolume(nextVolume);
+                  setSpeakerMuted(nextVolume === 0);
+                }}
                 className="h-[73px] w-2 accent-[#1E88E5] [direction:rtl] [writing-mode:vertical-lr]"
               />
               <SpeakerIcon />
+              </div>
             </div>
 
-            <div className="flex h-20 items-end gap-3 text-[#F8FAFC]">
-              <button
-                type="button"
-                onClick={() => void toggleCamera()}
-                className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
-                  cameraEnabled ? "bg-[rgba(255,255,255,0.3)]" : "bg-[#64748B]"
-                }`}
-                aria-pressed={cameraEnabled}
-                aria-label={
-                  cameraEnabled ? "Turn camera off" : "Turn camera on"
-                }
-              >
-                <CameraIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleEnd()}
-                disabled={isEnding}
-                className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-[#C82B33] disabled:opacity-60"
-                aria-label="End call"
-              >
+            <button
+              type="button"
+              onClick={() => setSpeakerMuted((current) => !current)}
+              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition sm:hidden ${
+                speakerMuted ? "bg-[#64748B]" : "bg-[rgba(255,255,255,0.2)]"
+              }`}
+              aria-pressed={!speakerMuted}
+              aria-label={speakerMuted ? "Unmute speaker" : "Mute speaker"}
+            >
+              <SpeakerIcon />
+              {speakerMuted ? <ControlSlash /> : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void toggleCamera()}
+              disabled={controlsDisabled}
+              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+                cameraEnabled
+                  ? "bg-[rgba(255,255,255,0.2)]"
+                  : "bg-[#64748B]"
+              }`}
+              aria-pressed={cameraEnabled}
+              aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+              title={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+            >
+              <CameraIcon />
+              {!cameraEnabled ? <ControlSlash /> : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleEnd()}
+              disabled={isEnding || busyControl === "leave"}
+              className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#C82B33] transition hover:bg-[#B4232B] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[68px] sm:w-[68px] sm:rounded-[22px]"
+              aria-label="End call"
+              title="End call"
+            >
+              <span className="scale-75 sm:scale-90">
                 <PhoneIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => void toggleScreenShare()}
-                className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
-                  screenSharing ? "bg-[#1565C0]" : "bg-[rgba(255,255,255,0.3)]"
-                }`}
-                aria-pressed={screenSharing}
-                aria-label={
-                  screenSharing ? "Stop screen sharing" : "Share screen"
-                }
-              >
-                <ScreenIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => void toggleMicrophone()}
-                className={`flex h-[54px] w-[54px] items-center justify-center rounded-[70px] ${
-                  microphoneEnabled
-                    ? "bg-[rgba(255,255,255,0.3)]"
-                    : "bg-[#64748B]"
-                }`}
-                aria-pressed={microphoneEnabled}
-                aria-label={
-                  microphoneEnabled ? "Mute microphone" : "Unmute microphone"
-                }
-              >
-                <MicIcon />
-              </button>
-            </div>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void toggleScreenShare()}
+              disabled={controlsDisabled}
+              className={`flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+                screenSharing
+                  ? "bg-[#1565C0]"
+                  : "bg-[rgba(255,255,255,0.2)]"
+              }`}
+              aria-pressed={screenSharing}
+              aria-label={
+                screenSharing ? "Stop screen sharing" : "Share screen"
+              }
+              title={screenSharing ? "Stop screen sharing" : "Share screen"}
+            >
+              <ScreenIcon />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void toggleMicrophone()}
+              disabled={controlsDisabled}
+              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+                microphoneEnabled
+                  ? "bg-[rgba(255,255,255,0.2)]"
+                  : "bg-[#64748B]"
+              }`}
+              aria-pressed={microphoneEnabled}
+              aria-label={
+                microphoneEnabled ? "Mute microphone" : "Unmute microphone"
+              }
+              title={
+                microphoneEnabled ? "Mute microphone" : "Unmute microphone"
+              }
+            >
+              <MicIcon />
+              {!microphoneEnabled ? <ControlSlash /> : null}
+            </button>
           </div>
 
           <button
             type="button"
             onClick={() => void toggleVoiceOnly()}
-            className={`absolute right-[15px] top-[74px] rounded-[70px] px-4 py-2 text-[12px] font-medium tracking-[-0.04em] ${
+            disabled={controlsDisabled}
+            className={`absolute right-3 top-[62px] rounded-full px-3 py-2 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:right-[15px] sm:top-[74px] sm:px-4 sm:text-[12px] ${
               voiceOnly
                 ? "bg-[#1565C0] text-[#F8FAFC]"
                 : "bg-[rgba(248,250,252,0.88)] text-[#334155]"
@@ -1110,6 +1301,17 @@ export function ConsultationVideoRoom({
           >
             Voice only
           </button>
+
+          {controlNotice ? (
+            <button
+              type="button"
+              onClick={() => setControlNotice(null)}
+              className="absolute bottom-[88px] left-3 right-3 z-20 rounded-[10px] bg-[rgba(15,23,42,0.86)] px-3 py-2 text-center text-[11px] font-medium leading-4 text-white sm:bottom-[108px] sm:left-1/2 sm:right-auto sm:w-max sm:max-w-[80%] sm:-translate-x-1/2 sm:text-[12px]"
+              aria-label="Dismiss call control message"
+            >
+              {controlNotice}
+            </button>
+          ) : null}
 
           {!canJoin ? (
             <div className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.74)] px-8 text-center text-white">
@@ -1177,8 +1379,8 @@ export function ConsultationVideoRoom({
           ) : null}
         </div>
 
-        <aside className="relative h-[619px] rounded-[12px] bg-[#E2E8F0] px-[10px] py-[17px]">
-          <div className="grid h-[37px] grid-cols-[90px_1fr_1fr] rounded-[12px] bg-[#F8FAFC] text-[14px] leading-4 tracking-[-0.05em]">
+        <aside className="relative min-h-[430px] rounded-[12px] bg-[#E2E8F0] px-[10px] py-[12px] sm:h-[619px] sm:py-[17px]">
+          <div className="grid h-10 grid-cols-3 rounded-[10px] bg-[#F8FAFC] text-[12px] font-medium leading-4 sm:h-[37px] sm:grid-cols-[90px_1fr_1fr] sm:rounded-[12px] sm:text-[14px] sm:font-normal">
             <button
               type="button"
               onClick={() => setActiveTab("messages")}
@@ -1216,7 +1418,7 @@ export function ConsultationVideoRoom({
 
           {activeTab === "messages" ? (
             <>
-              <div className="mt-[57px] h-[431px] space-y-[13px] overflow-y-auto pr-[13px]">
+              <div className="mt-4 h-[300px] space-y-[13px] overflow-y-auto pr-1 sm:mt-[57px] sm:h-[431px] sm:pr-[13px]">
                 {messages.map((message) => {
                   const isMine = message.senderType === currentUserSenderType;
                   const label = isMine ? localLabel : effectiveRemoteLabel;
@@ -1254,7 +1456,7 @@ export function ConsultationVideoRoom({
 
               <form
                 onSubmit={onSendMessage}
-                className="absolute bottom-3 left-[10px] h-11 w-[252px] rounded-[12px] bg-[#F8FAFC]"
+                className="absolute bottom-3 left-[10px] right-[10px] h-11 rounded-[12px] bg-[#F8FAFC]"
               >
                 <input
                   value={messageDraft}
@@ -1262,7 +1464,7 @@ export function ConsultationVideoRoom({
                     onMessageDraftChange?.(event.target.value)
                   }
                   placeholder="Write your message"
-                  className="h-full w-[206px] rounded-[12px] bg-transparent px-[11px] pt-[3px] text-[10px] font-light tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+                  className="h-full w-full rounded-[12px] bg-transparent px-[11px] pr-14 pt-[3px] text-[12px] font-light text-[#334155] outline-none placeholder:text-[#94A3B8] sm:text-[10px]"
                 />
                 <button
                   type="submit"

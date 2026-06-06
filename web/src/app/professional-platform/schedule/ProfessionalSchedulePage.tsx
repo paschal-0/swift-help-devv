@@ -215,7 +215,17 @@ const ruleOptions: Record<string, string[]> = {
     "Up to 7 days ahead",
     "Up to 30 days ahead",
   ],
-  "Minimum notice": ["2 hours", "4 hours", "24 hours"],
+  "Minimum booking notice": [
+    "No minimum notice",
+    "30 minutes",
+    "1 hour",
+    "2 hours",
+    "4 hours",
+    "12 hours",
+    "24 hours",
+    "48 hours",
+    "7 days",
+  ],
   "Session Duration": ["30 Minutes", "45 Minutes", "60 Minutes"],
 };
 
@@ -245,9 +255,29 @@ const parseBookingWindowDays = (value: string) => {
   return matched ? Number(matched[1]) : 14;
 };
 
-const parseHoursToMinutes = (value: string) => {
+const parseMinimumNoticeMinutes = (value: string) => {
+  if (value === "No minimum notice") return 0;
   const matched = value.match(/(\d+)/);
-  return matched ? Number(matched[1]) * 60 : 120;
+  if (!matched) return 120;
+
+  const amount = Number(matched[1]);
+  if (value.includes("minute")) return amount;
+  if (value.includes("day")) return amount * 24 * 60;
+  return amount * 60;
+};
+
+const formatMinimumNotice = (minutes: number) => {
+  if (minutes <= 0) return "No minimum notice";
+  if (minutes < 60) return `${minutes} minutes`;
+  if (minutes % (24 * 60) === 0) {
+    const days = minutes / (24 * 60);
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+  return `${minutes} minutes`;
 };
 
 const parseSessionDurationMinutes = (value: string) => {
@@ -618,10 +648,9 @@ export function ProfessionalSchedulePage() {
             ? `${representativeDay.from} - ${representativeDay.to}`
             : "9:00 AM - 5:00 PM",
           "Booking window": `Up to ${data.availability.bookingWindowDays} days ahead`,
-          "Minimum notice": `${Math.max(
-            1,
-            Math.round(data.availability.minimumNoticeMinutes / 60),
-          )} hours`,
+          "Minimum booking notice": formatMinimumNotice(
+            data.availability.minimumNoticeMinutes,
+          ),
           "Session Duration": `${data.availability.defaultSessionDurationMinutes} Minutes`,
         };
         const nextRules = toRuleArray(rulesFromBackend);
@@ -889,7 +918,9 @@ export function ProfessionalSchedulePage() {
     try {
       await updateProfessionalAvailability({
         bookingWindowDays: parseBookingWindowDays(ruleMap["Booking window"]),
-        minimumNoticeMinutes: parseHoursToMinutes(ruleMap["Minimum notice"]),
+        minimumNoticeMinutes: parseMinimumNoticeMinutes(
+          ruleMap["Minimum booking notice"],
+        ),
         defaultSessionDurationMinutes: parseSessionDurationMinutes(
           ruleMap["Session Duration"],
         ),
@@ -1702,7 +1733,12 @@ export function ProfessionalSchedulePage() {
                       }
                       className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#BFDBFE] sm:text-[16px]"
                     >
-                      {(ruleOptions[rule.label] ?? [rule.value]).map((option) => (
+                      {Array.from(
+                        new Set([
+                          rule.value,
+                          ...(ruleOptions[rule.label] ?? []),
+                        ]),
+                      ).map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>
@@ -1720,6 +1756,11 @@ export function ProfessionalSchedulePage() {
                 </div>
               ))}
             </div>
+            <p className="mt-3 text-[12px] leading-4 text-[#64748B]">
+              Minimum booking notice controls how soon a patient can request
+              an appointment. Times inside that notice period are hidden from
+              patients.
+            </p>
             {isEditingRules ? (
               <div className="mt-4 flex justify-end">
                 <button
