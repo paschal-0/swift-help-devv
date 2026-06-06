@@ -420,7 +420,7 @@ export function PatientBookAppointmentPage() {
           Appointments
         </h1>
         <p className="text-[14px] font-light text-[#64748B] xl:hidden">
-          Follow the steps to book your clinician.
+          Follow the steps to book your professional.
         </p>
       </div>
 
@@ -521,7 +521,7 @@ export function PatientBookAppointmentPage() {
             <div className="mb-4 flex items-center gap-3 px-4 xl:px-0">
               <StepBadge step="3" />
               <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
-                <span className="xl:hidden">Available Clinicians</span>
+                <span className="xl:hidden">Available Professionals</span>
                 <span className="hidden xl:inline">
                   Available professionals
                 </span>
