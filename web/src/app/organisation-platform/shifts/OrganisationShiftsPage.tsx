@@ -414,17 +414,17 @@ export function OrganisationShiftsPage() {
                   key={card.title}
                   whileHover={{ y: -2 }}
                   transition={{ duration: 0.2, ease: premiumEase }}
-                  className="rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm transition duration-200 ease-out hover:shadow-md sm:p-5 xl:min-h-[140px]"
+                  className="rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm transition duration-200 ease-out hover:shadow-md sm:p-4 xl:min-h-[112px] xl:p-5"
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start xl:gap-[10px]">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] sm:h-16 sm:w-[59px] xl:h-[88px] xl:w-[88px]">
+                  <div className="flex h-full min-w-0 items-center gap-3 xl:gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#E3F2FD] sm:h-14 sm:w-14 xl:h-16 xl:w-16">
                       <CalendarTileIcon />
                     </div>
-                    <div className="min-w-0 flex-1 pt-1 xl:pt-0">
-                      <p className="truncate text-[12px] font-medium leading-tight tracking-[-0.04em] text-[#94A3B8] sm:whitespace-normal xl:text-[13px]">
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                      <p className="text-[11px] font-medium leading-[14px] tracking-[-0.03em] text-[#94A3B8] sm:text-[12px] sm:leading-[15px] xl:text-[13px] xl:leading-4">
                         {card.title}
                       </p>
-                      <p className="mt-1 text-[24px] font-semibold leading-none tracking-[-0.06em] text-[#334155] sm:mt-3 sm:text-[40px] xl:mt-5 xl:text-[58px]">
+                      <p className="mt-1 text-[28px] font-semibold leading-none tracking-[-0.04em] text-[#334155] sm:text-[34px] xl:mt-2 xl:text-[40px]">
                         {card.value}
                       </p>
                     </div>

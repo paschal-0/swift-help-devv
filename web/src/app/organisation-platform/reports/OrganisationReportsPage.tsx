@@ -10,7 +10,7 @@ import {
   Tooltip,
   type ChartOptions,
 } from "chart.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { toast } from "sonner";
 import {
@@ -152,6 +152,94 @@ function PaymentStatusPill({ status }: { status: PaymentReportStatus }) {
     <span className="inline-flex shrink-0 whitespace-nowrap items-center justify-center rounded-[6px] border border-[#39B54A] bg-[#E9FBEA] px-2.5 py-0.5 text-[11px] font-medium text-[#1E9B2E] transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm sm:px-3 sm:py-1 sm:text-[12px]">
       {status}
     </span>
+  );
+}
+
+function ReportDropdown({
+  value,
+  options,
+  onChange,
+  label,
+  className = "sm:w-[132px]",
+}: {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  label: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={dropdownRef} className={`relative min-w-0 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-[8px] border px-3 text-left text-[13px] font-normal tracking-[-0.05em] outline-none transition duration-200 ease-out sm:h-8 ${
+          open
+            ? "border-[#1565C0] bg-[#E3F2FD] shadow-[0_8px_20px_rgba(21,101,192,0.14)]"
+            : "border-[#B7C7DA] bg-transparent hover:border-[#1565C0] hover:bg-[#F8FAFC]"
+        }`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+      >
+        <span className="min-w-0 flex-1 truncate text-[#334155]">{value}</span>
+        <span className={`shrink-0 transition ${open ? "rotate-180" : ""}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-40 w-full min-w-[150px] overflow-hidden rounded-[10px] border border-[#B7C7DA] bg-[#F8FAFC] py-1 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
+          <div className="max-h-[220px] overflow-y-auto py-1 [scrollbar-width:thin]">
+            {options.map((option) => {
+              const selected = option === value;
+
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    onChange(option);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium tracking-[-0.04em] transition ${
+                    selected
+                      ? "bg-[#D7ECFB] text-[#1565C0]"
+                      : "text-[#334155] hover:bg-[#E3F2FD]"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate">{option}</span>
+                  {selected ? (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#1565C0]" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -593,51 +681,29 @@ export function OrganisationReportsPage() {
           </h1>
 
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-            <div className="relative">
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="h-9 w-full cursor-pointer appearance-none rounded-[8px] border border-[#B7C7DA] bg-transparent px-3 pr-8 text-[13px] font-normal tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#F8FAFC] focus:border-[#1565C0] sm:h-8 sm:w-[128px]"
-              >
-                <option>Date range</option>
-                <option>Last 7 days</option>
-                <option>This month</option>
-                <option>This year</option>
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <ChevronDownIcon />
-              </span>
-            </div>
+            <ReportDropdown
+              value={dateRange}
+              options={["Date range", "Last 7 days", "This month", "This year"]}
+              onChange={setDateRange}
+              label="Date range"
+              className="sm:w-[128px]"
+            />
 
-            <div className="relative">
-              <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="h-9 w-full cursor-pointer appearance-none rounded-[8px] border border-[#B7C7DA] bg-transparent px-3 pr-8 text-[13px] font-normal tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#F8FAFC] focus:border-[#1565C0] sm:h-8 sm:w-[132px]"
-              >
-                {departmentOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <ChevronDownIcon />
-              </span>
-            </div>
+            <ReportDropdown
+              value={departmentFilter}
+              options={departmentOptions}
+              onChange={setDepartmentFilter}
+              label="Department"
+              className="sm:w-[132px]"
+            />
 
-            <div className="relative">
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="h-9 w-full cursor-pointer appearance-none rounded-[8px] border border-[#B7C7DA] bg-transparent px-3 pr-8 text-[13px] font-normal tracking-[-0.05em] text-[#334155] outline-none transition duration-200 ease-out hover:border-[#1565C0] hover:bg-[#F8FAFC] focus:border-[#1565C0] sm:h-8 sm:w-[80px]"
-              >
-                {roleOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <ChevronDownIcon />
-              </span>
-            </div>
+            <ReportDropdown
+              value={roleFilter}
+              options={roleOptions}
+              onChange={setRoleFilter}
+              label="Role"
+              className="sm:w-[90px]"
+            />
 
             <button
               type="button"
