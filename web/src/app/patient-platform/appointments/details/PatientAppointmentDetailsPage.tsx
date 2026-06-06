@@ -39,13 +39,13 @@ function ToggleSwitch({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative h-[16.73px] w-[33px] cursor-pointer rounded-[18.5915px] transition-colors ${
+      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-[#93C5FD] focus:ring-offset-2 focus:ring-offset-[#F8FAFC] ${
         checked ? "bg-[#1565C0]" : "bg-[#94A3B8]"
       }`}
     >
       <span
-        className={`absolute top-[0.47px] h-[15.79px] w-[16.57px] rounded-full border-[1.85915px] border-[#1565C0] bg-[#F8FAFC] transition-all ${
-          checked ? "left-[15px]" : "left-[1px]"
+        className={`h-6 w-6 rounded-full border border-[#1565C0] bg-[#F8FAFC] shadow-[0_2px_6px_rgba(15,23,42,0.12)] transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
     </button>
@@ -138,6 +138,74 @@ function buildAiPatientNote(draft: Record<string, string>) {
       ? `Primary symptom: ${draft.primarySymptom}`
       : undefined;
   }
+}
+
+function buildSharedSummaryItems(draft: Record<string, string> | null) {
+  if (!draft) return [];
+
+  let context: Record<string, unknown> = {};
+  let symptomSummary: Record<string, unknown> = {};
+
+  if (draft.aiContext) {
+    try {
+      context = JSON.parse(draft.aiContext) as Record<string, unknown>;
+      symptomSummary =
+        context.symptomSummary && typeof context.symptomSummary === "object"
+          ? (context.symptomSummary as Record<string, unknown>)
+          : {};
+    } catch {
+      context = {};
+      symptomSummary = {};
+    }
+  }
+
+  const rows: DetailItem[] = [
+    {
+      label: "Primary symptom",
+      value:
+        String(symptomSummary.primarySymptom ?? draft.primarySymptom ?? "") ||
+        "",
+    },
+    {
+      label: "Urgency",
+      value: String(context.urgencyLevel ?? draft.urgencyLevel ?? ""),
+    },
+    {
+      label: "Duration",
+      value: String(symptomSummary.duration ?? ""),
+    },
+    {
+      label: "Severity",
+      value: String(symptomSummary.severity ?? ""),
+    },
+    {
+      label: "Associated symptoms",
+      value: String(symptomSummary.associatedSymptoms ?? ""),
+    },
+    {
+      label: "Recommended care",
+      value: String(context.recommendedCareType ?? draft.careType ?? ""),
+    },
+    {
+      label: "Reason",
+      value: draft.reason ?? "",
+    },
+  ];
+
+  const redFlags = textList(context.redFlags);
+  if (redFlags.length) {
+    rows.push({ label: "Red flags", value: redFlags.join("; ") });
+  }
+
+  const recommendedActions = textList(context.recommendedActions);
+  if (recommendedActions.length) {
+    rows.push({
+      label: "Recommended actions",
+      value: recommendedActions.join("; "),
+    });
+  }
+
+  return rows.filter((item) => item.value.trim().length > 0);
 }
 
 function timezoneLabel(timezone?: string) {
@@ -287,6 +355,10 @@ export function PatientAppointmentDetailsPage() {
 
     return items;
   }, [draft]);
+  const sharedSummaryItems = useMemo(
+    () => buildSharedSummaryItems(draft),
+    [draft],
+  );
 
   const confirmAppointment = async () => {
     if (!consentChecked) {
@@ -343,7 +415,9 @@ export function PatientAppointmentDetailsPage() {
         durationMinutes: draft.durationMinutes
           ? Number(draft.durationMinutes)
           : undefined,
-        patientNote: buildAiPatientNote(draft),
+        patientNote: shareSummaryWithProvider
+          ? buildAiPatientNote(draft)
+          : undefined,
         emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,
         shareSummaryWithProvider,
@@ -438,27 +512,51 @@ export function PatientAppointmentDetailsPage() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: "easeOut", delay: 0.05 }}
-            className="rounded-[16px] border border-[#1E88E5] p-4 sm:p-5"
+            className="rounded-[16px] border border-[#1E88E5] p-3 sm:p-5"
           >
-            <h2 className="text-center text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#0F172A] sm:text-left">
-              Shared Symptom Summary
-            </h2>
-            <p className="mt-2 text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155] sm:text-left">
-              This summary can be shared with your provider to support a more
-              informed consultation.
-            </p>
-
-            <DetailGrid items={dynamicAppointmentItems} className="mt-4" />
-
-            <div className="mt-4 flex items-center justify-center gap-3 px-1 text-center sm:justify-start sm:px-2 sm:text-left">
+            <div className="flex items-center justify-between gap-3 rounded-[12px] bg-[#F8FAFC] px-3 py-3 text-left sm:bg-transparent sm:px-0 sm:py-0">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[16px] font-medium leading-5 tracking-[-0.04em] text-[#0F172A] sm:text-[18px] sm:font-normal sm:leading-[21px]">
+                  Share symptom summary
+                </h2>
+                <p className="mt-1 text-[12px] font-normal leading-4 tracking-[-0.03em] text-[#64748B]">
+                  Send the AI symptom summary to this professional.
+                </p>
+              </div>
               <ToggleSwitch
                 checked={shareSummaryWithProvider}
                 onChange={setShareSummaryWithProvider}
               />
-              <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
-                Share my symptom summary with this professional
-              </span>
             </div>
+
+            {shareSummaryWithProvider ? (
+              <div className="mt-3 rounded-[14px] bg-[#E3F2FD] p-3 sm:mt-4 sm:p-4">
+                <h3 className="text-[14px] font-semibold leading-5 tracking-[-0.03em] text-[#334155]">
+                  Shared Symptom Summary
+                </h3>
+                {sharedSummaryItems.length ? (
+                  <div className="mt-3 space-y-2">
+                    {sharedSummaryItems.map((item) => (
+                      <div
+                        key={`${item.label}-${item.value}`}
+                        className="rounded-[10px] bg-[#F8FAFC] px-3 py-2"
+                      >
+                        <p className="text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#94A3B8]">
+                          {item.label}
+                        </p>
+                        <p className="mt-0.5 text-[13px] font-medium leading-[18px] tracking-[-0.03em] text-[#1565C0]">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 rounded-[10px] bg-[#F8FAFC] px-3 py-3 text-[13px] leading-5 text-[#64748B]">
+                    No symptom summary is attached to this booking.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </motion.section>
         </div>
 
@@ -466,24 +564,24 @@ export function PatientAppointmentDetailsPage() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut", delay: 0.1 }}
-          className="mt-7 rounded-[16px] bg-[#F8FAFC] px-5 py-5 shadow-[0_0_30px_rgba(30,136,229,0.15)] sm:px-6 sm:py-6"
+          className="mt-7 rounded-[16px] bg-[#F8FAFC] px-4 py-4 shadow-[0_0_30px_rgba(30,136,229,0.15)] sm:px-6 sm:py-6"
         >
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center justify-center gap-3 text-center sm:text-left lg:justify-start">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex w-full items-center justify-between gap-4 rounded-[12px] bg-white px-3 py-3 text-left lg:w-auto lg:min-w-[280px] lg:bg-transparent lg:px-0 lg:py-0">
+              <span className="min-w-0 flex-1 text-[14px] font-normal leading-[18px] tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:font-light sm:leading-5">
+                Send appointment reminder by email
+              </span>
               <ToggleSwitch
                 checked={emailReminder}
                 onChange={setEmailReminder}
               />
-              <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
-                Send appointment reminder by email
-              </span>
             </div>
 
-            <div className="flex items-center justify-center gap-3 text-center sm:text-left lg:justify-start">
-              <ToggleSwitch checked={smsReminder} onChange={setSmsReminder} />
-              <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
+            <div className="flex w-full items-center justify-between gap-4 rounded-[12px] bg-white px-3 py-3 text-left lg:w-auto lg:min-w-[260px] lg:bg-transparent lg:px-0 lg:py-0">
+              <span className="min-w-0 flex-1 text-[14px] font-normal leading-[18px] tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:font-light sm:leading-5">
                 Send appointment reminder by SMS
               </span>
+              <ToggleSwitch checked={smsReminder} onChange={setSmsReminder} />
             </div>
           </div>
         </motion.section>
@@ -497,7 +595,7 @@ export function PatientAppointmentDetailsPage() {
           <button
             type="button"
             onClick={() => setConsentChecked((current) => !current)}
-            className={`mt-[1px] inline-flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-[8px] border ${
+            className={`mt-[1px] inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[7px] border sm:h-[30px] sm:w-[30px] sm:rounded-[8px] ${
               consentChecked
                 ? "border-[#1565C0] bg-[#E3F2FD]"
                 : "border-[#334155] bg-transparent"
@@ -513,7 +611,7 @@ export function PatientAppointmentDetailsPage() {
               </svg>
             ) : null}
           </button>
-          <p className="max-w-[716px] text-[16px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155]">
+          <p className="max-w-[716px] text-[14px] font-normal leading-5 tracking-[-0.04em] text-[#334155] sm:text-[16px] sm:leading-[18px]">
             I understand this booking request is for a scheduled consultation
             and does not replace emergency medical care.
           </p>
