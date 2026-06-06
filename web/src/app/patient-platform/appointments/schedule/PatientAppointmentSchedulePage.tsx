@@ -300,7 +300,14 @@ export function PatientAppointmentSchedulePage() {
     return () => {
       isMounted = false;
     };
-  }, [draft?.professionalId, patientTimezone, selectedDate]);
+  }, [
+    draft?.currencyCode,
+    draft?.inPersonVisitRateCents,
+    draft?.professionalId,
+    draft?.videoConsultationRateCents,
+    patientTimezone,
+    selectedDate,
+  ]);
 
   const monthTitle = useMemo(
     () =>
@@ -683,7 +690,7 @@ export function PatientAppointmentSchedulePage() {
               Select time and date
             </h2>
 
-            <div className="mt-3 flex flex-col gap-5 lg:flex-row">
+            <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-start">
               <div className="w-full max-w-none lg:max-w-[257px]">
                 <div className="flex h-6 items-center justify-between">
                   <button
@@ -783,7 +790,7 @@ export function PatientAppointmentSchedulePage() {
                 </div>
               </div>
 
-              <div className="w-full max-w-none lg:max-w-[231px]">
+              <div className="w-full max-w-none lg:min-w-0 lg:flex-1">
                 <div
                   className={`mb-2 grid gap-3 px-[2px] ${
                     showsSingleTimeColumn ? "grid-cols-1" : "grid-cols-2"
@@ -815,7 +822,7 @@ export function PatientAppointmentSchedulePage() {
                   ) : null}
                 </div>
 
-                <div className="space-y-[6px]">
+                <div className="grid gap-[6px] xl:grid-cols-2">
                   {availableSlots.map((slot) => {
                     const selected = selectedSlot === slot.id;
                     return (
@@ -826,21 +833,21 @@ export function PatientAppointmentSchedulePage() {
                         whileTap={{ scale: 0.985 }}
                         animate={{ y: selected ? -1 : 0 }}
                         transition={{ duration: 0.18, ease: "easeOut" }}
-                        className={`min-h-11 w-full cursor-pointer rounded-[8px] border px-3 py-2 ${
+                        className={`min-h-11 w-full cursor-pointer rounded-[8px] border px-3 py-2 xl:min-h-10 xl:px-2 ${
                           selected
                             ? "border-[#1565C0] bg-[#E3F2FD]"
                             : "border-[#94A3B8] bg-transparent"
                         }`}
                       >
                         <div
-                          className={`mx-auto grid w-full max-w-[206px] items-center gap-3 ${
+                          className={`mx-auto grid w-full max-w-[206px] items-center gap-3 xl:max-w-none ${
                             showsSingleTimeColumn
                               ? "grid-cols-1"
                               : "grid-cols-[1fr_auto_1fr]"
                           }`}
                         >
                           <span
-                            className={`text-center text-[12px] font-semibold leading-5 ${
+                            className={`text-center text-[12px] font-semibold leading-5 xl:text-[11px] ${
                               selected ? "text-[#1E88E5]" : "text-black"
                             }`}
                           >
@@ -856,7 +863,7 @@ export function PatientAppointmentSchedulePage() {
                                 }`}
                               />
                               <span
-                                className={`text-center text-[12px] font-semibold leading-5 ${
+                                className={`text-center text-[12px] font-semibold leading-5 xl:text-[11px] ${
                                   selected ? "text-[#1E88E5]" : "text-black"
                                 }`}
                               >
@@ -869,13 +876,13 @@ export function PatientAppointmentSchedulePage() {
                     );
                   })}
                   {availableSlots.length === 0 ? (
-                    <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B]">
+                    <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B] xl:col-span-2">
                       No preset slots for this day. Enter a preferred time
                       below.
                     </div>
                   ) : null}
 
-                  <div className="rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] p-3">
+                  <div className="rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] p-3 xl:col-span-2">
                     <label className="mb-3 flex cursor-pointer items-center gap-2 text-[13px] font-medium tracking-[-0.04em] text-[#334155]">
                       <input
                         type="radio"
