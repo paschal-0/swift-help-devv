@@ -136,10 +136,27 @@ function zonedDateTimeToIso(dateKey: string, time: string, timeZone: string) {
 function formatTimeInZone(isoDate: string, timeZone: string) {
   return new Intl.DateTimeFormat("en-US", {
     timeZone,
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
-    hour12: false,
   }).format(new Date(isoDate));
+}
+
+function formatSlotTime(value: string) {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return value;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function normalizeTimeZone(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function timezoneLabel(timezone: string) {
@@ -263,7 +280,7 @@ export function PatientAppointmentSchedulePage() {
           .filter((slot) => slot.available)
           .map((slot, index) => ({
             id: `slot-${index + 1}`,
-            consultant: `${slot.startTime} - ${slot.endTime}`,
+            consultant: `${formatSlotTime(slot.startTime)} - ${formatSlotTime(slot.endTime)}`,
             patient: `${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.startTime, response.timezone), patientTimezone)} - ${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.endTime, response.timezone), patientTimezone)}`,
             startTime: slot.startTime,
             endTime: slot.endTime,
@@ -320,7 +337,7 @@ export function PatientAppointmentSchedulePage() {
         scheduledDate: selectedDateKey,
         providerStartTime: formatTimeInZone(startsAt, providerTimezone),
         providerEndTime: formatTimeInZone(endsAt, providerTimezone),
-        label: `${manualStartTime} - ${manualEndTime} (${timezoneLabel(patientTimezone)})`,
+        label: `${formatSlotTime(manualStartTime)} - ${formatSlotTime(manualEndTime)} (${timezoneLabel(patientTimezone)})`,
       };
     }
 
@@ -387,6 +404,8 @@ export function PatientAppointmentSchedulePage() {
     estimatedFeeCents,
     providerPricing.currencyCode,
   );
+  const showsSingleTimeColumn =
+    normalizeTimeZone(providerTimezone) === normalizeTimeZone(patientTimezone);
   const formattedDate = useMemo(
     () =>
       selectedDate.toLocaleDateString("en-US", {
@@ -765,10 +784,14 @@ export function PatientAppointmentSchedulePage() {
               </div>
 
               <div className="w-full max-w-none lg:max-w-[231px]">
-                <div className="mb-2 grid grid-cols-2 gap-3 px-[2px]">
+                <div
+                  className={`mb-2 grid gap-3 px-[2px] ${
+                    showsSingleTimeColumn ? "grid-cols-1" : "grid-cols-2"
+                  }`}
+                >
                   <div className="min-w-0">
                     <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
-                      Consultant time
+                      Available times
                     </p>
                     <p
                       className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
@@ -777,17 +800,19 @@ export function PatientAppointmentSchedulePage() {
                       {timezoneLabel(providerTimezone)}
                     </p>
                   </div>
-                  <div className="min-w-0 text-right">
-                    <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
-                      Patient time
-                    </p>
-                    <p
-                      className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
-                      title={timezoneLabel(patientTimezone)}
-                    >
-                      {timezoneLabel(patientTimezone)}
-                    </p>
-                  </div>
+                  {!showsSingleTimeColumn ? (
+                    <div className="min-w-0 text-right">
+                      <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
+                        Your time
+                      </p>
+                      <p
+                        className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
+                        title={timezoneLabel(patientTimezone)}
+                      >
+                        {timezoneLabel(patientTimezone)}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-[6px]">
@@ -801,32 +826,44 @@ export function PatientAppointmentSchedulePage() {
                         whileTap={{ scale: 0.985 }}
                         animate={{ y: selected ? -1 : 0 }}
                         transition={{ duration: 0.18, ease: "easeOut" }}
-                        className={`h-10 w-full cursor-pointer rounded-[8px] border px-3 ${
+                        className={`min-h-11 w-full cursor-pointer rounded-[8px] border px-3 py-2 ${
                           selected
                             ? "border-[#1565C0] bg-[#E3F2FD]"
                             : "border-[#94A3B8] bg-transparent"
                         }`}
                       >
-                        <div className="mx-auto flex w-full max-w-[206px] items-center justify-between">
+                        <div
+                          className={`mx-auto grid w-full max-w-[206px] items-center gap-3 ${
+                            showsSingleTimeColumn
+                              ? "grid-cols-1"
+                              : "grid-cols-[1fr_auto_1fr]"
+                          }`}
+                        >
                           <span
-                            className={`text-[10px] font-normal leading-5 tracking-[-0.05em] ${
+                            className={`text-center text-[12px] font-semibold leading-5 ${
                               selected ? "text-[#1E88E5]" : "text-black"
                             }`}
                           >
                             {slot.consultant}
                           </span>
-                          <span
-                            className={`h-[19.5px] border-l ${
-                              selected ? "border-[#1565C0]" : "border-[#334155]"
-                            }`}
-                          />
-                          <span
-                            className={`text-[10px] font-normal leading-5 tracking-[-0.05em] ${
-                              selected ? "text-[#1E88E5]" : "text-black"
-                            }`}
-                          >
-                            {slot.patient}
-                          </span>
+                          {!showsSingleTimeColumn ? (
+                            <>
+                              <span
+                                className={`h-[19.5px] border-l ${
+                                  selected
+                                    ? "border-[#1565C0]"
+                                    : "border-[#334155]"
+                                }`}
+                              />
+                              <span
+                                className={`text-center text-[12px] font-semibold leading-5 ${
+                                  selected ? "text-[#1E88E5]" : "text-black"
+                                }`}
+                              >
+                                {slot.patient}
+                              </span>
+                            </>
+                          ) : null}
                         </div>
                       </motion.button>
                     );
@@ -850,7 +887,7 @@ export function PatientAppointmentSchedulePage() {
                       Preferred time
                     </label>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                       <label className="space-y-1">
                         <span className="text-[11px] font-normal tracking-[-0.04em] text-[#64748B]">
                           Start
@@ -862,7 +899,7 @@ export function PatientAppointmentSchedulePage() {
                             setSelectedSlot("custom");
                             setManualStartTime(event.target.value);
                           }}
-                          className="h-10 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[13px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
+                          className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
                         />
                       </label>
 
@@ -877,7 +914,7 @@ export function PatientAppointmentSchedulePage() {
                             setSelectedSlot("custom");
                             setManualEndTime(event.target.value);
                           }}
-                          className="h-10 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[13px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
+                          className="h-11 w-full min-w-0 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#DBEAFE]"
                         />
                       </label>
                     </div>

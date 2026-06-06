@@ -87,6 +87,46 @@ function formatRate(cents?: number | null, currencyCode = "NGN") {
   }).format(cents / 100)}/hr`;
 }
 
+function formatAvailabilityLabel(
+  availability: PatientProvider["availability"],
+) {
+  if (!availability || typeof availability !== "object") {
+    return "Availability not set";
+  }
+
+  const dayOrder = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const today = new Date();
+  const schedule = availability as Record<
+    string,
+    { enabled?: boolean; from?: string; to?: string }
+  >;
+
+  for (let offset = 0; offset < 14; offset += 1) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + offset);
+    const day = schedule[dayOrder[date.getDay()]];
+    if (!day?.enabled || !day.from || !day.to) continue;
+
+    const prefix =
+      offset === 0
+        ? "Today"
+        : offset === 1
+          ? "Tomorrow"
+          : date.toLocaleDateString("en-US", { weekday: "short" });
+    return `${prefix}, ${day.from} - ${day.to}`;
+  }
+
+  return "No open hours this week";
+}
+
 function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
   const currencyCode = provider.currencyCode ?? "NGN";
   const videoRateLabel = formatRate(
@@ -103,7 +143,9 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     name: provider.name,
     role: provider.specialization,
     imageSrc: normalizeAvatarUrl(provider.avatarUrl),
-    nextAvailable: provider.nextAvailableLabel || "Select to view schedule",
+    nextAvailable:
+      provider.nextAvailableLabel ||
+      formatAvailabilityLabel(provider.availability),
     acceptingBookings: provider.acceptingBookings ?? true,
     currencyCode,
     videoConsultationRateCents: provider.videoConsultationRateCents ?? null,
@@ -112,8 +154,6 @@ function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
     inPersonRateLabel,
     highlights: [
       provider.consultationType || "Consultation",
-      `Video ${videoRateLabel}`,
-      `Visit ${inPersonRateLabel}`,
       provider.verificationStatus === "approved"
         ? "Verified"
         : "Profile submitted",
@@ -507,7 +547,7 @@ export function PatientBookAppointmentPage() {
                       if (prof.acceptingBookings)
                         setSelectedProfessionalId(prof.id);
                     }}
-                    className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:h-[219px] xl:rounded-[12px] xl:p-[5px] ${
+                    className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:min-h-[285px] xl:rounded-[12px] xl:p-[7px] ${
                       selectedProfessionalId === prof.id
                         ? "border-[#1565C0] bg-[#F2F8FF] ring-2 ring-[#1565C0]/20 xl:border-2 xl:border-[#1E88E5] xl:bg-[#F8FAFC] xl:ring-0 xl:shadow-[0_0_25px_rgba(34,132,217,0.25)]"
                         : prof.acceptingBookings
@@ -554,27 +594,27 @@ export function PatientBookAppointmentPage() {
                     </div>
 
                     <div className="hidden xl:block">
-                      <div className="relative h-[77px] overflow-hidden rounded-[8px] bg-[#E3F2FD]">
+                      <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[#E3F2FD]">
                         <ProviderPicture provider={prof} />
                       </div>
 
                       <div className="mt-[2px] min-w-0">
                         <p
-                          className="truncate text-[16px] font-normal leading-[25px] tracking-[-0.05em] text-[#334155]"
+                          className="truncate text-[15px] font-medium leading-5 tracking-[-0.02em] text-[#334155]"
                           title={prof.name}
                         >
                           {prof.name}
                         </p>
                         <p
-                          className="-mt-1 truncate text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]"
+                          className="truncate text-[11px] font-normal leading-4 text-[#64748B]"
                           title={prof.role}
                         >
                           {prof.role}
                         </p>
                       </div>
 
-                      <div className="mt-[2px] rounded-[8px] bg-[#E3F2FD] px-[5px] py-[5px]">
-                        <div className="text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#1565C0]">
+                      <div className="mt-2 rounded-[8px] bg-[#E3F2FD] px-2 py-1.5">
+                        <div className="space-y-0.5 text-[10px] font-medium leading-3 text-[#1565C0]">
                           {prof.highlights.map((line) => (
                             <p
                               key={`${prof.id}-${line}`}
@@ -587,11 +627,39 @@ export function PatientBookAppointmentPage() {
                         </div>
                       </div>
 
+                      <div className="mt-2 grid gap-1.5">
+                        <div className="rounded-[8px] border border-[#B9D7F4] bg-white px-2 py-1.5">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+                            Video
+                          </p>
+                          <p
+                            className="truncate text-[12px] font-semibold text-[#1565C0]"
+                            title={prof.videoRateLabel}
+                          >
+                            {prof.videoRateLabel}
+                          </p>
+                        </div>
+                        <div className="rounded-[8px] border border-[#B9D7F4] bg-white px-2 py-1.5">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+                            In-person
+                          </p>
+                          <p
+                            className="truncate text-[12px] font-semibold text-[#1565C0]"
+                            title={prof.inPersonRateLabel}
+                          >
+                            {prof.inPersonRateLabel}
+                          </p>
+                        </div>
+                      </div>
+
                       <p
-                        className="mt-[4px] truncate text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]"
+                        className="mt-2 line-clamp-2 min-h-[28px] text-[10px] font-normal leading-[14px] text-[#64748B]"
                         title={`Next available: ${prof.nextAvailable}`}
                       >
-                        Next available: {prof.nextAvailable}
+                        <span className="font-semibold text-[#334155]">
+                          Available:
+                        </span>{" "}
+                        {prof.nextAvailable}
                       </p>
 
                       <button
@@ -602,7 +670,7 @@ export function PatientBookAppointmentPage() {
                             setSelectedProfessionalId(prof.id);
                         }}
                         disabled={!prof.acceptingBookings}
-                        className="mt-[4px] inline-flex h-[19px] w-full cursor-pointer items-center justify-center rounded-[7.29734px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(17,75,127,0.22)] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
+                        className="mt-2 inline-flex h-7 w-full cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[11px] font-medium leading-3 text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(17,75,127,0.22)] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                       >
                         {!prof.acceptingBookings
                           ? "Unavailable"
