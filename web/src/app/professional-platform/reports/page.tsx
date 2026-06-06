@@ -165,8 +165,8 @@ function ReportDropdown<T extends string>({
 
 function ReportIcon() {
   return (
-    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#DCE3E0] text-[#0F172A]">
-      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DCE3E0] text-[#0F172A] sm:h-11 sm:w-11">
+      <svg viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden>
         <path
           fill="currentColor"
           d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v3H2V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm15 9v8a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-8h20Zm-5 3h-2v2h2v-2Zm-4 0h-2v2h2v-2Zm-4 0H7v2h2v-2Z"
@@ -322,13 +322,13 @@ export default function ProfessionalReportsRoute() {
   };
 
   return (
-    <section className="mt-6 min-h-screen pb-10 text-[#334155] sm:mt-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="mt-5 min-h-screen min-w-0 pb-10 text-[#334155] sm:mt-8">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-[24px] font-semibold leading-8 tracking-normal sm:text-[30px]">
+          <h1 className="text-[22px] font-semibold leading-8 tracking-normal sm:text-[30px]">
             Records
           </h1>
-          <div className="mt-5 flex gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-9">
+          <div className="mt-4 flex max-w-full snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-5 sm:gap-9">
             {([
               ["consultations", "Consultations"],
               ["earnings", "Earnings"],
@@ -338,7 +338,7 @@ export default function ProfessionalReportsRoute() {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`relative shrink-0 text-[18px] font-semibold tracking-normal transition sm:text-[20px] ${
+                className={`relative shrink-0 snap-start cursor-pointer rounded-[10px] px-1 py-1 text-[16px] font-semibold tracking-normal transition sm:text-[20px] ${
                   activeTab === id ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#1565C0]"
                 }`}
               >
@@ -354,31 +354,31 @@ export default function ProfessionalReportsRoute() {
         <button
           type="button"
           onClick={exportReport}
-          className="inline-flex h-11 w-full items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-7 text-[15px] font-semibold text-white shadow-[0_12px_28px_rgba(21,101,192,0.18)] transition hover:-translate-y-0.5 sm:w-auto"
+          className="inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-7 text-[15px] font-semibold text-white shadow-[0_12px_28px_rgba(21,101,192,0.18)] transition hover:-translate-y-0.5 sm:w-auto"
         >
           Export
         </button>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Total consultations", String(filteredConsultations.length), "All selected data"],
           ["Completed", String(completedConsultations.length), `${completionRate}% completion`],
           ["Avg patient rating", (performance?.averageRating ?? 0).toFixed(1), `${performance?.reviewCount ?? 0} reviews`],
           ["Average duration", averageDuration ? `${averageDuration} min` : "0 min", "per session"],
         ].map(([title, value, note]) => (
-          <article key={title} className="flex min-h-[118px] items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-sm">
+          <article key={title} className="flex min-h-[112px] min-w-0 flex-col justify-between rounded-[14px] bg-[#F8FAFC] px-3 py-3 shadow-sm sm:min-h-[118px] sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-5">
             <ReportIcon />
             <div className="min-w-0">
-              <p className="text-[14px] font-medium leading-5 text-[#94A3B8]">{title}</p>
-              <p className="mt-1 text-[34px] font-semibold leading-none tracking-normal text-[#334155]">{value}</p>
-              <p className="mt-3 text-[14px] font-semibold tracking-normal text-[#078D24]">{note}</p>
+              <p className="text-[11px] font-medium leading-[14px] text-[#94A3B8] sm:text-[14px] sm:leading-5">{title}</p>
+              <p className="mt-1 truncate text-[24px] font-semibold leading-none tracking-normal text-[#334155] sm:text-[34px]">{value}</p>
+              <p className="mt-2 truncate text-[11px] font-semibold tracking-normal text-[#078D24] sm:mt-3 sm:text-[14px]">{note}</p>
             </div>
           </article>
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:mt-6 sm:grid-cols-3">
         <ReportDropdown value={range} options={rangeOptions} onChange={setRange} label="Date range" />
         <ReportDropdown value={modeFilter} options={modeOptions} onChange={setModeFilter} label="Mode" />
         <ReportDropdown value={statusFilter} options={statusOptions} onChange={setStatusFilter} label="Status" />
@@ -389,18 +389,18 @@ export default function ProfessionalReportsRoute() {
           <p className="text-[15px] font-medium text-[#94A3B8]">Loading reports...</p>
         </div>
       ) : activeTab === "general" ? (
-        <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <article className="rounded-[16px] bg-[#F8FAFC] p-5 shadow-sm">
-            <h2 className="text-[18px] font-semibold tracking-normal">Earnings breakdown</h2>
-            <div className="mt-6 space-y-5">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-5 xl:grid-cols-2">
+          <article className="min-w-0 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-5">
+            <h2 className="text-[16px] font-semibold tracking-normal sm:text-[18px]">Earnings breakdown</h2>
+            <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
               {Object.entries(earningBreakdown).length ? (
                 Object.entries(earningBreakdown).map(([label, value]) => {
                   const percent = totalEarnedCents ? Math.round((value / totalEarnedCents) * 100) : 0;
                   return (
-                    <div key={label} className="grid grid-cols-[110px_1fr_58px] items-center gap-3">
-                      <span className="text-[15px] font-medium">{label}</span>
+                    <div key={label} className="grid grid-cols-[88px_minmax(0,1fr)_42px] items-center gap-2 sm:grid-cols-[110px_1fr_58px] sm:gap-3">
+                      <span className="truncate text-[13px] font-medium sm:text-[15px]">{label}</span>
                       {percentBar(percent)}
-                      <span className="text-right text-[15px] font-semibold">{percent}%</span>
+                      <span className="text-right text-[13px] font-semibold sm:text-[15px]">{percent}%</span>
                     </div>
                   );
                 })
@@ -408,33 +408,33 @@ export default function ProfessionalReportsRoute() {
                 <p className="text-[14px] text-[#94A3B8]">No earnings in this period.</p>
               )}
             </div>
-            <div className="mt-8 space-y-4 text-[15px]">
+            <div className="mt-6 space-y-4 text-[13px] sm:mt-8 sm:text-[15px]">
               <p className="flex justify-between gap-3">
                 <span>Total earned</span>
-                <strong>{formatApiMoney(totalEarnedCents, currency)}</strong>
+                <strong className="text-right">{formatApiMoney(totalEarnedCents, currency)}</strong>
               </p>
               <p className="flex justify-between gap-3">
                 <span>Available balance</span>
-                <strong>{formatApiMoney(walletSummary?.availableBalance ?? 0, currency)}</strong>
+                <strong className="text-right">{formatApiMoney(walletSummary?.availableBalance ?? 0, currency)}</strong>
               </p>
               <p className="flex justify-between gap-3 text-[#1565C0]">
                 <span>Total this period</span>
-                <strong>{formatApiMoney(totalEarnedCents, currency)}</strong>
+                <strong className="text-right">{formatApiMoney(totalEarnedCents, currency)}</strong>
               </p>
             </div>
           </article>
 
-          <article className="rounded-[16px] bg-[#F8FAFC] p-5 shadow-sm">
-            <h2 className="text-[18px] font-semibold tracking-normal">Activity by consultation type</h2>
-            <div className="mt-7 space-y-5">
+          <article className="min-w-0 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-5">
+            <h2 className="text-[16px] font-semibold tracking-normal sm:text-[18px]">Activity by consultation type</h2>
+            <div className="mt-5 space-y-4 sm:mt-7 sm:space-y-5">
               {Object.entries(modeCounts).length ? (
                 Object.entries(modeCounts).map(([label, count]) => {
                   const percent = filteredConsultations.length ? Math.round((count / filteredConsultations.length) * 100) : 0;
                   return (
-                    <div key={label} className="grid grid-cols-[130px_1fr_42px] items-center gap-3">
-                      <span className="truncate text-[15px] font-medium">{label}</span>
+                    <div key={label} className="grid grid-cols-[104px_minmax(0,1fr)_32px] items-center gap-2 sm:grid-cols-[130px_1fr_42px] sm:gap-3">
+                      <span className="truncate text-[13px] font-medium sm:text-[15px]">{label}</span>
                       {percentBar(percent)}
-                      <span className="text-right text-[15px] font-semibold">{count}</span>
+                      <span className="text-right text-[13px] font-semibold sm:text-[15px]">{count}</span>
                     </div>
                   );
                 })
@@ -444,9 +444,9 @@ export default function ProfessionalReportsRoute() {
             </div>
           </article>
 
-          <article className="rounded-[16px] bg-[#F8FAFC] p-5 shadow-sm">
-            <h2 className="text-[18px] font-semibold tracking-normal">Ratings over time</h2>
-            <div className="mt-7 space-y-5">
+          <article className="min-w-0 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-5">
+            <h2 className="text-[16px] font-semibold tracking-normal sm:text-[18px]">Ratings over time</h2>
+            <div className="mt-5 space-y-4 sm:mt-7 sm:space-y-5">
               {["Current period", "Completed sessions", "Response rate", "Reviews"].map((label, index) => {
                 const value = index === 0
                   ? Math.round((performance?.averageRating ?? 0) * 20)
@@ -456,10 +456,10 @@ export default function ProfessionalReportsRoute() {
                       ? performance?.responseRate ?? 0
                       : Math.min(100, (performance?.reviewCount ?? 0) * 10);
                 return (
-                  <div key={label} className="grid grid-cols-[130px_1fr_45px] items-center gap-3">
-                    <span className="text-[15px] font-medium">{label}</span>
+                  <div key={label} className="grid grid-cols-[104px_minmax(0,1fr)_38px] items-center gap-2 sm:grid-cols-[130px_1fr_45px] sm:gap-3">
+                    <span className="truncate text-[13px] font-medium sm:text-[15px]">{label}</span>
                     {percentBar(value, "bg-[#B59608]")}
-                    <span className="text-right text-[15px] font-semibold">
+                    <span className="text-right text-[13px] font-semibold sm:text-[15px]">
                       {index === 0 ? (performance?.averageRating ?? 0).toFixed(1) : value}
                     </span>
                   </div>
@@ -468,9 +468,9 @@ export default function ProfessionalReportsRoute() {
             </div>
           </article>
 
-          <article className="rounded-[16px] bg-[#F8FAFC] p-5 shadow-sm">
-            <h2 className="text-[18px] font-semibold tracking-normal">Performance summary</h2>
-            <div className="mt-7 space-y-4 text-[15px]">
+          <article className="min-w-0 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-5">
+            <h2 className="text-[16px] font-semibold tracking-normal sm:text-[18px]">Performance summary</h2>
+            <div className="mt-5 space-y-4 text-[13px] sm:mt-7 sm:text-[15px]">
               {[
                 ["Consultation completion", `${completionRate}%`, "text-[#078D24]"],
                 ["Response rate", `${performance?.responseRate ?? 0}%`, "text-[#078D24]"],
@@ -480,19 +480,19 @@ export default function ProfessionalReportsRoute() {
                 ["Platform rank", (performance?.averageRating ?? 0) >= 4.5 ? "Top 10%" : "Building", "text-[#078D24]"],
               ].map(([label, value, tone]) => (
                 <p key={label} className="flex justify-between gap-4">
-                  <span>{label}</span>
-                  <strong className={tone}>{value}</strong>
+                  <span className="min-w-0">{label}</span>
+                  <strong className={`${tone} shrink-0 text-right`}>{value}</strong>
                 </p>
               ))}
             </div>
           </article>
         </div>
       ) : activeTab === "earnings" ? (
-        <div className="mt-6 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-6">
+        <div className="mt-5 rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm sm:mt-6 sm:p-6">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <article className="rounded-[14px] border border-[#D8E4F1] p-4">
               <p className="text-[13px] font-medium text-[#94A3B8]">Period earned</p>
-              <p className="mt-2 text-[26px] font-semibold">{formatApiMoney(totalEarnedCents, currency)}</p>
+              <p className="mt-2 break-words text-[22px] font-semibold sm:text-[26px]">{formatApiMoney(totalEarnedCents, currency)}</p>
             </article>
             <article className="rounded-[14px] border border-[#D8E4F1] p-4">
               <p className="text-[13px] font-medium text-[#94A3B8]">Transactions</p>
@@ -500,18 +500,18 @@ export default function ProfessionalReportsRoute() {
             </article>
             <article className="rounded-[14px] border border-[#D8E4F1] p-4">
               <p className="text-[13px] font-medium text-[#94A3B8]">Pending</p>
-              <p className="mt-2 text-[26px] font-semibold">{formatApiMoney(walletSummary?.pendingEarnings ?? 0, currency)}</p>
+              <p className="mt-2 break-words text-[22px] font-semibold sm:text-[26px]">{formatApiMoney(walletSummary?.pendingEarnings ?? 0, currency)}</p>
             </article>
           </div>
           <div className="mt-5 space-y-3">
             {filteredEarnings.map((earning) => (
-              <article key={earning.id} className="flex flex-col gap-2 rounded-[14px] border border-[#D8E4F1] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[15px] font-semibold">{earning.description}</p>
+              <article key={earning.id} className="flex min-w-0 flex-col gap-2 rounded-[14px] border border-[#D8E4F1] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold sm:text-[15px]">{earning.description}</p>
                   <p className="text-[13px] text-[#94A3B8]">{earning.counterpartyName ?? "Swifthelp"} . {formatDate(earning.createdAt)}</p>
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className="text-[16px] font-semibold text-[#078D24]">{formatApiMoney(earning.amountCents, earning.currency)}</p>
+                  <p className="break-words text-[15px] font-semibold text-[#078D24] sm:text-[16px]">{formatApiMoney(earning.amountCents, earning.currency)}</p>
                   <p className="text-[12px] font-medium capitalize text-[#94A3B8]">{earning.status.replace("_", " ")}</p>
                 </div>
               </article>
@@ -519,7 +519,7 @@ export default function ProfessionalReportsRoute() {
           </div>
         </div>
       ) : (
-        <div className="mt-6 rounded-[16px] bg-[#F8FAFC] p-4 shadow-sm sm:p-6">
+        <div className="mt-5 rounded-[16px] bg-[#F8FAFC] p-3 shadow-sm sm:mt-6 sm:p-6">
           <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[980px] table-fixed text-left">
               <thead className="text-[15px] font-medium text-[#64748B]">
@@ -551,20 +551,20 @@ export default function ProfessionalReportsRoute() {
 
           <div className="space-y-3 xl:hidden">
             {tableRows.map((consultation) => (
-              <article key={consultation.id} className="rounded-[14px] border border-[#D8E4F1] bg-white px-4 py-3">
+              <article key={consultation.id} className="min-w-0 rounded-[14px] border border-[#D8E4F1] bg-white px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[15px] font-semibold">{consultation.patientName}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold">{consultation.patientName}</p>
                     <p className="text-[12px] text-[#94A3B8]">{consultation.id.slice(0, 8)} . {formatDate(consultation.startsAt)}</p>
                   </div>
-                  <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-semibold text-[#1565C0]">
+                  <span className="shrink-0 rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-semibold text-[#1565C0]">
                     {normalizeStatus(consultation.status)}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
-                  <p><span className="text-[#94A3B8]">Type:</span> {getModeLabel(consultation.mode)}</p>
+                <div className="mt-3 grid grid-cols-1 gap-2 text-[13px] min-[420px]:grid-cols-2">
+                  <p className="min-w-0 truncate"><span className="text-[#94A3B8]">Type:</span> {getModeLabel(consultation.mode)}</p>
                   <p><span className="text-[#94A3B8]">Duration:</span> {consultation.durationMinutes} min</p>
-                  <p className="col-span-2 font-semibold text-[#078D24]">{formatApiMoney(consultation.feeAmountCents, consultation.currency)}</p>
+                  <p className="font-semibold text-[#078D24] min-[420px]:col-span-2">{formatApiMoney(consultation.feeAmountCents, consultation.currency)}</p>
                 </div>
               </article>
             ))}

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { deleteProfileAvatar, getApiErrorMessage, updatePatientProfile, uploadProfileAvatar } from "@/services/authApi";
-import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
+import type { PatientProfilePayload } from "@/services/authApi";
 import {
   getPatientProfile,
   getPatientSubscription,
@@ -15,84 +14,248 @@ import {
   updatePatientSubscriptionAutoRenew,
 } from "@/services/patientApi";
 
-type SettingsTab = {
-  id: "account" | "profile" | "notifications" | "security" | "subscriptions";
-  label: string;
+type SettingsTab = "general" | "notifications" | "security" | "billing";
+type NotificationKey = "email" | "sms" | "push" | "reminders" | "updates" | "payments" | "promotions";
+type SecurityKey = "twoFactor" | "shareData" | "medicalHistory" | "aiRecommendations";
+
+type GeneralForm = {
+  fullName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  address: string;
+  gender: string;
+  bloodGroup: string;
+  languagePreference: string;
+  allergies: string;
+  medicalConditions: string;
 };
 
-const settingsTabs: SettingsTab[] = [
-  { id: "account", label: "Account settings" },
-  { id: "profile", label: "Profile settings" },
-  { id: "notifications", label: "Notification settings" },
-  { id: "security", label: "Security settings" },
-  { id: "subscriptions", label: "Subscriptions" },
+type PasswordForm = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
+type PaymentMethod = {
+  id: string;
+  brand: string;
+  last4: string;
+  isDefault: boolean;
+};
+
+type BillingHistoryItem = {
+  id: string;
+  date: string;
+  amount: string;
+  plan: string;
+  status: string;
+};
+
+const tabs: Array<{ id: SettingsTab; label: string }> = [
+  { id: "general", label: "General" },
+  { id: "notifications", label: "Notifications" },
+  { id: "security", label: "Security" },
+  { id: "billing", label: "Billing and plan" },
 ];
 
-function GridIcon({ active = false }: { active?: boolean }) {
-  const color = active ? "#1E88E5" : "#94A3B8";
+const genderOptions: SelectOption[] = [
+  { label: "Select gender", value: "" },
+  { label: "Female", value: "Female" },
+  { label: "Male", value: "Male" },
+  { label: "Non-binary", value: "Non-binary" },
+  { label: "Prefer not to say", value: "Prefer not to say" },
+];
 
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" aria-hidden>
-      <path
-        fill={color}
-        d="M13 3V11H21V3H13ZM3 13V3H11V13H3ZM13 21V13H21V21H13ZM3 21V15H11V21H3Z"
-      />
-    </svg>
-  );
+const bloodGroupOptions: SelectOption[] = [
+  { label: "Select blood group", value: "" },
+  { label: "A+", value: "A+" },
+  { label: "A-", value: "A-" },
+  { label: "B+", value: "B+" },
+  { label: "B-", value: "B-" },
+  { label: "AB+", value: "AB+" },
+  { label: "AB-", value: "AB-" },
+  { label: "O+", value: "O+" },
+  { label: "O-", value: "O-" },
+];
+
+const languageOptions: SelectOption[] = [
+  { label: "Select language", value: "" },
+  { label: "English", value: "English" },
+  { label: "Yoruba", value: "Yoruba" },
+  { label: "Igbo", value: "Igbo" },
+  { label: "Hausa", value: "Hausa" },
+  { label: "French", value: "French" },
+];
+
+const emptyGeneralForm: GeneralForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  dateOfBirth: "",
+  address: "",
+  gender: "",
+  bloodGroup: "",
+  languagePreference: "",
+  allergies: "",
+  medicalConditions: "",
+};
+
+const defaultNotifications: Record<NotificationKey, boolean> = {
+  email: true,
+  sms: true,
+  push: true,
+  reminders: true,
+  updates: true,
+  payments: true,
+  promotions: false,
+};
+
+const defaultSecurity: Record<SecurityKey, boolean> = {
+  twoFactor: false,
+  shareData: true,
+  medicalHistory: true,
+  aiRecommendations: true,
+};
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function listToText(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join(", ");
+  }
+  return asText(value);
+}
+
+function textToList(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatMoneyValue(value: unknown, currencyValue?: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const currency = typeof currencyValue === "string" && currencyValue.trim() ? currencyValue : "NGN";
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  return "Not available";
+}
+
+function parsePaymentMethods(value: unknown): PaymentMethod[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(isRecord)
+    .map((method, index) => {
+      const id = asText(method.id) || `payment-method-${index}`;
+      const brand = asText(method.brand) || asText(method.type) || "Card";
+      const last4 = asText(method.last4) || asText(method.lastFour) || asText(method.cardLast4) || "";
+      return {
+        id,
+        brand,
+        last4,
+        isDefault: asBoolean(method.isDefault ?? method.default, index === 0),
+      };
+    });
+}
+
+function parseBillingHistory(value: unknown): BillingHistoryItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(isRecord)
+    .map((item, index) => ({
+      id: asText(item.id) || asText(item.transactionId) || `billing-${index}`,
+      date: asText(item.date) || asText(item.createdAt) || "Not available",
+      amount: formatMoneyValue(item.amount ?? item.amountCents, item.currency),
+      plan: asText(item.plan) || asText(item.planName) || "Patient",
+      status: asText(item.status) || "Completed",
+    }));
 }
 
 function CalendarIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] shrink-0" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[#94A3B8]" aria-hidden>
       <path
-        fill="#0F172A"
+        fill="currentColor"
         d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm12 8H5v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8ZM6 6a1 1 0 0 0-1 1v1h14V7a1 1 0 0 0-1-1H6Z"
       />
     </svg>
   );
 }
 
-function NigeriaFlag() {
+function CardIcon() {
   return (
-    <span className="inline-flex h-[19px] w-[19px] overflow-hidden rounded-sm" aria-hidden>
-      <span className="h-full w-1/3 bg-[#009A49]" />
-      <span className="h-full w-1/3 bg-[#EEEEEE]" />
-      <span className="h-full w-1/3 bg-[#009A49]" />
-    </span>
+    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-[#334155]" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm16 3V6a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3h14ZM5 12v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6H5Zm2 3h5v2H7v-2Z"
+      />
+    </svg>
   );
 }
 
-function TabButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function TrashIcon() {
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      className={`relative flex h-[49px] w-full items-center rounded-[12px] text-left transition ${
-        active ? "bg-[#E3F2FD]" : "hover:bg-[#eef4fb]"
-      } pl-6 pr-2`}
-      whileHover={{ x: 3 }}
-      whileTap={{ scale: 0.985 }}
-    >
-      {active ? <span className="absolute inset-y-0 left-0 w-[11px] rounded-r-md bg-[#1565C0]" /> : null}
-      <span className="inline-flex items-center gap-3">
-        <GridIcon active={active} />
-        <span
-          className={`whitespace-nowrap text-[16px] font-medium leading-[42px] tracking-[-0.05em] ${
-            active ? "text-[#1E88E5]" : "text-[#94A3B8]"
-          }`}
-        >
-          {label}
-        </span>
-      </span>
-    </motion.button>
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M9 3a1 1 0 0 0-1 1v1H5a1 1 0 1 0 0 2h1v12a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h1a1 1 0 1 0 0-2h-3V4a1 1 0 0 0-1-1H9Zm1 2h4v0h-4Zm-1 2h6v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7Zm1 3v7h2v-7h-2Zm4 0v7h2v-7h-2Z"
+      />
+    </svg>
+  );
+}
+
+function LaptopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[#334155]" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9h1a1 1 0 0 1 .93 1.37l-1.2 3A1 1 0 0 1 19.8 19H4.2a1 1 0 0 1-.93-.63l-1.2-3A1 1 0 0 1 3 14h1V5Zm2 0v9h12V5H6Zm-.48 12h12.96l.4-1H5.12l.4 1Z"
+      />
+    </svg>
+  );
+}
+
+function CheckBadgeIcon() {
+  return (
+    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E88E5] text-white">
+      <svg viewBox="0 0 20 20" className="h-3 w-3" aria-hidden>
+        <path
+          fill="currentColor"
+          d="M8.1 13.7 4.4 10l1.4-1.4 2.3 2.3 6-6L15.5 6.3l-7.4 7.4Z"
+        />
+      </svg>
+    </span>
   );
 }
 
@@ -101,620 +264,362 @@ function Field({
   value,
   onChange,
   placeholder,
-  className = "",
-  leftSlot,
+  type = "text",
+  rightSlot,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  className?: string;
-  leftSlot?: ReactNode;
+  type?: string;
+  rightSlot?: ReactNode;
 }) {
   return (
-    <label className={`flex flex-col gap-[6px] ${className}`}>
-      <span className="text-[14.5227px] font-light leading-[18px] tracking-[-0.05em] text-black">{label}</span>
-      <span className="flex h-[38px] items-center rounded-[9.68182px] border border-[#94A3B8] bg-[#F8FAFC] px-[14px]">
-        {leftSlot ? <span className="mr-[8px] flex items-center">{leftSlot}</span> : null}
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-[15px] font-medium text-[#111827] sm:text-[16px]">{label}</span>
+      <span className="flex min-h-[48px] items-center rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-4 transition focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/15">
         <input
+          type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="w-full border-0 bg-transparent text-[14.5227px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+          className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] sm:text-[16px]"
         />
+        {rightSlot}
       </span>
     </label>
   );
 }
 
-function ActionButton({
+function SelectField({
   label,
-  onClick,
-  danger = false,
-  className = "",
+  value,
+  onChange,
+  options,
 }: {
   label: string;
-  onClick: () => void;
-  danger?: boolean;
-  className?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
 }) {
   return (
-    <motion.button
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-[15px] font-medium text-[#111827] sm:text-[16px]">{label}</span>
+      <span className="relative flex min-h-[48px] items-center rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] transition focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/15">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-full min-h-[48px] w-full cursor-pointer appearance-none rounded-[10px] border-0 bg-transparent px-4 pr-11 text-[15px] font-medium text-[#334155] outline-none sm:text-[16px]"
+        >
+          {options.map((option) => (
+            <option key={option.value || option.label} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <svg
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute right-4 h-5 w-5 text-[#94A3B8]"
+          aria-hidden
+        >
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.5"
+            d="m6 9 6 6 6-6"
+          />
+        </svg>
+      </span>
+    </label>
+  );
+}
+
+function PrimaryButton({
+  children,
+  onClick,
+  disabled = false,
+  variant = "primary",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: "primary" | "secondary" | "danger";
+}) {
+  const className =
+    variant === "primary"
+      ? "border-[#1565C0] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] text-white shadow-[0_12px_24px_rgba(21,101,192,0.2)]"
+      : variant === "danger"
+        ? "border-[#C62828] bg-white text-[#C62828]"
+        : "border-[#1565C0] bg-white text-[#1565C0]";
+
+  return (
+    <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-[35px] items-center justify-center rounded-[6.28571px] border-2 px-4 text-[8.38095px] font-normal tracking-[-0.05em] transition ${
-        danger ? "border-[#9C0D0D] text-[#9C0D0D]" : "border-[#1565C0] text-[#1565C0]"
-      } ${className}`}
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.985 }}
+      disabled={disabled}
+      className={`inline-flex min-h-[46px] cursor-pointer items-center justify-center rounded-[10px] border px-8 text-[15px] font-semibold transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
-      {label}
-    </motion.button>
+      {children}
+    </button>
+  );
+}
+
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-label={label}
+      aria-pressed={checked}
+      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition ${
+        checked ? "bg-[#1565C0]" : "bg-[#CBD5E1]"
+      }`}
+    >
+      <span
+        className={`absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border bg-white shadow-sm transition ${
+          checked ? "left-[22px] border-[#1565C0]" : "left-0.5 border-[#94A3B8]"
+        }`}
+      />
+    </button>
+  );
+}
+
+function SettingsCard({
+  title,
+  children,
+  right,
+}: {
+  title: string;
+  children: ReactNode;
+  right?: ReactNode;
+}) {
+  return (
+    <section className="rounded-[16px] border border-[#DDE6F0] bg-[#F8FAFC] p-5 sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-[18px] font-semibold text-[#334155] sm:text-[20px]">{title}</h2>
+        {right}
+      </div>
+      {children}
+    </section>
   );
 }
 
 function ToggleRow({
-  label,
-  enabled,
-  onToggle,
+  title,
+  description,
+  checked,
+  onChange,
 }: {
-  label: string;
-  enabled: boolean;
-  onToggle: () => void;
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
 }) {
   return (
-    <motion.button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center gap-[10px] text-left"
-      whileTap={{ scale: 0.99 }}
-    >
-      <span
-        className={`relative inline-flex h-[17px] w-[33px] rounded-full transition ${
-          enabled ? "bg-[#1565C0]" : "bg-[#CBD5E1]"
-        }`}
-      >
-        <span
-          className={`absolute top-1/2 h-[16px] w-[17px] -translate-y-1/2 rounded-full border transition ${
-            enabled
-              ? "left-[16px] border-[#1565C0] bg-[#F8FAFC]"
-              : "left-0 border-[#94A3B8] bg-[#F8FAFC]"
-          }`}
-        />
-      </span>
-      <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#94A3B8]">{label}</span>
-    </motion.button>
-  );
-}
-
-function SwitchControl({
-  enabled,
-  onToggle,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <motion.button
-      type="button"
-      onClick={onToggle}
-      className="relative inline-flex h-[17px] w-[33px] shrink-0 rounded-full transition"
-      whileTap={{ scale: 0.97 }}
-      aria-pressed={enabled}
-    >
-      <span className={`absolute inset-0 rounded-full ${enabled ? "bg-[#1565C0]" : "bg-[#CBD5E1]"}`} />
-      <span
-        className={`absolute top-1/2 h-[16px] w-[17px] -translate-y-1/2 rounded-full border bg-[#F8FAFC] transition ${
-          enabled ? "left-[16px] border-[#1565C0]" : "left-0 border-[#94A3B8]"
-        }`}
-      />
-    </motion.button>
-  );
-}
-
-function NotificationSettingsPanel({
-  channels,
-  preferences,
-  onToggleChannel,
-  onTogglePreference,
-}: {
-  channels: Record<"email" | "sms" | "push", boolean>;
-  preferences: Record<"reminders" | "updates" | "payments" | "promotions", boolean>;
-  onToggleChannel: (key: keyof typeof channels) => void;
-  onTogglePreference: (key: keyof typeof preferences) => void;
-}) {
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[640px] xl:px-[27px] xl:pb-[33px] xl:pt-[70px]"
-    >
-      <section className="rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-6 pt-[17px] xl:min-h-[192px] xl:px-[13px]">
-        <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Channels</h2>
-
-        <div className="mt-6 space-y-[13px]">
-          <ToggleRow label="Email Notifications" enabled={channels.email} onToggle={() => onToggleChannel("email")} />
-          <ToggleRow label="SMS Notifications" enabled={channels.sms} onToggle={() => onToggleChannel("sms")} />
-          <ToggleRow label="Push Notifications" enabled={channels.push} onToggle={() => onToggleChannel("push")} />
-        </div>
-      </section>
-
-      <section className="mt-[25px] rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-6 pt-[17px] xl:min-h-[220px] xl:px-[13px]">
-        <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">What to Recieve</h2>
-
-        <div className="mt-6 space-y-[13px]">
-          <ToggleRow
-            label="Appointment Reminders"
-            enabled={preferences.reminders}
-            onToggle={() => onTogglePreference("reminders")}
-          />
-          <ToggleRow
-            label="Appointment Updates"
-            enabled={preferences.updates}
-            onToggle={() => onTogglePreference("updates")}
-          />
-          <ToggleRow
-            label="Payment Confirmations"
-            enabled={preferences.payments}
-            onToggle={() => onTogglePreference("payments")}
-          />
-          <ToggleRow
-            label="Promotion and Updates"
-            enabled={preferences.promotions}
-            onToggle={() => onTogglePreference("promotions")}
-          />
-        </div>
-      </section>
-    </motion.section>
-  );
-}
-
-function SecuritySettingsPanel({
-  twoFactorEnabled,
-  privacy,
-  onToggleTwoFactor,
-  onTogglePrivacy,
-  onChangePassword,
-}: {
-  twoFactorEnabled: boolean;
-  privacy: Record<"shareData" | "historyAccess" | "aiRecommendations", boolean>;
-  onToggleTwoFactor: () => void;
-  onTogglePrivacy: (key: keyof typeof privacy) => void;
-  onChangePassword: () => void;
-}) {
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[640px] xl:px-[27px] xl:pb-[33px] xl:pt-[70px]"
-    >
-      <section className="rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-6 pt-[17px] xl:min-h-[140px] xl:px-[13px]">
-        <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Security</h2>
-
-        <div className="mt-[34px] flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <ActionButton
-            label="Change Password"
-            onClick={onChangePassword}
-            className="w-full sm:w-[95px]"
-          />
-
-          <ToggleRow label="Enable 2FA" enabled={twoFactorEnabled} onToggle={onToggleTwoFactor} />
-        </div>
-      </section>
-
-      <section className="mt-[16px] rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-6 pt-[17px] xl:min-h-[184px] xl:px-[13px]">
-        <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Privacy</h2>
-
-        <div className="mt-6 space-y-[13px]">
-          <ToggleRow
-            label="Share data with professionals"
-            enabled={privacy.shareData}
-            onToggle={() => onTogglePrivacy("shareData")}
-          />
-          <ToggleRow
-            label="Allow medical history access"
-            enabled={privacy.historyAccess}
-            onToggle={() => onTogglePrivacy("historyAccess")}
-          />
-          <ToggleRow
-            label="Data for AI recommendations"
-            enabled={privacy.aiRecommendations}
-            onToggle={() => onTogglePrivacy("aiRecommendations")}
-          />
-        </div>
-      </section>
-    </motion.section>
-  );
-}
-
-function SubscriptionSettingsPanel({
-  autoRenew,
-  onToggleAutoRenew,
-  status,
-}: {
-  autoRenew: boolean;
-  onToggleAutoRenew: () => void;
-  status: string;
-}) {
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[727px] xl:px-[24px] xl:pb-[14px] xl:pt-[19px]"
-    >
-      <h2 className="text-[20px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">Subscriptions</h2>
-
-      <div className="mt-[39px] text-[16px] font-medium leading-[17px] tracking-[-0.05em] text-[#94A3B8]">Plan</div>
-
-      <div className="mt-[17px] rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-5">
-        <p className="text-[16px] font-medium tracking-[-0.05em] text-[#334155]">
-          Subscription status
-        </p>
-        <p className="mt-2 capitalize text-[16px] tracking-[-0.05em] text-[#1565C0]">
-          {status || "Unavailable"}
-        </p>
+    <div className="flex items-start justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[15px] font-medium leading-5 text-[#334155] sm:text-[16px]">{title}</p>
+        <p className="mt-1 text-[13px] leading-5 text-[#94A3B8] sm:text-[14px]">{description}</p>
       </div>
-
-      <div className="mt-[29px] rounded-[12px] border border-[#E2E8F0] px-4 py-[14px] xl:h-[102px] xl:px-3">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="max-w-[424px]">
-            <div className="text-[16px] font-medium leading-[17px] tracking-[-0.05em] text-[#94A3B8]">Enable Auto-renew</div>
-            <p className="mt-[10px] text-[14px] font-normal leading-[17px] tracking-[-0.05em] text-[#334155]">
-              Keep your subscription active without interruption. Your plan will renew automatically at the end of each billing cycle. You can turn this off anytime before the next renewal date.
-            </p>
-          </div>
-
-          <div className="pt-1 sm:pt-7">
-            <SwitchControl enabled={autoRenew} onToggle={onToggleAutoRenew} />
-          </div>
-        </div>
-      </div>
-
-      <p className="mt-[23px] text-[14px] font-normal leading-[20px] tracking-[-0.05em] text-[#94A3B8]">
-        Plan and payment management are not enabled for patient accounts.
-      </p>
-    </motion.section>
-  );
-}
-
-function AccountSettingsPanel({
-  loginEmail,
-  password,
-  onEmailChange,
-  onPasswordChange,
-  onSaveEmail,
-  onSavePassword,
-}: {
-  loginEmail: string;
-  password: string;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSaveEmail: () => void;
-  onSavePassword: () => void;
-}) {
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[640px] xl:px-[23px] xl:pb-[33px] xl:pt-[64px]"
-    >
-      <section className="rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-[20px] pt-[20px] xl:min-h-[197px] xl:px-[13px]">
-        <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Login Details</h2>
-
-        <div className="mt-8 grid grid-cols-1 gap-x-[23px] gap-y-5 xl:grid-cols-2 xl:gap-y-[23px]">
-          <Field
-            label="Email"
-            value={loginEmail}
-            onChange={onEmailChange}
-            placeholder="e.g John Doe"
-          />
-
-          <Field
-            label="Password"
-            value={password}
-            onChange={onPasswordChange}
-            placeholder="e.g John Doe"
-          />
-        </div>
-
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-[47px]">
-          <ActionButton
-            label="Change email"
-            onClick={onSaveEmail}
-            className="w-full sm:w-[79px]"
-          />
-          <ActionButton
-            label="Change Password"
-            onClick={onSavePassword}
-            className="w-full sm:w-[95px]"
-          />
-        </div>
-      </section>
-
-      <section className="mt-[25px] rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-[18px] pt-[17px] xl:min-h-[93px] xl:px-[14px]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Account Status</h2>
-            <div className="mt-[20px] flex items-center gap-[14px]">
-              <span className="text-[16px] font-normal leading-[18px] tracking-[-0.05em] text-[#94A3B8]">Status:</span>
-              <span className="text-[16px] font-medium leading-[18px] tracking-[-0.05em] text-[#1565C0]">Active</span>
-            </div>
-          </div>
-
-          <p className="max-w-[185px] text-[13px] leading-[18px] text-[#94A3B8]">
-            Contact support to deactivate your account.
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-[31px] rounded-[12px] border-2 border-[#E2E8F0] px-5 pb-[18px] pt-[17px] xl:min-h-[93px] xl:px-[14px]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-[18px] font-medium leading-[18px] tracking-[-0.05em] text-black">Delete Account</h2>
-            <p className="mt-[20px] text-[16px] font-medium leading-[18px] tracking-[-0.05em] text-[#1565C0]">
-              This action is permanent
-            </p>
-          </div>
-
-          <p className="max-w-[185px] text-[13px] leading-[18px] text-[#94A3B8]">
-            Contact support to request account deletion.
-          </p>
-        </div>
-      </section>
-    </motion.section>
-  );
-}
-
-function ProfileSettingsPanel({
-  formData,
-  updateField,
-  avatarUrl,
-  isUploadingAvatar,
-  onUploadPicture,
-  onDeletePicture,
-  onSave,
-}: {
-  formData: {
-    fullName: string;
-    email: string;
-    phone: string;
-    address: string;
-    dateOfBirth: string;
-    gender: string;
-  };
-  updateField: (key: keyof typeof formData) => (value: string) => void;
-  avatarUrl: string | null;
-  isUploadingAvatar: boolean;
-  onUploadPicture: () => void;
-  onDeletePicture: () => void;
-  onSave: () => void;
-}) {
-  return (
-    <motion.section
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="rounded-[12px] bg-[#F8FAFC] px-6 pb-8 pt-8 xl:min-h-[640px] xl:px-[23px] xl:pb-[33px] xl:pt-[43px]"
-    >
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:gap-[23px]">
-        <ProfileAvatar src={avatarUrl} alt="Patient profile picture" className="h-[103px] w-[109px] rounded-full" />
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2 xl:mt-[6px]">
-          <motion.button
-            type="button"
-            onClick={onUploadPicture}
-            disabled={isUploadingAvatar}
-            className="inline-flex h-[41px] w-full items-center justify-center rounded-[5.14286px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[11px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[161px] xl:w-[109px]"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-          >
-            {isUploadingAvatar ? "Uploading..." : "Upload New"}
-          </motion.button>
-
-          <motion.button
-            type="button"
-            onClick={onDeletePicture}
-            disabled={isUploadingAvatar}
-            className="inline-flex h-[41px] w-full items-center justify-center rounded-[5.14286px] bg-[#94A3B8] px-5 text-[11px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[161px] xl:w-[109px]"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-          >
-            Delete Picture
-          </motion.button>
-        </div>
-      </div>
-
-      <div className="mt-10 grid grid-cols-1 gap-x-[25px] gap-y-[18px] xl:mt-[32px] xl:grid-cols-2">
-        <Field
-          label="Full Name"
-          value={formData.fullName}
-          onChange={updateField("fullName")}
-          placeholder="e.g John Doe"
-        />
-
-        <Field
-          label="Email"
-          value={formData.email}
-          onChange={updateField("email")}
-          placeholder="e.g John Doe"
-        />
-
-        <label className="flex flex-col gap-[6px]">
-          <span className="text-[14.5227px] font-light leading-[18px] tracking-[-0.05em] text-black">Phone number</span>
-          <span className="flex h-[38px] items-center overflow-hidden rounded-[9.68182px] border border-[#94A3B8] bg-[#F8FAFC]">
-            <span className="flex h-full w-[67px] items-center gap-[6px] bg-[#E3F2FD] px-[16px]">
-              <NigeriaFlag />
-              <svg viewBox="0 0 12 8" className="h-[7px] w-[12px]" aria-hidden>
-                <path d="M1 1.5 6 6l5-4.5" fill="none" stroke="#94A3B8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-              </svg>
-            </span>
-            <input
-              value={formData.phone}
-              onChange={(event) => updateField("phone")(event.target.value)}
-              className="w-full border-0 bg-transparent px-[14px] text-[14.5227px] font-light leading-[18px] tracking-[-0.05em] text-[#334155] outline-none placeholder:text-[#94A3B8]"
-            />
-          </span>
-        </label>
-
-        <Field
-          label="Address"
-          value={formData.address}
-          onChange={updateField("address")}
-          placeholder="e.g John Doe"
-        />
-
-        <div className="xl:col-start-1">
-          <Field
-            label="Date of birth"
-            value={formData.dateOfBirth}
-            onChange={updateField("dateOfBirth")}
-            placeholder="24 / 05 / 2003"
-            leftSlot={<CalendarIcon />}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 xl:pt-[20px]">
-          <div className="text-[14.0469px] font-light leading-[17px] tracking-[-0.05em] text-black">
-            Gender <span className="text-[#EF4444]">*</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-[18px]">
-            {["Male", "Female", "Other"].map((gender) => {
-              const selected = formData.gender === gender;
-
-              return (
-                <label key={gender} className="inline-flex cursor-pointer items-center gap-[6px]">
-                  <span className="text-[14.0469px] font-light leading-[17px] tracking-[-0.05em] text-[#334155]">{gender}</span>
-                  <span className={`relative inline-flex h-[16px] w-[16px] items-center justify-center rounded-full border-2 ${selected ? "border-[#1565C0]" : "border-[#94A3B8]"}`}>
-                    {selected ? <span className="h-[10px] w-[10px] rounded-full bg-[#1565C0]" /> : null}
-                  </span>
-                  <input
-                    type="radio"
-                    name="patient-settings-gender"
-                    value={gender}
-                    checked={selected}
-                    onChange={() => updateField("gender")(gender)}
-                    className="sr-only"
-                  />
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <motion.button
-        type="button"
-        onClick={onSave}
-        className="mt-10 inline-flex h-[41px] w-full items-center justify-center rounded-[7.49206px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-6 text-[16px] font-normal tracking-[-0.05em] text-[#E3F2FD] sm:w-[220px] xl:mt-[83px] xl:w-[147px] xl:text-[9.98942px]"
-        whileHover={{ y: -1, scale: 1.01 }}
-        whileTap={{ scale: 0.985 }}
-      >
-        Save Changes
-      </motion.button>
-    </motion.section>
+      <Switch checked={checked} onChange={onChange} label={title} />
+    </div>
   );
 }
 
 export function PatientSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab["id"]>("account");
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    address: "",
-    dateOfBirth: "",
-    gender: "",
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [loading, setLoading] = useState(true);
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [generalForm, setGeneralForm] = useState<GeneralForm>(emptyGeneralForm);
+  const [lastLoadedGeneral, setLastLoadedGeneral] = useState<GeneralForm>(emptyGeneralForm);
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  const [accountData, setAccountData] = useState({
-    loginEmail: "",
-    password: "",
-  });
-  const [notificationChannels, setNotificationChannels] = useState({
-    email: true,
-    sms: true,
-    push: true,
-  });
-  const [notificationPreferences, setNotificationPreferences] = useState({
-    reminders: true,
-    updates: true,
-    payments: true,
-    promotions: true,
-  });
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [privacySettings, setPrivacySettings] = useState({
-    shareData: true,
-    historyAccess: true,
-    aiRecommendations: true,
-  });
-  const [autoRenew, setAutoRenew] = useState(true);
-  const [subscriptionStatus, setSubscriptionStatus] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [isUploadingAvatar, setUploadingAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>(defaultNotifications);
+  const [security, setSecurity] = useState<Record<SecurityKey, boolean>>(defaultSecurity);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("inactive");
+  const [autoRenew, setAutoRenew] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
+  const [sessionLabel, setSessionLabel] = useState("Current browser session");
 
-  const updateField =
-    (key: keyof typeof formData) =>
-    (value: string) =>
-      setFormData((current) => ({
-        ...current,
-        [key]: value,
-      }));
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [profileResponse, subscriptionResponse] = await Promise.allSettled([
+        getPatientProfile(),
+        getPatientSubscription(),
+      ]);
 
-  const updateAccountField =
-    (key: keyof typeof accountData) =>
-    (value: string) =>
-      setAccountData((current) => ({
-        ...current,
-        [key]: value,
-      }));
+      if (profileResponse.status === "fulfilled") {
+        const { account, profile } = profileResponse.value;
+        const notificationPreferences = (profile.notificationPreferences ?? {}) as Record<string, unknown>;
+        const securityPreferences = (profile.securityPreferences ?? {}) as Record<string, unknown>;
+        const billing = isRecord(profile.billing) ? profile.billing : profile;
 
-  const toggleChannel = (key: keyof typeof notificationChannels) => {
-    const nextValue = !notificationChannels[key];
-    setNotificationChannels((current) => ({
-      ...current,
-      [key]: nextValue,
-    }));
+        const nextGeneralForm: GeneralForm = {
+          fullName: account.fullName ?? "",
+          email: account.email ?? "",
+          phone: account.phoneNumber ?? asText(profile.phone),
+          dateOfBirth: asText(profile.dateOfBirth),
+          address: asText(profile.preferredLocation),
+          gender: asText(profile.gender),
+          bloodGroup: asText(profile.bloodGroup),
+          languagePreference: asText(profile.languagePreference),
+          allergies: listToText(profile.allergies ?? profile.knownAllergies),
+          medicalConditions: listToText(profile.medicalConditions),
+        };
+
+        setGeneralForm(nextGeneralForm);
+        setLastLoadedGeneral(nextGeneralForm);
+        setNotifications({
+          email: asBoolean(notificationPreferences.email, defaultNotifications.email),
+          sms: asBoolean(notificationPreferences.sms, defaultNotifications.sms),
+          push: asBoolean(notificationPreferences.push, defaultNotifications.push),
+          reminders: asBoolean(notificationPreferences.reminders, defaultNotifications.reminders),
+          updates: asBoolean(notificationPreferences.updates, defaultNotifications.updates),
+          payments: asBoolean(notificationPreferences.payments, defaultNotifications.payments),
+          promotions: asBoolean(notificationPreferences.promotions, defaultNotifications.promotions),
+        });
+        setSecurity({
+          twoFactor: asBoolean(securityPreferences.twoFactor, defaultSecurity.twoFactor),
+          shareData: asBoolean(securityPreferences.shareData, defaultSecurity.shareData),
+          medicalHistory: asBoolean(securityPreferences.medicalHistory, defaultSecurity.medicalHistory),
+          aiRecommendations: asBoolean(securityPreferences.aiRecommendations, defaultSecurity.aiRecommendations),
+        });
+        setPaymentMethods(parsePaymentMethods(billing.paymentMethods));
+        setBillingHistory(parseBillingHistory(billing.billingHistory));
+      } else {
+        toast.error(getApiErrorMessage(profileResponse.reason));
+      }
+
+      if (subscriptionResponse.status === "fulfilled") {
+        setAutoRenew(subscriptionResponse.value.autoRenew);
+        setSubscriptionStatus(subscriptionResponse.value.status);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSettings().catch((error) => {
+      toast.error(getApiErrorMessage(error));
+      setLoading(false);
+    });
+  }, [loadSettings]);
+
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent;
+    if (/Android/i.test(userAgent)) {
+      setSessionLabel("Chrome on Android");
+    } else if (/iPhone|iPad/i.test(userAgent)) {
+      setSessionLabel("Safari on iOS");
+    } else if (/Windows/i.test(userAgent)) {
+      setSessionLabel("Chrome on Windows");
+    } else if (/Mac/i.test(userAgent)) {
+      setSessionLabel("Chrome on macOS");
+    }
+  }, []);
+
+  const planLabel = useMemo(() => {
+    if (!subscriptionStatus || subscriptionStatus === "inactive") {
+      return "No active plan";
+    }
+    return subscriptionStatus.charAt(0).toUpperCase() + subscriptionStatus.slice(1);
+  }, [subscriptionStatus]);
+
+  const updateGeneralField = (field: keyof GeneralForm, value: string) => {
+    setGeneralForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updatePasswordField = (field: keyof PasswordForm, value: string) => {
+    setPasswordForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSaveGeneral = async () => {
+    setSavingGeneral(true);
+    try {
+      const allergies = textToList(generalForm.allergies);
+      const medicalConditions = textToList(generalForm.medicalConditions);
+      const profilePayload: PatientProfilePayload & { languagePreference?: string } = {
+        dateOfBirth: generalForm.dateOfBirth || undefined,
+        gender: generalForm.gender || undefined,
+        phone: generalForm.phone || undefined,
+        preferredLocation: generalForm.address || undefined,
+        bloodGroup: generalForm.bloodGroup || undefined,
+        languagePreference: generalForm.languagePreference || undefined,
+        allergies,
+        medicalConditions,
+      };
+
+      await Promise.all([
+        updatePatientAccount({
+          fullName: generalForm.fullName,
+          email: generalForm.email,
+          phoneNumber: generalForm.phone,
+        }),
+        updatePatientProfile(profilePayload),
+      ]);
+
+      setLastLoadedGeneral(generalForm);
+      toast.success("Settings saved.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingGeneral(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (passwordForm.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await updatePatientAccount({ password: passwordForm.newPassword });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast.success("Password updated.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const toggleNotification = (key: NotificationKey) => {
+    const nextValue = !notifications[key];
+    setNotifications((current) => ({ ...current, [key]: nextValue }));
     updatePatientNotificationPreferences({ [key]: nextValue }).catch((error) => {
-      setNotificationChannels((current) => ({
-        ...current,
-        [key]: !nextValue,
-      }));
+      setNotifications((current) => ({ ...current, [key]: !nextValue }));
       toast.error(getApiErrorMessage(error));
     });
   };
 
-  const togglePreference = (key: keyof typeof notificationPreferences) => {
-    const nextValue = !notificationPreferences[key];
-    setNotificationPreferences((current) => ({
-      ...current,
-      [key]: nextValue,
-    }));
-    updatePatientNotificationPreferences({ [key]: nextValue }).catch((error) => {
-      setNotificationPreferences((current) => ({
-        ...current,
-        [key]: !nextValue,
-      }));
-      toast.error(getApiErrorMessage(error));
-    });
-  };
-
-  const toggleTwoFactor = () => {
-    const nextValue = !twoFactorEnabled;
-    setTwoFactorEnabled(nextValue);
-    updatePatientSecurityPreferences({ twoFactor: nextValue }).catch((error) => {
-      setTwoFactorEnabled(!nextValue);
-      toast.error(getApiErrorMessage(error));
-    });
-  };
-
-  const togglePrivacySetting = (key: keyof typeof privacySettings) => {
-    const nextValue = !privacySettings[key];
-    setPrivacySettings((current) => ({ ...current, [key]: nextValue }));
-    const apiKey =
-      key === "historyAccess" ? "medicalHistory" : key;
-
-    updatePatientSecurityPreferences({ [apiKey]: nextValue }).catch((error) => {
-      setPrivacySettings((current) => ({ ...current, [key]: !nextValue }));
+  const toggleSecurity = (key: SecurityKey) => {
+    const nextValue = !security[key];
+    setSecurity((current) => ({ ...current, [key]: nextValue }));
+    updatePatientSecurityPreferences({ [key]: nextValue }).catch((error) => {
+      setSecurity((current) => ({ ...current, [key]: !nextValue }));
       toast.error(getApiErrorMessage(error));
     });
   };
@@ -728,255 +633,453 @@ export function PatientSettingsPage() {
     });
   };
 
-  const saveAccountEmail = async () => {
-    try {
-      await updatePatientAccount({ email: accountData.loginEmail });
-      toast.success("Email updated.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  const savePassword = async () => {
-    if (accountData.password.trim().length < 6) {
-      toast.error("Password must contain at least 6 characters.");
-      return;
-    }
-
-    try {
-      await updatePatientAccount({ password: accountData.password });
-      setAccountData((current) => ({ ...current, password: "" }));
-      toast.success("Password updated.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  const saveProfile = async () => {
-    try {
-      await Promise.all([
-        updatePatientAccount({
-          fullName: formData.fullName,
-          email: formData.email,
-          phoneNumber: formData.phone,
-        }),
-        updatePatientProfile({
-          dateOfBirth: formData.dateOfBirth,
-          gender: formData.gender,
-          phone: formData.phone,
-          preferredLocation: formData.address,
-        }),
-      ]);
-      setAccountData((current) => ({ ...current, loginEmail: formData.email }));
-      toast.success("Profile updated.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  const isSubscriptionsView = activeTab === "subscriptions";
-
-  useEffect(() => {
-    let mounted = true;
-
-    getPatientProfile()
-      .then((response) => {
-        if (!mounted) return;
-
-        const profile = response.profile as Record<string, unknown>;
-        setAccountData((current) => ({ ...current, loginEmail: response.account.email }));
-        setFormData((current) => ({
-          ...current,
-          fullName: response.account.fullName ?? current.fullName,
-          email: response.account.email ?? current.email,
-          phone: response.account.phoneNumber ?? (typeof profile.phone === "string" ? profile.phone : current.phone),
-          address: typeof profile.preferredLocation === "string" ? profile.preferredLocation : current.address,
-          dateOfBirth: typeof profile.dateOfBirth === "string" ? profile.dateOfBirth : current.dateOfBirth,
-          gender: typeof profile.gender === "string" ? profile.gender : current.gender,
-        }));
-        setAvatarUrl(typeof profile.avatarUrl === "string" ? profile.avatarUrl : null);
-        const preferences = profile.notificationPreferences as
-          | Partial<
-              Record<
-                "email" | "sms" | "push" | "reminders" | "updates" | "payments" | "promotions",
-                boolean
-              >
-            >
-          | undefined;
-        if (preferences) {
-          setNotificationChannels((current) => ({
-            email: preferences.email ?? current.email,
-            sms: preferences.sms ?? current.sms,
-            push: preferences.push ?? current.push,
-          }));
-          setNotificationPreferences((current) => ({
-            reminders: preferences.reminders ?? current.reminders,
-            updates: preferences.updates ?? current.updates,
-            payments: preferences.payments ?? current.payments,
-            promotions: preferences.promotions ?? current.promotions,
-          }));
-        }
-        const security = profile.securityPreferences as
-          | Partial<Record<"twoFactor" | "shareData" | "medicalHistory" | "aiRecommendations", boolean>>
-          | undefined;
-        if (security) {
-          setTwoFactorEnabled(security.twoFactor ?? false);
-          setPrivacySettings((current) => ({
-            shareData: security.shareData ?? current.shareData,
-            historyAccess: security.medicalHistory ?? current.historyAccess,
-            aiRecommendations: security.aiRecommendations ?? current.aiRecommendations,
-          }));
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setAvatarUrl(null);
-        }
-      });
-
-    getPatientSubscription()
-      .then((subscription) => {
-        if (!mounted) return;
-        setAutoRenew(subscription.autoRenew);
-        setSubscriptionStatus(subscription.status);
-      })
-      .catch((error) => {
-        if (mounted) toast.error(getApiErrorMessage(error));
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    setUploadingAvatar(true);
-
-    try {
-      const response = await uploadProfileAvatar(file);
-      setAvatarUrl(response.avatarUrl);
-      window.dispatchEvent(
-        new CustomEvent("swifthelp:avatar-updated", {
-          detail: { avatarUrl: response.avatarUrl },
-        }),
-      );
-      toast.success("Profile picture updated.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
-  const handleDeletePicture = async () => {
-    setUploadingAvatar(true);
-
-    try {
-      const response = await deleteProfileAvatar();
-      setAvatarUrl(response.avatarUrl);
-      window.dispatchEvent(
-        new CustomEvent("swifthelp:avatar-updated", {
-          detail: { avatarUrl: response.avatarUrl },
-        }),
-      );
-      toast.success("Profile picture removed.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
   return (
-    <div className="mt-8 w-full xl:mt-[52px]">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        onChange={handleAvatarFileChange}
-        className="hidden"
-      />
-      {isSubscriptionsView ? (
-        <h1 className="mb-4 text-[24px] font-semibold leading-[29px] tracking-[-0.05em] text-[#334155] xl:mb-[16px]">
-          Settings
-        </h1>
-      ) : null}
+    <section className="mx-auto w-full max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-0">
+      <h1 className="mb-5 text-[26px] font-semibold text-[#334155] sm:text-[30px]">Settings</h1>
 
-      <div
-        className={`grid grid-cols-1 gap-6 ${
-          isSubscriptionsView
-            ? "xl:grid-cols-[268px_minmax(0,614px)] xl:gap-[21px]"
-            : "xl:grid-cols-[290px_minmax(0,576px)] xl:gap-[18px]"
-        }`}
-      >
-        <motion.section
-          whileHover={{ y: -2 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className={`rounded-[12px] bg-[#F8FAFC] px-[20px] py-[22px] xl:px-[41px] xl:py-[33px] ${
-            isSubscriptionsView ? "xl:h-[675px]" : "xl:h-[289px]"
-          }`}
-        >
-          <div className="space-y-[1px]">
-            {settingsTabs.map((tab) => (
-              <TabButton
-                key={tab.id}
-                label={tab.label}
-                active={tab.id === activeTab}
-                onClick={() => setActiveTab(tab.id)}
-              />
-            ))}
+      <div className="rounded-[18px] bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:p-6 lg:p-10">
+        <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:gap-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative min-h-[42px] shrink-0 cursor-pointer px-1 text-[16px] font-semibold transition sm:text-[18px] ${
+                activeTab === tab.id ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#334155]"
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id ? (
+                <span className="absolute inset-x-0 bottom-0 h-1 rounded-full bg-[#1565C0]" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="rounded-[16px] border border-dashed border-[#C9D7E6] bg-[#F8FAFC] p-8 text-center text-[#94A3B8]">
+            Loading settings...
           </div>
-        </motion.section>
+        ) : null}
 
-        {activeTab === "account" ? (
-          <AccountSettingsPanel
-            loginEmail={accountData.loginEmail}
-            password={accountData.password}
-            onEmailChange={updateAccountField("loginEmail")}
-            onPasswordChange={updateAccountField("password")}
-            onSaveEmail={saveAccountEmail}
-            onSavePassword={savePassword}
-          />
-        ) : activeTab === "notifications" ? (
-          <NotificationSettingsPanel
-            channels={notificationChannels}
-            preferences={notificationPreferences}
-            onToggleChannel={toggleChannel}
-            onTogglePreference={togglePreference}
-          />
-        ) : activeTab === "security" ? (
-          <SecuritySettingsPanel
-            twoFactorEnabled={twoFactorEnabled}
-            privacy={privacySettings}
-            onToggleTwoFactor={toggleTwoFactor}
-            onTogglePrivacy={togglePrivacySetting}
-            onChangePassword={() => setActiveTab("account")}
-          />
-        ) : activeTab === "subscriptions" ? (
-          <SubscriptionSettingsPanel
-            autoRenew={autoRenew}
-            onToggleAutoRenew={toggleAutoRenew}
-            status={subscriptionStatus}
-          />
-        ) : (
-          <ProfileSettingsPanel
-            formData={formData}
-            updateField={updateField}
-            avatarUrl={avatarUrl}
-            isUploadingAvatar={isUploadingAvatar}
-            onUploadPicture={() => fileInputRef.current?.click()}
-            onDeletePicture={handleDeletePicture}
-            onSave={saveProfile}
-          />
-        )}
+        {!loading && activeTab === "general" ? (
+          <div className="space-y-6">
+            <SettingsCard title="Personal information">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <Field
+                  label="Full name"
+                  value={generalForm.fullName}
+                  onChange={(value) => updateGeneralField("fullName", value)}
+                  placeholder="Full name"
+                />
+                <Field
+                  label="Email address"
+                  value={generalForm.email}
+                  onChange={(value) => updateGeneralField("email", value)}
+                  placeholder="Email address"
+                  type="email"
+                />
+                <Field
+                  label="Phone number"
+                  value={generalForm.phone}
+                  onChange={(value) => updateGeneralField("phone", value)}
+                  placeholder="+234 801 111 1111"
+                  type="tel"
+                />
+                <Field
+                  label="Date of birth"
+                  value={generalForm.dateOfBirth}
+                  onChange={(value) => updateGeneralField("dateOfBirth", value)}
+                  placeholder="YYYY-MM-DD"
+                  type="date"
+                  rightSlot={<CalendarIcon />}
+                />
+                <Field
+                  label="Home address"
+                  value={generalForm.address}
+                  onChange={(value) => updateGeneralField("address", value)}
+                  placeholder="Home address"
+                />
+                <SelectField
+                  label="Gender"
+                  value={generalForm.gender}
+                  onChange={(value) => updateGeneralField("gender", value)}
+                  options={genderOptions}
+                />
+              </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <PrimaryButton variant="secondary" onClick={() => setGeneralForm(lastLoadedGeneral)}>
+                  Cancel
+                </PrimaryButton>
+                <PrimaryButton onClick={handleSaveGeneral} disabled={savingGeneral}>
+                  {savingGeneral ? "Saving..." : "Save"}
+                </PrimaryButton>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Health preferences">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <SelectField
+                  label="Blood group"
+                  value={generalForm.bloodGroup}
+                  onChange={(value) => updateGeneralField("bloodGroup", value)}
+                  options={bloodGroupOptions}
+                />
+                <SelectField
+                  label="Language preference"
+                  value={generalForm.languagePreference}
+                  onChange={(value) => updateGeneralField("languagePreference", value)}
+                  options={languageOptions}
+                />
+                <Field
+                  label="Known allergies"
+                  value={generalForm.allergies}
+                  onChange={(value) => updateGeneralField("allergies", value)}
+                  placeholder="e.g. peanuts, penicillin"
+                />
+                <Field
+                  label="Medical conditions"
+                  value={generalForm.medicalConditions}
+                  onChange={(value) => updateGeneralField("medicalConditions", value)}
+                  placeholder="e.g. Hypertension, diabetes, asthma"
+                />
+              </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <PrimaryButton variant="secondary" onClick={() => setGeneralForm(lastLoadedGeneral)}>
+                  Cancel
+                </PrimaryButton>
+                <PrimaryButton onClick={handleSaveGeneral} disabled={savingGeneral}>
+                  {savingGeneral ? "Saving..." : "Save"}
+                </PrimaryButton>
+              </div>
+            </SettingsCard>
+          </div>
+        ) : null}
+
+        {!loading && activeTab === "notifications" ? (
+          <div className="space-y-5">
+            <SettingsCard title="Appointment Notifications">
+              <ToggleRow
+                title="Appointment confirmed"
+                description="Get notified when a professional confirms your booking"
+                checked={notifications.updates}
+                onChange={() => toggleNotification("updates")}
+              />
+              <ToggleRow
+                title="Appointment reminder - 1 hour before"
+                description="Receive a final reminder 1 hour before your appointment starts"
+                checked={notifications.reminders}
+                onChange={() => toggleNotification("reminders")}
+              />
+              <ToggleRow
+                title="Appointment cancelled by professional"
+                description="Get notified if a professional cancels your booking"
+                checked={notifications.push}
+                onChange={() => toggleNotification("push")}
+              />
+              <ToggleRow
+                title="Consultation summary"
+                description="Receive a summary of your consultations after each session"
+                checked={notifications.email}
+                onChange={() => toggleNotification("email")}
+              />
+            </SettingsCard>
+
+            <SettingsCard title="AI symptom checker notifications">
+              <ToggleRow
+                title="High severity symptom alert"
+                description="Receive urgent alerts when AI detects symptoms requiring immediate attention"
+                checked={notifications.sms}
+                onChange={() => toggleNotification("sms")}
+              />
+              <ToggleRow
+                title="Follow-up reminder from AI"
+                description="Get a reminder when the AI recommends a follow-up consultation"
+                checked={notifications.reminders}
+                onChange={() => toggleNotification("reminders")}
+              />
+              <ToggleRow
+                title="AI check summary"
+                description="Receive a summary of your symptom check results after each session"
+                checked={notifications.payments}
+                onChange={() => toggleNotification("payments")}
+              />
+            </SettingsCard>
+
+            <SettingsCard title="General & platform notifications">
+              <ToggleRow
+                title="Referral reward earned"
+                description="Get notified when you earn a referral reward"
+                checked={notifications.promotions}
+                onChange={() => toggleNotification("promotions")}
+              />
+              <ToggleRow
+                title="Platform updates"
+                description="News and updates about Swifthelp features"
+                checked={notifications.updates}
+                onChange={() => toggleNotification("updates")}
+              />
+              <ToggleRow
+                title="Weekly summary email"
+                description="Receive a weekly digest of your activity"
+                checked={notifications.email}
+                onChange={() => toggleNotification("email")}
+              />
+              <ToggleRow
+                title="Promotional offers"
+                description="Occasional offers and health tips from Swifthelp and partners"
+                checked={notifications.promotions}
+                onChange={() => toggleNotification("promotions")}
+              />
+            </SettingsCard>
+          </div>
+        ) : null}
+
+        {!loading && activeTab === "security" ? (
+          <div className="space-y-5">
+            <SettingsCard title="Change Password">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="lg:col-span-2">
+                  <Field
+                    label="Current password"
+                    value={passwordForm.currentPassword}
+                    onChange={(value) => updatePasswordField("currentPassword", value)}
+                    placeholder="Enter current password"
+                    type="password"
+                  />
+                </div>
+                <Field
+                  label="New password"
+                  value={passwordForm.newPassword}
+                  onChange={(value) => updatePasswordField("newPassword", value)}
+                  placeholder="Enter new password"
+                  type="password"
+                />
+                <Field
+                  label="Confirm new password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(value) => updatePasswordField("confirmPassword", value)}
+                  placeholder="Repeat new password"
+                  type="password"
+                />
+              </div>
+              <div className="mt-8 flex justify-end">
+                <PrimaryButton variant="secondary" onClick={handleSavePassword} disabled={savingPassword}>
+                  {savingPassword ? "Updating..." : "Update password"}
+                </PrimaryButton>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard
+              title="Two-factor authentication"
+              right={
+                <span
+                  className={`rounded-md border px-5 py-1 text-sm font-medium ${
+                    security.twoFactor
+                      ? "border-[#0E9F3E] bg-[#E9F8EE] text-[#0E9F3E]"
+                      : "border-[#C62828] bg-[#FFF3F3] text-[#C62828]"
+                  }`}
+                >
+                  {security.twoFactor ? "On" : "Off"}
+                </span>
+              }
+            >
+              <p className="max-w-[760px] text-[16px] leading-7 text-[#111827]">
+                Add an extra layer of security to your account. You will be asked for a verification code each time
+                you log in.
+              </p>
+              <div className="mt-6">
+                <PrimaryButton variant="secondary" onClick={() => toggleSecurity("twoFactor")}>
+                  {security.twoFactor ? "Disable two-factor authentication" : "Enable two-factor authentication"}
+                </PrimaryButton>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Active Sessions">
+              <div className="space-y-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <LaptopIcon />
+                    <span className="text-[16px] font-medium text-[#111827]">{sessionLabel}</span>
+                  </div>
+                  <span className="w-fit rounded-md border border-[#0E9F3E] bg-[#E9F8EE] px-5 py-1 text-sm font-medium text-[#0E9F3E]">
+                    Current
+                  </span>
+                </div>
+                <PrimaryButton
+                  variant="secondary"
+                  onClick={() => toast.info("No other active sessions were returned for this account.")}
+                >
+                  Sign out all other sessions
+                </PrimaryButton>
+              </div>
+            </SettingsCard>
+          </div>
+        ) : null}
+
+        {!loading && activeTab === "billing" ? (
+          <div className="space-y-8">
+            <section>
+              <h2 className="mb-5 text-[18px] font-semibold text-[#334155] sm:text-[20px]">Current plan</h2>
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="rounded-[16px] border-2 border-[#1565C0] bg-[#E3F2FD] p-5 sm:p-7">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-[24px] font-semibold text-[#334155] sm:text-[28px]">
+                        {planLabel === "No active plan" ? "Beginner" : planLabel}
+                      </h3>
+                      <p className="mt-2 text-[18px] font-medium text-[#94A3B8]">
+                        {autoRenew ? "Auto-renew enabled" : "Auto-renew disabled"}
+                      </p>
+                    </div>
+                    <p className="text-[28px] font-semibold text-[#334155] sm:text-[34px]">
+                      $10<span className="text-[#94A3B8]">/Month</span>
+                    </p>
+                  </div>
+                  <div className="mt-8 space-y-3 text-[16px] font-medium text-[#334155] sm:text-[18px]">
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Book consultations
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Access medical records
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Basic reminders
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleAutoRenew}
+                    className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
+                  >
+                    {autoRenew ? "Cancel Subscription" : "Enable Auto-renew"}
+                  </button>
+                </div>
+
+                <div className="rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-[24px] font-semibold sm:text-[28px]">Pro</h3>
+                      <p className="mt-2 text-[18px] font-medium text-[#CBD5E1]">365 Days</p>
+                    </div>
+                    <p className="text-[28px] font-semibold sm:text-[34px]">
+                      $10<span className="text-[#CBD5E1]">/Month</span>
+                    </p>
+                  </div>
+                  <div className="mt-8 space-y-3 text-[16px] font-medium text-[#E2E8F0] sm:text-[18px]">
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Priority consultations
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Expanded health reports
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckBadgeIcon /> Advanced reminders
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toast.info("Plan upgrades are not available yet.")}
+                    className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
+                  >
+                    Upgrade
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[16px] border border-[#DDE6F0] bg-[#F8FAFC] p-5 sm:p-7">
+              <h2 className="mb-6 text-[18px] font-semibold text-[#334155] sm:text-[20px]">Payment Method</h2>
+              <div className="space-y-4">
+                {paymentMethods.length > 0 ? (
+                  paymentMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      className={`flex min-h-[70px] items-center justify-between gap-4 rounded-[14px] border px-5 py-4 ${
+                        method.isDefault ? "border-[#DDE6F0] bg-[#E3F2FD]" : "border-[#DDE6F0] bg-white"
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <CardIcon />
+                        <p className="truncate text-[16px] font-medium text-[#334155] sm:text-[18px]">
+                          {method.brand} {method.last4 ? `**** **** ${method.last4}` : "ending not available"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toast.info("Payment method removal is not available yet.")}
+                        className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#FFE2E2] text-[#C62828] transition hover:bg-[#FFD1D1]"
+                        aria-label={`Remove ${method.brand} payment method`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
+                    No payment method was returned for this patient account.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-[16px] border border-[#DDE6F0] bg-[#F8FAFC] p-5 sm:p-7">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-[18px] font-semibold text-[#334155] sm:text-[20px]">Billing history</h2>
+                <button
+                  type="button"
+                  onClick={() => toast.info("Billing export is not available yet.")}
+                  className="inline-flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-8 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(21,101,192,0.18)] transition hover:-translate-y-px sm:w-auto"
+                >
+                  Export
+                </button>
+              </div>
+              <div className="overflow-x-auto rounded-[14px] border border-[#DDE6F0]">
+                <table className="min-w-[760px] w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[#DDE6F0] bg-white text-[15px] font-semibold text-[#64748B]">
+                      <th className="px-5 py-4">Transaction ID</th>
+                      <th className="px-5 py-4">Date</th>
+                      <th className="px-5 py-4">Amount</th>
+                      <th className="px-5 py-4">Plan</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billingHistory.length > 0 ? (
+                      billingHistory.map((item) => (
+                        <tr key={item.id} className="border-b border-[#DDE6F0] last:border-b-0">
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.id}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.date}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.amount}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.plan}</td>
+                          <td className="px-5 py-4 font-semibold text-[#0E9F3E]">{item.status}</td>
+                          <td className="px-5 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => toast.info("Invoice download is not available yet.")}
+                              className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                            >
+                              Download
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-8 text-center text-[#94A3B8]">
+                          No billing history available.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </section>
   );
 }
