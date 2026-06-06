@@ -45,7 +45,6 @@ const mainNav: NavItem[] = [
 
 const lowerNav: NavItem[] = [
   { label: "My Profile", href: "/professional-platform/my-profile", icon: "profile" },
-  { label: "Help", href: "/professional-platform/help", icon: "help" },
   { label: "Settings", href: "/professional-platform/settings", icon: "settings" },
 ];
 
@@ -404,6 +403,11 @@ export function ProfessionalPlatformShell({
     router.push(`${countryPrefix}/professional-platform/notifications`);
   };
 
+  const openHelp = () => {
+    const countryPrefix = pathname.match(/^\/[a-z]{2}(?=\/)/)?.[0] ?? "";
+    router.push(`${countryPrefix}/professional-platform/help`);
+  };
+
   return (
     <ProfessionalPlatformShellContext.Provider value={contextValue}>
       <section className="min-h-screen bg-[#E2E8F0]">
@@ -619,6 +623,17 @@ export function ProfessionalPlatformShell({
                       ) : null}
                     </motion.button>
                   </div>
+
+                  <motion.button
+                    type="button"
+                    onClick={openHelp}
+                    className="flex aspect-square h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition-colors hover:bg-[#d1e9ff] sm:h-11 sm:w-11 xl:h-12 xl:w-12"
+                    aria-label="Help and support"
+                    whileHover={{ y: -1, scale: 1.03 }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <Icon type="help" active />
+                  </motion.button>
 
                   <motion.button
                     type="button"
