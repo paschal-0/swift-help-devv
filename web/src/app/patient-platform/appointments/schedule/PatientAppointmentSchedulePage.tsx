@@ -18,6 +18,12 @@ type TimeSlot = {
   endTime?: string;
 };
 
+type ProviderPricing = {
+  currencyCode: string;
+  videoConsultationRateCents: number | null;
+  inPersonVisitRateCents: number | null;
+};
+
 function ChevronIcon({ direction }: { direction: "left" | "right" }) {
   return (
     <svg
@@ -114,7 +120,13 @@ function zonedDateTimeToIso(dateKey: string, time: string, timeZone: string) {
         .filter((part) => part.type !== "literal")
         .map((part) => [part.type, Number(part.value)]),
     );
-    const displayedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+    const displayedUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+    );
     candidate = new Date(candidate.getTime() + desiredUtc - displayedUtc);
   }
 
@@ -132,6 +144,29 @@ function formatTimeInZone(isoDate: string, timeZone: string) {
 
 function timezoneLabel(timezone: string) {
   return timezone.replaceAll("_", " ");
+}
+
+function parseCents(value?: string) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function formatMoney(cents?: number | null, currencyCode = "NGN") {
+  if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) {
+    return "Price not set";
+  }
+
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: currencyCode || "NGN",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function formatHourlyRate(cents?: number | null, currencyCode = "NGN") {
+  const amount = formatMoney(cents, currencyCode);
+  return amount === "Price not set" ? amount : `${amount}/hr`;
 }
 
 function getDateKeyInZone(isoDate: string, timeZone: string) {
@@ -165,9 +200,18 @@ export function PatientAppointmentSchedulePage() {
   const [city, setCity] = useState("");
   const [stateRegion, setStateRegion] = useState("");
   const [country, setCountry] = useState("Nigeria");
-  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [coordinates, setCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [providerTimezone, setProviderTimezone] = useState("Africa/Lagos");
-  const patientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const [providerPricing, setProviderPricing] = useState<ProviderPricing>({
+    currencyCode: "NGN",
+    videoConsultationRateCents: null,
+    inPersonVisitRateCents: null,
+  });
+  const patientTimezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const [draft] = useState<Record<string, string> | null>(() => {
     if (typeof window === "undefined") return null;
 
@@ -185,7 +229,12 @@ export function PatientAppointmentSchedulePage() {
     if (draft?.meetingMode === "in-person" || draft?.meetingMode === "video") {
       setMeetingMode(draft.meetingMode);
     }
-  }, [draft?.meetingMode]);
+    setProviderPricing({
+      currencyCode: draft?.currencyCode || "NGN",
+      videoConsultationRateCents: parseCents(draft?.videoConsultationRateCents),
+      inPersonVisitRateCents: parseCents(draft?.inPersonVisitRateCents),
+    });
+  }, [draft]);
 
   useEffect(() => {
     let isMounted = true;
@@ -200,6 +249,15 @@ export function PatientAppointmentSchedulePage() {
         );
         if (!isMounted) return;
         setProviderTimezone(response.timezone || "Africa/Lagos");
+        setProviderPricing({
+          currencyCode: response.currencyCode || draft.currencyCode || "NGN",
+          videoConsultationRateCents:
+            response.videoConsultationRateCents ??
+            parseCents(draft.videoConsultationRateCents),
+          inPersonVisitRateCents:
+            response.inPersonVisitRateCents ??
+            parseCents(draft.inPersonVisitRateCents),
+        });
         const dateKey = formatLocalDateKey(selectedDate);
         const slots = response.slots
           .filter((slot) => slot.available)
@@ -232,18 +290,28 @@ export function PatientAppointmentSchedulePage() {
       displayMonth.toLocaleDateString("en-US", {
         month: "long",
       }),
-    [displayMonth]
+    [displayMonth],
   );
   const dayCells = useMemo(() => getMonthGrid(displayMonth), [displayMonth]);
   const selectedTimeSlot = useMemo(
-    () => availableSlots.find((slot) => slot.id === selectedSlot) ?? availableSlots[0],
-    [availableSlots, selectedSlot]
+    () =>
+      availableSlots.find((slot) => slot.id === selectedSlot) ??
+      availableSlots[0],
+    [availableSlots, selectedSlot],
   );
   const selectedTime = useMemo(() => {
     if (selectedSlot === "custom") {
       const selectedDateKey = formatLocalDateKey(selectedDate);
-      const startsAt = zonedDateTimeToIso(selectedDateKey, manualStartTime, patientTimezone);
-      const endsAt = zonedDateTimeToIso(selectedDateKey, manualEndTime, patientTimezone);
+      const startsAt = zonedDateTimeToIso(
+        selectedDateKey,
+        manualStartTime,
+        patientTimezone,
+      );
+      const endsAt = zonedDateTimeToIso(
+        selectedDateKey,
+        manualEndTime,
+        patientTimezone,
+      );
       return {
         startTime: manualStartTime,
         endTime: manualEndTime,
@@ -271,13 +339,19 @@ export function PatientAppointmentSchedulePage() {
     );
 
     return {
-      startTime: selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
-      endTime: selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      startTime:
+        selectedTimeSlot.startTime ??
+        selectedTimeSlot.consultant.split(" - ")[0],
+      endTime:
+        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
       requestedStartAt: startsAt,
       requestedEndAt: endsAt,
       scheduledDate: selectedDateKey,
-      providerStartTime: selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
-      providerEndTime: selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      providerStartTime:
+        selectedTimeSlot.startTime ??
+        selectedTimeSlot.consultant.split(" - ")[0],
+      providerEndTime:
+        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
       label: selectedTimeSlot.patient,
     };
   }, [
@@ -289,6 +363,30 @@ export function PatientAppointmentSchedulePage() {
     selectedSlot,
     selectedTimeSlot,
   ]);
+  const selectedModeRateCents =
+    meetingMode === "in-person"
+      ? providerPricing.inPersonVisitRateCents
+      : providerPricing.videoConsultationRateCents;
+  const selectedModeRateLabel = formatHourlyRate(
+    selectedModeRateCents,
+    providerPricing.currencyCode,
+  );
+  const estimatedFeeCents = useMemo(() => {
+    if (!selectedTime || !selectedModeRateCents) return null;
+    const durationMinutes = Math.max(
+      0,
+      Math.round(
+        (new Date(selectedTime.requestedEndAt).getTime() -
+          new Date(selectedTime.requestedStartAt).getTime()) /
+          60000,
+      ),
+    );
+    return Math.round((selectedModeRateCents * durationMinutes) / 60);
+  }, [selectedModeRateCents, selectedTime]);
+  const estimatedFeeLabel = formatMoney(
+    estimatedFeeCents,
+    providerPricing.currencyCode,
+  );
   const formattedDate = useMemo(
     () =>
       selectedDate.toLocaleDateString("en-US", {
@@ -296,12 +394,14 @@ export function PatientAppointmentSchedulePage() {
         day: "numeric",
         year: "numeric",
       }),
-    [selectedDate]
+    [selectedDate],
   );
 
   const handleContinue = () => {
     if (!draft?.professionalId || !selectedTime) {
-      toast.error("Choose a professional and available time before continuing.");
+      toast.error(
+        "Choose a professional and available time before continuing.",
+      );
       return;
     }
 
@@ -329,16 +429,31 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
+    if (!selectedModeRateCents) {
+      toast.error(
+        "This professional has not set pricing for the selected consultation type.",
+      );
+      return;
+    }
+
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
       JSON.stringify({
         ...draft,
         meetingMode,
+        currencyCode: providerPricing.currencyCode,
+        selectedRateCents: String(selectedModeRateCents),
+        selectedRateLabel: selectedModeRateLabel,
+        estimatedFeeCents: estimatedFeeCents ? String(estimatedFeeCents) : "",
+        estimatedFeeLabel,
         scheduledDate:
           selectedSlot === "custom"
             ? selectedTime.scheduledDate
             : getDateKeyInZone(selectedTime.requestedStartAt, patientTimezone),
-        providerScheduledDate: getDateKeyInZone(selectedTime.requestedStartAt, providerTimezone),
+        providerScheduledDate: getDateKeyInZone(
+          selectedTime.requestedStartAt,
+          providerTimezone,
+        ),
         startTime:
           selectedSlot === "custom"
             ? selectedTime.startTime
@@ -356,7 +471,10 @@ export function PatientAppointmentSchedulePage() {
         durationMinutes: String(durationMinutes),
         durationLabel: formatDurationMinutes(durationMinutes),
         reason: reason.trim() || draft.reason || "General Consultation",
-        locationName: meetingMode === "in-person" ? locationName.trim() || "Patient location" : "",
+        locationName:
+          meetingMode === "in-person"
+            ? locationName.trim() || "Patient location"
+            : "",
         address: meetingMode === "in-person" ? address.trim() : "",
         city: meetingMode === "in-person" ? city.trim() : "",
         state: meetingMode === "in-person" ? stateRegion.trim() : "",
@@ -409,8 +527,16 @@ export function PatientAppointmentSchedulePage() {
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <CalendarOutlineIcon />
-                  <span className="text-[16px] font-light leading-[42px] tracking-[-0.07em] text-[#334155]">
-                    Video consultation
+                  <span className="flex flex-col items-start">
+                    <span className="text-[16px] font-light leading-5 tracking-[-0.07em] text-[#334155]">
+                      Video consultation
+                    </span>
+                    <span className="text-[11px] font-medium leading-4 text-[#1565C0]">
+                      {formatHourlyRate(
+                        providerPricing.videoConsultationRateCents,
+                        providerPricing.currencyCode,
+                      )}
+                    </span>
                   </span>
                 </span>
               </motion.button>
@@ -432,8 +558,16 @@ export function PatientAppointmentSchedulePage() {
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <CalendarOutlineIcon />
-                  <span className="text-[16px] font-light leading-[42px] tracking-[-0.07em] text-[#334155]">
-                    In Person
+                  <span className="flex flex-col items-start">
+                    <span className="text-[16px] font-light leading-5 tracking-[-0.07em] text-[#334155]">
+                      In Person
+                    </span>
+                    <span className="text-[11px] font-medium leading-4 text-[#1565C0]">
+                      {formatHourlyRate(
+                        providerPricing.inPersonVisitRateCents,
+                        providerPricing.currencyCode,
+                      )}
+                    </span>
                   </span>
                 </span>
               </motion.button>
@@ -466,8 +600,13 @@ export function PatientAppointmentSchedulePage() {
                         });
                         toast.success("Coordinates added to the appointment.");
                       },
-                      () => toast.error("Unable to access your current location."),
-                      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+                      () =>
+                        toast.error("Unable to access your current location."),
+                      {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000,
+                      },
                     );
                   }}
                   className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#1565C0] px-3 text-[13px] font-medium text-[#1565C0]"
@@ -532,7 +671,12 @@ export function PatientAppointmentSchedulePage() {
                     type="button"
                     onClick={() =>
                       setDisplayMonth(
-                        (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+                        (current) =>
+                          new Date(
+                            current.getFullYear(),
+                            current.getMonth() - 1,
+                            1,
+                          ),
                       )
                     }
                     className="inline-flex h-6 w-3 cursor-pointer items-center justify-center"
@@ -549,7 +693,12 @@ export function PatientAppointmentSchedulePage() {
                     type="button"
                     onClick={() =>
                       setDisplayMonth(
-                        (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+                        (current) =>
+                          new Date(
+                            current.getFullYear(),
+                            current.getMonth() + 1,
+                            1,
+                          ),
                       )
                     }
                     className="inline-flex h-6 w-3 cursor-pointer items-center justify-center"
@@ -573,11 +722,17 @@ export function PatientAppointmentSchedulePage() {
                 <div className="grid grid-cols-7 gap-[2px]">
                   {dayCells.map((day, index) => {
                     if (!day) {
-                      return <span key={`empty-${index}`} className="h-[33px] w-[35px]" />;
+                      return (
+                        <span
+                          key={`empty-${index}`}
+                          className="h-[33px] w-[35px]"
+                        />
+                      );
                     }
 
                     const isSelected =
-                      selectedDate.getFullYear() === displayMonth.getFullYear() &&
+                      selectedDate.getFullYear() ===
+                        displayMonth.getFullYear() &&
                       selectedDate.getMonth() === displayMonth.getMonth() &&
                       selectedDate.getDate() === day;
 
@@ -587,7 +742,11 @@ export function PatientAppointmentSchedulePage() {
                         type="button"
                         onClick={() =>
                           setSelectedDate(
-                            new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day)
+                            new Date(
+                              displayMonth.getFullYear(),
+                              displayMonth.getMonth(),
+                              day,
+                            ),
                           )
                         }
                         whileTap={{ scale: 0.94 }}
@@ -611,7 +770,10 @@ export function PatientAppointmentSchedulePage() {
                     <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
                       Consultant time
                     </p>
-                    <p className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]" title={timezoneLabel(providerTimezone)}>
+                    <p
+                      className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
+                      title={timezoneLabel(providerTimezone)}
+                    >
                       {timezoneLabel(providerTimezone)}
                     </p>
                   </div>
@@ -619,7 +781,10 @@ export function PatientAppointmentSchedulePage() {
                     <p className="text-[12px] font-semibold leading-4 tracking-[-0.04em] text-[#334155]">
                       Patient time
                     </p>
-                    <p className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]" title={timezoneLabel(patientTimezone)}>
+                    <p
+                      className="mt-0.5 truncate text-[10px] font-normal leading-3 tracking-[-0.04em] text-[#64748B]"
+                      title={timezoneLabel(patientTimezone)}
+                    >
                       {timezoneLabel(patientTimezone)}
                     </p>
                   </div>
@@ -668,7 +833,8 @@ export function PatientAppointmentSchedulePage() {
                   })}
                   {availableSlots.length === 0 ? (
                     <div className="rounded-[8px] border border-dashed border-[#94A3B8] px-3 py-4 text-sm text-[#64748B]">
-                      No preset slots for this day. Enter a preferred time below.
+                      No preset slots for this day. Enter a preferred time
+                      below.
                     </div>
                   ) : null}
 
@@ -748,9 +914,18 @@ export function PatientAppointmentSchedulePage() {
 
           <div className="space-y-4 px-[14px] pb-4 pt-2">
             {[
-              { label: "Care type:", value: draft?.careType ?? "General Consultation" },
-              { label: "Provider type:", value: draft?.professionalType ?? "General Practitioner" },
-              { label: "Provider:", value: draft?.professionalName ?? "Selected provider" },
+              {
+                label: "Care type:",
+                value: draft?.careType ?? "General Consultation",
+              },
+              {
+                label: "Provider type:",
+                value: draft?.professionalType ?? "General Practitioner",
+              },
+              {
+                label: "Provider:",
+                value: draft?.professionalName ?? "Selected provider",
+              },
               { label: "Date:", value: formattedDate },
               {
                 label: "Time:",
@@ -758,7 +933,12 @@ export function PatientAppointmentSchedulePage() {
               },
               {
                 label: "Meeting mode:",
-                value: meetingMode === "video" ? "Video consultation" : "In Person",
+                value:
+                  meetingMode === "video" ? "Video consultation" : "In Person",
+              },
+              {
+                label: "Price:",
+                value: `${selectedModeRateLabel} (${estimatedFeeLabel} est.)`,
               },
             ].map((item, index) => (
               <div key={`${item.label}-${index}`} className="space-y-[6px]">
@@ -800,9 +980,7 @@ export function PatientAppointmentSchedulePage() {
         </motion.button>
       </div>
 
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md xl:hidden"
-      >
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#DCE8F6] bg-[rgba(248,250,252,0.94)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md xl:hidden">
         <div className="mx-auto max-w-[640px]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">

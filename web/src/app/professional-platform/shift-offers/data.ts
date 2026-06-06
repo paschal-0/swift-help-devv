@@ -6,10 +6,16 @@ export type ShiftOffer = {
   shiftCode: string;
   organization: string;
   role: string;
+  startsAt: string;
+  endsAt: string;
   date: string;
   time: string;
   location: string;
   pay: string;
+  payCents: number;
+  durationHours: number;
+  currency: string;
+  createdAt: string;
   postedAt: string;
   facilityName: string;
   address: string;

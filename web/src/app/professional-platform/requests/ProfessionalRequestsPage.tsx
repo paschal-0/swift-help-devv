@@ -13,9 +13,27 @@ import {
   listProfessionalRequests,
   type ProfessionalConsultationRequest,
 } from "@/services/professionalApi";
-import { InPersonConsultationMap, isInPersonConsultation } from "@/components/InPersonConsultationMap";
+import {
+  InPersonConsultationMap,
+  isInPersonConsultation,
+} from "@/components/InPersonConsultationMap";
 
 type RequestStatus = "needs-action" | "accepted" | "declined" | "closed";
+type RequestFilterMode =
+  | "all"
+  | "urgent"
+  | "standard"
+  | "video"
+  | "in-person"
+  | "today"
+  | "future"
+  | "has-note";
+type RequestSortMode =
+  | "received"
+  | "appointment"
+  | "patient"
+  | "priority"
+  | "duration";
 
 type ConsultationRequest = {
   id: string;
@@ -24,6 +42,8 @@ type ConsultationRequest = {
   urgency: "Urgent" | "Standard";
   reason: string;
   slot: string;
+  requestedStartAt: string;
+  requestedEndAt: string;
   received: string;
   dateLabel: string;
   duration: string;
@@ -37,6 +57,7 @@ type ConsultationRequest = {
   longitude: number | null;
   bookedOn: string;
   createdAt: string;
+  durationMinutes: number;
   note: string;
   status: RequestStatus;
   statusLabel: string;
@@ -47,6 +68,26 @@ const tabs: Array<{ id: RequestStatus; label: string }> = [
   { id: "accepted", label: "Accepted" },
   { id: "declined", label: "Declined" },
   { id: "closed", label: "Closed" },
+];
+
+const requestFilterOptions: Array<{ value: RequestFilterMode; label: string }> =
+  [
+    { value: "all", label: "Filter: All" },
+    { value: "urgent", label: "Priority: Urgent" },
+    { value: "standard", label: "Priority: Standard" },
+    { value: "video", label: "Mode: Video" },
+    { value: "in-person", label: "Mode: In-person" },
+    { value: "today", label: "Appointment: Today" },
+    { value: "future", label: "Appointment: Upcoming" },
+    { value: "has-note", label: "Has patient note" },
+  ];
+
+const requestSortOptions: Array<{ value: RequestSortMode; label: string }> = [
+  { value: "received", label: "Sort: Newest received" },
+  { value: "appointment", label: "Sort: Appointment time" },
+  { value: "patient", label: "Sort: Patient" },
+  { value: "priority", label: "Sort: Priority" },
+  { value: "duration", label: "Sort: Duration" },
 ];
 
 const microInteractionClass =
@@ -68,6 +109,39 @@ const formatShortTime = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+const isToday = (value: string) => {
+  const date = new Date(value);
+  const today = new Date();
+
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+};
+
+const hasPatientNote = (request: ConsultationRequest) =>
+  request.note.trim().length > 0 &&
+  request.note !== "No patient note provided.";
+
+const matchesFilterMode = (
+  request: ConsultationRequest,
+  filterMode: RequestFilterMode,
+) => {
+  if (filterMode === "all") return true;
+  if (filterMode === "urgent") return request.urgency === "Urgent";
+  if (filterMode === "standard") return request.urgency === "Standard";
+  if (filterMode === "video") return !isInPersonConsultation(request.mode);
+  if (filterMode === "in-person") return isInPersonConsultation(request.mode);
+  if (filterMode === "today") return isToday(request.requestedStartAt);
+  if (filterMode === "future") {
+    return new Date(request.requestedStartAt).getTime() >= Date.now();
+  }
+  if (filterMode === "has-note") return hasPatientNote(request);
+
+  return true;
+};
+
 const getInitials = (name: string) =>
   name
     .split(" ")
@@ -85,6 +159,8 @@ const mapBackendRequest = (
   urgency: request.urgency === "urgent" ? "Urgent" : "Standard",
   reason: request.reason,
   slot: `${formatRequestDate(request.requestedStartAt)} - ${formatShortTime(request.requestedEndAt)}`,
+  requestedStartAt: request.requestedStartAt,
+  requestedEndAt: request.requestedEndAt,
   received:
     request.status === "accepted"
       ? "Accepted"
@@ -107,6 +183,7 @@ const mapBackendRequest = (
   longitude: request.longitude,
   bookedOn: formatRequestDate(request.createdAt),
   createdAt: request.createdAt,
+  durationMinutes: request.durationMinutes,
   note: request.patientNote ?? "No patient note provided.",
   status:
     request.status === "accepted"
@@ -175,8 +252,8 @@ export function ProfessionalRequestsPage({
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null,
   );
-  const [urgentOnly, setUrgentOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<"latest" | "patient">("latest");
+  const [filterMode, setFilterMode] = useState<RequestFilterMode>("all");
+  const [sortMode, setSortMode] = useState<RequestSortMode>("received");
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const combinedQuery = `${searchText} ${panelSearch}`.trim().toLowerCase();
@@ -231,21 +308,23 @@ export function ProfessionalRequestsPage({
       );
     };
 
-    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
-      if (cancelled) {
-        source.close();
-        return;
-      }
-      eventSource = source;
-      source.addEventListener(
-        "professional.consultation_request.created",
-        handleCreated,
-      );
-      source.addEventListener(
-        "professional.consultation_request.updated",
-        handleUpdated,
-      );
-    });
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then(
+      (source) => {
+        if (cancelled) {
+          source.close();
+          return;
+        }
+        eventSource = source;
+        source.addEventListener(
+          "professional.consultation_request.created",
+          handleCreated,
+        );
+        source.addEventListener(
+          "professional.consultation_request.updated",
+          handleUpdated,
+        );
+      },
+    );
     return () => {
       cancelled = true;
       eventSource?.removeEventListener(
@@ -263,13 +342,15 @@ export function ProfessionalRequestsPage({
   useEffect(() => {
     if (!targetRequestId || !requests.length) return;
 
-    const targetRequest = requests.find((request) => request.id === targetRequestId);
+    const targetRequest = requests.find(
+      (request) => request.id === targetRequestId,
+    );
     if (!targetRequest) return;
 
     setActiveTab(targetRequest.status);
     setSelectedRequestId(targetRequest.id);
     setPanelSearch("");
-    setUrgentOnly(false);
+    setFilterMode("all");
   }, [requests, targetRequestId]);
 
   const filteredRequests = useMemo(() => {
@@ -277,7 +358,7 @@ export function ProfessionalRequestsPage({
       if (request.status !== activeTab) {
         return false;
       }
-      if (urgentOnly && request.urgency !== "Urgent") {
+      if (!matchesFilterMode(request, filterMode)) {
         return false;
       }
       if (!combinedQuery) {
@@ -293,6 +374,11 @@ export function ProfessionalRequestsPage({
         request.mode,
         request.duration,
         request.note,
+        request.locationName ?? "",
+        request.address ?? "",
+        request.city ?? "",
+        request.state ?? "",
+        request.country ?? "",
       ]
         .join(" ")
         .toLowerCase()
@@ -303,12 +389,32 @@ export function ProfessionalRequestsPage({
       if (sortMode === "patient") {
         return left.patient.localeCompare(right.patient);
       }
+      if (sortMode === "appointment") {
+        return (
+          new Date(left.requestedStartAt).getTime() -
+          new Date(right.requestedStartAt).getTime()
+        );
+      }
+      if (sortMode === "priority") {
+        if (left.urgency !== right.urgency) {
+          return left.urgency === "Urgent" ? -1 : 1;
+        }
+        return (
+          new Date(left.requestedStartAt).getTime() -
+          new Date(right.requestedStartAt).getTime()
+        );
+      }
+      if (sortMode === "duration") {
+        return right.durationMinutes - left.durationMinutes;
+      }
 
-      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+      return (
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
     });
 
     return nextRequests;
-  }, [requests, activeTab, combinedQuery, urgentOnly, sortMode]);
+  }, [requests, activeTab, combinedQuery, filterMode, sortMode]);
 
   const activeTabRequestsCount = useMemo(
     () => requests.filter((request) => request.status === activeTab).length,
@@ -345,7 +451,9 @@ export function ProfessionalRequestsPage({
         acceptedSessionId = response.session.id;
         acceptedMode = response.session.mode;
       } else if (status === "declined") {
-        const reason = window.prompt("Reason for declining this request (optional)")?.trim();
+        const reason = window
+          .prompt("Reason for declining this request (optional)")
+          ?.trim();
         await declineProfessionalRequest(id, reason || undefined);
       }
     } catch (error) {
@@ -402,8 +510,6 @@ export function ProfessionalRequestsPage({
     setDetailsExpanded(false);
   };
 
-  const filterValue = urgentOnly ? "urgent" : "all";
-
   return (
     <section className="mt-[14px] pb-9 xl:mt-[6px]">
       <div className="border-b border-[#94A3B8] pb-[18px]">
@@ -419,15 +525,18 @@ export function ProfessionalRequestsPage({
                 <path fill="#334155" d={filterIconPath} />
               </svg>
               <select
-                value={filterValue}
+                value={filterMode}
                 onChange={(event) =>
-                  setUrgentOnly(event.target.value === "urgent")
+                  setFilterMode(event.target.value as RequestFilterMode)
                 }
                 className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                 aria-label="Filter requests"
               >
-                <option value="all">Filter</option>
-                <option value="urgent">Filter: Urgent</option>
+                {requestFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <svg
                 viewBox="0 0 24 24"
@@ -443,13 +552,16 @@ export function ProfessionalRequestsPage({
               <select
                 value={sortMode}
                 onChange={(event) =>
-                  setSortMode(event.target.value as "latest" | "patient")
+                  setSortMode(event.target.value as RequestSortMode)
                 }
                 className="h-full appearance-none bg-transparent pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                 aria-label="Sort requests"
               >
-                <option value="latest">Sort by</option>
-                <option value="patient">Sort by: Patient</option>
+                {requestSortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <svg
                 viewBox="0 0 24 24"
@@ -526,15 +638,18 @@ export function ProfessionalRequestsPage({
                   <path fill="#334155" d={filterIconPath} />
                 </svg>
                 <select
-                  value={filterValue}
+                  value={filterMode}
                   onChange={(event) =>
-                    setUrgentOnly(event.target.value === "urgent")
+                    setFilterMode(event.target.value as RequestFilterMode)
                   }
                   className="h-full appearance-none bg-transparent pl-2 pr-6 text-[15px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] outline-none"
                   aria-label="Filter requests in list"
                 >
-                  <option value="all">Filter</option>
-                  <option value="urgent">Filter: Urgent</option>
+                  {requestFilterOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <svg
                   viewBox="0 0 24 24"

@@ -30,7 +30,13 @@ import {
 import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
 type PanelView = "updates" | "message";
-type ShiftStage = "traveling" | "enroute" | "arrived" | "in-progress" | "waiting-confirmation" | "completed";
+type ShiftStage =
+  | "traveling"
+  | "enroute"
+  | "arrived"
+  | "in-progress"
+  | "waiting-confirmation"
+  | "completed";
 type ChatSender = "self" | "other";
 
 type MessageThread = {
@@ -90,7 +96,10 @@ function PhoneIcon() {
 function SendIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-      <path fill="currentColor" d="M3 11.5 21 3l-4.9 18-4.82-6.4L3 11.5Zm7.32.8 3.56 4.73 2.43-8.94-5.99 4.21Z" />
+      <path
+        fill="currentColor"
+        d="M3 11.5 21 3l-4.9 18-4.82-6.4L3 11.5Zm7.32.8 3.56 4.73 2.43-8.94-5.99 4.21Z"
+      />
     </svg>
   );
 }
@@ -98,7 +107,10 @@ function SendIcon() {
 function SuccessIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-10 w-10" aria-hidden>
-      <path fill="currentColor" d="m9.55 16.6-3.9-3.9 1.4-1.4 2.5 2.5 7.4-7.4 1.4 1.4-8.8 8.8Z" />
+      <path
+        fill="currentColor"
+        d="m9.55 16.6-3.9-3.9 1.4-1.4 2.5 2.5 7.4-7.4 1.4 1.4-8.8 8.8Z"
+      />
     </svg>
   );
 }
@@ -115,7 +127,11 @@ function PanelTabButton({
   icon: ReactNode;
 }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-[7px] text-left">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-[7px] text-left"
+    >
       {icon}
       <span
         className={`text-[14px] font-normal leading-4 tracking-[-0.05em] ${
@@ -130,7 +146,10 @@ function PanelTabButton({
 
 function formatElapsedTime(totalSeconds: number) {
   const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+    2,
+    "0",
+  );
   const seconds = String(totalSeconds % 60).padStart(2, "0");
 
   return `${hours}:${minutes}:${seconds}`;
@@ -144,27 +163,48 @@ const formatShiftClock = (value: string) =>
 
 const mapBackendOffer = (offer: BackendShiftOffer): ShiftOffer => {
   const startsAt = new Date(offer.startsAt);
-  const dateBucket = startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000 ? "next-week" : "this-week";
+  const endsAt = new Date(offer.endsAt);
+  const payCents = offer.payRateCents ?? offer.payAmountCents;
+  const dateBucket =
+    startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000
+      ? "next-week"
+      : "this-week";
 
   return {
     id: offer.id,
     shiftCode: offer.shiftCode,
     organization: offer.organizationName,
     role: offer.role,
-    date: new Intl.DateTimeFormat("en-US", { weekday: "short", month: "long", day: "numeric" }).format(startsAt),
+    startsAt: offer.startsAt,
+    endsAt: offer.endsAt,
+    date: new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      month: "long",
+      day: "numeric",
+    }).format(startsAt),
     time: `${formatShiftClock(offer.startsAt)} - ${formatShiftClock(offer.endsAt)}`,
     location: offer.location,
-    pay: `${formatApiMoney(offer.payRateCents ?? offer.payAmountCents, offer.currency)}/hr`,
-    postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
+    pay: `${formatApiMoney(payCents, offer.currency)}/hr`,
+    payCents,
+    durationHours:
+      offer.durationHours ??
+      Math.max(1, (endsAt.getTime() - startsAt.getTime()) / 3600000),
+    currency: offer.currency,
+    createdAt: offer.createdAt,
+    postedAt: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(offer.createdAt)),
     facilityName: offer.facilityName,
     address: offer.address,
     latitude: offer.latitude,
     longitude: offer.longitude,
     placeId: offer.placeId,
     notes: offer.notes ?? "No extra notes provided.",
-    etaLabel: offer.latitude && offer.longitude ? "Directions ready" : "Address route",
+    etaLabel:
+      offer.latitude && offer.longitude ? "Directions ready" : "Address route",
     dateBucket,
-    payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
+    payTier: payCents / 100 >= 100 ? "100-plus" : "under-100",
   };
 };
 
@@ -199,7 +239,10 @@ function messageToChatMessage(message: ProfessionalShiftMessage): ChatMessage {
 
 function timeLabelFromIso(value?: string) {
   if (!value) return "Live";
-  const elapsedMinutes = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+  const elapsedMinutes = Math.max(
+    1,
+    Math.floor((Date.now() - new Date(value).getTime()) / 60000),
+  );
   if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
   return `${Math.floor(elapsedMinutes / 60)}h`;
 }
@@ -212,18 +255,23 @@ export function ProfessionalShiftOfferActivePage() {
   const [selectedThreadId, setSelectedThreadId] = useState(params.offerId);
   const [draftMessage, setDraftMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [attachmentDrafts, setAttachmentDrafts] = useState<ProfessionalShiftMessage["attachments"]>([]);
+  const [attachmentDrafts, setAttachmentDrafts] = useState<
+    ProfessionalShiftMessage["attachments"]
+  >([]);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [organizationTyping, setOrganizationTyping] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [backendOffer, setBackendOffer] = useState<ShiftOffer | null>(null);
   const [isLoadingOffer, setIsLoadingOffer] = useState(true);
   const [shiftId, setShiftId] = useState<string | null>(null);
-  const [backendShift, setBackendShift] = useState<ProfessionalShift | null>(null);
+  const [backendShift, setBackendShift] = useState<ProfessionalShift | null>(
+    null,
+  );
 
   const basePath = `/professional-platform/shift-offers/${params.offerId}`;
   const stageParam = searchParams.get("stage");
-  const panelView: PanelView = searchParams.get("view") === "message" ? "message" : "updates";
+  const panelView: PanelView =
+    searchParams.get("view") === "message" ? "message" : "updates";
   const stageFromShift: ShiftStage | null =
     backendShift?.status === "completed"
       ? "completed"
@@ -266,7 +314,9 @@ export function ProfessionalShiftOfferActivePage() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load shift");
+          toast.error(
+            error instanceof Error ? error.message : "Unable to load shift",
+          );
         }
       } finally {
         if (!cancelled) {
@@ -298,8 +348,10 @@ export function ProfessionalShiftOfferActivePage() {
   }, [messages, offer?.organization, params.offerId]);
 
   const selectedThread = useMemo(
-    () => messageThreads.find((thread) => thread.id === selectedThreadId) ?? messageThreads[0],
-    [messageThreads, selectedThreadId]
+    () =>
+      messageThreads.find((thread) => thread.id === selectedThreadId) ??
+      messageThreads[0],
+    [messageThreads, selectedThreadId],
   );
 
   const checkedInAt = useMemo(() => {
@@ -321,7 +373,7 @@ export function ProfessionalShiftOfferActivePage() {
 
   const threadMessages = useMemo(
     () => messages.filter((message) => message.threadId === selectedThread.id),
-    [messages, selectedThread.id]
+    [messages, selectedThread.id],
   );
 
   const upsertMessage = (message: ProfessionalShiftMessage) => {
@@ -345,12 +397,18 @@ export function ProfessionalShiftOfferActivePage() {
       });
       const normalized = older.map(messageToChatMessage).reverse();
       setMessages((current) => [
-        ...normalized.filter((message) => !current.some((item) => item.id === message.id)),
+        ...normalized.filter(
+          (message) => !current.some((item) => item.id === message.id),
+        ),
         ...current,
       ]);
       setHasMoreMessages(older.length >= 50);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load older messages");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to load older messages",
+      );
     }
   };
 
@@ -379,19 +437,29 @@ export function ProfessionalShiftOfferActivePage() {
     };
 
     const handleRead = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as { messageIds?: string[]; readAt?: string };
+      const payload = JSON.parse(event.data) as {
+        messageIds?: string[];
+        readAt?: string;
+      };
       if (!payload.messageIds?.length || !payload.readAt) return;
       setMessages((current) =>
         current.map((message) =>
           payload.messageIds?.includes(message.id)
-            ? { ...message, readByOrganizationAt: payload.readAt ?? message.readByOrganizationAt }
+            ? {
+                ...message,
+                readByOrganizationAt:
+                  payload.readAt ?? message.readByOrganizationAt,
+              }
             : message,
         ),
       );
     };
 
     const handleTyping = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as { shiftOfferId?: string; typing?: boolean };
+      const payload = JSON.parse(event.data) as {
+        shiftOfferId?: string;
+        typing?: boolean;
+      };
       if (payload.shiftOfferId !== params.offerId) return;
       setOrganizationTyping(Boolean(payload.typing));
       if (payload.typing) {
@@ -400,36 +468,71 @@ export function ProfessionalShiftOfferActivePage() {
     };
 
     const handleUpdate = (event: MessageEvent) => {
-      const update = JSON.parse(event.data) as { shiftOfferId?: string; title?: string };
+      const update = JSON.parse(event.data) as {
+        shiftOfferId?: string;
+        title?: string;
+      };
       if (update.shiftOfferId !== params.offerId || !update.title) return;
       toast.info(update.title);
     };
 
-    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
-      if (cancelled) {
-        source.close();
-        return;
-      }
-      eventSource = source;
-      source.addEventListener("professional.shift_message.created", handleMessage);
-      source.addEventListener("professional.shift_message.updated", handleMutatedMessage);
-      source.addEventListener("professional.shift_message.deleted", handleMutatedMessage);
-      source.addEventListener("professional.shift_messages.read", handleRead);
-      source.addEventListener("professional.shift_typing", handleTyping);
-      source.addEventListener("professional.shift_update.created", handleUpdate);
-      source.onerror = () => {
-        source.close();
-      };
-    });
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then(
+      (source) => {
+        if (cancelled) {
+          source.close();
+          return;
+        }
+        eventSource = source;
+        source.addEventListener(
+          "professional.shift_message.created",
+          handleMessage,
+        );
+        source.addEventListener(
+          "professional.shift_message.updated",
+          handleMutatedMessage,
+        );
+        source.addEventListener(
+          "professional.shift_message.deleted",
+          handleMutatedMessage,
+        );
+        source.addEventListener("professional.shift_messages.read", handleRead);
+        source.addEventListener("professional.shift_typing", handleTyping);
+        source.addEventListener(
+          "professional.shift_update.created",
+          handleUpdate,
+        );
+        source.onerror = () => {
+          source.close();
+        };
+      },
+    );
 
     return () => {
       cancelled = true;
-      eventSource?.removeEventListener("professional.shift_message.created", handleMessage);
-      eventSource?.removeEventListener("professional.shift_message.updated", handleMutatedMessage);
-      eventSource?.removeEventListener("professional.shift_message.deleted", handleMutatedMessage);
-      eventSource?.removeEventListener("professional.shift_messages.read", handleRead);
-      eventSource?.removeEventListener("professional.shift_typing", handleTyping);
-      eventSource?.removeEventListener("professional.shift_update.created", handleUpdate);
+      eventSource?.removeEventListener(
+        "professional.shift_message.created",
+        handleMessage,
+      );
+      eventSource?.removeEventListener(
+        "professional.shift_message.updated",
+        handleMutatedMessage,
+      );
+      eventSource?.removeEventListener(
+        "professional.shift_message.deleted",
+        handleMutatedMessage,
+      );
+      eventSource?.removeEventListener(
+        "professional.shift_messages.read",
+        handleRead,
+      );
+      eventSource?.removeEventListener(
+        "professional.shift_typing",
+        handleTyping,
+      );
+      eventSource?.removeEventListener(
+        "professional.shift_update.created",
+        handleUpdate,
+      );
       eventSource?.close();
     };
   }, [params.offerId]);
@@ -487,10 +590,14 @@ export function ProfessionalShiftOfferActivePage() {
     try {
       await ensureShift();
       const message = editingMessageId
-        ? await updateProfessionalShiftMessage(params.offerId, editingMessageId, {
-            body: text,
-            attachments: attachmentDrafts,
-          })
+        ? await updateProfessionalShiftMessage(
+            params.offerId,
+            editingMessageId,
+            {
+              body: text,
+              attachments: attachmentDrafts,
+            },
+          )
         : await sendProfessionalShiftMessage(params.offerId, {
             body: text,
             attachments: attachmentDrafts,
@@ -500,7 +607,9 @@ export function ProfessionalShiftOfferActivePage() {
       setAttachmentDrafts([]);
       setEditingMessageId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to send message");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send message",
+      );
     }
   };
 
@@ -520,10 +629,15 @@ export function ProfessionalShiftOfferActivePage() {
 
   const deleteMessage = async (messageId: string) => {
     try {
-      const message = await deleteProfessionalShiftMessage(params.offerId, messageId);
+      const message = await deleteProfessionalShiftMessage(
+        params.offerId,
+        messageId,
+      );
       upsertMessage(message);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to delete message");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to delete message",
+      );
     }
   };
 
@@ -570,7 +684,10 @@ export function ProfessionalShiftOfferActivePage() {
           aria-label="Back to shift offers"
         >
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-            <path fill="currentColor" d="M14.7 5.3a1 1 0 0 1 0 1.4L10.41 11H20a1 1 0 1 1 0 2h-9.59l4.3 4.3a1 1 0 0 1-1.42 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.42 0Z" />
+            <path
+              fill="currentColor"
+              d="M14.7 5.3a1 1 0 0 1 0 1.4L10.41 11H20a1 1 0 1 1 0 2h-9.59l4.3 4.3a1 1 0 0 1-1.42 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.42 0Z"
+            />
           </svg>
         </Link>
         <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">
@@ -615,7 +732,10 @@ export function ProfessionalShiftOfferActivePage() {
                   </div>
                 ) : null}
                 {threadMessages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === "self" ? "justify-start" : "justify-end"}`}>
+                  <div
+                    key={message.id}
+                    className={`flex ${message.sender === "self" ? "justify-start" : "justify-end"}`}
+                  >
                     <div className="max-w-[360px]">
                       <div
                         className={`rounded-[24px] px-7 py-4 text-[18px] font-light leading-6 tracking-[-0.05em] ${
@@ -643,15 +763,35 @@ export function ProfessionalShiftOfferActivePage() {
                           </div>
                         ) : null}
                       </div>
-                      <div className={`mt-2 flex items-center gap-3 text-[11px] text-[#94A3B8] ${message.sender === "self" ? "justify-start" : "justify-end"}`}>
-                        <span>{message.editedAt ? "Edited" : formatShiftClock(message.createdAt)}</span>
+                      <div
+                        className={`mt-2 flex items-center gap-3 text-[11px] text-[#94A3B8] ${message.sender === "self" ? "justify-start" : "justify-end"}`}
+                      >
+                        <span>
+                          {message.editedAt
+                            ? "Edited"
+                            : formatShiftClock(message.createdAt)}
+                        </span>
                         {message.sender === "self" && !message.deletedAt ? (
                           <>
-                            <span>{message.readByOrganizationAt ? "Read" : message.deliveredToOrganizationAt ? "Delivered" : "Sent"}</span>
-                            <button type="button" onClick={() => editMessage(message)} className="text-[#1565C0]">
+                            <span>
+                              {message.readByOrganizationAt
+                                ? "Read"
+                                : message.deliveredToOrganizationAt
+                                  ? "Delivered"
+                                  : "Sent"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => editMessage(message)}
+                              className="text-[#1565C0]"
+                            >
                               Edit
                             </button>
-                            <button type="button" onClick={() => deleteMessage(message.id)} className="text-[#B42318]">
+                            <button
+                              type="button"
+                              onClick={() => deleteMessage(message.id)}
+                              className="text-[#B42318]"
+                            >
                               Delete
                             </button>
                           </>
@@ -679,7 +819,9 @@ export function ProfessionalShiftOfferActivePage() {
                         type="button"
                         onClick={() =>
                           setAttachmentDrafts((current) =>
-                            current.filter((item) => item.url !== attachment.url),
+                            current.filter(
+                              (item) => item.url !== attachment.url,
+                            ),
                           )
                         }
                         className="font-semibold"
@@ -759,7 +901,9 @@ export function ProfessionalShiftOfferActivePage() {
                     type="button"
                     onClick={() => setSelectedThreadId(thread.id)}
                     className={`flex w-full items-start justify-between gap-3 rounded-[10px] px-2 py-2 text-left transition ${
-                      selectedThreadId === thread.id ? "bg-[#f3f8fd]" : "hover:bg-[#f7fafc]"
+                      selectedThreadId === thread.id
+                        ? "bg-[#f3f8fd]"
+                        : "hover:bg-[#f7fafc]"
                     }`}
                   >
                     <div className="flex min-w-0 items-start gap-[9px]">
@@ -793,7 +937,9 @@ export function ProfessionalShiftOfferActivePage() {
           >
             <div
               className={`absolute inset-0 ${
-                stage === "arrived" ? "bg-[rgba(255,255,255,0.18)]" : "bg-[rgba(51,65,85,0.4)]"
+                stage === "arrived"
+                  ? "bg-[rgba(255,255,255,0.18)]"
+                  : "bg-[rgba(51,65,85,0.4)]"
               }`}
             />
 
@@ -832,7 +978,11 @@ export function ProfessionalShiftOfferActivePage() {
               }`}
             />
 
-            <svg viewBox="0 0 230 330" className="absolute bottom-[16%] left-[16%] h-[240px] w-[180px]" aria-hidden>
+            <svg
+              viewBox="0 0 230 330"
+              className="absolute bottom-[16%] left-[16%] h-[240px] w-[180px]"
+              aria-hidden
+            >
               <path
                 d="M110 18C146 18 174 46 174 82C174 130 140 167 110 218C80 167 46 130 46 82C46 46 74 18 110 18Z"
                 fill={stage === "arrived" ? "#1E88E5" : "#334155"}
@@ -840,7 +990,11 @@ export function ProfessionalShiftOfferActivePage() {
               <circle cx="110" cy="82" r="31" fill="#D9D9D9" />
             </svg>
 
-            <svg viewBox="0 0 360 420" className="absolute left-[27%] top-[20%] h-[360px] w-[300px]" aria-hidden>
+            <svg
+              viewBox="0 0 360 420"
+              className="absolute left-[27%] top-[20%] h-[360px] w-[300px]"
+              aria-hidden
+            >
               <path
                 d="M186 16C194 77 204 100 204 145C204 199 186 214 185 248C184 283 198 316 157 353"
                 fill="none"
@@ -899,7 +1053,11 @@ export function ProfessionalShiftOfferActivePage() {
 
             <div className="absolute left-4 top-4 z-10 max-w-[calc(100%-32px)] rounded-[12px] bg-[#F8FAFC]/95 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.16)] backdrop-blur sm:left-6 sm:top-6 sm:max-w-[420px]">
               <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
-                {stage === "enroute" ? "Travel in progress" : stage === "arrived" ? "Arrived" : "Shift location"}
+                {stage === "enroute"
+                  ? "Travel in progress"
+                  : stage === "arrived"
+                    ? "Arrived"
+                    : "Shift location"}
               </p>
               <h2 className="mt-1 text-[18px] font-semibold leading-6 tracking-[-0.05em] text-[#334155]">
                 {offer.facilityName}
@@ -950,7 +1108,8 @@ export function ProfessionalShiftOfferActivePage() {
 
                   <div className="mt-6 px-4 text-center">
                     <h2 className="text-[20px] font-medium leading-8 tracking-[-0.05em] text-[#334155]">
-                      Your shift has been completed and your payment has been released
+                      Your shift has been completed and your payment has been
+                      released
                     </h2>
                   </div>
 
@@ -1015,12 +1174,18 @@ export function ProfessionalShiftOfferActivePage() {
                         const id = await ensureShift();
                         const updated = await completeProfessionalShift(id);
                         setBackendShift(updated);
-                        toast.success("Shift completed. Awaiting patient confirmation.");
+                        toast.success(
+                          "Shift completed. Awaiting patient confirmation.",
+                        );
                         replaceRoute((next) => {
                           next.set("stage", "waiting-confirmation");
                         });
                       } catch (error) {
-                        toast.error(error instanceof Error ? error.message : "Unable to complete shift");
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Unable to complete shift",
+                        );
                       }
                     }}
                     className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
@@ -1034,7 +1199,8 @@ export function ProfessionalShiftOfferActivePage() {
                     Waiting for patient confirmation
                   </h2>
                   <p className="mt-4 max-w-[236px] text-center text-[18px] font-light leading-[22px] tracking-[-0.07em] text-[#94A3B8]">
-                    Payment will be released once the patient confirms the consultation
+                    Payment will be released once the patient confirms the
+                    consultation
                   </p>
                 </div>
               ) : stage === "arrived" ? (
@@ -1057,13 +1223,19 @@ export function ProfessionalShiftOfferActivePage() {
                         const updated = await startProfessionalShift(id);
                         setBackendShift(updated);
                         const startedAt = Date.now();
-                        toast.success("Checked in. Shift started successfully.");
+                        toast.success(
+                          "Checked in. Shift started successfully.",
+                        );
                         replaceRoute((next) => {
                           next.set("stage", "in-progress");
                           next.set("checkedInAt", String(startedAt));
                         });
                       } catch (error) {
-                        toast.error(error instanceof Error ? error.message : "Unable to start shift");
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Unable to start shift",
+                        );
                       }
                     }}
                     className="inline-flex h-[39px] w-full items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
@@ -1085,27 +1257,47 @@ export function ProfessionalShiftOfferActivePage() {
                   <div className="mt-[18px] rounded-[12px] border-2 border-[#E2E8F0] px-[19px] py-3">
                     <div className="space-y-1">
                       <div className="flex gap-3">
-                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Role:</span>
-                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.role}</span>
+                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                          Role:
+                        </span>
+                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                          {offer.role}
+                        </span>
                       </div>
                       <div className="flex gap-3">
-                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Date:</span>
-                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.date}</span>
+                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                          Date:
+                        </span>
+                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                          {offer.date}
+                        </span>
                       </div>
                       <div className="flex gap-3">
-                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Time:</span>
-                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.time}</span>
+                        <span className="min-w-[48px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                          Time:
+                        </span>
+                        <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                          {offer.time}
+                        </span>
                       </div>
                     </div>
 
                     <div className="mt-5 grid grid-cols-2 gap-5">
                       <div className="space-y-1">
-                        <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Location</p>
-                        <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">{offer.location}</p>
+                        <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                          Location
+                        </p>
+                        <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
+                          {offer.location}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Pay</p>
-                        <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">{offer.pay}</p>
+                        <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                          Pay
+                        </p>
+                        <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
+                          {offer.pay}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1116,13 +1308,22 @@ export function ProfessionalShiftOfferActivePage() {
                       onClick={async () => {
                         try {
                           const id = await ensureShift();
-                          const updated = stage === "enroute"
-                            ? await markProfessionalShiftArrived(id)
-                            : await startProfessionalShiftTrip(id);
+                          const updated =
+                            stage === "enroute"
+                              ? await markProfessionalShiftArrived(id)
+                              : await startProfessionalShiftTrip(id);
                           setBackendShift(updated);
-                          toast.success(stage === "enroute" ? "Organization notified that you arrived." : "Trip started. Live updates enabled.");
+                          toast.success(
+                            stage === "enroute"
+                              ? "Organization notified that you arrived."
+                              : "Trip started. Live updates enabled.",
+                          );
                         } catch (error) {
-                          toast.error(error instanceof Error ? error.message : "Unable to start trip");
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Unable to start trip",
+                          );
                           return;
                         }
                       }}
@@ -1138,7 +1339,11 @@ export function ProfessionalShiftOfferActivePage() {
                           await missProfessionalShift(id);
                           toast.error("Shift marked as missed.");
                         } catch (error) {
-                          toast.error(error instanceof Error ? error.message : "Unable to mark shift missed");
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Unable to mark shift missed",
+                          );
                         }
                       }}
                       className="inline-flex h-[37px] items-center justify-center rounded-[12px] border border-[#9C0D0D] px-4 text-[16px] font-normal leading-10 tracking-[-0.05em] text-[#9C0D0D]"

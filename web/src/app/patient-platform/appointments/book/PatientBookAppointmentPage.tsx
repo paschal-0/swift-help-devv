@@ -30,6 +30,12 @@ type ProfessionalCard = {
   imageSrc: string | null;
   nextAvailable: string;
   highlights: string[];
+  acceptingBookings: boolean;
+  currencyCode: string;
+  videoConsultationRateCents: number | null;
+  inPersonVisitRateCents: number | null;
+  videoRateLabel: string;
+  inPersonRateLabel: string;
 };
 
 type AiAssistantBookingContext = {
@@ -69,16 +75,48 @@ const professionalTypes: ProfessionalType[] = [
   { id: "specialist", label: "Specialist" },
 ];
 
+function formatRate(cents?: number | null, currencyCode = "NGN") {
+  if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) {
+    return "Price not set";
+  }
+
+  return `${new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: currencyCode || "NGN",
+    maximumFractionDigits: 0,
+  }).format(cents / 100)}/hr`;
+}
+
 function mapProviderToCard(provider: PatientProvider): ProfessionalCard {
+  const currencyCode = provider.currencyCode ?? "NGN";
+  const videoRateLabel = formatRate(
+    provider.videoConsultationRateCents,
+    currencyCode,
+  );
+  const inPersonRateLabel = formatRate(
+    provider.inPersonVisitRateCents,
+    currencyCode,
+  );
+
   return {
     id: provider.userId,
     name: provider.name,
     role: provider.specialization,
     imageSrc: normalizeAvatarUrl(provider.avatarUrl),
-    nextAvailable: "Select to view schedule",
+    nextAvailable: provider.nextAvailableLabel || "Select to view schedule",
+    acceptingBookings: provider.acceptingBookings ?? true,
+    currencyCode,
+    videoConsultationRateCents: provider.videoConsultationRateCents ?? null,
+    inPersonVisitRateCents: provider.inPersonVisitRateCents ?? null,
+    videoRateLabel,
+    inPersonRateLabel,
     highlights: [
       provider.consultationType || "Consultation",
-      provider.verificationStatus === "approved" ? "Verified" : "Profile submitted",
+      `Video ${videoRateLabel}`,
+      `Visit ${inPersonRateLabel}`,
+      provider.verificationStatus === "approved"
+        ? "Verified"
+        : "Profile submitted",
     ],
   };
 }
@@ -109,7 +147,9 @@ function normalizeAvatarUrl(avatarUrl?: string | null) {
 function readAiAssistantBookingContext() {
   if (typeof window === "undefined") return null;
 
-  const rawContext = window.sessionStorage.getItem("patientAiAssistantBookingContext");
+  const rawContext = window.sessionStorage.getItem(
+    "patientAiAssistantBookingContext",
+  );
   if (!rawContext) return null;
 
   try {
@@ -129,7 +169,9 @@ function careTypeFromAiContext(context: AiAssistantBookingContext | null) {
   return "general";
 }
 
-function professionalTypeFromAiContext(context: AiAssistantBookingContext | null) {
+function professionalTypeFromAiContext(
+  context: AiAssistantBookingContext | null,
+) {
   const careType = context?.recommendedCareType?.toLowerCase() ?? "";
 
   if (careType.includes("nurse")) return "np";
@@ -214,17 +256,22 @@ export function PatientBookAppointmentPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [selectedCareType, setSelectedCareType] = useState("follow-up");
-  const [selectedProfessionalType, setSelectedProfessionalType] = useState("gp");
+  const [selectedProfessionalType, setSelectedProfessionalType] =
+    useState("gp");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
   const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
-  const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() => readAiAssistantBookingContext());
+  const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() =>
+    readAiAssistantBookingContext(),
+  );
 
   useEffect(() => {
     if (!aiBookingContext) return;
 
     const nextCareType = careTypeFromAiContext(aiBookingContext);
     if (nextCareType) setSelectedCareType(nextCareType);
-    setSelectedProfessionalType(professionalTypeFromAiContext(aiBookingContext));
+    setSelectedProfessionalType(
+      professionalTypeFromAiContext(aiBookingContext),
+    );
   }, [aiBookingContext]);
 
   useEffect(() => {
@@ -233,8 +280,8 @@ export function PatientBookAppointmentPage() {
     async function loadProviders() {
       try {
         const professionalTypeLabel =
-          professionalTypes.find((item) => item.id === selectedProfessionalType)?.label ??
-          professionalTypes[0].label;
+          professionalTypes.find((item) => item.id === selectedProfessionalType)
+            ?.label ?? professionalTypes[0].label;
         const response = await listPatientProviders({
           specialization: professionalTypeLabel,
         });
@@ -242,7 +289,9 @@ export function PatientBookAppointmentPage() {
         const cards = response.map(mapProviderToCard);
         setProviderCards(cards);
         setSelectedProfessionalId((current) =>
-          cards.some((card) => card.id === current) ? current : cards[0]?.id || "",
+          cards.some((card) => card.id === current)
+            ? current
+            : cards[0]?.id || "",
         );
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -260,17 +309,23 @@ export function PatientBookAppointmentPage() {
 
   const selectedCare = useMemo(
     () => careTypes.find((i) => i.id === selectedCareType) || careTypes[0],
-    [selectedCareType]
+    [selectedCareType],
   );
   const selectedProfessionalTypeLabel = useMemo(
     () =>
-      professionalTypes.find((item) => item.id === selectedProfessionalType)?.label ??
-      professionalTypes[0].label,
-    [selectedProfessionalType]
+      professionalTypes.find((item) => item.id === selectedProfessionalType)
+        ?.label ?? professionalTypes[0].label,
+    [selectedProfessionalType],
   );
   const selectedProfessional = useMemo(
-    () => visibleProfessionals.find((i) => i.id === selectedProfessionalId) || visibleProfessionals[0],
-    [selectedProfessionalId, visibleProfessionals]
+    () =>
+      visibleProfessionals.find((i) => i.id === selectedProfessionalId) ||
+      visibleProfessionals[0],
+    [selectedProfessionalId, visibleProfessionals],
+  );
+  const selectedProfessionalHasPrice = Boolean(
+    selectedProfessional?.videoConsultationRateCents ||
+    selectedProfessional?.inPersonVisitRateCents,
   );
 
   const routeWithCountry = (path: string) => {
@@ -284,6 +339,14 @@ export function PatientBookAppointmentPage() {
       toast.error("Select a professional before continuing.");
       return;
     }
+    if (!selectedProfessional.acceptingBookings) {
+      toast.error("This professional is not accepting bookings right now.");
+      return;
+    }
+    if (!selectedProfessionalHasPrice) {
+      toast.error("This professional has not set consultation pricing yet.");
+      return;
+    }
 
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
@@ -292,6 +355,16 @@ export function PatientBookAppointmentPage() {
         professionalType: selectedProfessionalTypeLabel,
         professionalId: selectedProfessional.id,
         professionalName: selectedProfessional.name,
+        currencyCode: selectedProfessional.currencyCode,
+        videoConsultationRateCents: String(
+          selectedProfessional.videoConsultationRateCents ?? "",
+        ),
+        inPersonVisitRateCents: String(
+          selectedProfessional.inPersonVisitRateCents ?? "",
+        ),
+        videoRateLabel: selectedProfessional.videoRateLabel,
+        inPersonRateLabel: selectedProfessional.inPersonRateLabel,
+        nextAvailable: selectedProfessional.nextAvailable,
         reason:
           aiBookingContext?.bookingReason ||
           aiBookingContext?.primarySymptom ||
@@ -325,7 +398,9 @@ export function PatientBookAppointmentPage() {
               <StepBadge step="1" />
               <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
                 <span className="xl:hidden">Type of Care</span>
-                <span className="hidden xl:inline">What type of care would you like to book?</span>
+                <span className="hidden xl:inline">
+                  What type of care would you like to book?
+                </span>
               </h2>
             </div>
 
@@ -347,7 +422,9 @@ export function PatientBookAppointmentPage() {
                   />
                   <p
                     className={`text-[16px] font-medium xl:text-[14px] xl:font-light xl:leading-[18px] xl:tracking-[-0.06em] ${
-                      selectedCareType === item.id ? "text-[#1565C0]" : "text-[#334155]"
+                      selectedCareType === item.id
+                        ? "text-[#1565C0]"
+                        : "text-[#334155]"
                     }`}
                   >
                     {item.title}
@@ -377,7 +454,9 @@ export function PatientBookAppointmentPage() {
                 <select
                   id="professional-type"
                   value={selectedProfessionalType}
-                  onChange={(event) => setSelectedProfessionalType(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedProfessionalType(event.target.value)
+                  }
                   className="h-[47px] w-full appearance-none rounded-[12px] border border-[#94A3B8] bg-transparent px-[17px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#E3F2FD]"
                 >
                   {professionalTypes.map((item) => (
@@ -410,7 +489,9 @@ export function PatientBookAppointmentPage() {
               <StepBadge step="3" />
               <h2 className="text-[17px] font-medium text-[#334155] xl:text-[18px] xl:font-normal xl:leading-[42px] xl:tracking-[-0.05em]">
                 <span className="xl:hidden">Available Clinicians</span>
-                <span className="hidden xl:inline">Available professionals</span>
+                <span className="hidden xl:inline">
+                  Available professionals
+                </span>
               </h2>
             </div>
 
@@ -422,11 +503,16 @@ export function PatientBookAppointmentPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    onClick={() => setSelectedProfessionalId(prof.id)}
+                    onClick={() => {
+                      if (prof.acceptingBookings)
+                        setSelectedProfessionalId(prof.id);
+                    }}
                     className={`group min-w-[280px] snap-center cursor-pointer rounded-[20px] border p-3 transition-all md:min-w-0 xl:h-[219px] xl:rounded-[12px] xl:p-[5px] ${
                       selectedProfessionalId === prof.id
                         ? "border-[#1565C0] bg-[#F2F8FF] ring-2 ring-[#1565C0]/20 xl:border-2 xl:border-[#1E88E5] xl:bg-[#F8FAFC] xl:ring-0 xl:shadow-[0_0_25px_rgba(34,132,217,0.25)]"
-                        : "border-[#E2EDF8] bg-white xl:border xl:bg-transparent"
+                        : prof.acceptingBookings
+                          ? "border-[#E2EDF8] bg-white xl:border xl:bg-transparent"
+                          : "border-[#E2EDF8] bg-slate-50 opacity-70 xl:border"
                     }`}
                   >
                     <div className="flex gap-4 xl:hidden">
@@ -440,12 +526,29 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.name}
                         </h3>
-                        <p className="truncate text-[12px] text-[#64748B] xl:-mt-1 xl:leading-4 xl:text-[#334155]" title={prof.role}>
+                        <p
+                          className="truncate text-[12px] text-[#64748B] xl:-mt-1 xl:leading-4 xl:text-[#334155]"
+                          title={prof.role}
+                        >
                           {prof.role}
                         </p>
                         <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 xl:mt-[4px] xl:bg-transparent xl:px-0 xl:py-0 xl:font-normal xl:text-[#94A3B8]">
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                           {prof.nextAvailable}
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-medium text-[#1565C0]">
+                          <span
+                            className="truncate rounded-md bg-[#E3F2FD] px-2 py-1"
+                            title={`Video: ${prof.videoRateLabel}`}
+                          >
+                            Video {prof.videoRateLabel}
+                          </span>
+                          <span
+                            className="truncate rounded-md bg-[#E3F2FD] px-2 py-1"
+                            title={`Visit: ${prof.inPersonRateLabel}`}
+                          >
+                            Visit {prof.inPersonRateLabel}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -462,7 +565,10 @@ export function PatientBookAppointmentPage() {
                         >
                           {prof.name}
                         </p>
-                        <p className="-mt-1 truncate text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]" title={prof.role}>
+                        <p
+                          className="-mt-1 truncate text-[12px] font-light leading-4 tracking-[-0.05em] text-[#334155]"
+                          title={prof.role}
+                        >
                           {prof.role}
                         </p>
                       </div>
@@ -470,14 +576,21 @@ export function PatientBookAppointmentPage() {
                       <div className="mt-[2px] rounded-[8px] bg-[#E3F2FD] px-[5px] py-[5px]">
                         <div className="text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#1565C0]">
                           {prof.highlights.map((line) => (
-                            <p key={`${prof.id}-${line}`} className="truncate" title={line}>
+                            <p
+                              key={`${prof.id}-${line}`}
+                              className="truncate"
+                              title={line}
+                            >
                               {line}
                             </p>
                           ))}
                         </div>
                       </div>
 
-                      <p className="mt-[4px] truncate text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]" title={`Next available: ${prof.nextAvailable}`}>
+                      <p
+                        className="mt-[4px] truncate text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]"
+                        title={`Next available: ${prof.nextAvailable}`}
+                      >
                         Next available: {prof.nextAvailable}
                       </p>
 
@@ -485,11 +598,17 @@ export function PatientBookAppointmentPage() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSelectedProfessionalId(prof.id);
+                          if (prof.acceptingBookings)
+                            setSelectedProfessionalId(prof.id);
                         }}
-                        className="mt-[4px] inline-flex h-[19px] w-full cursor-pointer items-center justify-center rounded-[7.29734px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(17,75,127,0.22)] active:translate-y-0 active:scale-[0.985]"
+                        disabled={!prof.acceptingBookings}
+                        className="mt-[4px] inline-flex h-[19px] w-full cursor-pointer items-center justify-center rounded-[7.29734px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[10px] font-normal leading-3 tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(17,75,127,0.22)] active:translate-y-0 active:scale-[0.985] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                       >
-                        {selectedProfessionalId === prof.id ? "Selected" : "Select"}
+                        {!prof.acceptingBookings
+                          ? "Unavailable"
+                          : selectedProfessionalId === prof.id
+                            ? "Selected"
+                            : "Select"}
                       </button>
                     </div>
                   </motion.div>
@@ -544,6 +663,20 @@ export function PatientBookAppointmentPage() {
                 </span>
               </div>
             </div>
+
+            <div className="space-y-3">
+              <p className="text-[16px] font-light leading-[42px] tracking-[-0.05em] text-[#334155]">
+                Price:
+              </p>
+              <div className="min-h-9 rounded-[12px] bg-[#F8FAFC] px-[13px] py-2">
+                <span className="block text-[13px] font-light leading-5 tracking-[-0.04em] text-[#1565C0]">
+                  Video {selectedProfessional?.videoRateLabel ?? "-"}
+                </span>
+                <span className="block text-[13px] font-light leading-5 tracking-[-0.04em] text-[#1565C0]">
+                  Visit {selectedProfessional?.inPersonRateLabel ?? "-"}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-auto px-5 pb-[18px]">
@@ -588,10 +721,10 @@ export function PatientBookAppointmentPage() {
 
             <div className="text-right">
               <p className="text-[10px] font-medium uppercase leading-4 tracking-[0.12em] text-[#94A3B8]">
-                Care
+                Video price
               </p>
               <p className="text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#1565C0]">
-                {selectedCare.title}
+                {selectedProfessional?.videoRateLabel ?? "-"}
               </p>
             </div>
           </div>

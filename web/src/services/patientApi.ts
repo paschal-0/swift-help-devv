@@ -141,6 +141,15 @@ export type PatientProvider = {
   avatarUrl?: string | null;
   verificationStatus: string;
   availability: unknown;
+  acceptingBookings?: boolean;
+  timezone?: string;
+  bookingWindowDays?: number;
+  minimumNoticeMinutes?: number;
+  defaultSessionDurationMinutes?: number;
+  nextAvailableLabel?: string;
+  currencyCode?: string;
+  videoConsultationRateCents?: number | null;
+  inPersonVisitRateCents?: number | null;
 };
 
 export type PatientProviderAvailability = {
@@ -148,6 +157,12 @@ export type PatientProviderAvailability = {
   date: string;
   timezone: string;
   durationMinutes: number;
+  acceptingBookings?: boolean;
+  bookingWindowDays?: number;
+  minimumNoticeMinutes?: number;
+  currencyCode?: string;
+  videoConsultationRateCents?: number | null;
+  inPersonVisitRateCents?: number | null;
   slots: Array<{
     startTime: string;
     endTime: string;

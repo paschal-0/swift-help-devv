@@ -31,7 +31,12 @@ import {
   type ProfessionalDashboard,
 } from "@/services/professionalApi";
 
-type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled";
+type AppointmentStatus =
+  | "Done"
+  | "Ongoing"
+  | "Upcoming"
+  | "Missed"
+  | "Cancelled";
 
 type Appointment = {
   id: string;
@@ -63,7 +68,15 @@ type EarningsPoint = {
   sessions: number;
 };
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+);
 
 type MetricCard = {
   id: string;
@@ -138,7 +151,9 @@ const getInitials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "P";
 
-const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment => ({
+const mapSessionToAppointment = (
+  session: ProfessionalConsultation,
+): Appointment => ({
   id: session.id,
   startsAt: session.startsAt,
   timeLabel: formatTime(session.startsAt),
@@ -158,14 +173,18 @@ const mapSessionToAppointment = (session: ProfessionalConsultation): Appointment
   reason: session.reason,
 });
 
-const mapRequestToIncomingRequest = (request: ProfessionalConsultationRequest): IncomingRequest => ({
+const mapRequestToIncomingRequest = (
+  request: ProfessionalConsultationRequest,
+): IncomingRequest => ({
   id: request.id,
   from: request.patientName,
   requestedTime: `Requested for ${formatTime(request.requestedStartAt)}`,
   date: formatDateLabel(request.requestedStartAt),
   consultationType: request.consultationLabel,
   duration: `${request.durationMinutes} mins`,
-  deadline: request.expiresAt ? `Respond before ${formatTime(request.expiresAt)}` : "Respond soon",
+  deadline: request.expiresAt
+    ? `Respond before ${formatTime(request.expiresAt)}`
+    : "Respond soon",
 });
 
 const microInteractionClass =
@@ -176,6 +195,7 @@ type MobileDashboardProps = {
   activeDayLabel: string;
   heroDateLabel: string;
   heroTimeLabel: string;
+  metricCards: MetricCard[];
   professionalName: string;
   ratingLabel: string;
   earningsMetrics: {
@@ -284,6 +304,7 @@ function MobileDashboardView({
   activeDayLabel,
   heroDateLabel,
   heroTimeLabel,
+  metricCards,
   professionalName,
   ratingLabel,
   earningsMetrics,
@@ -309,7 +330,10 @@ function MobileDashboardView({
         <div className="relative z-10 space-y-4">
           <div className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#E3F2FD] px-3 py-2 text-xs font-medium tracking-[-0.04em] text-[#1565C0]">
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-              <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
+              <path
+                fill="#1565C0"
+                d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z"
+              />
             </svg>
             {heroDateLabel}
             <span className="font-semibold">{heroTimeLabel}</span>
@@ -319,22 +343,103 @@ function MobileDashboardView({
               Welcome back, {professionalName}
             </h1>
             <p className="text-[15px] font-light leading-[18px] tracking-[-0.04em] text-[#334155]">
-              Manage your consultations, availability, records, and earnings from one place.
+              Manage your consultations, availability, records, and earnings
+              from one place.
             </p>
           </div>
           <div className="inline-flex min-h-9 items-center gap-1 rounded-full bg-[#0F172A] px-3 py-2 shadow-[0_4px_20px_rgba(30,136,229,0.25)]">
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-              <path fill="#ECBE18" d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z" />
+              <path
+                fill="#ECBE18"
+                d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z"
+              />
             </svg>
-            <span className="text-xs font-medium tracking-[-0.04em] text-[#F8FAFC]">{ratingLabel}</span>
+            <span className="text-xs font-medium tracking-[-0.04em] text-[#F8FAFC]">
+              {ratingLabel}
+            </span>
           </div>
         </div>
+      </section>
+
+      <section
+        aria-label="Dashboard summary"
+        className="grid grid-cols-2 gap-3"
+      >
+        {metricCards.map((card) => (
+          <motion.article
+            key={card.id}
+            whileTap={{ scale: 0.98 }}
+            className="min-h-[150px] rounded-2xl bg-[#F8FAFC] px-3 py-3 shadow-sm"
+          >
+            <div className="flex items-start gap-2">
+              <div
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                  card.icon === "consultations"
+                    ? "bg-[#E3F2FD]"
+                    : card.icon === "requests"
+                      ? "bg-[#E2E8F0]"
+                      : card.icon === "hours"
+                        ? "bg-[#D1EED9]"
+                        : "bg-[#DFDCCB]"
+                }`}
+              >
+                <MetricIcon type={card.icon} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium leading-[13px] tracking-[-0.04em] text-[#94A3B8]">
+                  {card.title}
+                </p>
+                <p className="mt-2 break-words text-[17px] font-semibold leading-5 tracking-[-0.05em] text-[#0F172A]">
+                  {card.value}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (card.href === "/professional-platform/schedule") {
+                  onOpenSchedule();
+                  return;
+                }
+                if (card.href === "/professional-platform/requests") {
+                  onOpenRequests();
+                  return;
+                }
+                onOpenEarnings();
+              }}
+              className={`mt-3 block text-left text-[11px] font-semibold leading-4 tracking-[-0.04em] text-[#1565C0] underline ${microInteractionClass}`}
+            >
+              {card.subtitle}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (card.href === "/professional-platform/schedule") {
+                  onOpenSchedule();
+                  return;
+                }
+                if (card.href === "/professional-platform/requests") {
+                  onOpenRequests();
+                  return;
+                }
+                onOpenEarnings();
+              }}
+              className={`mt-2 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-xl border border-[#1565C0] px-2 text-[12px] font-medium leading-none tracking-[-0.04em] text-[#1565C0] ${microInteractionClass}`}
+            >
+              {card.cta}
+            </button>
+          </motion.article>
+        ))}
       </section>
 
       {activeAppointment ? (
         <section className="rounded-2xl border-2 border-[#1E88E5] bg-[#F8FAFC] p-4 shadow-[0_10px_30px_rgba(30,136,229,0.08)]">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold tracking-[-0.04em] text-[#1565C0]">Next Consultation</h2>
+            <h2 className="text-base font-semibold tracking-[-0.04em] text-[#1565C0]">
+              Next Consultation
+            </h2>
             <span className="rounded-full bg-[#FEE2E2] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#DC2626]">
               Live now
             </span>
@@ -344,9 +449,15 @@ function MobileDashboardView({
               {getInitials(activeAppointment.patient)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[#334155]">{activeAppointment.patient}</p>
-              <p className="mt-1 text-xs text-[#64748B]">{activeAppointment.reason}</p>
-              <p className="mt-1 text-xs text-[#94A3B8]">{activeAppointment.timeRange}</p>
+              <p className="truncate text-sm font-semibold text-[#334155]">
+                {activeAppointment.patient}
+              </p>
+              <p className="mt-1 text-xs text-[#64748B]">
+                {activeAppointment.reason}
+              </p>
+              <p className="mt-1 text-xs text-[#94A3B8]">
+                {activeAppointment.timeRange}
+              </p>
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-2">
@@ -370,13 +481,17 @@ function MobileDashboardView({
 
       <section className="rounded-2xl bg-[#1565C0] px-4 pb-5 pt-4">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold leading-6 tracking-[-0.05em] text-white">Earnings Overview</h2>
+          <h2 className="text-xl font-semibold leading-6 tracking-[-0.05em] text-white">
+            Earnings Overview
+          </h2>
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={() => onSelectEarningsRange("today")}
               className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-medium ${microInteractionClass} ${
-                earningsRange === "today" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-white"
+                earningsRange === "today"
+                  ? "bg-[#E3F2FD] text-[#1565C0]"
+                  : "bg-white/20 text-white"
               }`}
             >
               Today
@@ -385,7 +500,9 @@ function MobileDashboardView({
               type="button"
               onClick={() => onSelectEarningsRange("week")}
               className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-medium ${microInteractionClass} ${
-                earningsRange === "week" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-white"
+                earningsRange === "week"
+                  ? "bg-[#E3F2FD] text-[#1565C0]"
+                  : "bg-white/20 text-white"
               }`}
             >
               This week
@@ -395,25 +512,39 @@ function MobileDashboardView({
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-white px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Earned</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
+              Earned
+            </p>
             <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
-              {formatDashboardMoney(earningsMetrics.totalEarned, earningsMetrics.currency)}
+              {formatDashboardMoney(
+                earningsMetrics.totalEarned,
+                earningsMetrics.currency,
+              )}
             </p>
           </div>
           <div className="rounded-xl bg-white px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Pending</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
+              Pending
+            </p>
             <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
-              {formatDashboardMoney(earningsMetrics.pendingPayout, earningsMetrics.currency)}
+              {formatDashboardMoney(
+                earningsMetrics.pendingPayout,
+                earningsMetrics.currency,
+              )}
             </p>
           </div>
           <div className="rounded-xl bg-white px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Sessions</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
+              Sessions
+            </p>
             <p className="mt-1 text-lg font-semibold tracking-[-0.05em] text-[#334155]">
               {earningsMetrics.completedSessions}
             </p>
           </div>
           <div className="rounded-xl bg-white px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Payout</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
+              Payout
+            </p>
             <p className="mt-1 text-sm font-semibold tracking-[-0.04em] text-[#334155]">
               {earningsMetrics.nextPayoutLabel}
             </p>
@@ -431,21 +562,45 @@ function MobileDashboardView({
 
       <section className="rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-4">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">Today&apos;s Schedule</h3>
-          <button type="button" onClick={onOpenSchedule} className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}>
+          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">
+            Today&apos;s Schedule
+          </h3>
+          <button
+            type="button"
+            onClick={onOpenSchedule}
+            className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}
+          >
             View full
           </button>
         </div>
         <div className="mb-4 flex items-center justify-between">
-          <button type="button" onClick={onPrevDay} className={`cursor-pointer text-[#334155] ${microInteractionClass}`} aria-label="Previous day">
+          <button
+            type="button"
+            onClick={onPrevDay}
+            className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+            aria-label="Previous day"
+          >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-              <path fill="currentColor" d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z" />
+              <path
+                fill="currentColor"
+                d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z"
+              />
             </svg>
           </button>
-          <span className="text-xs font-semibold tracking-[0.08em] text-[#94A3B8]">{activeDayLabel}</span>
-          <button type="button" onClick={onNextDay} className={`cursor-pointer text-[#334155] ${microInteractionClass}`} aria-label="Next day">
+          <span className="text-xs font-semibold tracking-[0.08em] text-[#94A3B8]">
+            {activeDayLabel}
+          </span>
+          <button
+            type="button"
+            onClick={onNextDay}
+            className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+            aria-label="Next day"
+          >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-              <path fill="currentColor" d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z" />
+              <path
+                fill="currentColor"
+                d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z"
+              />
             </svg>
           </button>
         </div>
@@ -456,13 +611,21 @@ function MobileDashboardView({
               type="button"
               onClick={() => onSelectAppointment(appointment.id)}
               className={`flex min-h-[62px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-left ${microInteractionClass} ${
-                activeAppointment?.id === appointment.id ? "border-[#1E88E5] bg-[#F3F9FF]" : "border-[#E2E8F0] bg-white"
+                activeAppointment?.id === appointment.id
+                  ? "border-[#1E88E5] bg-[#F3F9FF]"
+                  : "border-[#E2E8F0] bg-white"
               }`}
             >
-              <span className="w-10 shrink-0 text-xs font-bold text-[#94A3B8]">{appointment.timeLabel}</span>
+              <span className="w-10 shrink-0 text-xs font-bold text-[#94A3B8]">
+                {appointment.timeLabel}
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[#475569]">{appointment.patient}</p>
-                <p className="truncate text-xs text-[#94A3B8]">{appointment.timeRange}</p>
+                <p className="truncate text-sm font-medium text-[#475569]">
+                  {appointment.patient}
+                </p>
+                <p className="truncate text-xs text-[#94A3B8]">
+                  {appointment.timeRange}
+                </p>
               </div>
               <StatusBadge status={appointment.status} />
             </button>
@@ -472,8 +635,14 @@ function MobileDashboardView({
 
       <section className="rounded-2xl bg-[#F8FAFC] p-4">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">Incoming Request</h3>
-          <button type="button" onClick={onOpenRequests} className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}>
+          <h3 className="text-lg font-semibold tracking-[-0.05em] text-[#334155]">
+            Incoming Request
+          </h3>
+          <button
+            type="button"
+            onClick={onOpenRequests}
+            className={`text-sm font-semibold text-[#1565C0] ${microInteractionClass}`}
+          >
             See all
           </button>
         </div>
@@ -484,7 +653,10 @@ function MobileDashboardView({
             </div>
           ) : (
             visibleRequests.map((request) => (
-              <article key={request.id} className="rounded-xl border border-[#1E88E5] bg-white px-4 pb-4 pt-3">
+              <article
+                key={request.id}
+                className="rounded-xl border border-[#1E88E5] bg-white px-4 pb-4 pt-3"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <span className="inline-flex min-h-7 min-w-0 max-w-[calc(100%-68px)] items-center rounded-[14px] bg-[#E3F2FD] px-3 py-1 text-[9.5px] font-medium leading-[12px] tracking-[-0.05em] text-[#1E88E5]">
                     New Consultation request
@@ -540,12 +712,20 @@ function MobileDashboardView({
 export function ProfessionalDashboardPage() {
   const router = useRouter();
   const { searchText } = useProfessionalPlatformShell();
-  const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
+  const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(
+    null,
+  );
   const [earningsRange, setEarningsRange] = useState<EarningsRange>("today");
   const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [dashboardRequests, setDashboardRequests] = useState<IncomingRequest[]>([]);
-  const [dashboard, setDashboard] = useState<ProfessionalDashboard | null>(null);
-  const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>([]);
+  const [dashboardRequests, setDashboardRequests] = useState<IncomingRequest[]>(
+    [],
+  );
+  const [dashboard, setDashboard] = useState<ProfessionalDashboard | null>(
+    null,
+  );
+  const [dashboardAppointments, setDashboardAppointments] = useState<
+    Appointment[]
+  >([]);
   const [professionalName, setProfessionalName] = useState("Professional");
 
   const query = searchText.trim().toLowerCase();
@@ -568,12 +748,19 @@ export function ProfessionalDashboardPage() {
             profileData.account?.fullName ||
             "Professional",
         );
-        const mappedAppointments = [data.activeSession, ...data.upcomingSessions]
-          .filter((session): session is ProfessionalConsultation => Boolean(session))
+        const mappedAppointments = [
+          data.activeSession,
+          ...data.upcomingSessions,
+        ]
+          .filter((session): session is ProfessionalConsultation =>
+            Boolean(session),
+          )
           .map(mapSessionToAppointment);
 
         setDashboardAppointments(mappedAppointments);
-        setDashboardRequests(data.pendingRequests.map(mapRequestToIncomingRequest));
+        setDashboardRequests(
+          data.pendingRequests.map(mapRequestToIncomingRequest),
+        );
         if (mappedAppointments[0]) {
           setActiveAppointmentId(mappedAppointments[0].id);
         } else {
@@ -581,7 +768,11 @@ export function ProfessionalDashboardPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load professional dashboard");
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to load professional dashboard",
+          );
         }
       }
     }
@@ -606,7 +797,8 @@ export function ProfessionalDashboardPage() {
         }
         return [...current, appointment].sort(
           (left, right) =>
-            new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+            new Date(left.startsAt).getTime() -
+            new Date(right.startsAt).getTime(),
         );
       });
       setActiveAppointmentId((current) => current ?? appointment.id);
@@ -641,7 +833,11 @@ export function ProfessionalDashboardPage() {
           current.filter((existing) => existing.id !== request.id),
         );
         setDashboard((current) => {
-          if (!current?.pendingRequests.some((existing) => existing.id === request.id)) {
+          if (
+            !current?.pendingRequests.some(
+              (existing) => existing.id === request.id,
+            )
+          ) {
             return current;
           }
           return {
@@ -658,25 +854,27 @@ export function ProfessionalDashboardPage() {
       }
     };
 
-    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then((source) => {
-      if (cancelled) {
-        source.close();
-        return;
-      }
-      eventSource = source;
-      source.addEventListener(
-        "professional.consultation_session.created",
-        handleSessionCreated,
-      );
-      source.addEventListener(
-        "professional.consultation_request.created",
-        handleRequestCreated,
-      );
-      source.addEventListener(
-        "professional.consultation_request.updated",
-        handleRequestUpdated,
-      );
-    });
+    void createAuthenticatedEventSource(getProfessionalLiveUrl()).then(
+      (source) => {
+        if (cancelled) {
+          source.close();
+          return;
+        }
+        eventSource = source;
+        source.addEventListener(
+          "professional.consultation_session.created",
+          handleSessionCreated,
+        );
+        source.addEventListener(
+          "professional.consultation_request.created",
+          handleRequestCreated,
+        );
+        source.addEventListener(
+          "professional.consultation_request.updated",
+          handleRequestUpdated,
+        );
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -712,7 +910,7 @@ export function ProfessionalDashboardPage() {
       ]
         .join(" ")
         .toLowerCase()
-        .includes(query)
+        .includes(query),
     );
   }, [dashboardAppointments, query]);
 
@@ -722,15 +920,26 @@ export function ProfessionalDashboardPage() {
     }
 
     return dashboardRequests.filter((request) =>
-      [request.from, request.requestedTime, request.consultationType, request.duration, request.deadline, request.date]
+      [
+        request.from,
+        request.requestedTime,
+        request.consultationType,
+        request.duration,
+        request.deadline,
+        request.date,
+      ]
         .join(" ")
         .toLowerCase()
-        .includes(query)
+        .includes(query),
     );
   }, [dashboardRequests, query]);
 
   const activeAppointment =
-    visibleAppointments.find((appointment) => appointment.id === activeAppointmentId) ?? visibleAppointments[0] ?? null;
+    visibleAppointments.find(
+      (appointment) => appointment.id === activeAppointmentId,
+    ) ??
+    visibleAppointments[0] ??
+    null;
 
   const earningsSeries = useMemo<EarningsPoint[]>(() => {
     const labels =
@@ -797,7 +1006,7 @@ export function ProfessionalDashboardPage() {
         },
       ],
     }),
-    [earningsSeries]
+    [earningsSeries],
   );
 
   const earningsChartOptions = useMemo<ChartOptions<"line">>(
@@ -819,17 +1028,21 @@ export function ProfessionalDashboardPage() {
           displayColors: true,
           callbacks: {
             label: (context) => {
-              const parsedY = typeof context.parsed.y === "number" ? context.parsed.y : 0;
+              const parsedY =
+                typeof context.parsed.y === "number" ? context.parsed.y : 0;
 
               if (context.dataset.label === "Sessions") {
                 return `Sessions ${Math.round(parsedY / 30)}`;
               }
 
-              return `${context.dataset.label} ${new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: earningsMetrics.currency,
-                maximumFractionDigits: 0,
-              }).format(parsedY)}`;
+              return `${context.dataset.label} ${new Intl.NumberFormat(
+                "en-NG",
+                {
+                  style: "currency",
+                  currency: earningsMetrics.currency,
+                  maximumFractionDigits: 0,
+                },
+              ).format(parsedY)}`;
             },
           },
         },
@@ -867,12 +1080,16 @@ export function ProfessionalDashboardPage() {
         },
       },
     }),
-    [earningsMetrics.currency]
+    [earningsMetrics.currency],
   );
 
   const dashboardMetricCards = useMemo<MetricCard[]>(() => {
-    const doneCount = dashboardAppointments.filter((appointment) => appointment.status === "Done").length;
-    const upcomingCount = dashboardAppointments.filter((appointment) => appointment.status === "Upcoming").length;
+    const doneCount = dashboardAppointments.filter(
+      (appointment) => appointment.status === "Done",
+    ).length;
+    const upcomingCount = dashboardAppointments.filter(
+      (appointment) => appointment.status === "Upcoming",
+    ).length;
     const weeklyEarningsLabel = dashboard
       ? formatApiMoney(
           dashboard.metrics.weeklyEarnings,
@@ -889,7 +1106,9 @@ export function ProfessionalDashboardPage() {
       {
         ...metricCardMeta[1],
         value: `${dashboardRequests.length} New Requests`,
-        subtitle: dashboardRequests.length ? "Require response" : "No pending requests",
+        subtitle: dashboardRequests.length
+          ? "Require response"
+          : "No pending requests",
       },
       {
         ...metricCardMeta[2],
@@ -915,7 +1134,9 @@ export function ProfessionalDashboardPage() {
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
-    }).format(date).toUpperCase();
+    })
+      .format(date)
+      .toUpperCase();
   });
   const heroDateLabel = new Intl.DateTimeFormat("en-US", {
     month: "long",
@@ -931,7 +1152,10 @@ export function ProfessionalDashboardPage() {
       ? `${dashboard.performance.averageRating.toFixed(1)} Average Rating`
       : "No ratings yet";
 
-  const handleDashboardRequestAction = async (id: string, action: "accept" | "decline") => {
+  const handleDashboardRequestAction = async (
+    id: string,
+    action: "accept" | "decline",
+  ) => {
     const request = dashboardRequests.find((item) => item.id === id);
 
     if (!request) {
@@ -945,19 +1169,27 @@ export function ProfessionalDashboardPage() {
         await declineProfessionalRequest(id);
       }
 
-      setDashboardRequests((current) => current.filter((item) => item.id !== id));
+      setDashboardRequests((current) =>
+        current.filter((item) => item.id !== id),
+      );
       toast[action === "accept" ? "success" : "warning"](
-        `${action === "accept" ? "Accepted" : "Declined"} request from ${request.from}`
+        `${action === "accept" ? "Accepted" : "Declined"} request from ${request.from}`,
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update request");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update request",
+      );
     }
   };
 
-  const handleOpenSchedule = () => router.push("/professional-platform/schedule");
-  const handleOpenRequests = () => router.push("/professional-platform/requests");
-  const handleOpenEarnings = () => router.push("/professional-platform/earnings");
-  const handleOpenViewDetails = () => router.push("/professional-platform/schedule");
+  const handleOpenSchedule = () =>
+    router.push("/professional-platform/schedule");
+  const handleOpenRequests = () =>
+    router.push("/professional-platform/requests");
+  const handleOpenEarnings = () =>
+    router.push("/professional-platform/earnings");
+  const handleOpenViewDetails = () =>
+    router.push("/professional-platform/schedule");
   const handleJoinAppointment = () => {
     toast.success("Opening schedule for consultation.");
     router.push("/professional-platform/schedule");
@@ -971,6 +1203,7 @@ export function ProfessionalDashboardPage() {
           activeDayLabel={dashboardDayLabels[activeDayIndex]}
           heroDateLabel={heroDateLabel}
           heroTimeLabel={heroTimeLabel}
+          metricCards={dashboardMetricCards}
           professionalName={professionalName}
           ratingLabel={ratingLabel}
           earningsMetrics={earningsMetrics}
@@ -978,12 +1211,20 @@ export function ProfessionalDashboardPage() {
           onAcceptRequest={(id) => handleDashboardRequestAction(id, "accept")}
           onDeclineRequest={(id) => handleDashboardRequestAction(id, "decline")}
           onJoinAppointment={handleJoinAppointment}
-          onNextDay={() => setActiveDayIndex((current) => (current + 1) % dashboardDayLabels.length)}
+          onNextDay={() =>
+            setActiveDayIndex(
+              (current) => (current + 1) % dashboardDayLabels.length,
+            )
+          }
           onOpenEarnings={handleOpenEarnings}
           onOpenRequests={handleOpenRequests}
           onOpenSchedule={handleOpenSchedule}
           onOpenViewDetails={handleOpenViewDetails}
-          onPrevDay={() => setActiveDayIndex((current) => (current === 0 ? dashboardDayLabels.length - 1 : current - 1))}
+          onPrevDay={() =>
+            setActiveDayIndex((current) =>
+              current === 0 ? dashboardDayLabels.length - 1 : current - 1,
+            )
+          }
           onSelectAppointment={setActiveAppointmentId}
           onSelectEarningsRange={setEarningsRange}
           visibleAppointments={visibleAppointments}
@@ -992,391 +1233,480 @@ export function ProfessionalDashboardPage() {
       </div>
 
       <div className="hidden md:block">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
-        <motion.article
-          whileHover={{ y: -2 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#F8FAFC] px-5 pb-4 pt-[15px]"
-        >
-          <Image src="/bg-platform.png" alt="" fill className="object-cover" />
-          <div className="relative z-10 inline-flex h-[27px] items-center gap-2 rounded-full bg-[#E3F2FD] px-3 text-[12px] font-light tracking-[-0.05em] text-[#1565C0]">
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
-              <path fill="#1565C0" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z" />
-            </svg>
-            {heroDateLabel}
-            <span className="font-medium">{heroTimeLabel}</span>
-          </div>
-
-          <div className="relative z-10 mt-8 max-w-[350px] space-y-3">
-            <h1 className="text-[24px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">
-              Welcome back, {professionalName}
-            </h1>
-            <p className="text-[16px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
-              Manage your consultations, availability, records, and earnings from one place.
-            </p>
-          </div>
-
-          <div className="relative z-10 mt-8 inline-flex h-[25px] items-center gap-[2px] rounded-full bg-[#0F172A] px-[8px] shadow-[0_4px_20px_rgba(30,136,229,0.3)]">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-              <path fill="#ECBE18" d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z" />
-            </svg>
-            <span className="text-[12px] font-medium leading-3 tracking-[-0.05em] text-[#F8FAFC]">{ratingLabel}</span>
-          </div>
-        </motion.article>
-
-        <motion.article
-          whileHover={{ y: -2 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#1565C0] px-4 pb-4 pt-4"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(227,242,253,0.22),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#F8FAFC]">Earnings Overview</h2>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEarningsRange("today")}
-                className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
-                  earningsRange === "today" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-[#F8FAFC]"
-                }`}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
+          <motion.article
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#F8FAFC] px-5 pb-4 pt-[15px]"
+          >
+            <Image
+              src="/bg-platform.png"
+              alt=""
+              fill
+              className="object-cover"
+            />
+            <div className="relative z-10 inline-flex h-[27px] items-center gap-2 rounded-full bg-[#E3F2FD] px-3 text-[12px] font-light tracking-[-0.05em] text-[#1565C0]">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-[18px] w-[18px]"
+                aria-hidden
               >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => setEarningsRange("week")}
-                className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
-                  earningsRange === "week" ? "bg-[#E3F2FD] text-[#1565C0]" : "bg-white/20 text-[#F8FAFC]"
-                }`}
-              >
-                This week
-              </button>
-              <motion.button
-                type="button"
-                onClick={() => router.push("/professional-platform/earnings")}
-                whileHover={{ y: -1, scale: 1.03 }}
-                whileTap={{ scale: 0.96 }}
-                className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#E3F2FD] px-3 text-xs font-normal leading-3 tracking-[-0.05em] text-[#1565C0] sm:h-[21px] sm:px-2 sm:text-[10px]"
-              >
-                Open earnings
-              </motion.button>
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_191px]">
-            <div className="min-h-[148px] rounded-lg bg-white p-2">
-              <Line data={earningsChartData} options={earningsChartOptions} />
+                <path
+                  fill="#1565C0"
+                  d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm12 8H5v10h14V10Z"
+                />
+              </svg>
+              {heroDateLabel}
+              <span className="font-medium">{heroTimeLabel}</span>
             </div>
 
-            <div className="min-h-[148px] rounded-lg bg-[#F8FAFC] px-[10px] py-[14px]">
-              <div className="rounded-lg bg-[#E3F2FD] p-[10px] text-[10px] font-medium leading-[15px] tracking-[-0.07em] text-[#94A3B8]">
-                <p>
-                  Total earned: <span className="font-semibold text-[#1565C0]">{formatDashboardMoney(earningsMetrics.totalEarned, earningsMetrics.currency)}</span>
-                </p>
-                <p>
-                  Pending payout: <span className="font-semibold text-[#1565C0]">{formatDashboardMoney(earningsMetrics.pendingPayout, earningsMetrics.currency)}</span>
-                </p>
-                <p>
-                  Completed sessions: <span className="font-semibold text-[#1565C0]">{earningsMetrics.completedSessions}</span>
-                </p>
-              </div>
-              <p className="mt-3 text-[10px] font-semibold leading-[15px] tracking-[-0.07em] text-[#1565C0]">
-                Next payout: {earningsMetrics.nextPayoutLabel}
+            <div className="relative z-10 mt-8 max-w-[350px] space-y-3">
+              <h1 className="text-[24px] font-medium leading-6 tracking-[-0.05em] text-[#334155]">
+                Welcome back, {professionalName}
+              </h1>
+              <p className="text-[16px] font-light leading-4 tracking-[-0.05em] text-[#334155]">
+                Manage your consultations, availability, records, and earnings
+                from one place.
               </p>
+            </div>
+
+            <div className="relative z-10 mt-8 inline-flex h-[25px] items-center gap-[2px] rounded-full bg-[#0F172A] px-[8px] shadow-[0_4px_20px_rgba(30,136,229,0.3)]">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+                <path
+                  fill="#ECBE18"
+                  d="m12 2.5 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 16.8 6.5 19.7l1-6.2L3 9.1l6.2-.9L12 2.5Z"
+                />
+              </svg>
+              <span className="text-[12px] font-medium leading-3 tracking-[-0.05em] text-[#F8FAFC]">
+                {ratingLabel}
+              </span>
+            </div>
+          </motion.article>
+
+          <motion.article
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="relative min-h-[211px] overflow-hidden rounded-2xl bg-[#1565C0] px-4 pb-4 pt-4"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(227,242,253,0.22),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
+            <div className="relative z-10 flex items-start justify-between gap-3">
+              <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#F8FAFC]">
+                Earnings Overview
+              </h2>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEarningsRange("today")}
+                  className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
+                    earningsRange === "today"
+                      ? "bg-[#E3F2FD] text-[#1565C0]"
+                      : "bg-white/20 text-[#F8FAFC]"
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEarningsRange("week")}
+                  className={`inline-flex h-10 cursor-pointer items-center rounded-lg px-3 text-xs font-normal leading-3 tracking-[-0.05em] sm:h-[21px] sm:px-2 sm:text-[10px] ${microInteractionClass} ${
+                    earningsRange === "week"
+                      ? "bg-[#E3F2FD] text-[#1565C0]"
+                      : "bg-white/20 text-[#F8FAFC]"
+                  }`}
+                >
+                  This week
+                </button>
+                <motion.button
+                  type="button"
+                  onClick={() => router.push("/professional-platform/earnings")}
+                  whileHover={{ y: -1, scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#E3F2FD] px-3 text-xs font-normal leading-3 tracking-[-0.05em] text-[#1565C0] sm:h-[21px] sm:px-2 sm:text-[10px]"
+                >
+                  Open earnings
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_191px]">
+              <div className="min-h-[148px] rounded-lg bg-white p-2">
+                <Line data={earningsChartData} options={earningsChartOptions} />
+              </div>
+
+              <div className="min-h-[148px] rounded-lg bg-[#F8FAFC] px-[10px] py-[14px]">
+                <div className="rounded-lg bg-[#E3F2FD] p-[10px] text-[10px] font-medium leading-[15px] tracking-[-0.07em] text-[#94A3B8]">
+                  <p>
+                    Total earned:{" "}
+                    <span className="font-semibold text-[#1565C0]">
+                      {formatDashboardMoney(
+                        earningsMetrics.totalEarned,
+                        earningsMetrics.currency,
+                      )}
+                    </span>
+                  </p>
+                  <p>
+                    Pending payout:{" "}
+                    <span className="font-semibold text-[#1565C0]">
+                      {formatDashboardMoney(
+                        earningsMetrics.pendingPayout,
+                        earningsMetrics.currency,
+                      )}
+                    </span>
+                  </p>
+                  <p>
+                    Completed sessions:{" "}
+                    <span className="font-semibold text-[#1565C0]">
+                      {earningsMetrics.completedSessions}
+                    </span>
+                  </p>
+                </div>
+                <p className="mt-3 text-[10px] font-semibold leading-[15px] tracking-[-0.07em] text-[#1565C0]">
+                  Next payout: {earningsMetrics.nextPayoutLabel}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/professional-platform/schedule")}
+                  className={`mt-2 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-xs font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0] sm:h-[28px] sm:w-[125px] sm:text-[10px] ${microInteractionClass}`}
+                >
+                  Manage Schedule
+                </button>
+              </div>
+            </div>
+          </motion.article>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {dashboardMetricCards.map((card) => (
+            <motion.article
+              key={card.id}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="rounded-[12px] bg-[#F8FAFC] px-[11px] py-[14px]"
+            >
+              <div className="flex items-start gap-[7px]">
+                <div
+                  className={`flex h-[64px] w-[59px] shrink-0 items-center justify-center rounded-[12px] ${
+                    card.icon === "consultations"
+                      ? "bg-[#E3F2FD]"
+                      : card.icon === "requests"
+                        ? "bg-[#E2E8F0]"
+                        : card.icon === "hours"
+                          ? "bg-[#D1EED9]"
+                          : "bg-[#DFDCCB]"
+                  }`}
+                >
+                  <MetricIcon type={card.icon} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">
+                    {card.title}
+                  </p>
+                  <p className="mt-3 text-[18px] font-semibold leading-[22px] tracking-[-0.07em] text-[#334155]">
+                    {card.value}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push(card.href)}
+                className="mt-[9px] text-[12px] font-semibold leading-[23px] tracking-[-0.07em] text-[#1E88E5] underline"
+              >
+                {card.subtitle}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push(card.href)}
+                className={`mt-[7px] inline-flex h-[28px] w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#1E88E5] ${microInteractionClass}`}
+              >
+                {card.cta}
+              </button>
+            </motion.article>
+          ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <article className="rounded-2xl bg-[#F8FAFC] px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">
+                Appointments
+              </h3>
               <button
                 type="button"
                 onClick={() => router.push("/professional-platform/schedule")}
-                className={`mt-2 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-xs font-normal leading-[21px] tracking-[-0.05em] text-[#1565C0] sm:h-[28px] sm:w-[125px] sm:text-[10px] ${microInteractionClass}`}
+                className="text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]"
               >
-                Manage Schedule
+                See all
               </button>
             </div>
-          </div>
-        </motion.article>
-      </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {dashboardMetricCards.map((card) => (
-          <motion.article
-            key={card.id}
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="rounded-[12px] bg-[#F8FAFC] px-[11px] py-[14px]"
-          >
-            <div className="flex items-start gap-[7px]">
-              <div
-                className={`flex h-[64px] w-[59px] shrink-0 items-center justify-center rounded-[12px] ${
-                  card.icon === "consultations"
-                    ? "bg-[#E3F2FD]"
-                    : card.icon === "requests"
-                      ? "bg-[#E2E8F0]"
-                      : card.icon === "hours"
-                        ? "bg-[#D1EED9]"
-                        : "bg-[#DFDCCB]"
-                }`}
-              >
-                <MetricIcon type={card.icon} />
+            {visibleAppointments.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
+                No appointments match your search.
               </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-normal leading-3 tracking-[-0.05em] text-[#94A3B8]">{card.title}</p>
-                <p className="mt-3 text-[18px] font-semibold leading-[22px] tracking-[-0.07em] text-[#334155]">{card.value}</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => router.push(card.href)}
-              className="mt-[9px] text-[12px] font-semibold leading-[23px] tracking-[-0.07em] text-[#1E88E5] underline"
-            >
-              {card.subtitle}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push(card.href)}
-              className={`mt-[7px] inline-flex h-[28px] w-full cursor-pointer items-center justify-center rounded-[12px] border border-[#1565C0] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#1E88E5] ${microInteractionClass}`}
-            >
-              {card.cta}
-            </button>
-          </motion.article>
-        ))}
-      </div>
-
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <article className="rounded-2xl bg-[#F8FAFC] px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Appointments</h3>
-            <button
-              type="button"
-              onClick={() => router.push("/professional-platform/schedule")}
-              className="text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#1565C0]"
-            >
-              See all
-            </button>
-          </div>
-
-          {visibleAppointments.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
-              No appointments match your search.
-            </div>
-          ) : (
-            <div className="mt-5 flex flex-col-reverse gap-5 lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
-              <div>
-                <div className="mb-3 flex items-center justify-center gap-14">
-                  <button
-                    type="button"
-                    onClick={() => setActiveDayIndex((current) => (current === 0 ? dashboardDayLabels.length - 1 : current - 1))}
-                    className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
-                    aria-label="Previous day"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                      <path fill="currentColor" d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z" />
-                    </svg>
-                  </button>
-                  <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">
-                    {dashboardDayLabels[activeDayIndex]}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveDayIndex((current) => (current + 1) % dashboardDayLabels.length)}
-                    className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
-                    aria-label="Next day"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-                      <path fill="currentColor" d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-[52px_1fr] gap-2">
-                  <div className="flex flex-col gap-2">
-                    {visibleAppointments.map((appointment, index) => (
-                      <div key={`${appointment.id}-time`} className="flex min-h-[60px] flex-col items-center justify-center lg:h-[50px] lg:min-h-0">
-                        <span
-                          className={`text-[14px] font-medium leading-[10px] tracking-[-0.05em] ${
-                            index === 2 ? "text-[#1565C0]" : "text-[#94A3B8]"
-                          }`}
-                        >
-                          {appointment.timeLabel}
-                        </span>
-                        {index < visibleAppointments.length - 1 ? (
-                          <span className="mt-1 h-7 border-l border-dashed border-[#94A3B8]" />
-                        ) : null}
-                      </div>
-                    ))}
+            ) : (
+              <div className="mt-5 flex flex-col-reverse gap-5 lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
+                <div>
+                  <div className="mb-3 flex items-center justify-center gap-14">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveDayIndex((current) =>
+                          current === 0
+                            ? dashboardDayLabels.length - 1
+                            : current - 1,
+                        )
+                      }
+                      className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+                      aria-label="Previous day"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+                        <path
+                          fill="currentColor"
+                          d="m14.6 6.6-1.2-1.2L6.8 12l6.6 6.6 1.2-1.2-5.4-5.4 5.4-5.4Z"
+                        />
+                      </svg>
+                    </button>
+                    <span className="text-[14px] font-normal leading-5 tracking-[-0.05em] text-[#94A3B8]">
+                      {dashboardDayLabels[activeDayIndex]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveDayIndex(
+                          (current) =>
+                            (current + 1) % dashboardDayLabels.length,
+                        )
+                      }
+                      className={`cursor-pointer text-[#334155] ${microInteractionClass}`}
+                      aria-label="Next day"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+                        <path
+                          fill="currentColor"
+                          d="m9.4 6.6 1.2-1.2 6.6 6.6-6.6 6.6-1.2-1.2 5.4-5.4-5.4-5.4Z"
+                        />
+                      </svg>
+                    </button>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    {visibleAppointments.map((appointment) => {
-                      const isActive = appointment.id === activeAppointment?.id;
-
-                      return (
-                        <motion.button
-                          key={appointment.id}
-                          type="button"
-                          onClick={() => setActiveAppointmentId(appointment.id)}
-                          whileHover={{ x: 2 }}
-                          whileTap={{ scale: 0.99 }}
-                          className={`relative min-h-[60px] cursor-pointer rounded-xl border px-2 py-2 text-left lg:h-[50px] lg:min-h-0 lg:py-0 ${
-                            isActive ? "border-[#1E88E5] bg-[#F3F9FF]" : "border-[#E2E8F0] bg-transparent"
-                          }`}
+                  <div className="grid grid-cols-[52px_1fr] gap-2">
+                    <div className="flex flex-col gap-2">
+                      {visibleAppointments.map((appointment, index) => (
+                        <div
+                          key={`${appointment.id}-time`}
+                          className="flex min-h-[60px] flex-col items-center justify-center lg:h-[50px] lg:min-h-0"
                         >
-                          <div className="absolute left-2 right-[78px] top-2 min-w-0 lg:top-1">
-                            <p
-                              className={`truncate text-[14px] font-normal leading-5 tracking-[-0.05em] ${
-                                isActive ? "text-[#334155]" : "text-[#94A3B8]"
-                              }`}
-                            >
-                              {appointment.patient}
-                            </p>
-                            <p
-                              className={`truncate text-[12px] font-light leading-5 tracking-[-0.05em] ${
-                                isActive ? "text-[#334155]" : "text-[#94A3B8]"
-                              }`}
-                            >
-                              {appointment.timeRange}
-                            </p>
-                          </div>
-                          <span className="absolute right-2 top-[13px]">
-                            <StatusBadge status={appointment.status} />
+                          <span
+                            className={`text-[14px] font-medium leading-[10px] tracking-[-0.05em] ${
+                              index === 2 ? "text-[#1565C0]" : "text-[#94A3B8]"
+                            }`}
+                          >
+                            {appointment.timeLabel}
                           </span>
-                        </motion.button>
-                      );
-                    })}
+                          {index < visibleAppointments.length - 1 ? (
+                            <span className="mt-1 h-7 border-l border-dashed border-[#94A3B8]" />
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {visibleAppointments.map((appointment) => {
+                        const isActive =
+                          appointment.id === activeAppointment?.id;
+
+                        return (
+                          <motion.button
+                            key={appointment.id}
+                            type="button"
+                            onClick={() =>
+                              setActiveAppointmentId(appointment.id)
+                            }
+                            whileHover={{ x: 2 }}
+                            whileTap={{ scale: 0.99 }}
+                            className={`relative min-h-[60px] cursor-pointer rounded-xl border px-2 py-2 text-left lg:h-[50px] lg:min-h-0 lg:py-0 ${
+                              isActive
+                                ? "border-[#1E88E5] bg-[#F3F9FF]"
+                                : "border-[#E2E8F0] bg-transparent"
+                            }`}
+                          >
+                            <div className="absolute left-2 right-[78px] top-2 min-w-0 lg:top-1">
+                              <p
+                                className={`truncate text-[14px] font-normal leading-5 tracking-[-0.05em] ${
+                                  isActive ? "text-[#334155]" : "text-[#94A3B8]"
+                                }`}
+                              >
+                                {appointment.patient}
+                              </p>
+                              <p
+                                className={`truncate text-[12px] font-light leading-5 tracking-[-0.05em] ${
+                                  isActive ? "text-[#334155]" : "text-[#94A3B8]"
+                                }`}
+                              >
+                                {appointment.timeRange}
+                              </p>
+                            </div>
+                            <span className="absolute right-2 top-[13px]">
+                              <StatusBadge status={appointment.status} />
+                            </span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
+
+                {activeAppointment ? (
+                  <div className="rounded-xl border border-[#94A3B8] bg-[#F8FAFC] p-4">
+                    <div className="relative flex h-[121px] items-center justify-center overflow-hidden rounded-lg bg-[#E3F2FD]">
+                      <span className="text-4xl font-semibold text-[#1565C0]">
+                        {getInitials(activeAppointment.patient)}
+                      </span>
+                      <span className="absolute right-2 top-2 inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[7.5px] font-medium leading-4 tracking-[-0.05em] text-[#1E88E5]">
+                        {activeAppointment.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-[14px] font-medium leading-[16px] tracking-[-0.05em] text-[#334155]">
+                      <p>
+                        Time:{" "}
+                        <span className="font-normal">
+                          {activeAppointment.timeRange.split("-")[0].trim()}
+                        </span>
+                      </p>
+                      <p>
+                        Patient:{" "}
+                        <span className="font-normal">
+                          {activeAppointment.patient}
+                        </span>
+                      </p>
+                      <p>
+                        Consultation type:{" "}
+                        <span className="font-normal">
+                          {activeAppointment.consultationType}
+                        </span>
+                      </p>
+                      <p>
+                        Reason for visit:{" "}
+                        <span className="font-normal">
+                          {activeAppointment.reason}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push("/professional-platform/schedule")
+                        }
+                        className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[9px] border border-[#334155] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#334155] sm:h-[26px] ${microInteractionClass}`}
+                      >
+                        View Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toast.success("Opening schedule for consultation.");
+                          router.push("/professional-platform/schedule");
+                        }}
+                        className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[27px] ${microInteractionClass}`}
+                      >
+                        Join Now
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
+            )}
+          </article>
 
-              {activeAppointment ? (
-                <div className="rounded-xl border border-[#94A3B8] bg-[#F8FAFC] p-4">
-                  <div className="relative flex h-[121px] items-center justify-center overflow-hidden rounded-lg bg-[#E3F2FD]">
-                    <span className="text-4xl font-semibold text-[#1565C0]">{getInitials(activeAppointment.patient)}</span>
-                    <span className="absolute right-2 top-2 inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[7.5px] font-medium leading-4 tracking-[-0.05em] text-[#1E88E5]">
-                      {activeAppointment.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 space-y-2 text-[14px] font-medium leading-[16px] tracking-[-0.05em] text-[#334155]">
-                    <p>
-                      Time: <span className="font-normal">{activeAppointment.timeRange.split("-")[0].trim()}</span>
-                    </p>
-                    <p>
-                      Patient: <span className="font-normal">{activeAppointment.patient}</span>
-                    </p>
-                    <p>
-                      Consultation type: <span className="font-normal">{activeAppointment.consultationType}</span>
-                    </p>
-                    <p>
-                      Reason for visit: <span className="font-normal">{activeAppointment.reason}</span>
-                    </p>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <button
-                      type="button"
-                      onClick={() => router.push("/professional-platform/schedule")}
-                      className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[9px] border border-[#334155] text-[14px] font-normal leading-[21px] tracking-[-0.05em] text-[#334155] sm:h-[26px] ${microInteractionClass}`}
-                    >
-                      View Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toast.success("Opening schedule for consultation.");
-                        router.push("/professional-platform/schedule");
-                      }}
-                      className={`inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#E3F2FD] sm:h-[27px] ${microInteractionClass}`}
-                    >
-                      Join Now
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+          <article className="rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-5 sm:px-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">
+                Incoming Request
+              </h3>
+              <button
+                type="button"
+                onClick={() => router.push("/professional-platform/requests")}
+                className="inline-flex h-[26px] items-center rounded-md bg-[#E3F2FD] px-[10px] text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#1565C0]"
+              >
+                See all
+              </button>
             </div>
-          )}
-        </article>
 
-        <article className="rounded-2xl bg-[#F8FAFC] px-4 pb-5 pt-5 sm:px-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">
-              Incoming Request
-            </h3>
-            <button
-              type="button"
-              onClick={() => router.push("/professional-platform/requests")}
-              className="inline-flex h-[26px] items-center rounded-md bg-[#E3F2FD] px-[10px] text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#1565C0]"
-            >
-              See all
-            </button>
-          </div>
+            {visibleRequests.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
+                No request matches your search.
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {visibleRequests.map((request) => (
+                  <motion.article
+                    key={request.id}
+                    whileHover={{ y: -1 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="rounded-xl border border-[#1E88E5] bg-[#F8FAFC] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                        New Consultation request
+                      </span>
+                      <span className="text-[10px] font-normal leading-[15px] tracking-[-0.05em] text-[#94A3B8]">
+                        {request.date}
+                      </span>
+                    </div>
 
-          {visibleRequests.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
-              No request matches your search.
-            </div>
-          ) : (
-            <div className="mt-5 space-y-3">
-              {visibleRequests.map((request) => (
-                <motion.article
-                  key={request.id}
-                  whileHover={{ y: -1 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="rounded-xl border border-[#1E88E5] bg-[#F8FAFC] p-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex h-[17px] items-center rounded-[15px] bg-[#E3F2FD] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      New Consultation request
-                    </span>
-                    <span className="text-[10px] font-normal leading-[15px] tracking-[-0.05em] text-[#94A3B8]">
-                      {request.date}
-                    </span>
-                  </div>
+                    <div className="mt-3">
+                      <p className="text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">
+                        From: {request.from}
+                      </p>
+                      <p className="mt-[3px] text-[13px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">
+                        {request.requestedTime}
+                      </p>
+                    </div>
 
-                  <div className="mt-3">
-                    <p className="text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">
-                      From: {request.from}
-                    </p>
-                    <p className="mt-[3px] text-[13px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">
-                      {request.requestedTime}
-                    </p>
-                  </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-[5px]">
+                      <span className="inline-flex h-[17px] items-center rounded-[15px] border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                        {request.consultationType}
+                      </span>
+                      <span className="inline-flex h-[17px] items-center rounded-[15px] border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                        {request.duration}
+                      </span>
+                      <span className="text-[10px] font-semibold leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
+                        {request.deadline}
+                      </span>
+                    </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-[5px]">
-                    <span className="inline-flex h-[17px] items-center rounded-[15px] border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      {request.consultationType}
-                    </span>
-                    <span className="inline-flex h-[17px] items-center rounded-[15px] border border-[#1565C0] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      {request.duration}
-                    </span>
-                    <span className="text-[10px] font-semibold leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      {request.deadline}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleDashboardRequestAction(request.id, "decline")}
-                      className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#AD2525] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
-                    >
-                      Decline request
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDashboardRequestAction(request.id, "accept")}
-                      className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#1565C0] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
-                    >
-                      Accept request
-                    </button>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          )}
-        </article>
-      </div>
+                    <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDashboardRequestAction(request.id, "decline")
+                        }
+                        className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#AD2525] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
+                      >
+                        Decline request
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDashboardRequestAction(request.id, "accept")
+                        }
+                        className={`inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[12px] bg-[#1565C0] px-3 text-xs font-normal leading-[14px] tracking-[-0.05em] text-[#F8FAFC] sm:h-[26px] sm:text-[9.5px] ${microInteractionClass}`}
+                      >
+                        Accept request
+                      </button>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
       </div>
     </section>
   );
 }
-

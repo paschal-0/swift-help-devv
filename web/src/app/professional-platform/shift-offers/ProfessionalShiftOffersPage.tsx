@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,43 +16,121 @@ import {
 } from "@/services/professionalApi";
 import { InPersonConsultationMap } from "@/components/InPersonConsultationMap";
 
-const dateFilterLabels: Record<DateFilter, string> = {
-  all: "Date",
-  "this-week": "This week",
-  "next-week": "Next week",
+type ShiftFilterMode =
+  | "all"
+  | "today"
+  | "this-week"
+  | "next-week"
+  | "high-pay"
+  | "route-ready"
+  | "has-notes";
+type ShiftSortMode =
+  | "newest"
+  | "start-soon"
+  | "pay-high"
+  | "pay-low"
+  | "organization";
+
+const shiftFilterOptions: Array<{ value: ShiftFilterMode; label: string }> = [
+  { value: "all", label: "Filter: All" },
+  { value: "today", label: "Date: Today" },
+  { value: "this-week", label: "Date: This week" },
+  { value: "next-week", label: "Date: Next week" },
+  { value: "high-pay", label: "Pay: Higher rate" },
+  { value: "route-ready", label: "Location: Route ready" },
+  { value: "has-notes", label: "Has notes" },
+];
+
+const shiftSortOptions: Array<{ value: ShiftSortMode; label: string }> = [
+  { value: "newest", label: "Sort: Newest" },
+  { value: "start-soon", label: "Sort: Starting soon" },
+  { value: "pay-high", label: "Sort: Pay high to low" },
+  { value: "pay-low", label: "Sort: Pay low to high" },
+  { value: "organization", label: "Sort: Organization" },
+];
+
+const isSameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const addDays = (date: Date, days: number) => {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 };
 
-const payFilterLabels: Record<PayFilter, string> = {
-  all: "Pay",
-  "under-100": "Under $100",
-  "100-plus": "$100+",
+const matchesShiftFilter = (offer: ShiftOffer, filterMode: ShiftFilterMode) => {
+  const startsAt = new Date(offer.startsAt);
+  const today = new Date();
+  const sevenDaysFromNow = addDays(today, 7);
+
+  if (filterMode === "all") return true;
+  if (filterMode === "today") return isSameDay(startsAt, today);
+  if (filterMode === "this-week") {
+    return startsAt >= today && startsAt < sevenDaysFromNow;
+  }
+  if (filterMode === "next-week") {
+    return startsAt >= sevenDaysFromNow;
+  }
+  if (filterMode === "high-pay") return offer.payTier === "100-plus";
+  if (filterMode === "route-ready") {
+    return Boolean(offer.latitude && offer.longitude);
+  }
+  if (filterMode === "has-notes") {
+    return (
+      offer.notes.trim().length > 0 &&
+      offer.notes !== "No extra notes provided."
+    );
+  }
+
+  return true;
 };
 
 const mapBackendShiftOffer = (offer: BackendShiftOffer): ShiftOffer => {
   const startsAt = new Date(offer.startsAt);
   const endsAt = new Date(offer.endsAt);
+  const payCents = offer.payRateCents ?? offer.payAmountCents;
   const dateBucket: Exclude<DateFilter, "all"> =
-    startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000 ? "next-week" : "this-week";
+    startsAt.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000
+      ? "next-week"
+      : "this-week";
 
   return {
     id: offer.id,
     shiftCode: offer.shiftCode,
     organization: offer.organizationName,
     role: offer.role,
-    date: new Intl.DateTimeFormat("en-US", { weekday: "short", month: "long", day: "numeric" }).format(startsAt),
+    startsAt: offer.startsAt,
+    endsAt: offer.endsAt,
+    date: new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      month: "long",
+      day: "numeric",
+    }).format(startsAt),
     time: `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(startsAt)} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(endsAt)}`,
     location: offer.location,
-    pay: `${formatApiMoney(offer.payRateCents ?? offer.payAmountCents, offer.currency)}/hr`,
-    postedAt: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(offer.createdAt)),
+    pay: `${formatApiMoney(payCents, offer.currency)}/hr`,
+    payCents,
+    durationHours:
+      offer.durationHours ??
+      Math.max(1, (endsAt.getTime() - startsAt.getTime()) / 3600000),
+    currency: offer.currency,
+    createdAt: offer.createdAt,
+    postedAt: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(offer.createdAt)),
     facilityName: offer.facilityName,
     address: offer.address,
     latitude: offer.latitude,
     longitude: offer.longitude,
     placeId: offer.placeId,
     notes: offer.notes ?? "No extra notes provided.",
-    etaLabel: offer.latitude && offer.longitude ? "Directions ready" : "Address route",
+    etaLabel:
+      offer.latitude && offer.longitude ? "Directions ready" : "Address route",
     dateBucket,
-    payTier: (offer.payRateCents ?? offer.payAmountCents) / 100 >= 100 ? "100-plus" : "under-100",
+    payTier: payCents / 100 >= 100 ? "100-plus" : "under-100",
   };
 };
 
@@ -80,32 +158,35 @@ const shiftStatusLabels: Record<BackendProfessionalShift["status"], string> = {
   cancelled: "Cancelled",
 };
 
-function FilterButton({
+function FilterSelect({
   label,
-  active,
-  onClick,
+  value,
+  onChange,
+  children,
 }: {
   label: string;
-  active: boolean;
-  onClick: () => void;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-[8px] border px-4 text-[14px] font-normal leading-[19px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 sm:h-8 sm:text-[15px] ${
-        active
-          ? "border-[#94A3B8] bg-[#E3F2FD] text-[#334155]"
-          : "border-[#94A3B8] bg-transparent text-[#334155] hover:bg-[#edf3fb]"
-      }`}
-    >
-      <span>{label}</span>
-      {label !== "All" ? (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-          <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
-        </svg>
-      ) : null}
-    </button>
+    <label className="relative inline-flex h-9 shrink-0 items-center rounded-[8px] border border-[#94A3B8] bg-transparent pl-3 pr-8 text-[#334155] transition duration-200 hover:-translate-y-0.5 hover:bg-[#edf3fb] sm:h-8">
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-full appearance-none bg-transparent text-[14px] font-normal leading-[19px] tracking-[-0.05em] outline-none sm:text-[15px]"
+      >
+        {children}
+      </select>
+      <svg
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute right-2 h-5 w-5 text-[#334155]"
+        aria-hidden
+      >
+        <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
+      </svg>
+    </label>
   );
 }
 
@@ -122,7 +203,12 @@ function ShiftOfferDetailsModal({
 }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-[rgba(51,65,85,0.6)] p-2 sm:justify-end sm:p-6 xl:p-8">
-      <button type="button" aria-label="Close shift details" className="absolute inset-0 cursor-default" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close shift details"
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+      />
 
       <motion.aside
         initial={{ opacity: 0, x: 48, y: 16 }}
@@ -160,27 +246,47 @@ function ShiftOfferDetailsModal({
           <div className="grid gap-4 sm:grid-cols-[1fr_136px]">
             <div className="space-y-1">
               <div className="flex gap-3">
-                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Role:</span>
-                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.role}</span>
+                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                  Role:
+                </span>
+                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                  {offer.role}
+                </span>
               </div>
               <div className="flex gap-3">
-                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Date:</span>
-                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.date}</span>
+                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                  Date:
+                </span>
+                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                  {offer.date}
+                </span>
               </div>
               <div className="flex gap-3">
-                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Time:</span>
-                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.time}</span>
+                <span className="min-w-[54px] text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                  Time:
+                </span>
+                <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                  {offer.time}
+                </span>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Location</p>
-                <p className="mt-1 text-[14px] font-medium leading-[21px] tracking-[-0.07em] text-[#334155]">{offer.location}</p>
+                <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                  Location
+                </p>
+                <p className="mt-1 text-[14px] font-medium leading-[21px] tracking-[-0.07em] text-[#334155]">
+                  {offer.location}
+                </p>
               </div>
               <div>
-                <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Pay</p>
-                <p className="mt-1 text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">{offer.pay}</p>
+                <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                  Pay
+                </p>
+                <p className="mt-1 text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
+                  {offer.pay}
+                </p>
               </div>
             </div>
           </div>
@@ -205,9 +311,13 @@ function ShiftOfferDetailsModal({
               </span>
             </div>
             <div>
-              <p className="text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">Notes</p>
+              <p className="text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">
+                Notes
+              </p>
               <div className="mt-1 rounded-[12px] bg-[#E2E8F0] px-4 py-4">
-                <p className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{offer.notes}</p>
+                <p className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+                  {offer.notes}
+                </p>
               </div>
             </div>
           </div>
@@ -252,8 +362,9 @@ function ShiftOfferDetailsModal({
 export function ProfessionalShiftOffersPage() {
   const { searchText } = useProfessionalPlatformShell();
   const router = useRouter();
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-  const [payFilter, setPayFilter] = useState<PayFilter>("all");
+  const [filterMode, setFilterMode] = useState<ShiftFilterMode>("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [sortMode, setSortMode] = useState<ShiftSortMode>("newest");
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [offers, setOffers] = useState<ShiftOffer[]>([]);
   const [acceptedShifts, setAcceptedShifts] = useState<AcceptedShiftCard[]>([]);
@@ -270,7 +381,9 @@ export function ProfessionalShiftOffersPage() {
           setOffers(data.offers.map(mapBackendShiftOffer));
           setAcceptedShifts(
             (data.acceptedAssignments ?? [])
-              .filter((assignment) => activeShiftStatuses.includes(assignment.shift.status))
+              .filter((assignment) =>
+                activeShiftStatuses.includes(assignment.shift.status),
+              )
               .map((assignment) => ({
                 ...mapBackendShiftOffer(assignment.offer),
                 shiftId: assignment.shift.id,
@@ -280,7 +393,11 @@ export function ProfessionalShiftOffersPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load shift offers");
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to load shift offers",
+          );
         }
       }
     }
@@ -292,13 +409,18 @@ export function ProfessionalShiftOffersPage() {
     };
   }, []);
 
+  const roleOptions = useMemo(
+    () => Array.from(new Set(offers.map((offer) => offer.role))).sort(),
+    [offers],
+  );
+
   const visibleOffers = useMemo(() => {
-    return offers.filter((offer) => {
-      if (dateFilter !== "all" && offer.dateBucket !== dateFilter) {
+    const nextOffers = offers.filter((offer) => {
+      if (!matchesShiftFilter(offer, filterMode)) {
         return false;
       }
 
-      if (payFilter !== "all" && offer.payTier !== payFilter) {
+      if (roleFilter !== "all" && offer.role !== roleFilter) {
         return false;
       }
 
@@ -306,29 +428,51 @@ export function ProfessionalShiftOffersPage() {
         return true;
       }
 
-      return [offer.organization, offer.role, offer.date, offer.time, offer.location, offer.pay]
+      return [
+        offer.organization,
+        offer.role,
+        offer.facilityName,
+        offer.address,
+        offer.date,
+        offer.time,
+        offer.location,
+        offer.pay,
+        offer.notes,
+        offer.shiftCode,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(query);
     });
-  }, [dateFilter, offers, payFilter, query]);
+
+    nextOffers.sort((left, right) => {
+      if (sortMode === "start-soon") {
+        return (
+          new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
+        );
+      }
+      if (sortMode === "pay-high") {
+        return right.payCents - left.payCents;
+      }
+      if (sortMode === "pay-low") {
+        return left.payCents - right.payCents;
+      }
+      if (sortMode === "organization") {
+        return left.organization.localeCompare(right.organization);
+      }
+
+      return (
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
+    });
+
+    return nextOffers;
+  }, [filterMode, offers, query, roleFilter, sortMode]);
 
   const selectedOffer = useMemo(
     () => offers.find((offer) => offer.id === selectedOfferId) ?? null,
-    [offers, selectedOfferId]
+    [offers, selectedOfferId],
   );
-
-  const cycleDateFilter = () => {
-    setDateFilter((current) =>
-      current === "all" ? "this-week" : current === "this-week" ? "next-week" : "all"
-    );
-  };
-
-  const cyclePayFilter = () => {
-    setPayFilter((current) =>
-      current === "all" ? "under-100" : current === "under-100" ? "100-plus" : "all"
-    );
-  };
 
   return (
     <section className="mt-4 pb-8 sm:mt-6 sm:pb-10">
@@ -338,20 +482,58 @@ export function ProfessionalShiftOffersPage() {
         </h1>
 
         <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0] sm:mx-0 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 sm:[scrollbar-color:auto_auto] sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-transparent">
-          <FilterButton label="All" active={dateFilter === "all" && payFilter === "all"} onClick={() => {
-            setDateFilter("all");
-            setPayFilter("all");
-          }} />
-          <FilterButton
-            label={dateFilterLabels[dateFilter]}
-            active={dateFilter !== "all"}
-            onClick={cycleDateFilter}
-          />
-          <FilterButton
-            label={payFilterLabels[payFilter]}
-            active={payFilter !== "all"}
-            onClick={cyclePayFilter}
-          />
+          <button
+            type="button"
+            onClick={() => {
+              setFilterMode("all");
+              setRoleFilter("all");
+              setSortMode("newest");
+            }}
+            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border px-4 text-[14px] font-normal leading-[19px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 sm:h-8 sm:text-[15px] ${
+              filterMode === "all" && roleFilter === "all"
+                ? "border-[#94A3B8] bg-[#E3F2FD] text-[#334155]"
+                : "border-[#94A3B8] bg-transparent text-[#334155] hover:bg-[#edf3fb]"
+            }`}
+          >
+            All
+          </button>
+
+          <FilterSelect
+            label="Filter shift offers"
+            value={filterMode}
+            onChange={(value) => setFilterMode(value as ShiftFilterMode)}
+          >
+            {shiftFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            label="Filter by role"
+            value={roleFilter}
+            onChange={setRoleFilter}
+          >
+            <option value="all">Role: All</option>
+            {roleOptions.map((role) => (
+              <option key={role} value={role}>
+                Role: {role}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            label="Sort shift offers"
+            value={sortMode}
+            onChange={(value) => setSortMode(value as ShiftSortMode)}
+          >
+            {shiftSortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </FilterSelect>
         </div>
       </div>
 
@@ -363,7 +545,8 @@ export function ProfessionalShiftOffersPage() {
                 Your accepted shifts
               </h2>
               <p className="text-[13px] leading-5 tracking-[-0.04em] text-[#94A3B8]">
-                Open the shift workspace when you are ready to travel, check in, message the organization, or complete the shift.
+                Open the shift workspace when you are ready to travel, check in,
+                message the organization, or complete the shift.
               </p>
             </div>
           </div>
@@ -397,7 +580,11 @@ export function ProfessionalShiftOffersPage() {
 
                   <button
                     type="button"
-                    onClick={() => router.push(`/professional-platform/shift-offers/${shift.id}`)}
+                    onClick={() =>
+                      router.push(
+                        `/professional-platform/shift-offers/${shift.id}`,
+                      )
+                    }
                     className="inline-flex h-10 shrink-0 items-center justify-center rounded-[12px] bg-[#1565C0] px-4 text-[13px] font-medium tracking-[-0.04em] text-[#F8FAFC] transition hover:-translate-y-0.5 hover:brightness-105"
                   >
                     Open shift
@@ -458,14 +645,20 @@ export function ProfessionalShiftOffersPage() {
 
               <div className="mt-[18px] grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 <div className="space-y-1">
-                  <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Location</p>
+                  <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                    Location
+                  </p>
                   <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
                     {offer.location}
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">Pay</p>
-                  <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">{offer.pay}</p>
+                  <p className="text-[14px] font-normal leading-[17px] tracking-[-0.07em] text-[#94A3B8]">
+                    Pay
+                  </p>
+                  <p className="text-[14px] font-medium leading-[17px] tracking-[-0.07em] text-[#334155]">
+                    {offer.pay}
+                  </p>
                 </div>
               </div>
 
@@ -487,7 +680,8 @@ export function ProfessionalShiftOffersPage() {
             No shift offers match the current filters.
           </p>
           <p className="mt-2 text-[15px] font-normal leading-6 tracking-[-0.04em] text-[#94A3B8]">
-            Clear the filters or change the search term to see more opportunities.
+            Clear the filters or change the search term to see more
+            opportunities.
           </p>
         </div>
       ) : null}
@@ -500,21 +694,35 @@ export function ProfessionalShiftOffersPage() {
             try {
               await acceptProfessionalShiftOffer(selectedOffer.id);
               toast.success(`Accepted ${selectedOffer.organization} shift.`);
-              setOffers((current) => current.filter((offer) => offer.id !== selectedOffer.id));
+              setOffers((current) =>
+                current.filter((offer) => offer.id !== selectedOffer.id),
+              );
               setSelectedOfferId(null);
-              router.push(`/professional-platform/shift-offers/${selectedOffer.id}`);
+              router.push(
+                `/professional-platform/shift-offers/${selectedOffer.id}`,
+              );
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Unable to accept shift");
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to accept shift",
+              );
             }
           }}
           onDecline={async () => {
             try {
               await declineProfessionalShiftOffer(selectedOffer.id);
               toast.error(`Declined ${selectedOffer.organization} shift.`);
-              setOffers((current) => current.filter((offer) => offer.id !== selectedOffer.id));
+              setOffers((current) =>
+                current.filter((offer) => offer.id !== selectedOffer.id),
+              );
               setSelectedOfferId(null);
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Unable to decline shift");
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to decline shift",
+              );
             }
           }}
         />

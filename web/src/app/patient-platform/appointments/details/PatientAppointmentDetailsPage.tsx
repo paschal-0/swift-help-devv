@@ -60,7 +60,9 @@ function DetailGrid({
   className?: string;
 }) {
   return (
-    <div className={`rounded-[16px] bg-[#E3F2FD] p-4 sm:p-5 ${className ?? ""}`}>
+    <div
+      className={`rounded-[16px] bg-[#E3F2FD] p-4 sm:p-5 ${className ?? ""}`}
+    >
       <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
         {items.map((item) => (
           <p
@@ -84,12 +86,18 @@ function parseDateOnly(value: string) {
 
 function textList(value: unknown) {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    ? value.filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
     : [];
 }
 
 function buildAiPatientNote(draft: Record<string, string>) {
-  if (!draft.aiContext) return draft.primarySymptom ? `Primary symptom: ${draft.primarySymptom}` : undefined;
+  if (!draft.aiContext)
+    return draft.primarySymptom
+      ? `Primary symptom: ${draft.primarySymptom}`
+      : undefined;
 
   try {
     const context = JSON.parse(draft.aiContext) as Record<string, unknown>;
@@ -105,20 +113,30 @@ function buildAiPatientNote(draft: Record<string, string>) {
       typeof context.headline === "string" ? context.headline : "",
       typeof context.description === "string" ? context.description : "",
       context.urgencyLevel ? `Urgency: ${String(context.urgencyLevel)}` : "",
-      symptomSummary.primarySymptom ? `Primary symptom: ${String(symptomSummary.primarySymptom)}` : "",
-      symptomSummary.duration ? `Duration: ${String(symptomSummary.duration)}` : "",
-      symptomSummary.severity ? `Severity: ${String(symptomSummary.severity)}` : "",
+      symptomSummary.primarySymptom
+        ? `Primary symptom: ${String(symptomSummary.primarySymptom)}`
+        : "",
+      symptomSummary.duration
+        ? `Duration: ${String(symptomSummary.duration)}`
+        : "",
+      symptomSummary.severity
+        ? `Severity: ${String(symptomSummary.severity)}`
+        : "",
       symptomSummary.associatedSymptoms
         ? `Associated symptoms: ${String(symptomSummary.associatedSymptoms)}`
         : "",
-      recommendedActions.length ? `Recommended actions: ${recommendedActions.join("; ")}` : "",
+      recommendedActions.length
+        ? `Recommended actions: ${recommendedActions.join("; ")}`
+        : "",
       redFlags.length ? `Red flags: ${redFlags.join("; ")}` : "",
       typeof context.disclaimer === "string" ? context.disclaimer : "",
     ]
       .filter(Boolean)
       .join("\n");
   } catch {
-    return draft.primarySymptom ? `Primary symptom: ${draft.primarySymptom}` : undefined;
+    return draft.primarySymptom
+      ? `Primary symptom: ${draft.primarySymptom}`
+      : undefined;
   }
 }
 
@@ -154,7 +172,8 @@ export function PatientAppointmentDetailsPage() {
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
   const [emailReminder, setEmailReminder] = useState(true);
   const [smsReminder, setSmsReminder] = useState(true);
-  const [shareSummaryWithProvider, setShareSummaryWithProvider] = useState(false);
+  const [shareSummaryWithProvider, setShareSummaryWithProvider] =
+    useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -163,7 +182,8 @@ export function PatientAppointmentDetailsPage() {
       getPatientAppointment(appointmentId)
         .then((appointment) => {
           setDraft({
-            professionalName: appointment.professional?.fullName ?? "Assigned professional",
+            professionalName:
+              appointment.professional?.fullName ?? "Assigned professional",
             careType: appointment.reason,
             reason: appointment.reason,
             scheduledDate: appointment.scheduledDate,
@@ -177,7 +197,9 @@ export function PatientAppointmentDetailsPage() {
           });
           setEmailReminder(appointment.emailReminderEnabled ?? true);
           setSmsReminder(appointment.smsReminderEnabled ?? false);
-          setShareSummaryWithProvider(appointment.shareSummaryWithProvider ?? false);
+          setShareSummaryWithProvider(
+            appointment.shareSummaryWithProvider ?? false,
+          );
         })
         .catch((error) => toast.error(getApiErrorMessage(error)));
       return;
@@ -190,7 +212,9 @@ export function PatientAppointmentDetailsPage() {
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
     if (!draft) return appointmentItems;
 
-    const date = draft.scheduledDate ? parseDateOnly(draft.scheduledDate) : null;
+    const date = draft.scheduledDate
+      ? parseDateOnly(draft.scheduledDate)
+      : null;
     const formattedDate =
       formatLocalDate(draft.startsAt) ??
       (date && !Number.isNaN(date.getTime())
@@ -202,8 +226,10 @@ export function PatientAppointmentDetailsPage() {
         : "-");
 
     const durationLabel =
-      draft.durationLabel ?? formatDurationFromTimes(draft.startTime, draft.endTime);
-    const localStartTime = formatLocalTime(draft.startsAt) ?? draft.startTime ?? "-";
+      draft.durationLabel ??
+      formatDurationFromTimes(draft.startTime, draft.endTime);
+    const localStartTime =
+      formatLocalTime(draft.startsAt) ?? draft.startTime ?? "-";
     const localEndTime = formatLocalTime(draft.endsAt) ?? draft.endTime ?? "-";
 
     const items = [
@@ -211,13 +237,32 @@ export function PatientAppointmentDetailsPage() {
       { label: "Date:", value: formattedDate },
       {
         label: "Appointment mode",
-        value: draft.meetingMode === "in-person" ? "In Person" : "Video Consultation",
+        value:
+          draft.meetingMode === "in-person"
+            ? "In Person"
+            : "Video Consultation",
       },
       { label: "Time:", value: `${localStartTime} - ${localEndTime}` },
       { label: "Duration:", value: durationLabel },
     ];
 
-    if (draft.providerStartTime && draft.providerEndTime && draft.providerTimezone) {
+    if (draft.selectedRateLabel || draft.estimatedFeeLabel) {
+      items.push({
+        label: "Estimated fee:",
+        value: [
+          draft.estimatedFeeLabel,
+          draft.selectedRateLabel ? `${draft.selectedRateLabel}` : "",
+        ]
+          .filter(Boolean)
+          .join(" at "),
+      });
+    }
+
+    if (
+      draft.providerStartTime &&
+      draft.providerEndTime &&
+      draft.providerTimezone
+    ) {
       items.push({
         label: "Provider time:",
         value: `${draft.providerStartTime} - ${draft.providerEndTime} (${timezoneLabel(draft.providerTimezone)})`,
@@ -227,9 +272,16 @@ export function PatientAppointmentDetailsPage() {
     if (draft.meetingMode === "in-person") {
       items.push({
         label: "Visit location:",
-        value: [draft.locationName, draft.address, draft.city, draft.state, draft.country]
-          .filter(Boolean)
-          .join(", ") || "-",
+        value:
+          [
+            draft.locationName,
+            draft.address,
+            draft.city,
+            draft.state,
+            draft.country,
+          ]
+            .filter(Boolean)
+            .join(", ") || "-",
       });
     }
 
@@ -242,8 +294,15 @@ export function PatientAppointmentDetailsPage() {
       return;
     }
 
-    if (!draft?.professionalId || !draft.scheduledDate || !draft.startTime || !draft.endTime) {
-      toast.error("Appointment draft is incomplete. Please review the schedule.");
+    if (
+      !draft?.professionalId ||
+      !draft.scheduledDate ||
+      !draft.startTime ||
+      !draft.endTime
+    ) {
+      toast.error(
+        "Appointment draft is incomplete. Please review the schedule.",
+      );
       return;
     }
 
@@ -251,16 +310,24 @@ export function PatientAppointmentDetailsPage() {
     try {
       const request = await createPatientConsultationRequest({
         professionalUserId: draft.professionalId,
-        consultationLabel: draft.careType || draft.reason || "General Consultation",
+        consultationLabel:
+          draft.careType || draft.reason || "General Consultation",
         urgency:
           draft.urgencyLevel === "urgent" || draft.urgencyLevel === "emergency"
             ? "urgent"
             : "standard",
         reason: draft.reason || draft.careType || "General Consultation",
-        requestedStartAt: draft.requestedStartAt ?? `${draft.scheduledDate}T${draft.startTime}:00`,
-        requestedEndAt: draft.requestedEndAt ?? `${draft.scheduledDate}T${draft.endTime}:00`,
-        mode: draft.meetingMode === "in-person" ? "In Person" : "Video consultation",
-        locationName: draft.meetingMode === "in-person" ? draft.locationName : undefined,
+        requestedStartAt:
+          draft.requestedStartAt ??
+          `${draft.scheduledDate}T${draft.startTime}:00`,
+        requestedEndAt:
+          draft.requestedEndAt ?? `${draft.scheduledDate}T${draft.endTime}:00`,
+        mode:
+          draft.meetingMode === "in-person"
+            ? "In Person"
+            : "Video consultation",
+        locationName:
+          draft.meetingMode === "in-person" ? draft.locationName : undefined,
         address: draft.meetingMode === "in-person" ? draft.address : undefined,
         city: draft.meetingMode === "in-person" ? draft.city : undefined,
         state: draft.meetingMode === "in-person" ? draft.state : undefined,
@@ -273,7 +340,9 @@ export function PatientAppointmentDetailsPage() {
           draft.meetingMode === "in-person" && draft.longitude
             ? Number(draft.longitude)
             : undefined,
-        durationMinutes: draft.durationMinutes ? Number(draft.durationMinutes) : undefined,
+        durationMinutes: draft.durationMinutes
+          ? Number(draft.durationMinutes)
+          : undefined,
         patientNote: buildAiPatientNote(draft),
         emailReminderEnabled: emailReminder,
         smsReminderEnabled: smsReminder,
@@ -345,13 +414,18 @@ export function PatientAppointmentDetailsPage() {
                 <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
                   <span className="relative h-[74px] w-[74px] shrink-0 overflow-hidden rounded-full sm:h-20 sm:w-20">
                     <span className="flex h-full w-full items-center justify-center bg-[#E3F2FD] text-[24px] font-medium text-[#1565C0]">
-                      {(draft?.professionalName ?? "P").trim().charAt(0).toUpperCase()}
+                      {(draft?.professionalName ?? "P")
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()}
                     </span>
                   </span>
                   <p className="text-[18px] font-normal leading-[21px] tracking-[-0.05em] text-[#94A3B8]">
                     Name
                     <br />
-                    <span className="text-[#334155]">{draft?.professionalName ?? "Selected provider"}</span>
+                    <span className="text-[#334155]">
+                      {draft?.professionalName ?? "Selected provider"}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -370,13 +444,17 @@ export function PatientAppointmentDetailsPage() {
               Shared Symptom Summary
             </h2>
             <p className="mt-2 text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-[#334155] sm:text-left">
-              This summary can be shared with your provider to support a more informed consultation.
+              This summary can be shared with your provider to support a more
+              informed consultation.
             </p>
 
             <DetailGrid items={dynamicAppointmentItems} className="mt-4" />
 
             <div className="mt-4 flex items-center justify-center gap-3 px-1 text-center sm:justify-start sm:px-2 sm:text-left">
-              <ToggleSwitch checked={shareSummaryWithProvider} onChange={setShareSummaryWithProvider} />
+              <ToggleSwitch
+                checked={shareSummaryWithProvider}
+                onChange={setShareSummaryWithProvider}
+              />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
                 Share my symptom summary with this professional
               </span>
@@ -392,7 +470,10 @@ export function PatientAppointmentDetailsPage() {
         >
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-center gap-3 text-center sm:text-left lg:justify-start">
-              <ToggleSwitch checked={emailReminder} onChange={setEmailReminder} />
+              <ToggleSwitch
+                checked={emailReminder}
+                onChange={setEmailReminder}
+              />
               <span className="text-[16px] font-light leading-5 tracking-[-0.05em] text-[#334155]">
                 Send appointment reminder by email
               </span>
@@ -417,18 +498,24 @@ export function PatientAppointmentDetailsPage() {
             type="button"
             onClick={() => setConsentChecked((current) => !current)}
             className={`mt-[1px] inline-flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-[8px] border ${
-              consentChecked ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#334155] bg-transparent"
+              consentChecked
+                ? "border-[#1565C0] bg-[#E3F2FD]"
+                : "border-[#334155] bg-transparent"
             }`}
             aria-label="Confirm appointment consent"
           >
             {consentChecked ? (
               <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
-                <path fill="#1565C0" d="m6.7 11.2-3-3L2.6 9.4l4.1 4 7-7-1.1-1.2-5.9 6Z" />
+                <path
+                  fill="#1565C0"
+                  d="m6.7 11.2-3-3L2.6 9.4l4.1 4 7-7-1.1-1.2-5.9 6Z"
+                />
               </svg>
             ) : null}
           </button>
           <p className="max-w-[716px] text-[16px] font-normal leading-[18px] tracking-[-0.05em] text-[#334155]">
-            I understand this booking request is for a scheduled consultation and does not replace emergency medical care.
+            I understand this booking request is for a scheduled consultation
+            and does not replace emergency medical care.
           </p>
         </motion.div>
 
