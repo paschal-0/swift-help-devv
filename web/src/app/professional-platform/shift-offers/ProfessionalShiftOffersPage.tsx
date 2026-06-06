@@ -551,7 +551,7 @@ export function ProfessionalShiftOffersPage() {
           Shift offers
         </h1>
 
-        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-color:#1565C0_#DCEAF8] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0] sm:mx-0 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 sm:[scrollbar-color:auto_auto] sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-transparent">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 lg:max-w-[760px]">
           <button
             type="button"
             onClick={() => {
@@ -559,10 +559,10 @@ export function ProfessionalShiftOffersPage() {
               setRoleFilter("all");
               setSortMode("newest");
             }}
-            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border px-4 text-[14px] font-normal leading-[19px] tracking-[-0.05em] transition duration-200 hover:-translate-y-0.5 sm:h-8 sm:text-[15px] ${
+            className={`inline-flex h-11 w-full items-center justify-center rounded-2xl border px-4 text-[14px] font-medium leading-5 transition duration-200 hover:-translate-y-0.5 sm:h-10 sm:w-auto sm:min-w-[64px] sm:text-[15px] ${
               filterMode === "all" && roleFilter === "all"
-                ? "border-[#94A3B8] bg-[#E3F2FD] text-[#334155]"
-                : "border-[#94A3B8] bg-transparent text-[#334155] hover:bg-[#edf3fb]"
+                ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0] shadow-[0_8px_22px_rgba(148,163,184,0.12)]"
+                : "border-[#94A3B8] bg-[#F8FAFC] text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] hover:border-[#1565C0] hover:bg-white"
             }`}
           >
             All
@@ -570,7 +570,7 @@ export function ProfessionalShiftOffersPage() {
 
           <ThemedDropdown<ShiftFilterMode>
             ariaLabel="Filter shift offers"
-            className="w-[210px] max-w-[72vw] sm:w-[215px]"
+            className="w-full sm:w-[215px]"
             value={filterMode}
             onChange={setFilterMode}
             options={shiftFilterOptions}
@@ -578,7 +578,7 @@ export function ProfessionalShiftOffersPage() {
 
           <ThemedDropdown<string>
             ariaLabel="Filter by role"
-            className="w-[190px] max-w-[68vw] sm:w-[200px]"
+            className="w-full sm:w-[200px]"
             value={roleFilter}
             onChange={setRoleFilter}
             options={roleDropdownOptions}
@@ -586,7 +586,7 @@ export function ProfessionalShiftOffersPage() {
 
           <ThemedDropdown<ShiftSortMode>
             ariaLabel="Sort shift offers"
-            className="w-[220px] max-w-[74vw] sm:w-[230px]"
+            className="w-full sm:w-[230px]"
             value={sortMode}
             onChange={setSortMode}
             options={shiftSortOptions}
