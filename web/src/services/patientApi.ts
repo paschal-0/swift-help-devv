@@ -164,6 +164,8 @@ export type PatientProviderAvailability = {
   videoConsultationRateCents?: number | null;
   inPersonVisitRateCents?: number | null;
   slots: Array<{
+    startDate?: string;
+    endDate?: string;
     startTime: string;
     endTime: string;
     available: boolean;

@@ -14,6 +14,8 @@ type TimeSlot = {
   id: string;
   consultant: string;
   patient: string;
+  startDate?: string;
+  endDate?: string;
   startTime?: string;
   endTime?: string;
 };
@@ -296,7 +298,9 @@ export function PatientAppointmentSchedulePage() {
           .map((slot, index) => ({
             id: `slot-${index + 1}`,
             consultant: `${formatSlotTime(slot.startTime)} - ${formatSlotTime(slot.endTime)}`,
-            patient: `${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.startTime, response.timezone), patientTimezone)} - ${formatTimeInZone(zonedDateTimeToIso(dateKey, slot.endTime, response.timezone), patientTimezone)}`,
+            patient: `${formatTimeInZone(zonedDateTimeToIso(slot.startDate ?? dateKey, slot.startTime, response.timezone), patientTimezone)} - ${formatTimeInZone(zonedDateTimeToIso(slot.endDate ?? dateKey, slot.endTime, response.timezone), patientTimezone)}`,
+            startDate: slot.startDate ?? dateKey,
+            endDate: slot.endDate ?? dateKey,
             startTime: slot.startTime,
             endTime: slot.endTime,
           }));
@@ -367,12 +371,12 @@ export function PatientAppointmentSchedulePage() {
 
     const selectedDateKey = formatLocalDateKey(selectedDate);
     const startsAt = zonedDateTimeToIso(
-      selectedDateKey,
+      selectedTimeSlot.startDate ?? selectedDateKey,
       selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
       providerTimezone,
     );
     const endsAt = zonedDateTimeToIso(
-      selectedDateKey,
+      selectedTimeSlot.endDate ?? selectedDateKey,
       selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
       providerTimezone,
     );

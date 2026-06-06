@@ -350,12 +350,13 @@ const getInitials = (name: string) =>
     .join("") || "P";
 
 const parseClockMinutes = (value: string) => {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
   if (!match) return null;
 
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
-  const meridian = match[3].toUpperCase();
+  const meridian = match[3]?.toUpperCase();
+  if (hours > 23 || minutes > 59) return null;
   const normalizedHours =
     meridian === "PM" && hours !== 12
       ? hours + 12
@@ -364,6 +365,13 @@ const parseClockMinutes = (value: string) => {
         : hours;
 
   return normalizedHours * 60 + minutes;
+};
+
+const getAvailabilityDurationMinutes = (from: string, to: string) => {
+  const start = parseClockMinutes(from);
+  const end = parseClockMinutes(to);
+  if (start === null || end === null) return null;
+  return end <= start ? end + 24 * 60 - start : end - start;
 };
 
 const formatDurationHours = (minutes: number) => {
@@ -737,10 +745,9 @@ export function ProfessionalSchedulePage() {
       )[0];
     const availableMinutes = daySchedule.reduce((total, day) => {
       if (!day.enabled) return total;
-      const from = parseClockMinutes(day.from);
-      const to = parseClockMinutes(day.to);
-      if (from === null || to === null || to <= from) return total;
-      return total + (to - from);
+      const duration = getAvailabilityDurationMinutes(day.from, day.to);
+      if (duration === null) return total;
+      return total + duration;
     }, 0);
 
     return [
@@ -893,13 +900,11 @@ export function ProfessionalSchedulePage() {
   const handleSaveWeeklyHours = async () => {
     const invalidDay = daySchedule.find((day) => {
       if (!day.enabled) return false;
-      const from = parseClockMinutes(day.from);
-      const to = parseClockMinutes(day.to);
-      return from === null || to === null || to <= from;
+      return getAvailabilityDurationMinutes(day.from, day.to) === null;
     });
 
     if (invalidDay) {
-      toast.error(`${invalidDay.day}: "To" time must be later than "From" time.`);
+      toast.error(`${invalidDay.day}: enter a valid "From" and "To" time.`);
       return;
     }
 
