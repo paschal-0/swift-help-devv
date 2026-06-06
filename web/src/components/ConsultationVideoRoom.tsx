@@ -1151,13 +1151,13 @@ export function ConsultationVideoRoom({
     connectionStatus !== "connected" || Boolean(busyControl);
 
   return (
-    <section className="overflow-hidden rounded-[12px] bg-[#F8FAFC] p-3 text-[#334155] sm:p-[15px]">
+    <section className="w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F8FAFC] p-2 text-[#334155] sm:p-[15px]">
       <h1 className="px-1 text-[20px] font-medium leading-8 tracking-[-0.04em] sm:ml-[13px] sm:px-0 sm:text-[24px] sm:leading-[42px]">
         {heading}
       </h1>
 
-      <div className="mt-3 grid gap-[15px] sm:mt-5 xl:grid-cols-[minmax(0,564px)_274px]">
-        <div className="relative h-[calc(100svh-150px)] min-h-[480px] max-h-[720px] overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[600px] xl:h-[554px]">
+      <div className="mt-3 grid min-w-0 gap-3 sm:mt-5 sm:gap-[15px] xl:grid-cols-[minmax(0,564px)_274px]">
+        <div className="relative h-[calc(100svh-170px)] min-h-[430px] max-h-[640px] min-w-0 overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[600px] xl:h-[554px]">
           <VideoSurface
             track={remoteVideoTrack}
             label={effectiveRemoteLabel}
@@ -1171,7 +1171,7 @@ export function ConsultationVideoRoom({
             />
           ))}
 
-          <div className="absolute left-3 top-3 flex h-11 max-w-[58%] items-center gap-2 rounded-[10px] bg-[rgba(248,250,252,0.92)] p-1 pr-3 shadow-sm backdrop-blur-sm sm:left-[18px] sm:top-[15px] sm:h-12 sm:max-w-[220px] sm:rounded-[12px]">
+          <div className="absolute left-2 top-2 flex h-11 max-w-[54%] items-center gap-2 rounded-[10px] bg-[rgba(248,250,252,0.92)] p-1 pr-2 shadow-sm backdrop-blur-sm sm:left-[18px] sm:top-[15px] sm:h-12 sm:max-w-[220px] sm:rounded-[12px] sm:pr-3">
             {renderAvatar(
               remoteAvatarUrl,
               effectiveRemoteLabel,
@@ -1187,12 +1187,12 @@ export function ConsultationVideoRoom({
             </div>
           </div>
 
-          <div className="absolute right-3 top-3 flex h-10 min-w-[88px] items-center justify-center rounded-full bg-[rgba(15,23,42,0.58)] px-3 backdrop-blur-sm sm:right-[15px] sm:top-[15px] sm:h-[46px] sm:min-w-[109px]">
+          <div className="absolute right-2 top-2 flex h-9 min-w-[76px] items-center justify-center rounded-full bg-[rgba(15,23,42,0.58)] px-2 backdrop-blur-sm sm:right-[15px] sm:top-[15px] sm:h-[46px] sm:min-w-[109px] sm:px-3">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F8FAFC]">
                 <span className="h-2 w-2 rounded-full bg-[#F20E0E]" />
               </span>
-              <span className="text-[13px] font-medium leading-4 text-white sm:text-[16px]">
+              <span className="text-[12px] font-medium leading-4 text-white sm:text-[16px]">
                 {connectionStatus === "connected"
                   ? formatCallDuration(elapsedSeconds)
                   : "--:--"}
@@ -1200,7 +1200,7 @@ export function ConsultationVideoRoom({
             </div>
           </div>
 
-          <div className="absolute bottom-[104px] right-3 h-[126px] w-[92px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px]">
+          <div className="absolute bottom-[92px] right-2 h-[112px] w-[78px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px]">
             <VideoSurface
               track={localVideoTrack}
               label={localLabel}
@@ -1213,7 +1213,7 @@ export function ConsultationVideoRoom({
             </div>
           </div>
 
-          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-[22px] bg-[rgba(15,23,42,0.68)] p-2 text-[#F8FAFC] shadow-[0_12px_30px_rgba(15,23,42,0.28)] backdrop-blur-md sm:bottom-[23px] sm:gap-3 sm:rounded-[30px] sm:p-3">
+          <div className="absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-1.5 rounded-[22px] bg-[rgba(15,23,42,0.68)] p-2 text-[#F8FAFC] shadow-[0_12px_30px_rgba(15,23,42,0.28)] backdrop-blur-md sm:bottom-[23px] sm:gap-3 sm:rounded-[30px] sm:p-3">
             <div className="group relative hidden sm:block">
               <button
                 type="button"
@@ -1252,7 +1252,7 @@ export function ConsultationVideoRoom({
             <button
               type="button"
               onClick={() => setSpeakerMuted((current) => !current)}
-              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition sm:hidden ${
+              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition sm:hidden ${
                 speakerMuted ? "bg-[#64748B]" : "bg-[rgba(255,255,255,0.2)]"
               }`}
               aria-pressed={!speakerMuted}
@@ -1266,7 +1266,7 @@ export function ConsultationVideoRoom({
               type="button"
               onClick={() => void toggleCamera()}
               disabled={controlsDisabled}
-              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
                 cameraEnabled
                   ? "bg-[rgba(255,255,255,0.2)]"
                   : "bg-[#64748B]"
@@ -1283,7 +1283,7 @@ export function ConsultationVideoRoom({
               type="button"
               onClick={() => void handleEnd()}
               disabled={isEnding || busyControl === "leave"}
-              className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#C82B33] transition hover:bg-[#B4232B] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[68px] sm:w-[68px] sm:rounded-[22px]"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[#C82B33] transition hover:bg-[#B4232B] disabled:cursor-not-allowed disabled:opacity-60 sm:h-[68px] sm:w-[68px] sm:rounded-[22px]"
               aria-label="End call"
               title="End call"
             >
@@ -1296,7 +1296,7 @@ export function ConsultationVideoRoom({
               type="button"
               onClick={() => void toggleScreenShare()}
               disabled={controlsDisabled}
-              className={`flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
                 screenSharing
                   ? "bg-[#1565C0]"
                   : "bg-[rgba(255,255,255,0.2)]"
@@ -1314,7 +1314,7 @@ export function ConsultationVideoRoom({
               type="button"
               onClick={() => void toggleMicrophone()}
               disabled={controlsDisabled}
-              className={`relative flex h-11 w-11 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
+              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-[54px] sm:w-[54px] ${
                 microphoneEnabled
                   ? "bg-[rgba(255,255,255,0.2)]"
                   : "bg-[#64748B]"
@@ -1336,7 +1336,7 @@ export function ConsultationVideoRoom({
             type="button"
             onClick={() => void toggleVoiceOnly()}
             disabled={controlsDisabled}
-            className={`absolute right-3 top-[62px] rounded-full px-3 py-2 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:right-[15px] sm:top-[74px] sm:px-4 sm:text-[12px] ${
+            className={`absolute right-2 top-[52px] rounded-full px-2.5 py-1.5 text-[10px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:right-[15px] sm:top-[74px] sm:px-4 sm:py-2 sm:text-[12px] ${
               voiceOnly
                 ? "bg-[#1565C0] text-[#F8FAFC]"
                 : "bg-[rgba(248,250,252,0.88)] text-[#334155]"
@@ -1423,12 +1423,12 @@ export function ConsultationVideoRoom({
           ) : null}
         </div>
 
-        <aside className="relative min-h-[430px] rounded-[12px] bg-[#E2E8F0] px-[10px] py-[12px] sm:h-[619px] sm:py-[17px]">
-          <div className="grid h-10 grid-cols-3 rounded-[10px] bg-[#F8FAFC] text-[12px] font-medium leading-4 sm:h-[37px] sm:grid-cols-[90px_1fr_1fr] sm:rounded-[12px] sm:text-[14px] sm:font-normal">
+        <aside className="relative min-h-[430px] min-w-0 rounded-[12px] bg-[#E2E8F0] px-2 py-[12px] sm:h-[619px] sm:px-[10px] sm:py-[17px]">
+          <div className="grid h-10 min-w-0 grid-cols-3 rounded-[10px] bg-[#F8FAFC] text-[11px] font-medium leading-4 sm:h-[37px] sm:grid-cols-[90px_1fr_1fr] sm:rounded-[12px] sm:text-[14px] sm:font-normal">
             <button
               type="button"
               onClick={() => setActiveTab("messages")}
-              className={`rounded-[12px] ${
+              className={`min-w-0 truncate rounded-[12px] px-1 ${
                 activeTab === "messages"
                   ? "bg-[#1565C0] text-[#F8FAFC]"
                   : "text-[#94A3B8]"
@@ -1439,7 +1439,7 @@ export function ConsultationVideoRoom({
             <button
               type="button"
               onClick={() => setActiveTab("summary")}
-              className={`rounded-[12px] ${
+              className={`min-w-0 truncate rounded-[12px] px-1 ${
                 activeTab === "summary"
                   ? "bg-[#1565C0] text-[#F8FAFC]"
                   : "text-[#94A3B8]"
@@ -1450,7 +1450,7 @@ export function ConsultationVideoRoom({
             <button
               type="button"
               onClick={() => setActiveTab("shared")}
-              className={`rounded-[12px] ${
+              className={`min-w-0 truncate rounded-[12px] px-1 ${
                 activeTab === "shared"
                   ? "bg-[#1565C0] text-[#F8FAFC]"
                   : "text-[#94A3B8]"
@@ -1522,7 +1522,7 @@ export function ConsultationVideoRoom({
           ) : null}
 
           {activeTab === "summary" ? (
-            <div className="mt-[38px] min-h-[310px] rounded-[12px] bg-[#F8FAFC] px-8 py-7 text-[14px] leading-[23px] tracking-[-0.07em] text-[#334155]">
+            <div className="mt-4 max-h-[350px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] px-4 py-5 text-[14px] leading-[23px] tracking-[-0.07em] text-[#334155] sm:mt-[38px] sm:min-h-[310px] sm:max-h-none sm:px-8 sm:py-7">
               {summaryContent ?? (
                 <>
                   <p className="font-medium">Consultation room</p>
@@ -1537,8 +1537,8 @@ export function ConsultationVideoRoom({
           ) : null}
 
           {activeTab === "shared" ? (
-            <div className="mt-6 rounded-[12px] bg-[#F8FAFC] p-4 text-[13px] leading-5 tracking-[-0.04em] text-[#334155]">
-              <div className="mb-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 max-h-[360px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] p-3 text-[13px] leading-5 tracking-[-0.04em] text-[#334155] sm:mt-6 sm:max-h-[520px] sm:p-4">
+              <div className="sticky top-0 z-10 mb-4 grid grid-cols-2 gap-2 bg-[#F8FAFC] pb-2">
                 {recordingEnabled ? (
                   <button
                     type="button"

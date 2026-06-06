@@ -278,7 +278,7 @@ export function PatientLiveConsultationPage() {
         router.push("/patient-platform/consultations");
         return;
       }
-      if (participant.status === "admitted") {
+      if (participant.status === "admitted" && !videoAccess?.canJoin) {
         void joinPatientConsultation(consultation.id)
           .then((access) => {
             setVideoAccessError(null);
@@ -376,7 +376,7 @@ export function PatientLiveConsultationPage() {
       );
       eventSource?.close();
     };
-  }, [consultation, router]);
+  }, [consultation, router, videoAccess?.canJoin]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
