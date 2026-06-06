@@ -266,6 +266,34 @@ const parseMinimumNoticeMinutes = (value: string) => {
   return amount * 60;
 };
 
+const getMinimumNoticeInput = (value: string) => {
+  if (value === "No minimum notice") {
+    return { amount: 0, unit: "minutes" };
+  }
+
+  const matched = value.match(/(\d+)/);
+  return {
+    amount: matched ? Number(matched[1]) : 2,
+    unit: value.includes("day")
+      ? "days"
+      : value.includes("minute")
+        ? "minutes"
+        : "hours",
+  };
+};
+
+const formatMinimumNoticeInput = (amount: number, unit: string) => {
+  if (amount <= 0) return "No minimum notice";
+  const singularUnit = unit.replace(/s$/, "");
+  return `${amount} ${amount === 1 ? singularUnit : unit}`;
+};
+
+const getMinimumNoticeMaximum = (unit: string) => {
+  if (unit === "days") return 7;
+  if (unit === "hours") return 168;
+  return 10080;
+};
+
 const formatMinimumNotice = (minutes: number) => {
   if (minutes <= 0) return "No minimum notice";
   if (minutes < 60) return `${minutes} minutes`;
@@ -1726,24 +1754,125 @@ export function ProfessionalSchedulePage() {
                     {rule.label}
                   </span>
                   {isEditingRules ? (
-                    <select
-                      value={rule.value}
-                      onChange={(event) =>
-                        handleDraftRuleChange(rule.label, event.target.value)
-                      }
-                      className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#BFDBFE] sm:text-[16px]"
-                    >
-                      {Array.from(
-                        new Set([
-                          rule.value,
-                          ...(ruleOptions[rule.label] ?? []),
-                        ]),
-                      ).map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                    rule.label === "Booking window" ? (
+                      <div className="flex min-h-[42px] items-center gap-2 rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-3 focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#BFDBFE]">
+                        <span className="shrink-0 text-[13px] text-[#64748B]">
+                          Up to
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="90"
+                          value={parseBookingWindowDays(rule.value)}
+                          onChange={(event) => {
+                            const value = Math.min(
+                              90,
+                              Math.max(1, Number(event.target.value) || 1),
+                            );
+                            handleDraftRuleChange(
+                              rule.label,
+                              `Up to ${value} days ahead`,
+                            );
+                          }}
+                          className="h-10 min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#334155] outline-none"
+                          aria-label="Booking window days"
+                        />
+                        <span className="shrink-0 text-[13px] text-[#64748B]">
+                          days ahead
+                        </span>
+                      </div>
+                    ) : rule.label === "Minimum booking notice" ? (
+                      <div className="grid min-h-[42px] grid-cols-[minmax(0,1fr)_110px] overflow-hidden rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#BFDBFE]">
+                        <input
+                          type="number"
+                          min="0"
+                          max={getMinimumNoticeMaximum(
+                            getMinimumNoticeInput(rule.value).unit,
+                          )}
+                          value={getMinimumNoticeInput(rule.value).amount}
+                          onChange={(event) => {
+                            const current = getMinimumNoticeInput(rule.value);
+                            const amount = Math.min(
+                              getMinimumNoticeMaximum(current.unit),
+                              Math.max(0, Number(event.target.value) || 0),
+                            );
+                            handleDraftRuleChange(
+                              rule.label,
+                              formatMinimumNoticeInput(amount, current.unit),
+                            );
+                          }}
+                          className="h-10 min-w-0 bg-transparent px-3 text-[15px] font-medium text-[#334155] outline-none"
+                          aria-label="Minimum booking notice amount"
+                        />
+                        <select
+                          value={getMinimumNoticeInput(rule.value).unit}
+                          onChange={(event) => {
+                            const current = getMinimumNoticeInput(rule.value);
+                            const amount = Math.min(
+                              current.amount,
+                              getMinimumNoticeMaximum(event.target.value),
+                            );
+                            handleDraftRuleChange(
+                              rule.label,
+                              formatMinimumNoticeInput(
+                                amount,
+                                event.target.value,
+                              ),
+                            );
+                          }}
+                          className="h-10 border-l border-[#CBD5E1] bg-transparent px-2 text-[13px] text-[#334155] outline-none"
+                          aria-label="Minimum booking notice unit"
+                        >
+                          <option value="minutes">Minutes</option>
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                        </select>
+                      </div>
+                    ) : rule.label === "Session Duration" ? (
+                      <div className="flex min-h-[42px] items-center gap-2 rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-3 focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#BFDBFE]">
+                        <input
+                          type="number"
+                          min="5"
+                          max="240"
+                          step="5"
+                          value={parseSessionDurationMinutes(rule.value)}
+                          onChange={(event) => {
+                            const value = Math.min(
+                              240,
+                              Math.max(5, Number(event.target.value) || 5),
+                            );
+                            handleDraftRuleChange(
+                              rule.label,
+                              `${value} Minutes`,
+                            );
+                          }}
+                          className="h-10 min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#334155] outline-none"
+                          aria-label="Default session duration"
+                        />
+                        <span className="shrink-0 text-[13px] text-[#64748B]">
+                          minutes
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        value={rule.value}
+                        onChange={(event) =>
+                          handleDraftRuleChange(rule.label, event.target.value)
+                        }
+                        className="min-h-[42px] w-full rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-[12px] text-left text-[14px] font-normal leading-4 tracking-[-0.05em] text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#BFDBFE] sm:text-[16px]"
+                      >
+                        {Array.from(
+                          new Set([
+                            rule.value,
+                            ...(ruleOptions[rule.label] ?? []),
+                          ]),
+                        ).map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    )
                   ) : (
                     <button
                       type="button"
