@@ -257,9 +257,9 @@ function ConsultationDetailsModal({
   const aiDocument = room?.aiDocument;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(15,23,42,0.55)] px-3 py-4 sm:px-6 sm:py-8">
-      <div className="mx-auto flex min-h-full w-full max-w-[1120px] items-start justify-center">
-        <article className="w-full overflow-hidden rounded-[20px] bg-[#F8FAFC] shadow-[0_28px_90px_rgba(15,23,42,0.32)]">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(15,23,42,0.55)] px-3 py-3 sm:px-6 sm:py-6">
+      <div className="w-full max-w-[96vw] sm:max-w-[920px] xl:max-w-[980px]">
+        <article className="flex h-[82svh] max-h-[760px] min-h-[520px] w-full flex-col overflow-hidden rounded-[18px] bg-[#F8FAFC] shadow-[0_28px_90px_rgba(15,23,42,0.32)] max-sm:h-[88svh] max-sm:min-h-0">
           <header className="sticky top-0 z-10 flex flex-col gap-3 border-b border-[#D8E4F1] bg-[#F8FAFC] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
@@ -283,7 +283,7 @@ function ConsultationDetailsModal({
             </button>
           </header>
 
-          <div className="max-h-[calc(100svh-132px)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
             {loading ? (
               <div className="grid min-h-[240px] place-items-center rounded-[16px] bg-white text-[14px] font-medium text-[#94A3B8]">
                 Loading full consultation details...
