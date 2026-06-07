@@ -14,6 +14,10 @@ import {
 } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
 import { isInPersonConsultation } from "@/components/InPersonConsultationMap";
+import {
+  consultationRoomToDraft,
+  savePatientAppointmentDraft,
+} from "@/utils/patientAppointmentDraft";
 
 const ACTIVE_CONSULTATION_STORAGE_KEY = "patientActiveConsultationId";
 
@@ -140,6 +144,16 @@ export function PatientConsultationRoomPage() {
     if (!activeConsultation || !isInPersonConsultation(activeConsultation.mode)) return;
     window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, activeConsultation.id);
     router.push("/patient-platform/consultations/in-person");
+  };
+
+  const rescheduleAppointment = () => {
+    if (!room) {
+      toast.error("Appointment details are still loading.");
+      return;
+    }
+
+    savePatientAppointmentDraft(consultationRoomToDraft(room));
+    router.push("/patient-platform/appointments/schedule");
   };
 
   const joinSession = async () => {
@@ -270,9 +284,10 @@ export function PatientConsultationRoomPage() {
 
           <motion.button
             type="button"
-            onClick={() => router.push("/patient-platform/appointments/schedule")}
+            onClick={rescheduleAppointment}
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.985 }}
+            disabled={!room}
             className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[24px] bg-[#F8FAFC] text-[16px] font-normal tracking-[-0.05em] text-[#334155] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
           >
             Reschedule appointment

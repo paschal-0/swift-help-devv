@@ -11,6 +11,7 @@ import {
   type PatientMedicalRecordsRecommendation,
   type PatientProvider,
 } from "@/services/patientApi";
+import { readPatientAppointmentDraft } from "@/utils/patientAppointmentDraft";
 
 type CareType = {
   id: string;
@@ -212,6 +213,22 @@ function professionalTypeFromAiContext(
   return "gp";
 }
 
+function careTypeFromLabel(value?: string) {
+  const normalized = value?.toLowerCase() ?? "";
+  if (normalized.includes("follow")) return "follow-up";
+  if (normalized.includes("specialist")) return "specialist";
+  if (normalized.includes("general")) return "general";
+  return null;
+}
+
+function professionalTypeFromLabel(value?: string) {
+  const normalized = value?.toLowerCase() ?? "";
+  if (normalized.includes("nurse")) return "np";
+  if (normalized.includes("specialist")) return "specialist";
+  if (normalized.includes("general")) return "gp";
+  return null;
+}
+
 function ProviderPicture({ provider }: { provider: ProfessionalCard }) {
   const [hasImageError, setHasImageError] = useState(false);
   const imageSrc = provider.imageSrc;
@@ -288,24 +305,29 @@ function StepBadge({ step }: { step: string }) {
 export function PatientBookAppointmentPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const [selectedCareType, setSelectedCareType] = useState("follow-up");
-  const [selectedProfessionalType, setSelectedProfessionalType] =
-    useState("gp");
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
-  const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
+  const [draft] = useState<Record<string, string> | null>(() =>
+    readPatientAppointmentDraft(),
+  );
   const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() =>
     readAiAssistantBookingContext(),
   );
-
-  useEffect(() => {
-    if (!aiBookingContext) return;
-
-    const nextCareType = careTypeFromAiContext(aiBookingContext);
-    if (nextCareType) setSelectedCareType(nextCareType);
-    setSelectedProfessionalType(
-      professionalTypeFromAiContext(aiBookingContext),
+  const [selectedCareType, setSelectedCareType] = useState(
+    careTypeFromAiContext(aiBookingContext) ??
+      careTypeFromLabel(draft?.careType) ??
+      "follow-up",
+  );
+  const [selectedProfessionalType, setSelectedProfessionalType] =
+    useState(
+      (aiBookingContext
+        ? professionalTypeFromAiContext(aiBookingContext)
+        : null) ??
+        professionalTypeFromLabel(draft?.professionalType) ??
+        "gp",
     );
-  }, [aiBookingContext]);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState(
+    draft?.professionalId ?? "",
+  );
+  const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -324,7 +346,9 @@ export function PatientBookAppointmentPage() {
         setSelectedProfessionalId((current) =>
           cards.some((card) => card.id === current)
             ? current
-            : cards[0]?.id || "",
+            : cards.some((card) => card.id === draft?.professionalId)
+              ? draft?.professionalId || ""
+              : cards[0]?.id || "",
         );
       } catch (error) {
         toast.error(getApiErrorMessage(error));
@@ -336,7 +360,7 @@ export function PatientBookAppointmentPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedProfessionalType]);
+  }, [draft?.professionalId, selectedProfessionalType]);
 
   const visibleProfessionals = providerCards;
 
@@ -399,6 +423,7 @@ export function PatientBookAppointmentPage() {
         inPersonRateLabel: selectedProfessional.inPersonRateLabel,
         nextAvailable: selectedProfessional.nextAvailable,
         reason:
+          draft?.reason ||
           aiBookingContext?.bookingReason ||
           aiBookingContext?.primarySymptom ||
           aiBookingContext?.headline ||

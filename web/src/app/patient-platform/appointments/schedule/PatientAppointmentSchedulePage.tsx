@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import { getPatientProviderAvailability } from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
+import { readPatientAppointmentDraft } from "@/utils/patientAppointmentDraft";
 
 type MeetingMode = "video" | "in-person";
 
@@ -98,6 +99,12 @@ function formatLocalDateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(value?: string) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 function zonedDateTimeToIso(dateKey: string, time: string, timeZone: string) {
@@ -217,23 +224,40 @@ function getDateKeyInZone(isoDate: string, timeZone: string) {
 
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
+  const [draft] = useState<Record<string, string> | null>(() =>
+    readPatientAppointmentDraft(),
+  );
+  const initialSelectedDate =
+    parseDateKey(draft?.scheduledDate) ??
+    (draft?.startsAt ? new Date(draft.startsAt) : null) ??
+    new Date();
   const [meetingMode, setMeetingMode] = useState<MeetingMode>("video");
-  const [displayMonth, setDisplayMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [displayMonth, setDisplayMonth] = useState(initialSelectedDate);
+  const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [manualStartTime, setManualStartTime] = useState("09:00");
-  const [manualEndTime, setManualEndTime] = useState("09:30");
-  const [reason, setReason] = useState("");
-  const [locationName, setLocationName] = useState("Patient location");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [stateRegion, setStateRegion] = useState("");
-  const [country, setCountry] = useState("Nigeria");
+  const [manualStartTime, setManualStartTime] = useState(
+    draft?.startTime?.match(/^\d{2}:\d{2}$/) ? draft.startTime : "09:00",
+  );
+  const [manualEndTime, setManualEndTime] = useState(
+    draft?.endTime?.match(/^\d{2}:\d{2}$/) ? draft.endTime : "09:30",
+  );
+  const [reason, setReason] = useState(draft?.reason ?? "");
+  const [locationName, setLocationName] = useState(
+    draft?.locationName || "Patient location",
+  );
+  const [address, setAddress] = useState(draft?.address ?? "");
+  const [city, setCity] = useState(draft?.city ?? "");
+  const [stateRegion, setStateRegion] = useState(draft?.state ?? "");
+  const [country, setCountry] = useState(draft?.country || "Nigeria");
   const [coordinates, setCoordinates] = useState<{
     latitude: number;
     longitude: number;
-  } | null>(null);
+  } | null>(
+    draft?.latitude && draft?.longitude
+      ? { latitude: Number(draft.latitude), longitude: Number(draft.longitude) }
+      : null,
+  );
   const [providerTimezone, setProviderTimezone] = useState("Africa/Lagos");
   const [minimumNoticeMinutes, setMinimumNoticeMinutes] = useState(120);
   const [bookingWindowDays, setBookingWindowDays] = useState(14);
@@ -244,19 +268,6 @@ export function PatientAppointmentSchedulePage() {
   });
   const patientTimezone =
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const [draft] = useState<Record<string, string> | null>(() => {
-    if (typeof window === "undefined") return null;
-
-    const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
-    if (!rawDraft) return null;
-
-    try {
-      return JSON.parse(rawDraft) as Record<string, string>;
-    } catch {
-      return null;
-    }
-  });
-
   useEffect(() => {
     if (draft?.meetingMode === "in-person" || draft?.meetingMode === "video") {
       setMeetingMode(draft.meetingMode);
@@ -305,7 +316,9 @@ export function PatientAppointmentSchedulePage() {
             endTime: slot.endTime,
           }));
         setAvailableSlots(slots);
-        setSelectedSlot(slots[0]?.id ?? "custom");
+        setSelectedSlot(
+          draft?.startTime && draft?.endTime ? "custom" : slots[0]?.id ?? "custom",
+        );
       } catch (error) {
         toast.error(getApiErrorMessage(error));
         if (isMounted) {
@@ -321,8 +334,10 @@ export function PatientAppointmentSchedulePage() {
     };
   }, [
     draft?.currencyCode,
+    draft?.endTime,
     draft?.inPersonVisitRateCents,
     draft?.professionalId,
+    draft?.startTime,
     draft?.videoConsultationRateCents,
     patientTimezone,
     selectedDate,
@@ -528,6 +543,8 @@ export function PatientAppointmentSchedulePage() {
           selectedSlot === "custom"
             ? selectedTime.endTime
             : formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
+        startsAt: selectedTime.requestedStartAt,
+        endsAt: selectedTime.requestedEndAt,
         providerStartTime: selectedTime.providerStartTime,
         providerEndTime: selectedTime.providerEndTime,
         requestedStartAt: selectedTime.requestedStartAt,

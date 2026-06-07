@@ -1156,8 +1156,8 @@ export function ConsultationVideoRoom({
         {heading}
       </h1>
 
-      <div className="mt-3 grid min-w-0 gap-3 sm:mt-5 sm:gap-[15px] xl:grid-cols-[minmax(0,564px)_274px]">
-        <div className="relative h-[calc(100svh-170px)] min-h-[430px] max-h-[640px] min-w-0 overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[600px] xl:h-[554px]">
+      <div className="mt-3 grid min-w-0 gap-3 sm:mt-5 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+        <div className="relative h-[calc(100svh-170px)] min-h-[430px] max-h-[720px] min-w-0 overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[620px] xl:h-[min(72vh,720px)]">
           <VideoSurface
             track={remoteVideoTrack}
             label={effectiveRemoteLabel}
@@ -1423,7 +1423,7 @@ export function ConsultationVideoRoom({
           ) : null}
         </div>
 
-        <aside className="relative min-h-[430px] min-w-0 rounded-[12px] bg-[#E2E8F0] px-2 py-[12px] sm:h-[619px] sm:px-[10px] sm:py-[17px]">
+        <aside className="relative flex min-h-[430px] min-w-0 flex-col rounded-[12px] bg-[#E2E8F0] px-2 py-[12px] sm:h-[620px] sm:px-[10px] sm:py-[17px] xl:h-[min(72vh,720px)]">
           <div className="grid h-10 min-w-0 grid-cols-3 rounded-[10px] bg-[#F8FAFC] text-[11px] font-medium leading-4 sm:h-[37px] sm:grid-cols-[90px_1fr_1fr] sm:rounded-[12px] sm:text-[14px] sm:font-normal">
             <button
               type="button"
@@ -1462,7 +1462,7 @@ export function ConsultationVideoRoom({
 
           {activeTab === "messages" ? (
             <>
-              <div className="mt-4 h-[300px] space-y-[13px] overflow-y-auto pr-1 sm:mt-[57px] sm:h-[431px] sm:pr-[13px]">
+              <div className="mt-4 h-[320px] space-y-[13px] overflow-y-auto pr-1 sm:mt-5 sm:h-[calc(100%-112px)] sm:pr-[13px]">
                 {messages.map((message) => {
                   const isMine = message.senderType === currentUserSenderType;
                   const label = isMine ? localLabel : effectiveRemoteLabel;
@@ -1477,7 +1477,7 @@ export function ConsultationVideoRoom({
                         ? renderAvatar(remoteAvatarUrl, label, "h-6 w-6")
                         : null}
                       <span
-                        className={`max-w-[150px] rounded-[12px] px-4 py-[6px] text-[12px] font-light leading-4 tracking-[-0.05em] ${
+                        className={`max-w-[min(78%,260px)] rounded-[12px] px-4 py-[6px] text-[12px] font-light leading-4 tracking-[-0.05em] ${
                           isMine
                             ? "bg-[#E3F2FD] text-[#1E88E5]"
                             : "bg-[#1565C0] text-white"
@@ -1500,7 +1500,7 @@ export function ConsultationVideoRoom({
 
               <form
                 onSubmit={onSendMessage}
-                className="absolute bottom-3 left-[10px] right-[10px] h-11 rounded-[12px] bg-[#F8FAFC]"
+                className="absolute bottom-3 left-[10px] right-[10px] h-12 rounded-[12px] bg-[#F8FAFC]"
               >
                 <input
                   value={messageDraft}
@@ -1508,11 +1508,11 @@ export function ConsultationVideoRoom({
                     onMessageDraftChange?.(event.target.value)
                   }
                   placeholder="Write your message"
-                  className="h-full w-full rounded-[12px] bg-transparent px-[11px] pr-14 pt-[3px] text-[12px] font-light text-[#334155] outline-none placeholder:text-[#94A3B8] sm:text-[10px]"
+                  className="h-full w-full rounded-[12px] bg-transparent px-[11px] pr-14 pt-[3px] text-[13px] font-light text-[#334155] outline-none placeholder:text-[#94A3B8]"
                 />
                 <button
                   type="submit"
-                  className="absolute right-[10px] top-[7px] flex h-[33px] w-[34px] items-center justify-center rounded-[6px] bg-[#1565C0] text-[#F8FAFC]"
+                  className="absolute right-[9px] top-[7px] flex h-[34px] w-[36px] items-center justify-center rounded-[8px] bg-[#1565C0] text-[#F8FAFC]"
                   aria-label="Send message"
                 >
                   <SendIcon />
@@ -1522,7 +1522,7 @@ export function ConsultationVideoRoom({
           ) : null}
 
           {activeTab === "summary" ? (
-            <div className="mt-4 max-h-[350px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] px-4 py-5 text-[14px] leading-[23px] tracking-[-0.07em] text-[#334155] sm:mt-[38px] sm:min-h-[310px] sm:max-h-none sm:px-8 sm:py-7">
+            <div className="mt-4 flex-1 overflow-y-auto rounded-[12px] bg-[#F8FAFC] px-4 py-5 text-[14px] leading-[23px] tracking-[-0.07em] text-[#334155] sm:mt-5 sm:px-6 sm:py-6">
               {summaryContent ?? (
                 <>
                   <p className="font-medium">Consultation room</p>
@@ -1537,7 +1537,7 @@ export function ConsultationVideoRoom({
           ) : null}
 
           {activeTab === "shared" ? (
-            <div className="mt-4 max-h-[360px] overflow-y-auto rounded-[12px] bg-[#F8FAFC] p-3 text-[13px] leading-5 tracking-[-0.04em] text-[#334155] sm:mt-6 sm:max-h-[520px] sm:p-4">
+            <div className="mt-4 flex-1 overflow-y-auto rounded-[12px] bg-[#F8FAFC] p-3 text-[13px] leading-5 tracking-[-0.04em] text-[#334155] sm:mt-5 sm:p-4">
               <div className="sticky top-0 z-10 mb-4 grid grid-cols-2 gap-2 bg-[#F8FAFC] pb-2">
                 {recordingEnabled ? (
                   <button

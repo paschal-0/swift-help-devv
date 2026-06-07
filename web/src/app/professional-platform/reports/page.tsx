@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  getCommunicationRecordingArchive,
+  getCommunicationRoom,
+  type CommunicationRecording,
+  type CommunicationTranscript,
+} from "@/services/communicationApi";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
   formatApiMoney,
+  getProfessionalConsultationRoom,
   getProfessionalPerformance,
   getProfessionalWallet,
   listProfessionalConsultations,
   listProfessionalEarnings,
   type EarningsSummary,
   type ProfessionalConsultation,
+  type ProfessionalConsultationRoom,
   type ProfessionalEarning,
   type ProfessionalPerformance,
 } from "@/services/professionalApi";
@@ -51,6 +59,19 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function normalizeStatus(status: ProfessionalConsultation["status"]) {
@@ -189,6 +210,291 @@ function inDateWindow(value: string, from: Date, to: Date) {
   return Number.isFinite(timestamp) && timestamp >= from.getTime() && timestamp <= to.getTime();
 }
 
+function SectionBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="min-w-0 rounded-[16px] border border-[#D8E4F1] bg-white p-4">
+      <h3 className="text-[15px] font-semibold text-[#334155] sm:text-[16px]">
+        {title}
+      </h3>
+      <div className="mt-3 min-w-0 text-[13px] leading-5 text-[#64748B] sm:text-[14px]">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function EmptyArtifact({ label }: { label: string }) {
+  return (
+    <div className="rounded-[12px] border border-dashed border-[#B7C7DA] px-4 py-6 text-center text-[13px] text-[#94A3B8]">
+      {label}
+    </div>
+  );
+}
+
+function ConsultationDetailsModal({
+  consultation,
+  room,
+  recordings,
+  transcripts,
+  loading,
+  onClose,
+  onOpenRecording,
+}: {
+  consultation: ProfessionalConsultation;
+  room: ProfessionalConsultationRoom | null;
+  recordings: CommunicationRecording[];
+  transcripts: CommunicationTranscript[];
+  loading: boolean;
+  onClose: () => void;
+  onOpenRecording: (recordingId: string) => void;
+}) {
+  const aiDocument = room?.aiDocument;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(15,23,42,0.55)] px-3 py-4 sm:px-6 sm:py-8">
+      <div className="mx-auto flex min-h-full w-full max-w-[1120px] items-start justify-center">
+        <article className="w-full overflow-hidden rounded-[20px] bg-[#F8FAFC] shadow-[0_28px_90px_rgba(15,23,42,0.32)]">
+          <header className="sticky top-0 z-10 flex flex-col gap-3 border-b border-[#D8E4F1] bg-[#F8FAFC] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
+                Consultation record
+              </p>
+              <h2 className="mt-1 truncate text-[20px] font-semibold text-[#334155] sm:text-[26px]">
+                {consultation.patientName}
+              </h2>
+              <p className="mt-1 text-[13px] text-[#64748B] sm:text-[14px]">
+                {getModeLabel(consultation.mode)} .{" "}
+                {formatDateTime(consultation.startsAt)} .{" "}
+                {consultation.durationMinutes} min
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-full items-center justify-center rounded-[12px] bg-[#E3F2FD] px-4 text-[14px] font-semibold text-[#1565C0] sm:w-auto"
+            >
+              Close
+            </button>
+          </header>
+
+          <div className="max-h-[calc(100svh-132px)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+            {loading ? (
+              <div className="grid min-h-[240px] place-items-center rounded-[16px] bg-white text-[14px] font-medium text-[#94A3B8]">
+                Loading full consultation details...
+              </div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <div className="space-y-4">
+                  <SectionBlock title="Session details">
+                    <dl className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        ["Patient", consultation.patientName],
+                        ["Type", consultation.consultationLabel],
+                        ["Mode", getModeLabel(consultation.mode)],
+                        ["Status", normalizeStatus(consultation.status)],
+                        ["Started", formatDateTime(consultation.startedAt ?? consultation.startsAt)],
+                        ["Ended", formatDateTime(consultation.completedAt ?? consultation.endsAt)],
+                        ["Earned", formatApiMoney(consultation.feeAmountCents, consultation.currency)],
+                        ["Earnings status", consultation.earningsStatus.replace("_", " ")],
+                      ].map(([label, value]) => (
+                        <div key={label} className="min-w-0">
+                          <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#94A3B8]">
+                            {label}
+                          </dt>
+                          <dd className="mt-1 break-words font-medium capitalize text-[#334155]">
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </SectionBlock>
+
+                  <SectionBlock title="Reason and intake">
+                    <p className="whitespace-pre-line text-[#334155]">
+                      {consultation.reason || "No reason saved."}
+                    </p>
+                    {room?.intake?.aiSummary ? (
+                      <div className="mt-3 rounded-[12px] bg-[#E3F2FD] p-3">
+                        <p className="font-semibold text-[#334155]">
+                          AI intake summary
+                        </p>
+                        <p className="mt-2 whitespace-pre-line">
+                          {room.intake.aiSummary}
+                        </p>
+                      </div>
+                    ) : null}
+                  </SectionBlock>
+
+                  <SectionBlock title="Messages">
+                    {room?.messages.length ? (
+                      <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+                        {room.messages.map((message) => (
+                          <div
+                            key={message.id}
+                            className="rounded-[12px] bg-[#F8FAFC] px-3 py-2"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-[12px] font-semibold capitalize text-[#1565C0]">
+                                {message.senderType}
+                              </span>
+                              <span className="text-[11px] text-[#94A3B8]">
+                                {formatDateTime(message.createdAt)}
+                              </span>
+                            </div>
+                            <p className="mt-1 whitespace-pre-line text-[#334155]">
+                              {message.body || "Attachment message"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyArtifact label="No messages saved for this consultation." />
+                    )}
+                  </SectionBlock>
+                </div>
+
+                <div className="space-y-4">
+                  <SectionBlock title="Recordings">
+                    {recordings.length ? (
+                      <div className="space-y-3">
+                        {recordings.map((recording) => (
+                          <article
+                            key={recording.id}
+                            className="rounded-[12px] bg-[#F8FAFC] p-3"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold capitalize text-[#334155]">
+                                  {recording.provider} recording
+                                </p>
+                                <p className="mt-1 text-[12px] capitalize text-[#94A3B8]">
+                                  {recording.status} .{" "}
+                                  {formatDateTime(recording.startedAt)}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={recording.status !== "ready"}
+                                onClick={() => onOpenRecording(recording.id)}
+                                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#1565C0] px-4 text-[13px] font-semibold text-[#1565C0] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                              >
+                                Open recording
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyArtifact label="No recording archive saved yet." />
+                    )}
+                  </SectionBlock>
+
+                  <SectionBlock title="Transcripts">
+                    {transcripts.length ? (
+                      <div className="space-y-3">
+                        {transcripts.map((transcript) => (
+                          <article
+                            key={transcript.id}
+                            className="rounded-[12px] bg-[#F8FAFC] p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="font-semibold capitalize text-[#334155]">
+                                {transcript.provider} transcript
+                              </p>
+                              <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-semibold capitalize text-[#1565C0]">
+                                {transcript.status}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[12px] text-[#94A3B8]">
+                              {transcript.language ?? "Language not set"} .{" "}
+                              {transcript.segments?.length ?? 0} segments
+                            </p>
+                            <div className="mt-3 max-h-[420px] overflow-y-auto whitespace-pre-line rounded-[12px] bg-white p-3 text-[#334155]">
+                              {transcript.text?.trim() ||
+                                "Transcript text is not available yet."}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyArtifact label="No transcript saved for this consultation." />
+                    )}
+                  </SectionBlock>
+
+                  <SectionBlock title="AI documentation">
+                    {aiDocument ? (
+                      <div className="space-y-3">
+                        {aiDocument.clinicalSummary ? (
+                          <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+                            <p className="font-semibold text-[#334155]">
+                              Clinical summary
+                            </p>
+                            <p className="mt-2 whitespace-pre-line">
+                              {aiDocument.clinicalSummary}
+                            </p>
+                          </div>
+                        ) : null}
+                        {aiDocument.patientSummary ? (
+                          <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+                            <p className="font-semibold text-[#334155]">
+                              Patient summary
+                            </p>
+                            <p className="mt-2 whitespace-pre-line">
+                              {aiDocument.patientSummary}
+                            </p>
+                          </div>
+                        ) : null}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {Object.entries(aiDocument.soapNote ?? {}).map(
+                            ([label, value]) =>
+                              value ? (
+                                <div
+                                  key={label}
+                                  className="rounded-[12px] bg-[#F8FAFC] p-3"
+                                >
+                                  <p className="font-semibold capitalize text-[#334155]">
+                                    {label}
+                                  </p>
+                                  <p className="mt-2 whitespace-pre-line">
+                                    {value}
+                                  </p>
+                                </div>
+                              ) : null,
+                          )}
+                        </div>
+                        {aiDocument.followUpActions.length ? (
+                          <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+                            <p className="font-semibold text-[#334155]">
+                              Follow-up actions
+                            </p>
+                            <ul className="mt-2 list-disc space-y-1 pl-5">
+                              {aiDocument.followUpActions.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <EmptyArtifact label="No AI documentation generated yet." />
+                    )}
+                  </SectionBlock>
+                </div>
+              </div>
+            )}
+          </div>
+        </article>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfessionalReportsRoute() {
   const { searchText } = useProfessionalPlatformShell();
   const [activeTab, setActiveTab] = useState<ReportTab>("consultations");
@@ -200,6 +506,17 @@ export default function ProfessionalReportsRoute() {
   const [walletSummary, setWalletSummary] = useState<EarningsSummary | null>(null);
   const [performance, setPerformance] = useState<ProfessionalPerformance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedConsultation, setSelectedConsultation] =
+    useState<ProfessionalConsultation | null>(null);
+  const [selectedRoom, setSelectedRoom] =
+    useState<ProfessionalConsultationRoom | null>(null);
+  const [selectedRecordings, setSelectedRecordings] = useState<
+    CommunicationRecording[]
+  >([]);
+  const [selectedTranscripts, setSelectedTranscripts] = useState<
+    CommunicationTranscript[]
+  >([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const rangeWindow = useMemo(() => getRangeWindow(range), [range]);
   const normalizedSearch = searchText.trim().toLowerCase();
@@ -319,6 +636,47 @@ export default function ProfessionalReportsRoute() {
     link.download = `professional-report-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openConsultationDetails = async (
+    consultation: ProfessionalConsultation,
+  ) => {
+    setSelectedConsultation(consultation);
+    setSelectedRoom(null);
+    setSelectedRecordings([]);
+    setSelectedTranscripts([]);
+    setDetailLoading(true);
+    try {
+      const nextRoom = await getProfessionalConsultationRoom(consultation.id);
+      setSelectedRoom(nextRoom);
+      const communicationRoomId = nextRoom.room.id;
+      if (communicationRoomId) {
+        const communicationState = await getCommunicationRoom(
+          communicationRoomId,
+        );
+        setSelectedRecordings(communicationState.recordings);
+        setSelectedTranscripts(communicationState.transcripts);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to load consultation details.",
+      );
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const openRecordingArchive = async (recordingId: string) => {
+    try {
+      const archive = await getCommunicationRecordingArchive(recordingId);
+      window.open(archive.archiveUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to open recording.",
+      );
+    }
   };
 
   return (
@@ -535,7 +893,11 @@ export default function ProfessionalReportsRoute() {
               </thead>
               <tbody className="divide-y divide-[#D8E4F1] text-[14px]">
                 {tableRows.map((consultation) => (
-                  <tr key={consultation.id} className="transition hover:bg-white">
+                  <tr
+                    key={consultation.id}
+                    onClick={() => void openConsultationDetails(consultation)}
+                    className="cursor-pointer transition hover:bg-white"
+                  >
                     <td className="px-4 py-4 text-[#94A3B8]">{consultation.id.slice(0, 8)}</td>
                     <td className="px-4 py-4 font-medium">{consultation.patientName}</td>
                     <td className="px-4 py-4 text-[#94A3B8]">{getModeLabel(consultation.mode)}</td>
@@ -551,7 +913,11 @@ export default function ProfessionalReportsRoute() {
 
           <div className="space-y-3 xl:hidden">
             {tableRows.map((consultation) => (
-              <article key={consultation.id} className="min-w-0 rounded-[14px] border border-[#D8E4F1] bg-white px-4 py-3">
+              <article
+                key={consultation.id}
+                onClick={() => void openConsultationDetails(consultation)}
+                className="min-w-0 cursor-pointer rounded-[14px] border border-[#D8E4F1] bg-white px-4 py-3"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-semibold">{consultation.patientName}</p>
@@ -577,6 +943,19 @@ export default function ProfessionalReportsRoute() {
           ) : null}
         </div>
       )}
+      {selectedConsultation ? (
+        <ConsultationDetailsModal
+          consultation={selectedConsultation}
+          room={selectedRoom}
+          recordings={selectedRecordings}
+          transcripts={selectedTranscripts}
+          loading={detailLoading}
+          onClose={() => setSelectedConsultation(null)}
+          onOpenRecording={(recordingId) =>
+            void openRecordingArchive(recordingId)
+          }
+        />
+      ) : null}
     </section>
   );
 }

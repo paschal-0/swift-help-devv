@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
-import type { DateFilter, PayFilter, ShiftOffer } from "./data";
+import type { DateFilter, ShiftOffer } from "./data";
 import {
   acceptProfessionalShiftOffer,
   declineProfessionalShiftOffer,
@@ -426,7 +426,6 @@ export function ProfessionalShiftOffersPage() {
   const { searchText } = useProfessionalPlatformShell();
   const router = useRouter();
   const [filterMode, setFilterMode] = useState<ShiftFilterMode>("all");
-  const [roleFilter, setRoleFilter] = useState("all");
   const [sortMode, setSortMode] = useState<ShiftSortMode>("newest");
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [offers, setOffers] = useState<ShiftOffer[]>([]);
@@ -472,25 +471,9 @@ export function ProfessionalShiftOffersPage() {
     };
   }, []);
 
-  const roleOptions = useMemo(
-    () => Array.from(new Set(offers.map((offer) => offer.role))).sort(),
-    [offers],
-  );
-  const roleDropdownOptions = useMemo<Array<DropdownOption<string>>>(
-    () => [
-      { value: "all", label: "Role: All" },
-      ...roleOptions.map((role) => ({ value: role, label: `Role: ${role}` })),
-    ],
-    [roleOptions],
-  );
-
   const visibleOffers = useMemo(() => {
     const nextOffers = offers.filter((offer) => {
       if (!matchesShiftFilter(offer, filterMode)) {
-        return false;
-      }
-
-      if (roleFilter !== "all" && offer.role !== roleFilter) {
         return false;
       }
 
@@ -537,7 +520,7 @@ export function ProfessionalShiftOffersPage() {
     });
 
     return nextOffers;
-  }, [filterMode, offers, query, roleFilter, sortMode]);
+  }, [filterMode, offers, query, sortMode]);
 
   const selectedOffer = useMemo(
     () => offers.find((offer) => offer.id === selectedOfferId) ?? null,
@@ -556,11 +539,10 @@ export function ProfessionalShiftOffersPage() {
             type="button"
             onClick={() => {
               setFilterMode("all");
-              setRoleFilter("all");
               setSortMode("newest");
             }}
             className={`inline-flex h-11 w-full items-center justify-center rounded-2xl border px-4 text-[14px] font-medium leading-5 transition duration-200 hover:-translate-y-0.5 sm:h-10 sm:w-auto sm:min-w-[64px] sm:text-[15px] ${
-              filterMode === "all" && roleFilter === "all"
+              filterMode === "all"
                 ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0] shadow-[0_8px_22px_rgba(148,163,184,0.12)]"
                 : "border-[#94A3B8] bg-[#F8FAFC] text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] hover:border-[#1565C0] hover:bg-white"
             }`}
@@ -574,14 +556,6 @@ export function ProfessionalShiftOffersPage() {
             value={filterMode}
             onChange={setFilterMode}
             options={shiftFilterOptions}
-          />
-
-          <ThemedDropdown<string>
-            ariaLabel="Filter by role"
-            className="w-full sm:w-[200px]"
-            value={roleFilter}
-            onChange={setRoleFilter}
-            options={roleDropdownOptions}
           />
 
           <ThemedDropdown<ShiftSortMode>

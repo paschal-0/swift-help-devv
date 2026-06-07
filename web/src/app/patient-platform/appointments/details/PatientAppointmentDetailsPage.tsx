@@ -9,9 +9,17 @@ import {
   cancelPatientAppointment,
   createPatientConsultationRequest,
   getPatientAppointment,
+  type PatientAppointment,
   updatePatientAppointmentReminders,
 } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
+import {
+  appointmentToDraft,
+  isEditableAppointmentStatus,
+  PATIENT_APPOINTMENT_DRAFT_KEY,
+  savePatientAppointmentDraft,
+  type PatientAppointmentDraft,
+} from "@/utils/patientAppointmentDraft";
 
 type DetailItem = {
   label: string;
@@ -73,6 +81,160 @@ function DetailGrid({
           </p>
         ))}
       </div>
+    </div>
+  );
+}
+
+function AppointmentDetailsEditModal({
+  draft,
+  isExistingAppointment,
+  onClose,
+  onSave,
+}: {
+  draft: PatientAppointmentDraft;
+  isExistingAppointment: boolean;
+  onClose: () => void;
+  onSave: (nextDraft: PatientAppointmentDraft) => void;
+}) {
+  const [careType, setCareType] = useState(draft.careType ?? draft.reason ?? "");
+  const [meetingMode, setMeetingMode] = useState(
+    draft.meetingMode === "in-person" ? "in-person" : "video",
+  );
+  const [scheduledDate, setScheduledDate] = useState(draft.scheduledDate ?? "");
+  const [startTime, setStartTime] = useState(draft.startTime ?? "");
+  const [endTime, setEndTime] = useState(draft.endTime ?? "");
+
+  const saveChanges = () => {
+    if (!careType.trim() || !scheduledDate || !startTime || !endTime) {
+      toast.error("Complete the appointment details before saving.");
+      return;
+    }
+
+    onSave({
+      ...draft,
+      careType: careType.trim(),
+      reason: careType.trim(),
+      meetingMode,
+      scheduledDate,
+      startTime,
+      endTime,
+      startsAt: `${scheduledDate}T${startTime}:00`,
+      endsAt: `${scheduledDate}T${endTime}:00`,
+      requestedStartAt: `${scheduledDate}T${startTime}:00`,
+      requestedEndAt: `${scheduledDate}T${endTime}:00`,
+      durationLabel: formatDurationFromTimes(startTime, endTime),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.45)] px-4 py-6">
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="w-full max-w-[520px] rounded-[18px] bg-[#F8FAFC] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-[20px] font-medium tracking-[-0.05em] text-[#334155]">
+              Edit appointment details
+            </h2>
+            {isExistingAppointment ? (
+              <p className="mt-1 text-[13px] leading-5 tracking-[-0.04em] text-[#64748B]">
+                Saving will take you to scheduling so the new time can be sent
+                for approval.
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E3F2FD] text-[18px] text-[#334155]"
+            aria-label="Close edit details"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-4">
+          <label className="space-y-1">
+            <span className="text-[13px] font-medium text-[#334155]">
+              Care type
+            </span>
+            <input
+              value={careType}
+              onChange={(event) => setCareType(event.target.value)}
+              className="h-11 w-full rounded-[12px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[13px] font-medium text-[#334155]">
+              Appointment mode
+            </span>
+            <select
+              value={meetingMode}
+              onChange={(event) => setMeetingMode(event.target.value)}
+              className="h-11 w-full rounded-[12px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+            >
+              <option value="video">Video consultation</option>
+              <option value="in-person">In Person</option>
+            </select>
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="space-y-1 sm:col-span-1">
+              <span className="text-[13px] font-medium text-[#334155]">
+                Date
+              </span>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(event) => setScheduledDate(event.target.value)}
+                className="h-11 w-full rounded-[12px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[13px] font-medium text-[#334155]">
+                Start
+              </span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(event) => setStartTime(event.target.value)}
+                className="h-11 w-full rounded-[12px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[13px] font-medium text-[#334155]">
+                End
+              </span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(event) => setEndTime(event.target.value)}
+                className="h-11 w-full rounded-[12px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 items-center justify-center rounded-[22px] bg-[#E2E8F0] px-5 text-[15px] font-medium text-[#334155]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={saveChanges}
+            className="inline-flex h-11 items-center justify-center rounded-[22px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC]"
+          >
+            {isExistingAppointment ? "Continue to schedule" : "Save details"}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -238,6 +400,10 @@ export function PatientAppointmentDetailsPage() {
   const searchParams = useSearchParams();
   const appointmentId = searchParams.get("appointmentId");
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const [appointment, setAppointment] = useState<PatientAppointment | null>(
+    null,
+  );
+  const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const [emailReminder, setEmailReminder] = useState(true);
   const [smsReminder, setSmsReminder] = useState(true);
   const [shareSummaryWithProvider, setShareSummaryWithProvider] =
@@ -249,20 +415,8 @@ export function PatientAppointmentDetailsPage() {
     if (appointmentId) {
       getPatientAppointment(appointmentId)
         .then((appointment) => {
-          setDraft({
-            professionalName:
-              appointment.professional?.fullName ?? "Assigned professional",
-            careType: appointment.reason,
-            reason: appointment.reason,
-            scheduledDate: appointment.scheduledDate,
-            startTime: appointment.startTime,
-            endTime: appointment.endTime,
-            startsAt: appointment.startsAt ?? "",
-            endsAt: appointment.endsAt ?? "",
-            meetingMode: appointment.mode?.toLowerCase().includes("person")
-              ? "in-person"
-              : "video",
-          });
+          setAppointment(appointment);
+          setDraft(appointmentToDraft(appointment));
           setEmailReminder(appointment.emailReminderEnabled ?? true);
           setSmsReminder(appointment.smsReminderEnabled ?? false);
           setShareSummaryWithProvider(
@@ -273,9 +427,12 @@ export function PatientAppointmentDetailsPage() {
       return;
     }
 
-    const rawDraft = window.sessionStorage.getItem("patientAppointmentDraft");
+    const rawDraft = window.sessionStorage.getItem(PATIENT_APPOINTMENT_DRAFT_KEY);
     if (rawDraft) setDraft(JSON.parse(rawDraft) as Record<string, string>);
   }, [appointmentId]);
+
+  const canEditDetails =
+    !appointmentId || isEditableAppointmentStatus(appointment?.status);
 
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
     if (!draft) return appointmentItems;
@@ -478,6 +635,17 @@ export function PatientAppointmentDetailsPage() {
             transition={{ duration: 0.28, ease: "easeOut" }}
             className="rounded-[16px] border border-[#1E88E5] p-3 sm:p-4"
           >
+            <div className="mb-3 flex justify-end">
+              {canEditDetails && draft ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditDetailsOpen(true)}
+                  className="inline-flex h-9 items-center justify-center rounded-[18px] border border-[#1565C0] bg-[#E3F2FD] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5"
+                >
+                  Edit Details
+                </button>
+              ) : null}
+            </div>
             <motion.div
               animate={{ y: 0, scale: 1 }}
               whileHover={{ y: -2 }}
@@ -628,7 +796,7 @@ export function PatientAppointmentDetailsPage() {
             onClick={
               appointmentId
                 ? cancelAppointment
-                : () => router.push("/patient-platform/appointments/schedule")
+                : () => setIsEditDetailsOpen(true)
             }
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
@@ -651,6 +819,25 @@ export function PatientAppointmentDetailsPage() {
           </motion.button>
         </motion.div>
       </div>
+
+      {isEditDetailsOpen && draft ? (
+        <AppointmentDetailsEditModal
+          draft={draft}
+          isExistingAppointment={Boolean(appointmentId)}
+          onClose={() => setIsEditDetailsOpen(false)}
+          onSave={(nextDraft) => {
+            savePatientAppointmentDraft(nextDraft);
+            if (appointmentId) {
+              toast.success("Details copied into the schedule step.");
+              router.push("/patient-platform/appointments/schedule");
+              return;
+            }
+            setDraft(nextDraft);
+            setIsEditDetailsOpen(false);
+            toast.success("Appointment details updated.");
+          }}
+        />
+      ) : null}
     </article>
   );
 }
