@@ -198,6 +198,86 @@ function MedicalRecordRow({
   );
 }
 
+function MobileMedicalRecordCard({
+  record,
+  onOpen,
+}: {
+  record: HealthRecord;
+  onOpen: () => void;
+}) {
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className="w-full cursor-pointer rounded-[14px] border border-[#E2EDF8] bg-white p-3 text-left shadow-[0_12px_28px_rgba(30,136,229,0.1)] transition focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD]">
+            <RecordIcon />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-[15px] font-medium leading-5 tracking-[-0.04em] text-[#334155]">
+              {record.title}
+            </span>
+            <span className="mt-1 block truncate text-[12px] font-semibold leading-4 tracking-[-0.03em] text-[#1565C0]">
+              {record.subtitle}
+            </span>
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#F1F5F9] transition hover:bg-[#E3F2FD]"
+          aria-label={`Open ${record.title}`}
+        >
+          <MoreVerticalIcon />
+        </button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-[12px] bg-[#E3F2FD] p-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#94A3B8]">
+            Category
+          </p>
+          <p className="mt-0.5 truncate text-[13px] font-medium leading-5 tracking-[-0.03em] text-[#334155]">
+            {record.category}
+          </p>
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#94A3B8]">
+            Date
+          </p>
+          <p className="mt-0.5 truncate text-[13px] font-medium leading-5 tracking-[-0.03em] text-[#334155]">
+            {record.date}
+          </p>
+        </div>
+
+        <div className="col-span-2 min-w-0">
+          <p className="text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#94A3B8]">
+            Provider
+          </p>
+          <p className="mt-0.5 truncate text-[13px] font-medium leading-5 tracking-[-0.03em] text-[#334155]">
+            {record.provider}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export function PatientMedicalRecordsPage() {
   const router = useRouter();
   const { searchText } = usePatientPlatformShell();
@@ -244,6 +324,11 @@ export function PatientMedicalRecordsPage() {
     );
   }, [dateFilter, records, searchText, tab]);
 
+  const openRecord = (record: HealthRecord) => {
+    window.sessionStorage.setItem("patientSelectedMedicalRecordId", record.id);
+    router.push("/patient-platform/medical-records/summary");
+  };
+
   return (
     <section className="pb-10 pt-5 sm:pt-6">
       <article className="mt-[26px] min-h-[678px] rounded-[12px] bg-[#F8FAFC] px-4 pb-8 pt-[17px] sm:px-6 xl:px-[33px]">
@@ -259,7 +344,7 @@ export function PatientMedicalRecordsPage() {
           />
         </header>
 
-        <div className="mt-[27px] overflow-x-auto pb-2">
+        <div className="mt-[27px] hidden overflow-x-auto pb-2 sm:block">
           <div className="w-full min-w-[780px]">
             <div className="grid h-[49px] grid-cols-[minmax(240px,1.7fr)_minmax(145px,1fr)_minmax(120px,.9fr)_105px_96px] items-center gap-4 rounded-[12px] bg-[#0F172A] px-6 text-[18px] font-medium leading-4 tracking-[-0.05em] text-[#F8FAFC]">
               <span className="pl-[74px]">Title</span>
@@ -274,14 +359,21 @@ export function PatientMedicalRecordsPage() {
                 <MedicalRecordRow
                   key={record.id}
                   record={record}
-                  onOpen={() => {
-                    window.sessionStorage.setItem("patientSelectedMedicalRecordId", record.id);
-                    router.push("/patient-platform/medical-records/summary");
-                  }}
+                  onOpen={() => openRecord(record)}
                 />
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 space-y-3 sm:hidden">
+          {visibleRecords.map((record) => (
+            <MobileMedicalRecordCard
+              key={`mobile-${record.id}`}
+              record={record}
+              onOpen={() => openRecord(record)}
+            />
+          ))}
         </div>
 
         {isLoadingRecords ? (
