@@ -607,7 +607,7 @@ export function PatientAiAssistantPage() {
         bookingReason,
       }),
     );
-    router.push(routeWithCountry("/patient-platform/appointments/book"));
+    router.push(routeWithCountry("/patient-platform/appointments/book?source=ai"));
   }
 
   function getSpeechRecognitionConstructor() {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -305,15 +305,20 @@ function StepBadge({ step }: { step: string }) {
 export function PatientBookAppointmentPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isAiBooking = searchParams.get("source") === "ai";
   const [draft] = useState<Record<string, string> | null>(() => {
     const storedDraft = readPatientAppointmentDraft();
     if (storedDraft?.sourceAppointmentId || storedDraft?.sourceConsultationId) {
       return null;
     }
+    if (!isAiBooking && storedDraft?.aiContext) {
+      return null;
+    }
     return storedDraft;
   });
   const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() =>
-    readAiAssistantBookingContext(),
+    isAiBooking ? readAiAssistantBookingContext() : null,
   );
   const [selectedCareType, setSelectedCareType] = useState(
     careTypeFromAiContext(aiBookingContext) ??
@@ -426,12 +431,13 @@ export function PatientBookAppointmentPage() {
         videoRateLabel: selectedProfessional.videoRateLabel,
         inPersonRateLabel: selectedProfessional.inPersonRateLabel,
         nextAvailable: selectedProfessional.nextAvailable,
-        reason:
-          draft?.reason ||
-          aiBookingContext?.bookingReason ||
-          aiBookingContext?.primarySymptom ||
-          aiBookingContext?.headline ||
-          "",
+        reason: isAiBooking
+          ? draft?.reason ||
+            aiBookingContext?.bookingReason ||
+            aiBookingContext?.primarySymptom ||
+            aiBookingContext?.headline ||
+            ""
+          : "",
         aiContext: aiBookingContext ? JSON.stringify(aiBookingContext) : "",
         symptomCheckId: aiBookingContext?.symptomCheckId ?? "",
         urgencyLevel: aiBookingContext?.urgencyLevel ?? "",

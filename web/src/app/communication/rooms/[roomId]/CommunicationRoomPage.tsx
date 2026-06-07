@@ -267,7 +267,7 @@ export function CommunicationRoomPage() {
         bookingReason: aiTriageHandoff.bookingReason,
       }),
     );
-    router.push(routeWithCountry("/patient-platform/appointments/book"));
+    router.push(routeWithCountry("/patient-platform/appointments/book?source=ai"));
   };
 
   const downloadComplianceReport = async () => {
