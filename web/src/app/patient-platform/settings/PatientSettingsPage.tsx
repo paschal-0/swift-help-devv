@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
@@ -213,6 +213,26 @@ function CalendarIcon() {
   );
 }
 
+function EyeIcon({ hidden }: { hidden: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 5c5 0 8.5 4.3 9.7 6a1.8 1.8 0 0 1 0 2C20.5 14.7 17 19 12 19s-8.5-4.3-9.7-6a1.8 1.8 0 0 1 0-2C3.5 9.3 7 5 12 5Zm0 2c-4 0-7 3.4-8 5 1 1.6 4 5 8 5s7-3.4 8-5c-1-1.6-4-5-8-5Zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"
+      />
+      {hidden ? (
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+          d="M4 4l16 16"
+        />
+      ) : null}
+    </svg>
+  );
+}
+
 function CardIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-[#334155]" aria-hidden>
@@ -274,20 +294,61 @@ function Field({
   type?: string;
   rightSlot?: ReactNode;
 }) {
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const isDate = type === "date";
+  const inputType = isPassword && showPassword ? "text" : type;
+
+  const openDatePicker = () => {
+    const input = inputRef.current as
+      | (HTMLInputElement & { showPicker?: () => void })
+      | null;
+    input?.focus();
+    input?.showPicker?.();
+  };
+
   return (
-    <label className="flex min-w-0 flex-col gap-2">
-      <span className="text-[15px] font-medium text-[#111827] sm:text-[16px]">{label}</span>
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={inputId} className="text-[15px] font-medium text-[#111827] sm:text-[16px]">{label}</label>
       <span className="flex min-h-[48px] items-center rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] px-4 transition focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/15">
         <input
-          type={type}
+          id={inputId}
+          ref={inputRef}
+          type={inputType}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] sm:text-[16px]"
+          className={`min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] sm:text-[16px] ${
+            isDate
+              ? "[&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+              : ""
+          }`}
         />
-        {rightSlot}
+        {isDate ? (
+          <button
+            type="button"
+            onClick={openDatePicker}
+            className="ml-2 inline-flex cursor-pointer items-center justify-center text-[#94A3B8] transition hover:text-[#1565C0]"
+            aria-label={`Open ${label} calendar`}
+          >
+            {rightSlot ?? <CalendarIcon />}
+          </button>
+        ) : isPassword ? (
+          <button
+            type="button"
+            onClick={() => setShowPassword((current) => !current)}
+            className="ml-2 inline-flex cursor-pointer items-center justify-center text-[#94A3B8] transition hover:text-[#1565C0]"
+            aria-label={showPassword ? `Hide ${label}` : `Show ${label}`}
+          >
+            <EyeIcon hidden={!showPassword} />
+          </button>
+        ) : (
+          rightSlot
+        )}
       </span>
-    </label>
+    </div>
   );
 }
 

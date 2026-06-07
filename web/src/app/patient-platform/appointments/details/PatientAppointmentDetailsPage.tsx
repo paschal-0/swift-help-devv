@@ -85,6 +85,36 @@ function DetailGrid({
   );
 }
 
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.9 9.9-3.5.8.8-3.5 9.6-10.2Zm-8.2 11 .3 1.1 1.1-.3 8-8-1.1-1.1-8.3 8.3ZM4 17h12a1 1 0 1 1 0 2H4a1 1 0 1 1 0-2Z"
+      />
+    </svg>
+  );
+}
+
+function normalizeTimeInput(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const nativeMatch = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (nativeMatch) {
+    return `${nativeMatch[1].padStart(2, "0")}:${nativeMatch[2]}`;
+  }
+
+  const displayMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (!displayMatch) return "";
+
+  let hours = Number(displayMatch[1]);
+  const minutes = displayMatch[2];
+  const period = displayMatch[3].toUpperCase();
+  if (period === "PM" && hours < 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+}
+
 function AppointmentDetailsEditModal({
   draft,
   isExistingAppointment,
@@ -101,8 +131,16 @@ function AppointmentDetailsEditModal({
     draft.meetingMode === "in-person" ? "in-person" : "video",
   );
   const [scheduledDate, setScheduledDate] = useState(draft.scheduledDate ?? "");
-  const [startTime, setStartTime] = useState(draft.startTime ?? "");
-  const [endTime, setEndTime] = useState(draft.endTime ?? "");
+  const [startTime, setStartTime] = useState(
+    normalizeTimeInput(draft.startTime) ||
+      normalizeTimeInput(formatLocalTime(draft.startsAt)) ||
+      "",
+  );
+  const [endTime, setEndTime] = useState(
+    normalizeTimeInput(draft.endTime) ||
+      normalizeTimeInput(formatLocalTime(draft.endsAt)) ||
+      "",
+  );
 
   const saveChanges = () => {
     if (!careType.trim() || !scheduledDate || !startTime || !endTime) {
@@ -195,7 +233,7 @@ function AppointmentDetailsEditModal({
             </label>
             <label className="space-y-1">
               <span className="text-[13px] font-medium text-[#334155]">
-                Start
+                Selected start time
               </span>
               <input
                 type="time"
@@ -206,7 +244,7 @@ function AppointmentDetailsEditModal({
             </label>
             <label className="space-y-1">
               <span className="text-[13px] font-medium text-[#334155]">
-                End
+                Selected end time
               </span>
               <input
                 type="time"
@@ -640,8 +678,9 @@ export function PatientAppointmentDetailsPage() {
                 <button
                   type="button"
                   onClick={() => setIsEditDetailsOpen(true)}
-                  className="inline-flex h-9 items-center justify-center rounded-[18px] border border-[#1565C0] bg-[#E3F2FD] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5"
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-[#1565C0] bg-[#E3F2FD] px-4 text-[13px] font-medium text-[#1565C0] transition hover:-translate-y-0.5"
                 >
+                  <EditIcon />
                   Edit Details
                 </button>
               ) : null}
@@ -800,8 +839,9 @@ export function PatientAppointmentDetailsPage() {
             }
             whileTap={{ scale: 0.985 }}
             whileHover={{ y: -2 }}
-            className="inline-flex h-[46px] w-full max-w-[215px] cursor-pointer items-center justify-center rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155] transition duration-200 hover:shadow-[0_14px_28px_rgba(148,163,184,0.28)] active:shadow-[0_6px_14px_rgba(148,163,184,0.2)]"
+            className="inline-flex h-[46px] w-full max-w-[215px] cursor-pointer items-center justify-center gap-2 rounded-[24px] bg-[#E2E8F0] px-[14px] text-[18px] font-normal leading-10 tracking-[-0.05em] text-[#334155] transition duration-200 hover:shadow-[0_14px_28px_rgba(148,163,184,0.28)] active:shadow-[0_6px_14px_rgba(148,163,184,0.2)]"
           >
+            {!appointmentId ? <EditIcon /> : null}
             {appointmentId ? "Cancel appointment" : "Edit Details"}
           </motion.button>
           <motion.button
