@@ -424,6 +424,23 @@ function formatLocalTime(value?: string) {
   });
 }
 
+function formatAppointmentTime(value?: string) {
+  const normalized = normalizeTimeInput(value);
+  if (!normalized) return null;
+
+  const [hoursValue, minutesValue] = normalized.split(":").map(Number);
+  if (!Number.isFinite(hoursValue) || !Number.isFinite(minutesValue)) {
+    return null;
+  }
+
+  const date = new Date();
+  date.setHours(hoursValue, minutesValue, 0, 0);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -537,8 +554,13 @@ export function PatientAppointmentDetailsPage() {
       draft.durationLabel ??
       formatDurationFromTimes(draft.startTime, draft.endTime);
     const localStartTime =
-      formatLocalTime(draft.startsAt) ?? draft.startTime ?? "-";
-    const localEndTime = formatLocalTime(draft.endsAt) ?? draft.endTime ?? "-";
+      formatAppointmentTime(draft.startTime) ??
+      formatLocalTime(draft.startsAt) ??
+      "-";
+    const localEndTime =
+      formatAppointmentTime(draft.endTime) ??
+      formatLocalTime(draft.endsAt) ??
+      "-";
 
     const items = [
       { label: "Care type:", value: draft.careType ?? draft.reason ?? "-" },
