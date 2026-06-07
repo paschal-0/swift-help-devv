@@ -73,6 +73,22 @@ function EmptyList({ label }: { label: string }) {
   );
 }
 
+function getRecordingActionLabel(status: string) {
+  if (status === "ready") return "Open audio";
+  if (status === "failed") return "Audio failed";
+  return "Preparing audio";
+}
+
+function getTranscriptStatusLabel(status: string) {
+  if (status === "failed") {
+    return "Transcript could not be generated for this consultation.";
+  }
+  if (status === "ready") {
+    return "Transcript is ready, but no text was saved.";
+  }
+  return "Transcript is still being prepared.";
+}
+
 function DetailLine({ item, strongValue = false }: { item: string; strongValue?: boolean }) {
   const separatorIndex = item.indexOf(":");
 
@@ -270,7 +286,7 @@ export function PatientMedicalRecordsSummaryPage() {
                       onClick={() => void openRecording(item.id)}
                       className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Open audio
+                      {getRecordingActionLabel(item.status)}
                     </button>
                   </div>
                 </div>
@@ -287,7 +303,7 @@ export function PatientMedicalRecordsSummaryPage() {
               {latestTranscript.text}
             </div>
           ) : latestTranscript ? (
-            <EmptyList label={`Transcript is ${latestTranscript.status}.`} />
+            <EmptyList label={getTranscriptStatusLabel(latestTranscript.status)} />
           ) : (
             <EmptyList label="No transcript has been saved for this consultation." />
           )}
