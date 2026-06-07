@@ -244,12 +244,12 @@ export function PatientAppointmentSchedulePage() {
   );
   const [reason, setReason] = useState(draft?.reason ?? "");
   const [locationName, setLocationName] = useState(
-    draft?.locationName || "Patient location",
+    draft?.locationName ?? "",
   );
   const [address, setAddress] = useState(draft?.address ?? "");
   const [city, setCity] = useState(draft?.city ?? "");
   const [stateRegion, setStateRegion] = useState(draft?.state ?? "");
-  const [country, setCountry] = useState(draft?.country || "Nigeria");
+  const [country, setCountry] = useState(draft?.country ?? "");
   const [coordinates, setCoordinates] = useState<{
     latitude: number;
     longitude: number;
@@ -553,10 +553,10 @@ export function PatientAppointmentSchedulePage() {
         patientTimezone,
         durationMinutes: String(durationMinutes),
         durationLabel: formatDurationMinutes(durationMinutes),
-        reason: reason.trim() || draft.reason || "General Consultation",
+        reason: reason.trim() || draft.reason || "",
         locationName:
           meetingMode === "in-person"
-            ? locationName.trim() || "Patient location"
+            ? locationName.trim()
             : "",
         address: meetingMode === "in-person" ? address.trim() : "",
         city: meetingMode === "in-person" ? city.trim() : "",

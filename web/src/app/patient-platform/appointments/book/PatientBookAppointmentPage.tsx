@@ -305,9 +305,13 @@ function StepBadge({ step }: { step: string }) {
 export function PatientBookAppointmentPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const [draft] = useState<Record<string, string> | null>(() =>
-    readPatientAppointmentDraft(),
-  );
+  const [draft] = useState<Record<string, string> | null>(() => {
+    const storedDraft = readPatientAppointmentDraft();
+    if (storedDraft?.sourceAppointmentId || storedDraft?.sourceConsultationId) {
+      return null;
+    }
+    return storedDraft;
+  });
   const [aiBookingContext] = useState<AiAssistantBookingContext | null>(() =>
     readAiAssistantBookingContext(),
   );
@@ -427,7 +431,7 @@ export function PatientBookAppointmentPage() {
           aiBookingContext?.bookingReason ||
           aiBookingContext?.primarySymptom ||
           aiBookingContext?.headline ||
-          selectedCare.title,
+          "",
         aiContext: aiBookingContext ? JSON.stringify(aiBookingContext) : "",
         symptomCheckId: aiBookingContext?.symptomCheckId ?? "",
         urgencyLevel: aiBookingContext?.urgencyLevel ?? "",

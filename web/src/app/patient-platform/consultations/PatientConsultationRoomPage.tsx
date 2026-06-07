@@ -87,8 +87,23 @@ export function PatientConsultationRoomPage() {
   const [isJoining, setIsJoining] = useState(false);
 
   const activeConsultation = room?.consultation ?? chooseActiveConsultation(consultations);
-  const providerName = room?.provider?.name ?? "Selected provider";
+  const providerName = room?.provider?.name ?? "Provider loading";
   const providerInitials = initials(providerName);
+  const sharedHealthContext = useMemo(
+    () =>
+      [
+        activeConsultation?.reason
+          ? { label: "Reason", value: activeConsultation.reason }
+          : null,
+        activeConsultation?.mode
+          ? { label: "Mode", value: activeConsultation.mode }
+          : null,
+        activeConsultation?.consultationLabel
+          ? { label: "Session", value: activeConsultation.consultationLabel }
+          : null,
+      ].filter(Boolean) as Array<{ label: string; value: string }>,
+    [activeConsultation],
+  );
 
   const facts = useMemo(() => {
     if (!activeConsultation) return [];
@@ -207,6 +222,17 @@ export function PatientConsultationRoomPage() {
         ) : null}
       </div>
 
+      {!isLoading && !activeConsultation ? (
+        <section className="mt-6 rounded-[16px] border border-[#DCE8F6] bg-white px-5 py-8 text-center">
+          <h2 className="text-[20px] font-medium tracking-[-0.05em] text-[#334155]">
+            No consultation available
+          </h2>
+          <p className="mx-auto mt-2 max-w-[52ch] text-[14px] leading-5 tracking-[-0.04em] text-[#64748B]">
+            Book or reschedule an appointment before opening a consultation.
+          </p>
+        </section>
+      ) : (
+
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
         <section className="rounded-[16px] bg-[#F8FAFC] p-4 shadow-[0_0_25px_rgba(30,136,229,0.12)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -250,15 +276,20 @@ export function PatientConsultationRoomPage() {
               Shared health context
             </h3>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#334155]">
-                Reason: {activeConsultation?.reason ?? "-"}
-              </span>
-              <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#334155]">
-                Mode: {activeConsultation?.mode ?? "-"}
-              </span>
-              <span className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#334155]">
-                Session: {activeConsultation?.consultationLabel ?? "-"}
-              </span>
+              {sharedHealthContext.length ? (
+                sharedHealthContext.map((item) => (
+                  <span
+                    key={item.label}
+                    className="rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#334155]"
+                  >
+                    {item.label}: {item.value}
+                  </span>
+                ))
+              ) : (
+                <span className="text-[13px] text-[#64748B]">
+                  No shared context is attached to this consultation.
+                </span>
+              )}
             </div>
           </section>
         </section>
@@ -277,7 +308,7 @@ export function PatientConsultationRoomPage() {
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.985 }}
             disabled={!activeConsultation || isJoining}
-            className="mt-7 inline-flex h-11 w-full items-center justify-center rounded-[24px] bg-[#1565C0] text-[16px] font-normal tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-7 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-[24px] bg-[#1565C0] text-[16px] font-normal tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isJoining ? "Opening..." : isInPersonConsultation(activeConsultation?.mode) ? "Open tracker" : "Join session"}
           </motion.button>
@@ -288,12 +319,13 @@ export function PatientConsultationRoomPage() {
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.985 }}
             disabled={!room}
-            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[24px] bg-[#F8FAFC] text-[16px] font-normal tracking-[-0.05em] text-[#334155] shadow-[0_0_16px_rgba(30,136,229,0.15)]"
+            className="mt-3 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-[24px] bg-[#F8FAFC] text-[16px] font-normal tracking-[-0.05em] text-[#334155] shadow-[0_0_16px_rgba(30,136,229,0.15)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Reschedule appointment
           </motion.button>
         </aside>
       </div>
+      )}
     </article>
   );
 }

@@ -264,6 +264,10 @@ export function ProfessionalPlatformShell({
   const [searchText, setSearchText] = useState("");
   const [isMobileNavExpanded, setIsMobileNavExpanded] = useState(false);
   const [notifications, setNotifications] = useState<ProfessionalNotification[]>([]);
+  const normalizedPathname = pathname.replace(/^\/[a-z]{2}(?=\/)/, "");
+  const isSettingsRoute = normalizedPathname.startsWith(
+    "/professional-platform/settings",
+  );
   const [profileSummary, setProfileSummary] = useState({
     name: "Professional",
     availabilityLabel: "Availability not set",
@@ -284,8 +288,13 @@ export function ProfessionalPlatformShell({
     [searchText]
   );
 
+  useEffect(() => {
+    if (isSettingsRoute) {
+      setSearchText("");
+    }
+  }, [isSettingsRoute]);
+
   const isActiveNavItem = (href: string) => {
-    const normalizedPathname = pathname.replace(/^\/[a-z]{2}(?=\/)/, "");
     if (href === "/professional-platform") {
       return normalizedPathname === "/professional-platform" || normalizedPathname === "/professional-platform/dashboard";
     }
@@ -585,13 +594,15 @@ export function ProfessionalPlatformShell({
                     <path fill="#334155" d="M9.5 3a6.5 6.5 0 1 0 4.07 11.57l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
                   </svg>
                   <input
-                    value={searchText}
-                    onChange={(event) => setSearchText(event.target.value)}
+                    value={isSettingsRoute ? "" : searchText}
+                    onChange={(event) => {
+                      if (!isSettingsRoute) setSearchText(event.target.value);
+                    }}
                     className="h-full w-full rounded-[20px] border-0 bg-transparent pl-10 pr-8 text-[12px] font-light tracking-[-0.04em] text-[#334155] outline-none placeholder:text-[#94A3B8] sm:rounded-[22px] sm:pl-11 sm:pr-9 sm:text-[13px] xl:rounded-[24px] xl:pl-[70px] xl:pr-10 xl:text-[16px] xl:tracking-[-0.05em]"
                     placeholder="Search for anything"
                     aria-label="Search dashboard"
                   />
-                  {searchText ? (
+                  {!isSettingsRoute && searchText ? (
                     <button
                       type="button"
                       onClick={() => setSearchText("")}

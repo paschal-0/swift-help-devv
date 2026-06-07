@@ -151,7 +151,6 @@ function AppointmentDetailsEditModal({
     onSave({
       ...draft,
       careType: careType.trim(),
-      reason: careType.trim(),
       meetingMode,
       scheduledDate,
       startTime,
@@ -186,7 +185,7 @@ function AppointmentDetailsEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E3F2FD] text-[18px] text-[#334155]"
+            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[18px] text-[#334155]"
             aria-label="Close edit details"
           >
             x
@@ -260,14 +259,14 @@ function AppointmentDetailsEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 items-center justify-center rounded-[22px] bg-[#E2E8F0] px-5 text-[15px] font-medium text-[#334155]"
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[22px] bg-[#E2E8F0] px-5 text-[15px] font-medium text-[#334155]"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={saveChanges}
-            className="inline-flex h-11 items-center justify-center rounded-[22px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC]"
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-[22px] bg-[#1565C0] px-5 text-[15px] font-medium text-[#F8FAFC]"
           >
             {isExistingAppointment ? "Continue to schedule" : "Save details"}
           </button>
