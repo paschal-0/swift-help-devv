@@ -167,8 +167,16 @@ export function PatientConsultationRoomPage() {
       return;
     }
 
-    savePatientAppointmentDraft(consultationRoomToDraft(room));
-    router.push("/patient-platform/appointments/schedule");
+    const draft = consultationRoomToDraft(room);
+    if (!draft.sourceAppointmentId) {
+      toast.error("Only appointment-backed consultations can be rescheduled.");
+      return;
+    }
+
+    savePatientAppointmentDraft(draft);
+    router.push(
+      `/patient-platform/appointments/schedule?mode=reschedule&appointmentId=${encodeURIComponent(draft.sourceAppointmentId)}`,
+    );
   };
 
   const joinSession = async () => {

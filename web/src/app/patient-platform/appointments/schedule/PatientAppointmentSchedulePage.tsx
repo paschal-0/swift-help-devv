@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
-import { getPatientProviderAvailability } from "@/services/patientApi";
+import {
+  getPatientProviderAvailability,
+  reschedulePatientAppointment,
+} from "@/services/patientApi";
 import { formatDurationMinutes } from "@/utils/appointmentTime";
 import { readPatientAppointmentDraft } from "@/utils/patientAppointmentDraft";
 
@@ -150,6 +153,15 @@ function formatTimeInZone(isoDate: string, timeZone: string) {
   }).format(new Date(isoDate));
 }
 
+function formatTime24InZone(isoDate: string, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(isoDate));
+}
+
 function formatSlotTime(value: string) {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
   if (!match) return value;
@@ -224,9 +236,12 @@ function getDateKeyInZone(isoDate: string, timeZone: string) {
 
 export function PatientAppointmentSchedulePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [draft] = useState<Record<string, string> | null>(() =>
     readPatientAppointmentDraft(),
   );
+  const rescheduleAppointmentId =
+    searchParams.get("appointmentId") ?? draft?.sourceAppointmentId ?? "";
   const initialSelectedDate =
     parseDateKey(draft?.scheduledDate) ??
     (draft?.startsAt ? new Date(draft.startsAt) : null) ??
@@ -376,8 +391,11 @@ export function PatientAppointmentSchedulePage() {
         requestedStartAt: startsAt,
         requestedEndAt: endsAt,
         scheduledDate: selectedDateKey,
+        providerScheduledDate: getDateKeyInZone(startsAt, providerTimezone),
         providerStartTime: formatTimeInZone(startsAt, providerTimezone),
         providerEndTime: formatTimeInZone(endsAt, providerTimezone),
+        providerStartTimeValue: formatTime24InZone(startsAt, providerTimezone),
+        providerEndTimeValue: formatTime24InZone(endsAt, providerTimezone),
         label: `${formatSlotTime(manualStartTime)} - ${formatSlotTime(manualEndTime)} (${timezoneLabel(patientTimezone)})`,
       };
     }
@@ -405,10 +423,15 @@ export function PatientAppointmentSchedulePage() {
       requestedStartAt: startsAt,
       requestedEndAt: endsAt,
       scheduledDate: selectedDateKey,
+      providerScheduledDate: selectedTimeSlot.startDate ?? selectedDateKey,
       providerStartTime:
         selectedTimeSlot.startTime ??
         selectedTimeSlot.consultant.split(" - ")[0],
       providerEndTime:
+        selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
+      providerStartTimeValue:
+        selectedTimeSlot.startTime ?? selectedTimeSlot.consultant.split(" - ")[0],
+      providerEndTimeValue:
         selectedTimeSlot.endTime ?? selectedTimeSlot.consultant.split(" - ")[1],
       label: selectedTimeSlot.patient,
     };
@@ -457,7 +480,7 @@ export function PatientAppointmentSchedulePage() {
     [selectedDate],
   );
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!draft?.professionalId || !selectedTime) {
       toast.error(
         "Choose a professional and available time before continuing.",
@@ -517,57 +540,74 @@ export function PatientAppointmentSchedulePage() {
       return;
     }
 
+    const nextDraft = {
+      ...(draft ?? {}),
+      meetingMode,
+      currencyCode: providerPricing.currencyCode,
+      selectedRateCents: String(selectedModeRateCents),
+      selectedRateLabel: selectedModeRateLabel,
+      estimatedFeeCents: estimatedFeeCents ? String(estimatedFeeCents) : "",
+      estimatedFeeLabel,
+      scheduledDate:
+        selectedSlot === "custom"
+          ? selectedTime.scheduledDate
+          : getDateKeyInZone(selectedTime.requestedStartAt, patientTimezone),
+      providerScheduledDate: getDateKeyInZone(
+        selectedTime.requestedStartAt,
+        providerTimezone,
+      ),
+      startTime:
+        selectedSlot === "custom"
+          ? selectedTime.startTime
+          : formatTimeInZone(selectedTime.requestedStartAt, patientTimezone),
+      endTime:
+        selectedSlot === "custom"
+          ? selectedTime.endTime
+          : formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
+      startsAt: selectedTime.requestedStartAt,
+      endsAt: selectedTime.requestedEndAt,
+      providerStartTime: selectedTime.providerStartTime,
+      providerEndTime: selectedTime.providerEndTime,
+      requestedStartAt: selectedTime.requestedStartAt,
+      requestedEndAt: selectedTime.requestedEndAt,
+      providerTimezone,
+      patientTimezone,
+      durationMinutes: String(durationMinutes),
+      durationLabel: formatDurationMinutes(durationMinutes),
+      reason: reason.trim() || draft.reason || "",
+      locationName: meetingMode === "in-person" ? locationName.trim() : "",
+      address: meetingMode === "in-person" ? address.trim() : "",
+      city: meetingMode === "in-person" ? city.trim() : "",
+      state: meetingMode === "in-person" ? stateRegion.trim() : "",
+      country: meetingMode === "in-person" ? country.trim() : "",
+      latitude: coordinates ? String(coordinates.latitude) : "",
+      longitude: coordinates ? String(coordinates.longitude) : "",
+    };
+
+    if (rescheduleAppointmentId) {
+      try {
+        await reschedulePatientAppointment(rescheduleAppointmentId, {
+          scheduledDate: selectedTime.providerScheduledDate,
+          startTime: selectedTime.providerStartTimeValue,
+          endTime: selectedTime.providerEndTimeValue,
+        });
+        window.sessionStorage.removeItem("patientAppointmentDraft");
+        toast.success("Appointment rescheduled.");
+        router.push(
+          `/patient-platform/appointments/details?appointmentId=${encodeURIComponent(rescheduleAppointmentId)}`,
+        );
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+      return;
+    }
+
     window.sessionStorage.setItem(
       "patientAppointmentDraft",
-      JSON.stringify({
-        ...draft,
-        meetingMode,
-        currencyCode: providerPricing.currencyCode,
-        selectedRateCents: String(selectedModeRateCents),
-        selectedRateLabel: selectedModeRateLabel,
-        estimatedFeeCents: estimatedFeeCents ? String(estimatedFeeCents) : "",
-        estimatedFeeLabel,
-        scheduledDate:
-          selectedSlot === "custom"
-            ? selectedTime.scheduledDate
-            : getDateKeyInZone(selectedTime.requestedStartAt, patientTimezone),
-        providerScheduledDate: getDateKeyInZone(
-          selectedTime.requestedStartAt,
-          providerTimezone,
-        ),
-        startTime:
-          selectedSlot === "custom"
-            ? selectedTime.startTime
-            : formatTimeInZone(selectedTime.requestedStartAt, patientTimezone),
-        endTime:
-          selectedSlot === "custom"
-            ? selectedTime.endTime
-            : formatTimeInZone(selectedTime.requestedEndAt, patientTimezone),
-        startsAt: selectedTime.requestedStartAt,
-        endsAt: selectedTime.requestedEndAt,
-        providerStartTime: selectedTime.providerStartTime,
-        providerEndTime: selectedTime.providerEndTime,
-        requestedStartAt: selectedTime.requestedStartAt,
-        requestedEndAt: selectedTime.requestedEndAt,
-        providerTimezone,
-        patientTimezone,
-        durationMinutes: String(durationMinutes),
-        durationLabel: formatDurationMinutes(durationMinutes),
-        reason: reason.trim() || draft.reason || "",
-        locationName:
-          meetingMode === "in-person"
-            ? locationName.trim()
-            : "",
-        address: meetingMode === "in-person" ? address.trim() : "",
-        city: meetingMode === "in-person" ? city.trim() : "",
-        state: meetingMode === "in-person" ? stateRegion.trim() : "",
-        country: meetingMode === "in-person" ? country.trim() : "",
-        latitude: coordinates ? String(coordinates.latitude) : "",
-        longitude: coordinates ? String(coordinates.longitude) : "",
-      }),
+      JSON.stringify(nextDraft),
     );
     toast.success("Schedule saved.");
-    router.push("/patient-platform/appointments/details");
+    router.push("/patient-platform/appointments/details?mode=new");
   };
 
   return (

@@ -26,14 +26,6 @@ type DetailItem = {
   value: string;
 };
 
-const appointmentItems: DetailItem[] = [
-  { label: "Care type:", value: "-" },
-  { label: "Date:", value: "-" },
-  { label: "Appointment mode", value: "-" },
-  { label: "Time:", value: "-" },
-  { label: "Duration:", value: "-" },
-];
-
 function ToggleSwitch({
   checked,
   onChange,
@@ -436,7 +428,8 @@ export function PatientAppointmentDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const appointmentId = searchParams.get("appointmentId");
-  const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const isNewBookingReview = searchParams.get("mode") === "new";
+  const [draft, setDraft] = useState<PatientAppointmentDraft | null>(null);
   const [appointment, setAppointment] = useState<PatientAppointment | null>(
     null,
   );
@@ -447,11 +440,16 @@ export function PatientAppointmentDetailsPage() {
     useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (appointmentId) {
+      setIsLoadingDetails(true);
       getPatientAppointment(appointmentId)
         .then((appointment) => {
+          if (!isMounted) return;
           setAppointment(appointment);
           setDraft(appointmentToDraft(appointment));
           setEmailReminder(appointment.emailReminderEnabled ?? true);
@@ -460,19 +458,67 @@ export function PatientAppointmentDetailsPage() {
             appointment.shareSummaryWithProvider ?? false,
           );
         })
-        .catch((error) => toast.error(getApiErrorMessage(error)));
-      return;
+        .catch((error) => {
+          if (!isMounted) return;
+          toast.error(getApiErrorMessage(error));
+          router.push("/patient-platform/appointments");
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingDetails(false);
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!isNewBookingReview) {
+      router.push("/patient-platform/appointments");
+      return () => {
+        isMounted = false;
+      };
     }
 
     const rawDraft = window.sessionStorage.getItem(PATIENT_APPOINTMENT_DRAFT_KEY);
-    if (rawDraft) setDraft(JSON.parse(rawDraft) as Record<string, string>);
-  }, [appointmentId]);
+    if (!rawDraft) {
+      toast.error("Choose a professional and schedule before reviewing.");
+      router.push("/patient-platform/appointments/book");
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    try {
+      const nextDraft = JSON.parse(rawDraft) as PatientAppointmentDraft;
+      if (nextDraft.sourceAppointmentId || nextDraft.sourceConsultationId) {
+        router.push("/patient-platform/appointments");
+        return () => {
+          isMounted = false;
+        };
+      }
+      setAppointment(null);
+      setDraft(nextDraft);
+      setEmailReminder(nextDraft.emailReminderEnabled !== "false");
+      setSmsReminder(nextDraft.smsReminderEnabled === "true");
+      setShareSummaryWithProvider(
+        nextDraft.shareSummaryWithProvider === "true",
+      );
+      setIsLoadingDetails(false);
+    } catch {
+      window.sessionStorage.removeItem(PATIENT_APPOINTMENT_DRAFT_KEY);
+      toast.error("Booking details could not be restored.");
+      router.push("/patient-platform/appointments/book");
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [appointmentId, isNewBookingReview, router]);
 
   const canEditDetails =
-    !appointmentId || isEditableAppointmentStatus(appointment?.status);
+    Boolean(appointmentId) && isEditableAppointmentStatus(appointment?.status);
 
   const dynamicAppointmentItems = useMemo<DetailItem[]>(() => {
-    if (!draft) return appointmentItems;
+    if (!draft) return [];
 
     const date = draft.scheduledDate
       ? parseDateOnly(draft.scheduledDate)
@@ -657,6 +703,21 @@ export function PatientAppointmentDetailsPage() {
       setIsConfirming(false);
     }
   };
+
+  if (isLoadingDetails) {
+    return (
+      <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-5 md:px-8 md:pb-12 md:pt-6 xl:px-10 xl:pb-[40px] xl:pt-[20px]">
+        <h1 className="text-center text-[24px] font-medium leading-[42px] tracking-[-0.05em] text-[#334155] xl:text-left">
+          Appointment Details
+        </h1>
+        <div className="mt-8 rounded-[16px] border border-[#E2EDF8] bg-white px-5 py-6 text-center text-[14px] font-medium text-[#64748B]">
+          Loading appointment details...
+        </div>
+      </article>
+    );
+  }
+
+  if (!draft) return null;
 
   return (
     <article className="mt-[26px] min-h-[671px] rounded-[12px] bg-[#F8FAFC] px-5 pb-10 pt-5 md:px-8 md:pb-12 md:pt-6 xl:px-10 xl:pb-[40px] xl:pt-[20px]">
@@ -868,7 +929,9 @@ export function PatientAppointmentDetailsPage() {
             savePatientAppointmentDraft(nextDraft);
             if (appointmentId) {
               toast.success("Details copied into the schedule step.");
-              router.push("/patient-platform/appointments/schedule");
+              router.push(
+                `/patient-platform/appointments/schedule?mode=reschedule&appointmentId=${encodeURIComponent(appointmentId)}`,
+              );
               return;
             }
             setDraft(nextDraft);

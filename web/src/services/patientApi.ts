@@ -560,6 +560,23 @@ export function cancelPatientAppointment(appointmentId: string) {
   );
 }
 
+export function reschedulePatientAppointment(
+  appointmentId: string,
+  payload: {
+    scheduledDate: string;
+    startTime: string;
+    endTime: string;
+  },
+) {
+  return apiRequest<PatientAppointment>(
+    `/patient/appointments/${encodeURIComponent(appointmentId)}/reschedule`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export function createPatientAppointment(payload: {
   professionalId: string;
   reason: string;
