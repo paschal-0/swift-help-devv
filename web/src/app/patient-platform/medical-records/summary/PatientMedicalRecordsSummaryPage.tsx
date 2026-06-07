@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
+import { getCommunicationRecordingArchive } from "@/services/communicationApi";
 import {
   getPatientMedicalRecord,
   listPatientMedicalRecords,
@@ -18,6 +19,19 @@ function formatLongDate(value: string) {
     weekday: "long",
     month: "long",
     day: "numeric",
+  });
+}
+
+function formatShortDateTime(value?: string | null) {
+  if (!value) return "Time not available";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("en-GB", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -151,6 +165,25 @@ export function PatientMedicalRecordsSummaryPage() {
   }, [record]);
 
   const nextSteps = useMemo(() => record?.nextSteps ?? [], [record]);
+  const recordings = useMemo(() => record?.recordings ?? [], [record]);
+  const transcripts = useMemo(() => record?.transcripts ?? [], [record]);
+  const latestTranscript = useMemo(
+    () => transcripts.find((item) => item.text?.trim()) ?? transcripts[0],
+    [transcripts],
+  );
+
+  const openRecording = async (recordingId: string) => {
+    try {
+      const archive = await getCommunicationRecordingArchive(recordingId);
+      if (!archive.archiveUrl) {
+        toast.error("Recording archive is not available yet.");
+        return;
+      }
+      window.open(archive.archiveUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -212,6 +245,52 @@ export function PatientMedicalRecordsSummaryPage() {
               <EmptyList label="No prescriptions have been added yet." />
             )}
           </div>
+        </DetailCard>
+
+        <DetailCard title="Audio Recording" panelClassName="min-h-[162px]">
+          <div className="space-y-4">
+            {recordings.length ? (
+              recordings.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-[10px] bg-[#F8FAFC] px-3 py-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[14px] font-medium leading-5 tracking-[-0.04em] text-[#334155]">
+                        {item.provider} recording
+                      </p>
+                      <p className="mt-1 text-[12px] leading-4 tracking-[-0.03em] text-[#64748B]">
+                        {item.status} . {formatShortDateTime(item.startedAt)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={item.status !== "ready"}
+                      onClick={() => void openRecording(item.id)}
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Open audio
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyList label="No audio recording has been saved for this consultation." />
+            )}
+          </div>
+        </DetailCard>
+
+        <DetailCard title="Transcript" panelClassName="min-h-[220px]">
+          {latestTranscript?.text?.trim() ? (
+            <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-[#F8FAFC] px-3 py-3 text-[13px] leading-5 tracking-[-0.03em] text-[#334155]">
+              {latestTranscript.text}
+            </div>
+          ) : latestTranscript ? (
+            <EmptyList label={`Transcript is ${latestTranscript.status}.`} />
+          ) : (
+            <EmptyList label="No transcript has been saved for this consultation." />
+          )}
         </DetailCard>
 
         <DetailCard title="Session Summary" panelClassName="min-h-[158px]">

@@ -192,6 +192,8 @@ export type PatientMedicalRecord = {
   labResults?: PatientMedicalRecordLabResult[];
   files?: PatientMedicalRecordFile[];
   nextSteps?: string[];
+  recordings?: PatientMedicalRecordRecording[];
+  transcripts?: PatientMedicalRecordTranscript[];
 };
 
 export type PatientMedicalRecordPrescription = {
@@ -215,6 +217,32 @@ export type PatientMedicalRecordFile = {
   url?: string;
   type?: string;
   size?: number;
+};
+
+export type PatientMedicalRecordRecording = {
+  id: string;
+  communicationRoomId: string;
+  consultationId: string | null;
+  provider: string;
+  providerRecordingId: string | null;
+  status: "requested" | "recording" | "stopped" | "ready" | "failed" | "archived";
+  archiveUrl: string | null;
+  startedAt: string | null;
+  stoppedAt: string | null;
+  createdAt?: string;
+};
+
+export type PatientMedicalRecordTranscript = {
+  id: string;
+  communicationRoomId: string;
+  consultationId: string | null;
+  provider: string;
+  providerTranscriptId: string | null;
+  status: "requested" | "transcribing" | "ready" | "failed";
+  language: string | null;
+  text: string | null;
+  segments: Array<Record<string, unknown>>;
+  createdAt?: string;
 };
 
 export type PatientMedicalRecordPayload = {
