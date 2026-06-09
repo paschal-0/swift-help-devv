@@ -142,6 +142,10 @@ export type ProfessionalConsultation = {
   completedAt: string | null;
   liveStartedAt?: string | null;
   liveEndedAt?: string | null;
+  billableDurationSeconds?: number;
+  professionalLeftAt?: string | null;
+  patientLeftAt?: string | null;
+  graceExpiresAt?: string | null;
   endReason?: string | null;
   createdAt: string;
   updatedAt: string;

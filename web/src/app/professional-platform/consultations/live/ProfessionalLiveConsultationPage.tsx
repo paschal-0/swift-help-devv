@@ -26,6 +26,7 @@ import {
   type CommunicationTranscript,
 } from "@/services/communicationApi";
 import {
+  completeProfessionalConsultation,
   endProfessionalConsultationSession,
   generateProfessionalConsultationAiDocument,
   getProfessionalLiveUrl,
@@ -424,7 +425,7 @@ export function ProfessionalLiveConsultationPage() {
           ]
         : [];
 
-      await endProfessionalConsultationSession(consultation.id, {
+      await completeProfessionalConsultation(consultation.id, {
         summary: summary.trim() || consultation.reason,
         consultationNotes: notes
           .split("\n")
@@ -443,6 +444,71 @@ export function ProfessionalLiveConsultationPage() {
         microphoneEnabled: false,
       });
       toast.success("Consultation completed and medical record updated");
+      router.push("/professional-platform/schedule");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const confirmReconnectGrace = () =>
+    new Promise<boolean>((resolve) => {
+      const toastId = toast.custom(
+        () => (
+          <div className="w-[320px] rounded-[16px] border border-[#BFDBFE] bg-[#F8FAFC] p-4 text-[#334155] shadow-[0_18px_42px_rgba(15,23,42,0.2)]">
+            <p className="text-[15px] font-semibold text-[#0F172A]">
+              Leave consultation?
+            </p>
+            <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+              This starts a 5-minute grace period. You can rejoin before the
+              consultation is closed.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  resolve(false);
+                }}
+                className="h-9 flex-1 rounded-[10px] border border-[#1565C0] text-[13px] font-medium text-[#1565C0]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  resolve(true);
+                }}
+                className="h-9 flex-1 rounded-[10px] bg-[#1565C0] text-[13px] font-medium text-white"
+              >
+                End call
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: Infinity },
+      );
+    });
+
+  const startReconnectGrace = async () => {
+    if (!consultation || isCompleting) return;
+    setIsCompleting(true);
+    try {
+      const updated = await endProfessionalConsultationSession(consultation.id);
+      await updateProfessionalConsultationPresence(consultation.id, {
+        online: true,
+        inCall: false,
+        cameraEnabled: false,
+        microphoneEnabled: false,
+      });
+      setRoom((current) =>
+        current ? { ...current, consultation: updated } : current,
+      );
+      toast.info(
+        "Reconnect grace started. You have 5 minutes to return before the consultation closes.",
+      );
       router.push("/professional-platform/schedule");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -734,7 +800,8 @@ export function ProfessionalLiveConsultationPage() {
         onToggleTranscription={toggleTranscription}
         onTranscriptText={appendTranscriptText}
         isEnding={isCompleting}
-        onEnd={() => void completeSession()}
+        onBeforeEnd={confirmReconnectGrace}
+        onEnd={() => void startReconnectGrace()}
         summaryContent={
           <div className="flex min-h-[254px] flex-col justify-between">
             <dl className="space-y-7">

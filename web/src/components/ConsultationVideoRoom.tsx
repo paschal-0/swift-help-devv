@@ -52,6 +52,7 @@ type ConsultationVideoRoomProps = {
   onToggleTranscription?: () => Promise<void> | void;
   onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
+  onBeforeEnd?: () => Promise<boolean> | boolean;
   onEnd: () => void;
   playAllRemoteAudio?: boolean;
   onPresenceChange?: (presence: {
@@ -593,6 +594,7 @@ export function ConsultationVideoRoom({
   onToggleTranscription,
   onTranscriptText,
   isEnding,
+  onBeforeEnd,
   onEnd,
   playAllRemoteAudio = false,
   onPresenceChange,
@@ -1137,6 +1139,8 @@ export function ConsultationVideoRoom({
 
   const handleEnd = async () => {
     if (busyControl === "leave") return;
+    const shouldEnd = (await onBeforeEnd?.()) ?? true;
+    if (!shouldEnd) return;
     setBusyControl("leave");
     presenceChangeRef.current?.({
       inCall: false,
