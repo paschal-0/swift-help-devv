@@ -87,6 +87,13 @@ function getModeLabel(mode: string) {
   return "Video consultation";
 }
 
+function getActualDurationMinutes(consultation: ProfessionalConsultation) {
+  if (consultation.billableDurationSeconds && consultation.billableDurationSeconds > 0) {
+    return Math.max(1, Math.ceil(consultation.billableDurationSeconds / 60));
+  }
+  return consultation.durationMinutes;
+}
+
 function ChevronDownIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -242,6 +249,7 @@ function ConsultationDetailsModal({
   room,
   recordings,
   transcripts,
+  earnedAmountCents,
   loading,
   onClose,
   onOpenRecording,
@@ -250,9 +258,10 @@ function ConsultationDetailsModal({
   room: ProfessionalConsultationRoom | null;
   recordings: CommunicationRecording[];
   transcripts: CommunicationTranscript[];
+  earnedAmountCents: number;
   loading: boolean;
   onClose: () => void;
-  onOpenRecording: (recordingId: string) => void;
+  onOpenRecording: (recordingId: string, archiveUrl?: string | null) => void;
 }) {
   const aiDocument = room?.aiDocument;
 
@@ -271,7 +280,7 @@ function ConsultationDetailsModal({
               <p className="mt-1 text-[13px] text-[#64748B] sm:text-[14px]">
                 {getModeLabel(consultation.mode)} .{" "}
                 {formatDateTime(consultation.startsAt)} .{" "}
-                {consultation.durationMinutes} min
+                {getActualDurationMinutes(consultation)} min
               </p>
             </div>
             <button
@@ -300,7 +309,7 @@ function ConsultationDetailsModal({
                         ["Status", normalizeStatus(consultation.status)],
                         ["Started", formatDateTime(consultation.startedAt ?? consultation.startsAt)],
                         ["Ended", formatDateTime(consultation.completedAt ?? consultation.endsAt)],
-                        ["Earned", formatApiMoney(consultation.feeAmountCents, consultation.currency)],
+                        ["Earned", formatApiMoney(earnedAmountCents, consultation.currency)],
                         ["Earnings status", consultation.earningsStatus.replace("_", " ")],
                       ].map(([label, value]) => (
                         <div key={label} className="min-w-0">
@@ -380,8 +389,8 @@ function ConsultationDetailsModal({
                               </div>
                               <button
                                 type="button"
-                                disabled={recording.status !== "ready"}
-                                onClick={() => onOpenRecording(recording.id)}
+                                disabled={recording.status !== "ready" && !recording.archiveUrl}
+                                onClick={() => onOpenRecording(recording.id, recording.archiveUrl)}
                                 className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#1565C0] px-4 text-[13px] font-semibold text-[#1565C0] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
                               >
                                 Open recording
@@ -592,7 +601,7 @@ export default function ProfessionalReportsRoute() {
   const completedConsultations = filteredConsultations.filter((item) => item.status === "completed");
   const totalEarnedCents = filteredEarnings.reduce((sum, earning) => sum + earning.amountCents, 0);
   const averageDuration = filteredConsultations.length
-    ? Math.round(filteredConsultations.reduce((sum, item) => sum + item.durationMinutes, 0) / filteredConsultations.length)
+    ? Math.round(filteredConsultations.reduce((sum, item) => sum + getActualDurationMinutes(item), 0) / filteredConsultations.length)
     : 0;
   const completionRate = filteredConsultations.length
     ? Math.round((completedConsultations.length / filteredConsultations.length) * 100)
@@ -615,6 +624,19 @@ export default function ProfessionalReportsRoute() {
     .slice()
     .sort((first, second) => new Date(second.startsAt).getTime() - new Date(first.startsAt).getTime());
 
+  const earningsByConsultationId = useMemo(() => {
+    const map = new Map<string, ProfessionalEarning>();
+    for (const earning of earnings) {
+      if (earning.sourceType === "consultation" && earning.sourceId) {
+        map.set(earning.sourceId, earning);
+      }
+    }
+    return map;
+  }, [earnings]);
+
+  const getConsultationEarnedAmount = (consultation: ProfessionalConsultation) =>
+    earningsByConsultationId.get(consultation.id)?.amountCents ?? consultation.feeAmountCents;
+
   const exportReport = () => {
     const rows = [
       ["ID", "Patient", "Type", "Date", "Duration", "Earned", "Status"],
@@ -623,8 +645,8 @@ export default function ProfessionalReportsRoute() {
         consultation.patientName,
         getModeLabel(consultation.mode),
         formatDate(consultation.startsAt),
-        `${consultation.durationMinutes} min`,
-        formatApiMoney(consultation.feeAmountCents, consultation.currency),
+        `${getActualDurationMinutes(consultation)} min`,
+        formatApiMoney(getConsultationEarnedAmount(consultation), consultation.currency),
         normalizeStatus(consultation.status),
       ]),
     ];
@@ -649,13 +671,19 @@ export default function ProfessionalReportsRoute() {
     try {
       const nextRoom = await getProfessionalConsultationRoom(consultation.id);
       setSelectedRoom(nextRoom);
+      setSelectedRecordings(nextRoom.recordings ?? []);
+      setSelectedTranscripts(nextRoom.transcripts ?? []);
       const communicationRoomId = nextRoom.room.id;
       if (communicationRoomId) {
-        const communicationState = await getCommunicationRoom(
-          communicationRoomId,
-        );
-        setSelectedRecordings(communicationState.recordings);
-        setSelectedTranscripts(communicationState.transcripts);
+        try {
+          const communicationState = await getCommunicationRoom(
+            communicationRoomId,
+          );
+          setSelectedRecordings(communicationState.recordings);
+          setSelectedTranscripts(communicationState.transcripts);
+        } catch {
+          // Closed consultation rooms can still expose persisted artifacts through the consultation record response.
+        }
       }
     } catch (error) {
       toast.error(
@@ -668,8 +696,12 @@ export default function ProfessionalReportsRoute() {
     }
   };
 
-  const openRecordingArchive = async (recordingId: string) => {
+  const openRecordingArchive = async (recordingId: string, archiveUrl?: string | null) => {
     try {
+      if (archiveUrl) {
+        window.open(archiveUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
       const archive = await getCommunicationRecordingArchive(recordingId);
       window.open(archive.archiveUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
@@ -902,8 +934,10 @@ export default function ProfessionalReportsRoute() {
                     <td className="px-4 py-4 font-medium">{consultation.patientName}</td>
                     <td className="px-4 py-4 text-[#94A3B8]">{getModeLabel(consultation.mode)}</td>
                     <td className="px-4 py-4 text-[#94A3B8]">{formatDate(consultation.startsAt)}</td>
-                    <td className="px-4 py-4 text-[#94A3B8]">{consultation.durationMinutes} min</td>
-                    <td className="px-4 py-4 font-semibold text-[#078D24]">{formatApiMoney(consultation.feeAmountCents, consultation.currency)}</td>
+                    <td className="px-4 py-4 text-[#94A3B8]">{getActualDurationMinutes(consultation)} min</td>
+                    <td className="px-4 py-4 font-semibold text-[#078D24]">
+                      {formatApiMoney(getConsultationEarnedAmount(consultation), consultation.currency)}
+                    </td>
                     <td className="px-4 py-4 font-semibold text-[#1565C0]">{normalizeStatus(consultation.status)}</td>
                   </tr>
                 ))}
@@ -929,8 +963,10 @@ export default function ProfessionalReportsRoute() {
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-2 text-[13px] min-[420px]:grid-cols-2">
                   <p className="min-w-0 truncate"><span className="text-[#94A3B8]">Type:</span> {getModeLabel(consultation.mode)}</p>
-                  <p><span className="text-[#94A3B8]">Duration:</span> {consultation.durationMinutes} min</p>
-                  <p className="font-semibold text-[#078D24] min-[420px]:col-span-2">{formatApiMoney(consultation.feeAmountCents, consultation.currency)}</p>
+                  <p><span className="text-[#94A3B8]">Duration:</span> {getActualDurationMinutes(consultation)} min</p>
+                  <p className="font-semibold text-[#078D24] min-[420px]:col-span-2">
+                    {formatApiMoney(getConsultationEarnedAmount(consultation), consultation.currency)}
+                  </p>
                 </div>
               </article>
             ))}
@@ -949,10 +985,11 @@ export default function ProfessionalReportsRoute() {
           room={selectedRoom}
           recordings={selectedRecordings}
           transcripts={selectedTranscripts}
+          earnedAmountCents={getConsultationEarnedAmount(selectedConsultation)}
           loading={detailLoading}
           onClose={() => setSelectedConsultation(null)}
-          onOpenRecording={(recordingId) =>
-            void openRecordingArchive(recordingId)
+          onOpenRecording={(recordingId, archiveUrl) =>
+            void openRecordingArchive(recordingId, archiveUrl)
           }
         />
       ) : null}

@@ -281,7 +281,7 @@ function MobileMedicalRecordCard({
 export function PatientMedicalRecordsPage() {
   const router = useRouter();
   const { searchText } = usePatientPlatformShell();
-  const [tab, setTab] = useState<RecordsTab>("upcoming");
+  const [tab, setTab] = useState<RecordsTab>("past");
   const [dateFilter, setDateFilter] = useState("");
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [isLoadingRecords, setIsLoadingRecords] = useState(true);

@@ -184,7 +184,7 @@ function MobileRow({ record, onOpen }: { record: MedicalRecordRow; onOpen: () =>
 export function PatientMedicalRecordsListPage() {
   const router = useRouter();
   const { searchText } = usePatientPlatformShell();
-  const [tab, setTab] = useState<RecordsTab>("upcoming");
+  const [tab, setTab] = useState<RecordsTab>("past");
   const [dateFilter, setDateFilter] = useState("");
   const [records, setRecords] = useState<MedicalRecordRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);

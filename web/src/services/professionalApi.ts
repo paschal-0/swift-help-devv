@@ -1,7 +1,11 @@
 "use client";
 
 import { apiRequest, type AuthUser, type BackendRole } from "./authApi";
-import type { CommunicationRoomAccess } from "./communicationApi";
+import type {
+  CommunicationRecording,
+  CommunicationRoomAccess,
+  CommunicationTranscript,
+} from "./communicationApi";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
@@ -232,6 +236,8 @@ export type ProfessionalConsultationRoom = {
   presence: ProfessionalConsultationPresence[];
   intake: ProfessionalConsultationIntake | null;
   aiDocument: ProfessionalConsultationAiDocument | null;
+  recordings?: CommunicationRecording[];
+  transcripts?: CommunicationTranscript[];
   room: {
     id: string;
     meetingUrl: string | null;

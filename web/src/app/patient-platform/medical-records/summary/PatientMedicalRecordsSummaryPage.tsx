@@ -73,8 +73,8 @@ function EmptyList({ label }: { label: string }) {
   );
 }
 
-function getRecordingActionLabel(status: string) {
-  if (status === "ready") return "Open audio";
+function getRecordingActionLabel(status: string, archiveUrl?: string | null) {
+  if (status === "ready" || archiveUrl) return "Open audio";
   if (status === "failed") return "Audio failed";
   return "Preparing audio";
 }
@@ -188,8 +188,12 @@ export function PatientMedicalRecordsSummaryPage() {
     [transcripts],
   );
 
-  const openRecording = async (recordingId: string) => {
+  const openRecording = async (recordingId: string, archiveUrl?: string | null) => {
     try {
+      if (archiveUrl) {
+        window.open(archiveUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
       const archive = await getCommunicationRecordingArchive(recordingId);
       if (!archive.archiveUrl) {
         toast.error("Recording archive is not available yet.");
@@ -282,11 +286,11 @@ export function PatientMedicalRecordsSummaryPage() {
                     </div>
                     <button
                       type="button"
-                      disabled={item.status !== "ready"}
-                      onClick={() => void openRecording(item.id)}
+                      disabled={item.status !== "ready" && !item.archiveUrl}
+                      onClick={() => void openRecording(item.id, item.archiveUrl)}
                       className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {getRecordingActionLabel(item.status)}
+                      {getRecordingActionLabel(item.status, item.archiveUrl)}
                     </button>
                   </div>
                 </div>
