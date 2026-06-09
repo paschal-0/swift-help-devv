@@ -177,6 +177,7 @@ export function CommunicationRoomPage() {
       setRecording(saved);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
+      throw error;
     }
   };
 

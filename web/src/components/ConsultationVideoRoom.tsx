@@ -79,6 +79,8 @@ type DailyParticipant = {
   video?: boolean;
   audioTrack?: MediaStreamTrack | false;
   videoTrack?: MediaStreamTrack | false;
+  screenAudioTrack?: MediaStreamTrack | false;
+  screenVideoTrack?: MediaStreamTrack | false;
   tracks?: Record<string, DailyTrackState | undefined>;
 };
 
@@ -149,6 +151,20 @@ function getAudioTrack(participant?: DailyParticipant | null) {
   return getMediaTrack(participant?.tracks?.audio, participant?.audioTrack);
 }
 
+function getScreenVideoTrack(participant?: DailyParticipant | null) {
+  return getMediaTrack(
+    participant?.tracks?.screenVideo,
+    participant?.screenVideoTrack,
+  );
+}
+
+function getScreenAudioTrack(participant?: DailyParticipant | null) {
+  return getMediaTrack(
+    participant?.tracks?.screenAudio,
+    participant?.screenAudioTrack,
+  );
+}
+
 function isParticipantTrackEnabled(
   participant: DailyParticipant | undefined,
   kind: "audio" | "video",
@@ -194,16 +210,23 @@ function getMediaTrack(
 }
 
 function hasPlayableMedia(participant: DailyParticipant) {
-  return Boolean(getVideoTrack(participant) || getAudioTrack(participant));
+  return Boolean(
+    getScreenVideoTrack(participant) ||
+      getVideoTrack(participant) ||
+      getScreenAudioTrack(participant) ||
+      getAudioTrack(participant),
+  );
 }
 
 function hasPlayableVideo(participant: DailyParticipant) {
-  return Boolean(getVideoTrack(participant));
+  return Boolean(getScreenVideoTrack(participant) || getVideoTrack(participant));
 }
 
 function summarizeParticipant(participant: DailyParticipant) {
   const video = participant.tracks?.video;
   const audio = participant.tracks?.audio;
+  const screenVideo = participant.tracks?.screenVideo;
+  const screenAudio = participant.tracks?.screenAudio;
 
   return {
     local: Boolean(participant.local),
@@ -216,6 +239,12 @@ function summarizeParticipant(participant: DailyParticipant) {
     audioState: audio?.state ?? "missing",
     audioSubscribed: audio?.subscribed ?? null,
     hasAudioTrack: Boolean(getAudioTrack(participant)),
+    screenVideoState: screenVideo?.state ?? "missing",
+    screenVideoSubscribed: screenVideo?.subscribed ?? null,
+    hasScreenVideoTrack: Boolean(getScreenVideoTrack(participant)),
+    screenAudioState: screenAudio?.state ?? "missing",
+    screenAudioSubscribed: screenAudio?.subscribed ?? null,
+    hasScreenAudioTrack: Boolean(getScreenAudioTrack(participant)),
   };
 }
 
@@ -239,6 +268,23 @@ function pickRemoteParticipant(
     : [];
 
   return (
+    expectedParticipants.find(
+      (participant) =>
+        participant.tracks?.screenVideo?.state === "playable" &&
+        Boolean(getScreenVideoTrack(participant)),
+    ) ??
+    expectedParticipants.find((participant) =>
+      Boolean(getScreenVideoTrack(participant)),
+    ) ??
+    remoteParticipants.find(
+      (participant) =>
+        !participant.participantType &&
+        participant.tracks?.screenVideo?.state === "playable" &&
+        Boolean(getScreenVideoTrack(participant)),
+    ) ??
+    remoteParticipants.find((participant) =>
+      Boolean(getScreenVideoTrack(participant)),
+    ) ??
     expectedParticipants.find(
       (participant) =>
         participant.tracks?.video?.state === "playable" &&
@@ -271,6 +317,13 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
   } catch {
     // Daily control calls can fail when permissions are denied or a call is ending.
   }
+}
+
+async function runDailyControl(action: (() => unknown) | undefined) {
+  if (!action) {
+    throw new Error("Daily control is unavailable.");
+  }
+  await Promise.resolve(action());
 }
 
 async function enableCleanMicrophoneAudio(
@@ -333,11 +386,21 @@ function buildRemoteAudioTracks(
     (participant) => !participant.local,
   );
   const participantsWithAudio = remoteParticipants
-    .map((participant) => ({
-      participant,
-      id: getParticipantId(participant),
-      track: getAudioTrack(participant),
-    }))
+    .flatMap((participant) => {
+      const id = getParticipantId(participant);
+      return [
+        {
+          participant,
+          id,
+          track: getAudioTrack(participant),
+        },
+        {
+          participant,
+          id: `${id}:screen`,
+          track: getScreenAudioTrack(participant),
+        },
+      ];
+    })
     .filter(
       (item): item is {
         participant: DailyParticipant;
@@ -644,13 +707,19 @@ export function ConsultationVideoRoom({
     (participant) => participant.local,
   );
   const remoteParticipant = pickRemoteParticipant(participantList, remoteLabel);
-  const localVideoTrack = cameraEnabled
+  const localCameraTrack = cameraEnabled
     ? (getVideoTrack(localParticipant) ?? localPreviewTrack)
     : null;
+  const localScreenVideoTrack = getScreenVideoTrack(localParticipant);
+  const localPreviewDisplayTrack = localScreenVideoTrack ?? localCameraTrack;
+  const remoteScreenVideoTrack = getScreenVideoTrack(remoteParticipant);
   const remoteVideoTrack =
-    isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") === false
+    remoteScreenVideoTrack ??
+    (isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") === false
       ? null
-      : getVideoTrack(remoteParticipant);
+      : getVideoTrack(remoteParticipant));
+  const remoteIsSharingScreen = Boolean(remoteScreenVideoTrack);
+  const localIsSharingScreen = Boolean(localScreenVideoTrack);
   const remoteAudioTracks = useMemo(
     () =>
       buildRemoteAudioTracks(
@@ -738,6 +807,7 @@ export function ConsultationVideoRoom({
       if (nextMicrophoneEnabled !== null) {
         setMicrophoneEnabled(nextMicrophoneEnabled);
       }
+      setScreenSharing(Boolean(getScreenVideoTrack(nextLocalParticipant)));
       addCallDiagnostic(
         "participants",
         Object.values(nextParticipants).map(summarizeParticipant),
@@ -828,11 +898,17 @@ export function ConsultationVideoRoom({
     };
 
     const handleScreenShareStarted = () => {
-      if (!cancelled) setScreenSharing(true);
+      if (!cancelled) {
+        setScreenSharing(true);
+        syncParticipants();
+      }
     };
 
     const handleScreenShareStopped = () => {
-      if (!cancelled) setScreenSharing(false);
+      if (!cancelled) {
+        setScreenSharing(false);
+        syncParticipants();
+      }
     };
 
     setConnectionStatus("connecting");
@@ -885,6 +961,8 @@ export function ConsultationVideoRoom({
           .on("participant-left", syncParticipants)
           .on("track-started", syncParticipants)
           .on("track-stopped", syncParticipants)
+          .on("screen-share-started", syncParticipants)
+          .on("screen-share-stopped", syncParticipants)
           .on("local-screen-share-started", handleScreenShareStarted)
           .on("local-screen-share-stopped", handleScreenShareStopped)
           .on("network-connection", handleNetworkConnection as () => void)
@@ -926,6 +1004,8 @@ export function ConsultationVideoRoom({
         call.off("participant-left", syncParticipants);
         call.off("track-started", syncParticipants);
         call.off("track-stopped", syncParticipants);
+        call.off("screen-share-started", syncParticipants);
+        call.off("screen-share-stopped", syncParticipants);
         call.off("local-screen-share-started", handleScreenShareStarted);
         call.off("local-screen-share-stopped", handleScreenShareStopped);
         call.off("network-connection", handleNetworkConnection as () => void);
@@ -1103,11 +1183,25 @@ export function ConsultationVideoRoom({
         await ignoreDailyResult(() => call?.stopRecording?.());
         await onToggleRecording?.();
       } else {
-        await onToggleRecording?.();
-        await ignoreDailyResult(() =>
-          call?.startRecording?.({ layout: { preset: "default" } }),
+        if (!call?.startRecording) {
+          throw new Error("Daily recording is unavailable.");
+        }
+        await runDailyControl(() =>
+          call.startRecording?.({ layout: { preset: "default" } }),
         );
+        try {
+          await onToggleRecording?.();
+        } catch (error) {
+          await ignoreDailyResult(() => call?.stopRecording?.());
+          throw error;
+        }
       }
+    } catch {
+      setControlNotice(
+        recordingActive
+          ? "Recording could not be stopped. It will be finalized when the call ends."
+          : "Recording could not be started. Check recording permissions and try again.",
+      );
     } finally {
       setBusyControl(null);
     }
@@ -1192,6 +1286,11 @@ export function ConsultationVideoRoom({
             label={effectiveRemoteLabel}
             muted
           />
+          {remoteIsSharingScreen ? (
+            <div className="absolute left-2 top-[60px] rounded-full bg-[#1565C0] px-3 py-1.5 text-[11px] font-semibold text-white shadow-[0_8px_22px_rgba(15,23,42,0.22)] sm:left-[18px] sm:top-[78px] sm:text-[12px]">
+              Screen sharing
+            </div>
+          ) : null}
           {remoteAudioTracks.map(({ id, track }) => (
             <RemoteAudio
               key={`${id}:${track.id}`}
@@ -1231,14 +1330,18 @@ export function ConsultationVideoRoom({
 
           <div className="absolute bottom-[92px] right-2 h-[112px] w-[78px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px] 2xl:h-[214px] 2xl:w-[144px]">
             <VideoSurface
-              track={localVideoTrack}
+              track={localPreviewDisplayTrack}
               label={localLabel}
               muted
-              mirror
+              mirror={!localIsSharingScreen}
               compact
             />
             <div className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-md bg-[rgba(15,23,42,0.62)] px-1.5 py-0.5 text-[9px] font-medium text-white">
-              {cameraEnabled ? localLabel : "Camera off"}
+              {localIsSharingScreen
+                ? "Your screen"
+                : cameraEnabled
+                  ? localLabel
+                  : "Camera off"}
             </div>
           </div>
 
