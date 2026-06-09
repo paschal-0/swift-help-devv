@@ -157,10 +157,12 @@ function ProfileInfoRows({ rows }: { rows: InfoRow[] }) {
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-4 border-b-2 border-[#E2E8F0] py-2"
+          className="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)] items-start gap-4 border-b-2 border-[#E2E8F0] py-2"
         >
-          <span className="text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">{row.label}:</span>
-          <span className="text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">{row.value}</span>
+          <span className="min-w-0 text-[14px] font-normal leading-[23px] tracking-[-0.07em] text-[#94A3B8]">{row.label}:</span>
+          <span className="min-w-0 break-words text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">
+            {row.value}
+          </span>
         </div>
       ))}
     </div>
