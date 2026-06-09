@@ -622,6 +622,8 @@ export function ConsultationVideoRoom({
     | null
   >(null);
   const [callDiagnostics, setCallDiagnostics] = useState<string[]>([]);
+  const [localPreviewTrack, setLocalPreviewTrack] =
+    useState<MediaStreamTrack | null>(null);
   const cameraEnabledRef = useRef(cameraEnabled);
   const microphoneEnabledRef = useRef(microphoneEnabled);
   const [audioVolume, setAudioVolume] = useState(0.75);
@@ -641,7 +643,7 @@ export function ConsultationVideoRoom({
   );
   const remoteParticipant = pickRemoteParticipant(participantList, remoteLabel);
   const localVideoTrack = cameraEnabled
-    ? getVideoTrack(localParticipant)
+    ? (getVideoTrack(localParticipant) ?? localPreviewTrack)
     : null;
   const remoteVideoTrack =
     isParticipantTrackEnabled(remoteParticipant ?? undefined, "video") === false
@@ -711,6 +713,7 @@ export function ConsultationVideoRoom({
 
     let cancelled = false;
     let activeCall: DailyCallObject | null = null;
+    let prewarmedStream: MediaStream | null = null;
 
     const syncParticipants = () => {
       if (!activeCall || cancelled) return;
@@ -833,7 +836,7 @@ export function ConsultationVideoRoom({
     setConnectionStatus("connecting");
 
     void import("@daily-co/daily-js")
-      .then((dailyModule) => {
+      .then(async (dailyModule) => {
         if (cancelled) return;
         const typedDailyModule = dailyModule as unknown as DailyModule;
         const DailyIframe = typedDailyModule.default ?? typedDailyModule;
@@ -841,9 +844,29 @@ export function ConsultationVideoRoom({
           throw new Error("Daily call object API is unavailable.");
         }
 
+        try {
+          prewarmedStream = await navigator.mediaDevices.getUserMedia({
+            audio: CLEAN_AUDIO_CONSTRAINTS,
+            video: true,
+          });
+          if (cancelled) {
+            prewarmedStream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          const previewVideoTrack =
+            prewarmedStream.getVideoTracks()[0] ?? null;
+          setLocalPreviewTrack(previewVideoTrack);
+          addCallDiagnostic("local media prewarmed", {
+            audio: Boolean(prewarmedStream.getAudioTracks()[0]),
+            video: Boolean(previewVideoTrack),
+          });
+        } catch (error) {
+          addCallDiagnostic("local media prewarm unavailable", error);
+        }
+
         activeCall = DailyIframe.createCallObject({
-          audioSource: true,
-          videoSource: true,
+          audioSource: prewarmedStream?.getAudioTracks()[0] ?? true,
+          videoSource: prewarmedStream?.getVideoTracks()[0] ?? true,
           dailyConfig: {
             micAudioMode: "speech",
           },
@@ -915,6 +938,8 @@ export function ConsultationVideoRoom({
         void ignoreDailyResult(() => call.leave());
         void ignoreDailyResult(() => call.destroy());
       }
+      prewarmedStream?.getTracks().forEach((track) => track.stop());
+      setLocalPreviewTrack(null);
       if (callRef.current === call) {
         callRef.current = null;
       }
@@ -1151,13 +1176,13 @@ export function ConsultationVideoRoom({
     connectionStatus !== "connected" || Boolean(busyControl);
 
   return (
-    <section className="w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F8FAFC] p-2 text-[#334155] sm:p-[15px]">
-      <h1 className="px-1 text-[20px] font-medium leading-8 tracking-[-0.04em] sm:ml-[13px] sm:px-0 sm:text-[24px] sm:leading-[42px]">
+    <section className="w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F8FAFC] p-1 text-[#334155] sm:p-[15px]">
+      <h1 className="hidden px-1 text-[20px] font-medium leading-8 tracking-[-0.04em] sm:ml-[13px] sm:block sm:px-0 sm:text-[24px] sm:leading-[42px]">
         {heading}
       </h1>
 
-      <div className="mt-3 grid min-w-0 gap-3 sm:mt-5 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
-        <div className="relative h-[calc(100svh-170px)] min-h-[430px] max-h-[720px] min-w-0 overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[620px] xl:h-[min(72vh,720px)]">
+      <div className="mt-1 grid min-w-0 gap-3 sm:mt-5 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="relative h-[calc(100svh-104px)] min-h-[560px] max-h-[760px] min-w-0 overflow-hidden rounded-[12px] bg-[#94A3B8] sm:h-[680px] sm:max-h-[840px] xl:h-[min(78vh,840px)] 2xl:h-[min(82vh,900px)]">
           <VideoSurface
             track={remoteVideoTrack}
             label={effectiveRemoteLabel}
@@ -1200,7 +1225,7 @@ export function ConsultationVideoRoom({
             </div>
           </div>
 
-          <div className="absolute bottom-[92px] right-2 h-[112px] w-[78px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px]">
+          <div className="absolute bottom-[92px] right-2 h-[112px] w-[78px] overflow-hidden rounded-[10px] border-2 border-[#F8FAFC] bg-[#334155] shadow-[0_4px_15px_rgba(0,0,0,0.4)] sm:bottom-[126px] sm:right-[15px] sm:h-[187px] sm:w-[125px] sm:rounded-[12px] 2xl:h-[214px] 2xl:w-[144px]">
             <VideoSurface
               track={localVideoTrack}
               label={localLabel}
@@ -1423,7 +1448,7 @@ export function ConsultationVideoRoom({
           ) : null}
         </div>
 
-        <aside className="relative flex min-h-[430px] min-w-0 flex-col rounded-[12px] bg-[#E2E8F0] px-2 py-[12px] sm:h-[620px] sm:px-[10px] sm:py-[17px] xl:h-[min(72vh,720px)]">
+        <aside className="relative flex min-h-[430px] min-w-0 flex-col rounded-[12px] bg-[#E2E8F0] px-2 py-[12px] sm:h-[680px] sm:px-[10px] sm:py-[17px] xl:h-[min(78vh,840px)] 2xl:h-[min(82vh,900px)]">
           <div className="grid h-10 min-w-0 grid-cols-3 rounded-[10px] bg-[#F8FAFC] text-[11px] font-medium leading-4 sm:h-[37px] sm:grid-cols-[90px_1fr_1fr] sm:rounded-[12px] sm:text-[14px] sm:font-normal">
             <button
               type="button"

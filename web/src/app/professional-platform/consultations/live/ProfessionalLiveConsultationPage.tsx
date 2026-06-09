@@ -671,7 +671,7 @@ export function ProfessionalLiveConsultationPage() {
   };
 
   return (
-    <section className="w-full max-w-[1180px]">
+    <section className="w-full max-w-none">
       <ConsultationVideoRoom
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}

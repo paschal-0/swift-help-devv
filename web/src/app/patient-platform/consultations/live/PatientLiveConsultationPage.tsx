@@ -463,7 +463,7 @@ export function PatientLiveConsultationPage() {
   };
 
   return (
-    <article className="mt-3 w-full xl:max-w-[899px]">
+    <article className="mt-3 w-full max-w-none">
       <ConsultationVideoRoom
         token={videoAccess?.roomToken ?? null}
         meetingUrl={videoAccess?.meetingUrl ?? null}

@@ -268,6 +268,9 @@ export function ProfessionalPlatformShell({
   const isSettingsRoute = normalizedPathname.startsWith(
     "/professional-platform/settings",
   );
+  const isLiveConsultationRoute = normalizedPathname.startsWith(
+    "/professional-platform/consultations/live",
+  );
   const [profileSummary, setProfileSummary] = useState({
     name: "Professional",
     availabilityLabel: "Availability not set",
@@ -525,7 +528,11 @@ export function ProfessionalPlatformShell({
             </LayoutGroup>
           </motion.aside>
 
-          <aside className="hidden xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4">
+          <aside
+            className={`hidden xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4 ${
+              isLiveConsultationRoute ? "xl:hidden" : "xl:flex"
+            }`}
+          >
             <div className="relative z-20 mx-auto flex w-full max-w-[208px] items-center gap-1">
               <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
               <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">
@@ -574,7 +581,13 @@ export function ProfessionalPlatformShell({
             </LayoutGroup>
           </aside>
 
-          <main className="w-full px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12 xl:pb-12 xl:pt-9">
+          <main
+            className={`w-full px-4 pb-10 pt-4 transition-all duration-300 sm:px-5 sm:pb-12 sm:pt-5 xl:pb-12 xl:pt-9 ${
+              isLiveConsultationRoute
+                ? "xl:px-6 2xl:px-8"
+                : "xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-12"
+            }`}
+          >
             <div className="w-full">
               <div className="flex items-center justify-between gap-3">
                 <motion.button

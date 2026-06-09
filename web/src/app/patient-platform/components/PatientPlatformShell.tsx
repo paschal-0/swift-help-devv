@@ -252,6 +252,9 @@ export function PatientPlatformShell({
   const isSettingsRoute = normalizedPathname.startsWith(
     "/patient-platform/settings",
   );
+  const isLiveConsultationRoute = normalizedPathname.startsWith(
+    "/patient-platform/consultations/live",
+  );
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
@@ -498,7 +501,11 @@ export function PatientPlatformShell({
           </LayoutGroup>
         </motion.aside>
 
-        <aside className="hidden xl:fixed xl:left-0 xl:top-0 xl:flex xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4">
+        <aside
+          className={`hidden xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-[284px] xl:flex-col xl:overflow-hidden xl:bg-[#F8FAFC] xl:px-0 xl:py-4 ${
+            isLiveConsultationRoute ? "xl:hidden" : "xl:flex"
+          }`}
+        >
           <div className="relative z-20 mx-auto flex w-full max-w-[208px] items-center gap-1">
             <Image src="/jam_medical.png" alt="Swifthelp logo" width={48} height={48} priority className="min-w-[48px]" />
             <span className="text-[24px] font-medium leading-8 tracking-[-0.05em] text-[#1E88E5]">
@@ -546,8 +553,18 @@ export function PatientPlatformShell({
           </LayoutGroup>
         </aside>
 
-        <main className="w-full px-3 pb-8 pt-3 transition-all duration-300 sm:px-4 sm:pt-4 xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px] xl:pb-[34px] xl:pt-[35px]">
-          <div className="mx-auto w-full max-w-[903px]">
+        <main
+          className={`w-full px-3 pb-8 pt-3 transition-all duration-300 sm:px-4 sm:pt-4 xl:pb-[34px] xl:pt-[35px] ${
+            isLiveConsultationRoute
+              ? "xl:px-6 2xl:px-8"
+              : "xl:ml-[284px] xl:w-[calc(100%-284px)] xl:px-[29px]"
+          }`}
+        >
+          <div
+            className={`mx-auto w-full ${
+              isLiveConsultationRoute ? "max-w-none" : "max-w-[903px]"
+            }`}
+          >
             <div className="flex items-center justify-between gap-3">
               <motion.button
                 type="button"
