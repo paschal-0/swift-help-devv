@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { createAuthenticatedEventSource, getApiErrorMessage, logout as logoutSession } from "@/services/authApi";
 import {
@@ -175,7 +175,7 @@ function SidebarNavItem({
   onClick?: () => void;
 }) {
   return (
-    <motion.div layout whileHover={{ x: 3, y: -1 }} whileTap={{ scale: 0.985 }}>
+    <div>
       <Link
       href={item.href}
       onClick={onClick}
@@ -184,7 +184,7 @@ function SidebarNavItem({
         active ? "bg-[#E3F2FD] shadow-[0_10px_20px_rgba(30,136,229,0.08)]" : "hover:bg-[#eef4fb] hover:shadow-[0_10px_20px_rgba(148,163,184,0.12)]"
       } cursor-pointer ${isExpanded ? "pl-6 pr-2" : "justify-center px-0 xl:justify-start xl:pl-6 xl:pr-2"}`}
     >
-      {active ? <motion.span layoutId="patient-platform-active-nav" className="absolute inset-y-0 left-0 w-[11px] rounded-r-md bg-[#1565C0]" /> : null}
+      {active ? <span className="absolute inset-y-0 left-0 w-[11px] rounded-r-md bg-[#1565C0]" /> : null}
       <span className={`inline-flex items-center ${isExpanded ? "gap-3" : "gap-0 xl:gap-3"}`}>
         <Icon type={item.icon} active={active} />
         <AnimatePresence initial={false}>
@@ -212,7 +212,7 @@ function SidebarNavItem({
         </span>
       </span>
       </Link>
-    </motion.div>
+    </div>
   );
 }
 
@@ -443,7 +443,7 @@ export function PatientPlatformShell({
             </span>
           </div>
 
-          <LayoutGroup id="patient-platform-nav">
+          <>
             <div className="relative z-20 mt-4 flex w-full flex-col gap-2 xl:mx-auto xl:max-w-[208px]">
               {mainNav.map((item) => (
                 <SidebarNavItem
@@ -466,10 +466,7 @@ export function PatientPlatformShell({
                   onClick={() => setIsMobileNavExpanded(false)}
                 />
               ))}
-              <motion.button
-                layout
-                whileHover={{ x: 3 }}
-                whileTap={{ scale: 0.985 }}
+              <button
                 type="button"
                 onClick={logout}
                 className={`relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] text-left transition hover:bg-[#eef4fb] ${
@@ -496,9 +493,9 @@ export function PatientPlatformShell({
                     Log out
                   </span>
                 </span>
-              </motion.button>
+              </button>
             </div>
-          </LayoutGroup>
+          </>
         </motion.aside>
 
         <aside
@@ -513,7 +510,7 @@ export function PatientPlatformShell({
             </span>
           </div>
 
-          <LayoutGroup id="patient-platform-nav-desktop">
+          <>
             <div className="relative z-20 mt-4 mx-auto flex w-full max-w-[208px] flex-col gap-2">
               {mainNav.map((item) => (
                 <SidebarNavItem
@@ -534,10 +531,7 @@ export function PatientPlatformShell({
                   isExpanded
                 />
               ))}
-              <motion.button
-                layout
-                whileHover={{ x: 3 }}
-                whileTap={{ scale: 0.985 }}
+              <button
                 type="button"
                 onClick={logout}
                 className="relative flex h-[49px] w-full cursor-pointer items-center rounded-[12px] pl-6 pr-2 text-left transition hover:bg-[#eef4fb]"
@@ -548,9 +542,9 @@ export function PatientPlatformShell({
                     Log out
                   </span>
                 </span>
-              </motion.button>
+              </button>
             </div>
-          </LayoutGroup>
+          </>
         </aside>
 
         <main
