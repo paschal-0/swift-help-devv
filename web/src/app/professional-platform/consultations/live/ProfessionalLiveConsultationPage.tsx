@@ -89,6 +89,11 @@ export function ProfessionalLiveConsultationPage() {
     meetingUrl: string | null;
     roomToken: string | null;
     canJoin?: boolean;
+    sdk?: {
+      webSdk?: {
+        supportsRecording?: boolean;
+      };
+    };
   } | null>(null);
   const [videoAccessError, setVideoAccessError] = useState<string | null>(null);
   const [participants, setParticipants] = useState<CommunicationParticipant[]>(
@@ -139,6 +144,11 @@ export function ProfessionalLiveConsultationPage() {
   const clinicalAiDisabledReason = clinicalAiConsentReady
     ? undefined
     : "Clinical AI support requires recording and transcription consent from all room participants.";
+  const recordingSupported =
+    videoAccess?.sdk?.webSdk?.supportsRecording !== false;
+  const recordingDisabledReason = !recordingSupported
+    ? "Cloud recording is not enabled for this Daily environment."
+    : clinicalAiDisabledReason;
 
   useEffect(() => {
     let cancelled = false;
@@ -630,10 +640,17 @@ export function ProfessionalLiveConsultationPage() {
     }
   };
 
-  const toggleRecording = async () => {
+  const toggleRecording = async (provider?: {
+    providerStarted: true;
+    providerRecordingId: string | null;
+    providerPayload: Record<string, unknown>;
+  }) => {
     if (!videoAccess?.roomId || isTogglingRecording) return;
-    if (!clinicalAiConsentReady && recording?.status !== "recording") {
-      toast.error(clinicalAiDisabledReason);
+    if (
+      (!recordingSupported || !clinicalAiConsentReady) &&
+      recording?.status !== "recording"
+    ) {
+      toast.error(recordingDisabledReason);
       return;
     }
     setIsTogglingRecording(true);
@@ -641,7 +658,11 @@ export function ProfessionalLiveConsultationPage() {
       const saved =
         recording?.status === "recording"
           ? await stopCommunicationRecording(videoAccess.roomId)
-          : await startCommunicationRecording(videoAccess.roomId);
+          : await startCommunicationRecording(videoAccess.roomId, {
+              providerStarted: provider?.providerStarted,
+              providerRecordingId: provider?.providerRecordingId,
+              providerPayload: provider?.providerPayload,
+            });
       setRecording(saved);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -790,12 +811,13 @@ export function ProfessionalLiveConsultationPage() {
         recordingBusy={isTogglingRecording}
         transcriptionBusy={isTogglingTranscription}
         recordingDisabled={
-          !clinicalAiConsentReady && recording?.status !== "recording"
+          (!recordingSupported || !clinicalAiConsentReady) &&
+          recording?.status !== "recording"
         }
         transcriptionDisabled={
           !clinicalAiConsentReady && transcript?.status !== "transcribing"
         }
-        recordingDisabledReason={clinicalAiDisabledReason}
+        recordingDisabledReason={recordingDisabledReason}
         transcriptionDisabledReason={clinicalAiDisabledReason}
         onToggleRecording={toggleRecording}
         onToggleTranscription={toggleTranscription}

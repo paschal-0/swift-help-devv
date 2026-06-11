@@ -168,12 +168,20 @@ export function CommunicationRoomPage() {
     }
   };
 
-  const toggleRecording = async () => {
+  const toggleRecording = async (provider?: {
+    providerStarted: true;
+    providerRecordingId: string | null;
+    providerPayload: Record<string, unknown>;
+  }) => {
     try {
       const saved =
         recording?.status === "recording"
           ? await stopCommunicationRecording(roomId)
-          : await startCommunicationRecording(roomId);
+          : await startCommunicationRecording(roomId, {
+              providerStarted: provider?.providerStarted,
+              providerRecordingId: provider?.providerRecordingId,
+              providerPayload: provider?.providerPayload,
+            });
       setRecording(saved);
     } catch (error) {
       toast.error(getApiErrorMessage(error));

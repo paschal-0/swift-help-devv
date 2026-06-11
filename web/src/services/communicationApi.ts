@@ -149,6 +149,13 @@ export type CommunicationRoomAccess = {
     transcriptionConsent: boolean;
     translationConsent: boolean;
   };
+  sdk?: {
+    webSdk?: {
+      supportsRecording?: boolean;
+      supportsTranscription?: boolean;
+      supportsScreenShare?: boolean;
+    };
+  };
 };
 
 export type AiTriageHandoff = {
@@ -287,10 +294,17 @@ export function stopAiVoiceBot(roomId: string) {
   );
 }
 
-export function startCommunicationRecording(roomId: string) {
+export function startCommunicationRecording(
+  roomId: string,
+  payload: {
+    providerStarted?: boolean;
+    providerRecordingId?: string | null;
+    providerPayload?: Record<string, unknown>;
+  } = {},
+) {
   return apiRequest<CommunicationRecording>(
     `/communication/rooms/${encodeURIComponent(roomId)}/recordings/start`,
-    { method: "POST", body: JSON.stringify({}) },
+    { method: "POST", body: JSON.stringify(payload) },
   );
 }
 

@@ -48,7 +48,7 @@ type ConsultationVideoRoomProps = {
   transcriptionDisabled?: boolean;
   recordingDisabledReason?: string;
   transcriptionDisabledReason?: string;
-  onToggleRecording?: () => Promise<void> | void;
+  onToggleRecording?: (provider?: DailyRecordingConfirmation) => Promise<void> | void;
   onToggleTranscription?: () => Promise<void> | void;
   onTranscriptText?: (text: string) => Promise<void> | void;
   isEnding?: boolean;
@@ -89,8 +89,8 @@ type DailyCallObject = {
   leave: () => Promise<unknown>;
   destroy: () => Promise<unknown>;
   participants: () => Record<string, DailyParticipant>;
-  on: (eventName: string, handler: () => void) => DailyCallObject;
-  off: (eventName: string, handler: () => void) => DailyCallObject;
+  on: (eventName: string, handler: (...args: unknown[]) => void) => DailyCallObject;
+  off: (eventName: string, handler: (...args: unknown[]) => void) => DailyCallObject;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
   updateInputSettings?: (
@@ -104,6 +104,12 @@ type DailyCallObject = {
   stopRecording?: () => unknown;
   startTranscription?: (options?: Record<string, unknown>) => unknown;
   stopTranscription?: () => unknown;
+};
+
+type DailyRecordingConfirmation = {
+  providerStarted: true;
+  providerRecordingId: string | null;
+  providerPayload: Record<string, unknown>;
 };
 
 type DailyModule = {
@@ -324,6 +330,99 @@ async function runDailyControl(action: (() => unknown) | undefined) {
     throw new Error("Daily control is unavailable.");
   }
   await Promise.resolve(action());
+}
+
+function normalizeDailyEventPayload(args: unknown[]) {
+  const payload = args.find(
+    (item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item),
+  );
+
+  return payload ?? { args };
+}
+
+function pickDailyRecordingId(payload: Record<string, unknown>): string | null {
+  const direct =
+    typeof payload.id === "string"
+      ? payload.id
+      : typeof payload.recordingId === "string"
+        ? payload.recordingId
+        : typeof payload.recording_id === "string"
+          ? payload.recording_id
+          : null;
+
+  if (direct) return direct;
+
+  const nested =
+    typeof payload.recording === "object" && payload.recording
+      ? (payload.recording as Record<string, unknown>)
+      : typeof payload.data === "object" && payload.data
+        ? (payload.data as Record<string, unknown>)
+        : null;
+
+  return nested ? pickDailyRecordingId(nested) : null;
+}
+
+async function waitForDailyRecordingStarted(
+  call: DailyCallObject,
+  startAction: () => unknown,
+): Promise<DailyRecordingConfirmation> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      call.off("recording-started", handleStarted);
+      call.off("recording-error", handleFailed);
+    };
+
+    const finish = (
+      callback: () => void,
+    ) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
+
+    const handleStarted = (...args: unknown[]) => {
+      const providerPayload = normalizeDailyEventPayload(args);
+      finish(() =>
+        resolve({
+          providerStarted: true,
+          providerRecordingId: pickDailyRecordingId(providerPayload),
+          providerPayload,
+        }),
+      );
+    };
+
+    const handleFailed = (...args: unknown[]) => {
+      const providerPayload = normalizeDailyEventPayload(args);
+      finish(() =>
+        reject(
+          new Error(
+            typeof providerPayload.error === "string"
+              ? providerPayload.error
+              : "Daily recording failed to start.",
+          ),
+        ),
+      );
+    };
+
+    call.on("recording-started", handleStarted);
+    call.on("recording-error", handleFailed);
+
+    timeoutId = setTimeout(() => {
+      finish(() =>
+        reject(new Error("Daily recording did not confirm it started.")),
+      );
+    }, 7000);
+
+    Promise.resolve(startAction()).catch((error) => {
+      finish(() => reject(error));
+    });
+  });
 }
 
 async function enableCleanMicrophoneAudio(
@@ -1186,11 +1285,11 @@ export function ConsultationVideoRoom({
         if (!call?.startRecording) {
           throw new Error("Daily recording is unavailable.");
         }
-        await runDailyControl(() =>
+        const provider = await waitForDailyRecordingStarted(call, () =>
           call.startRecording?.({ layout: { preset: "default" } }),
         );
         try {
-          await onToggleRecording?.();
+          await onToggleRecording?.(provider);
         } catch (error) {
           await ignoreDailyResult(() => call?.stopRecording?.());
           throw error;
