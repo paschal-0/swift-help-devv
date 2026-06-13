@@ -1,7 +1,12 @@
 "use client";
 
 export type FrontendRole = "patient" | "professional" | "organisation";
-export type BackendRole = "patient" | "professional" | "organization" | "admin";
+export type BackendRole =
+  | "patient"
+  | "professional"
+  | "organization"
+  | "admin"
+  | "super_admin";
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -180,6 +185,10 @@ export function toBackendRole(role: FrontendRole): BackendRole {
 }
 
 export function platformPathForRole(role: BackendRole) {
+  if (role === "admin" || role === "super_admin") {
+    return "/super-admin-platform";
+  }
+
   if (role === "professional") {
     return "/professional-platform";
   }
@@ -192,6 +201,10 @@ export function platformPathForRole(role: BackendRole) {
 }
 
 export function onboardingStartPathForRole(role: BackendRole) {
+  if (role === "admin" || role === "super_admin") {
+    return "/super-admin-platform";
+  }
+
   if (role === "professional") {
     return "/professional/onboarding/one";
   }
