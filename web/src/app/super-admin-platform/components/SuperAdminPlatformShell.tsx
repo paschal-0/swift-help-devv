@@ -353,7 +353,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
 
   return (
     <SuperAdminShellContext.Provider value={contextValue}>
-      <section className="min-h-screen min-w-[1280px] bg-[#E2E8F0] text-[#334155]">
+      <section className="min-h-screen bg-[#E2E8F0] text-[#334155]">
         <aside className="fixed left-0 top-0 flex h-screen w-[327px] flex-col overflow-hidden bg-[#F8FAFC] px-[42px] py-[34px]">
           <Link href="/super-admin-platform" className="flex shrink-0 items-center gap-2">
             <Image src="/jam_medical.png" alt="Swifthelp logo" width={58} height={58} priority />
@@ -382,7 +382,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="ml-[327px] min-h-screen px-[31px] pb-16 pt-10">
+        <main className="ml-[327px] min-h-screen min-w-0 overflow-x-hidden px-[31px] pb-16 pt-10">
           <div className="mx-auto w-full max-w-[1280px]">
             <header className="flex items-center justify-between gap-8">
               <label className="relative block h-[57px] w-[344px] rounded-[24px] bg-[#F8FAFC] shadow-[0_0_25px_rgba(148,163,184,0.15)]">
