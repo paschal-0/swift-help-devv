@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiRequestError, apiRequest } from "./authApi";
+import type { MessageResponse } from "./authApi";
 
 export type SuperAdminMetric = {
   label: string;
@@ -69,6 +70,72 @@ export type SuperAdminDashboard = {
     region: string;
     count: number;
   }>;
+};
+
+export type AdminPatientListItem = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  status: "active" | "suspended";
+  joinedAt: string;
+  location: string;
+  avatarUrl: string | null;
+  onboardingCompleted: boolean;
+};
+
+export type AdminPatientMedication = {
+  name: string;
+  dateIssued: string;
+  duration: string;
+};
+
+export type AdminPatientDetail = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  status: "active" | "suspended";
+  isVerified: boolean;
+  joinedAt: string;
+  avatarUrl: string | null;
+  personalInformation: {
+    gender: string | null;
+    dateOfBirth: string | null;
+    phoneNumber: string | null;
+    email: string;
+    address: string | null;
+    location: string | null;
+  };
+  medicalInformation: {
+    allergies: string[];
+    medications: AdminPatientMedication[];
+    supplements: AdminPatientMedication[];
+    healthConditions: string[];
+    bloodGroup: string | null;
+  };
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  } | null;
+  onboardingCompleted: boolean;
+};
+
+export type AdminPatientsResponse = {
+  summary: {
+    totalPatients: number;
+    activePatients: number;
+    inactivePatients: number;
+    suspendedPatients: number;
+  };
+  data: AdminPatientListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 type LegacyAdminDashboardStats = {
@@ -212,4 +279,42 @@ export async function getSuperAdminDashboard() {
 
     return mapLegacyStatsToDashboard(stats);
   }
+}
+
+export async function listAdminPatients(params: {
+  search?: string;
+  isVerified?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.isVerified !== undefined) {
+    query.set("isVerified", String(params.isVerified));
+  }
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminPatientsResponse>(`/admin/patients${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminPatient(patientId: string) {
+  return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminUserStatus(
+  userId: string,
+  payload: { isActive: boolean; reason?: string },
+) {
+  return apiRequest<MessageResponse>(`/admin/users/${userId}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
