@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getApiErrorMessage } from "@/services/authApi";
@@ -15,6 +15,11 @@ import {
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 
 type StatusFilter = "all" | "active" | "suspended";
+
+type DropdownOption<T extends string> = {
+  label: string;
+  value: T;
+};
 
 type IconName =
   | "patient"
@@ -35,6 +40,12 @@ const defaultSummary: AdminPatientsResponse["summary"] = {
   inactivePatients: 0,
   suspendedPatients: 0,
 };
+
+const statusFilterOptions: DropdownOption<StatusFilter>[] = [
+  { value: "all", label: "Filter: All patients" },
+  { value: "active", label: "Filter: Active" },
+  { value: "suspended", label: "Filter: Suspended" },
+];
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
   if (name === "search") {
@@ -136,6 +147,92 @@ function formatMedicationList(values: AdminPatientDetail["medicalInformation"]["
   );
 }
 
+function ThemedDropdown<T extends string>({
+  ariaLabel,
+  className = "",
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  className?: string;
+  onChange: (value: T) => void;
+  options: DropdownOption<T>[];
+  value: T;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className={`relative min-w-0 ${className}`}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex h-[56px] w-full min-w-0 items-center gap-3 rounded-[28px] border border-[#DDE5EF] bg-[#F8FAFC] px-5 text-left text-[16px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+      >
+        <Icon name="filter" className="h-5 w-5 shrink-0 text-[#334155]" />
+        <span className="min-w-0 flex-1 truncate">{selected?.label}</span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-5 w-5 shrink-0 text-[#64748B] transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
+        </svg>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 z-40 mt-2 max-h-[260px] overflow-y-auto rounded-2xl border border-[#B9CBE0] bg-white p-1.5 shadow-[0_20px_44px_rgba(15,23,42,0.18)]">
+          {options.map((option) => {
+            const selectedOption = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[14px] font-medium leading-5 transition ${
+                  selectedOption
+                    ? "bg-[#1565C0] text-white"
+                    : "text-[#334155] hover:bg-[#E3F2FD]"
+                }`}
+              >
+                <span className="min-w-0 flex-1">{option.label}</span>
+                {selectedOption ? (
+                  <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="m8.3 13.6-3.2-3.2 1.2-1.2 2 2 5.4-5.4 1.2 1.2-6.6 6.6Z"
+                    />
+                  </svg>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -148,13 +245,17 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <article className="flex h-[106px] min-w-0 items-center gap-4 rounded-[12px] bg-[#F8FAFC] px-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-7 w-7" />
+    <article className="grid min-h-[122px] min-w-0 grid-cols-[60px_minmax(0,1fr)] items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-8 w-8" />
       </span>
       <div className="min-w-0">
-        <p className="text-[16px] font-light leading-5 text-[#94A3B8]">{label}</p>
-        <p className="text-[36px] font-semibold leading-none text-[#334155]">{value}</p>
+        <p className="whitespace-normal break-words text-[16px] font-light leading-[19px] text-[#94A3B8]">
+          {label}
+        </p>
+        <p className="mt-1 truncate text-[38px] font-semibold leading-none text-[#334155]">
+          {value}
+        </p>
       </div>
     </article>
   );
@@ -431,17 +532,17 @@ export default function SuperAdminPatientsRoute() {
     <div className="pt-[62px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">Patients</h1>
 
-      <section className="mt-8 grid grid-cols-4 gap-5">
+      <section className="mt-8 grid grid-cols-4 gap-6">
         <StatCard label="Total patients" value={summary.totalPatients} icon="patient" tone="bg-[#DCFCE7]" />
         <StatCard label="Active Patients" value={summary.activePatients} icon="active" tone="bg-[#BFDBFE]" />
         <StatCard label="Inactive Patients" value={summary.inactivePatients} icon="inactive" tone="bg-[#FEE2E2]" />
         <StatCard label="Suspended Patients" value={summary.suspendedPatients} icon="suspended" tone="bg-[#FEF3C7]" />
       </section>
 
-      <section className="mt-9 rounded-[12px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.08)]">
-        <div className="flex h-[104px] items-center justify-between gap-5 px-5">
+      <section className="mt-9 rounded-[18px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.08)]">
+        <div className="flex items-center justify-between gap-5">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <label className="relative h-[56px] w-[360px] max-w-full rounded-[28px] bg-[#E2E8F0]">
+            <label className="relative h-[56px] w-[390px] max-w-full rounded-[28px] bg-[#E2E8F0]">
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#334155]">
                 <Icon name="search" className="h-7 w-7" />
               </span>
@@ -453,16 +554,13 @@ export default function SuperAdminPatientsRoute() {
               />
             </label>
 
-            <select
+            <ThemedDropdown
+              ariaLabel="Patient status filter"
+              className="w-[230px] shrink-0"
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-              className="h-[56px] w-[140px] shrink-0 cursor-pointer rounded-[28px] border border-[#DDE5EF] bg-[#F8FAFC] px-6 text-[16px] font-light text-[#334155] outline-none"
-              aria-label="Patient status filter"
-            >
-              <option value="all">Filters</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-            </select>
+              options={statusFilterOptions}
+              onChange={setStatusFilter}
+            />
           </div>
 
           <button
@@ -474,135 +572,137 @@ export default function SuperAdminPatientsRoute() {
           </button>
         </div>
 
-        <table className="w-full table-fixed text-left">
-          <thead>
-            <tr className="h-10 text-[18px] font-light text-[#334155]">
-              <th className="w-[21%] px-6 font-light">Name</th>
-              <th className="w-[22%] px-3 font-light">Email</th>
-              <th className="w-[17%] px-3 font-light">Phone</th>
-              <th className="w-[10%] px-3 font-light">Status</th>
-              <th className="w-[13%] px-3 font-light">Joined date</th>
-              <th className="w-[12%] px-3 font-light">Location</th>
-              <th className="w-[5%] px-2 text-center font-light">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-[#F8FAFC]">
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="h-[240px] text-center text-[18px] text-[#94A3B8]">
-                  Loading patients...
-                </td>
+        <div className="mt-6 rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC]">
+          <table className="w-full table-fixed text-left">
+            <thead>
+              <tr className="h-[54px] border-b border-[#DDE5EF] text-[16px] font-medium leading-5 text-[#334155]">
+                <th className="w-[20%] px-6 font-medium">Name</th>
+                <th className="w-[22%] px-4 font-medium">Email</th>
+                <th className="w-[16%] px-4 font-medium">Phone</th>
+                <th className="w-[10%] px-4 font-medium">Status</th>
+                <th className="w-[14%] px-4 font-medium">Joined date</th>
+                <th className="w-[10%] px-4 font-medium">Location</th>
+                <th className="w-[8%] px-4 text-center font-medium">Actions</th>
               </tr>
-            ) : patients.length ? (
-              patients.map((patient) => (
-                <tr key={patient.id} className="h-[60px] border-t border-[#DDE5EF] text-[15px] text-[#334155]">
-                  <td className="px-6">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#D9D9D9]">
-                        <ProfileAvatar
-                          src={patient.avatarUrl}
-                          alt={`${patient.fullName} avatar`}
-                          className="h-full w-full"
-                        />
-                      </span>
-                      <span className="truncate font-medium">{patient.fullName}</span>
-                    </div>
-                  </td>
-                  <td className="truncate px-3 text-[#94A3B8]">{patient.email}</td>
-                  <td className="truncate px-3 text-[#94A3B8]">{patient.phoneNumber ?? "Not provided"}</td>
-                  <td className="px-3">
-                    <span className={patient.status === "active" ? "font-medium text-[#008000]" : "font-medium text-[#B91C1C]"}>
-                      {patient.status === "active" ? "Active" : "Suspended"}
-                    </span>
-                  </td>
-                  <td className="truncate px-3 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
-                  <td className="truncate px-3 text-[#94A3B8]">{patient.location}</td>
-                  <td className="relative px-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenuId(openMenuId === patient.id ? null : patient.id)}
-                      className="mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#94A3B8] transition hover:bg-[#E3F2FD] hover:text-[#334155]"
-                      aria-label={`Open actions for ${patient.fullName}`}
-                    >
-                      <Icon name="more" className="h-7 w-7" />
-                    </button>
-
-                    {openMenuId === patient.id ? (
-                      <div className="absolute right-2 top-10 z-20 w-[220px] rounded-[18px] bg-white p-6 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
-                        <span className="absolute -top-3 right-9 h-6 w-6 rotate-45 bg-white" />
-                        <button
-                          type="button"
-                          onClick={() => openPatientProfile(patient.id)}
-                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
-                        >
-                          <Icon name="eye" className="h-7 w-7" />
-                          View Profile
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            toast.info("Edit patient profile is not available yet.");
-                          }}
-                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
-                        >
-                          <Icon name="edit" className="h-7 w-7" />
-                          Edit user
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updatePatientStatus(patient)}
-                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#B91C1C]"
-                        >
-                          <Icon name="pause" className="h-7 w-7" />
-                          {patient.status === "active" ? "Suspend user" : "Reactivate user"}
-                        </button>
-                      </div>
-                    ) : null}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="h-[260px] text-center text-[18px] text-[#94A3B8]">
+                    Loading patients...
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7} className="h-[240px] text-center text-[18px] text-[#94A3B8]">
-                  No patients match the current filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ) : patients.length ? (
+                patients.map((patient) => (
+                  <tr key={patient.id} className="h-[64px] border-b border-[#DDE5EF] text-[15px] text-[#334155] last:border-b-0">
+                    <td className="px-6">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#D9D9D9]">
+                          <ProfileAvatar
+                            src={patient.avatarUrl}
+                            alt={`${patient.fullName} avatar`}
+                            className="h-full w-full"
+                          />
+                        </span>
+                        <span className="truncate font-medium">{patient.fullName}</span>
+                      </div>
+                    </td>
+                    <td className="truncate px-4 text-[#94A3B8]">{patient.email}</td>
+                    <td className="truncate px-4 text-[#94A3B8]">{patient.phoneNumber ?? "Not provided"}</td>
+                    <td className="px-4">
+                      <span className={patient.status === "active" ? "font-medium text-[#008000]" : "font-medium text-[#B91C1C]"}>
+                        {patient.status === "active" ? "Active" : "Suspended"}
+                      </span>
+                    </td>
+                    <td className="truncate px-4 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
+                    <td className="truncate px-4 text-[#94A3B8]">{patient.location}</td>
+                    <td className="relative px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === patient.id ? null : patient.id)}
+                        className="mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#94A3B8] transition hover:bg-[#E3F2FD] hover:text-[#334155]"
+                        aria-label={`Open actions for ${patient.fullName}`}
+                      >
+                        <Icon name="more" className="h-7 w-7" />
+                      </button>
 
-        <div className="flex h-[78px] items-center justify-between border-t border-[#DDE5EF] px-8 text-[16px] text-[#94A3B8]">
-          <span>{visibleRange}</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-              disabled={meta.page <= 1}
-              className="h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              &lt;
-            </button>
-            {Array.from({ length: Math.min(meta.totalPages || 1, 3) }, (_, index) => index + 1).map((item) => (
+                      {openMenuId === patient.id ? (
+                        <div className="absolute right-4 top-11 z-20 w-[230px] rounded-[18px] bg-white p-6 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
+                          <span className="absolute -top-3 right-9 h-6 w-6 rotate-45 bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => openPatientProfile(patient.id)}
+                            className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
+                          >
+                            <Icon name="eye" className="h-7 w-7" />
+                            View Profile
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              toast.info("Edit patient profile is not available yet.");
+                            }}
+                            className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
+                          >
+                            <Icon name="edit" className="h-7 w-7" />
+                            Edit user
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updatePatientStatus(patient)}
+                            className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#B91C1C]"
+                          >
+                            <Icon name="pause" className="h-7 w-7" />
+                            {patient.status === "active" ? "Suspend user" : "Reactivate user"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="h-[260px] text-center text-[18px] text-[#94A3B8]">
+                    No patients match the current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="flex h-[74px] items-center justify-between border-t border-[#DDE5EF] px-6 text-[16px] text-[#94A3B8]">
+            <span>{visibleRange}</span>
+            <div className="flex items-center gap-2">
               <button
-                key={item}
                 type="button"
-                onClick={() => setPage(item)}
-                className={`h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] ${
-                  meta.page === item ? "bg-[#E3F2FD] text-[#1565C0]" : "text-[#94A3B8]"
-                }`}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                disabled={meta.page <= 1}
+                className="h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {item}
+                &lt;
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setPage((value) => Math.min(meta.totalPages || 1, value + 1))}
-              disabled={meta.page >= (meta.totalPages || 1)}
-              className="h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              &gt;
-            </button>
+              {Array.from({ length: Math.min(meta.totalPages || 1, 3) }, (_, index) => index + 1).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] ${
+                    meta.page === item ? "bg-[#E3F2FD] text-[#1565C0]" : "text-[#94A3B8]"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((value) => Math.min(meta.totalPages || 1, value + 1))}
+                disabled={meta.page >= (meta.totalPages || 1)}
+                className="h-9 w-9 cursor-pointer rounded-[6px] border border-[#DDE5EF] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                &gt;
+              </button>
+            </div>
           </div>
         </div>
       </section>
