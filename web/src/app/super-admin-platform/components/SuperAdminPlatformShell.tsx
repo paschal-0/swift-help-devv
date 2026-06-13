@@ -126,7 +126,7 @@ function readProfile(response: unknown): ShellProfile {
 
 function Icon({ type, active }: { type: NavIcon | "logout" | "search"; active?: boolean }) {
   const color = active ? "#1E88E5" : "#94A3B8";
-  const common = "h-[17px] w-[17px]";
+  const common = "h-6 w-6";
 
   if (type === "search") {
     return (
@@ -242,7 +242,7 @@ function SidebarItem({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-[34px] items-center rounded-[8px] pl-[52px] pr-3 text-[14px] font-medium leading-none transition ${
+      className={`relative flex h-[40px] items-center rounded-[8px] pl-[58px] pr-3 text-[14px] font-medium leading-none transition ${
         active ? "bg-[#E3F2FD] text-[#1E88E5]" : "text-[#94A3B8] hover:bg-[#EEF6FD] hover:text-[#1E88E5]"
       }`}
     >
@@ -253,7 +253,7 @@ function SidebarItem({
           transition={{ type: "spring", stiffness: 420, damping: 36 }}
         />
       ) : null}
-      <span className="absolute left-[30px] top-1/2 -translate-y-1/2">
+      <span className="absolute left-[26px] top-1/2 -translate-y-1/2">
         <Icon type={item.icon} active={active} />
       </span>
       <span className="whitespace-nowrap">{item.label}</span>
@@ -374,7 +374,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={logout}
-              className="mt-3 flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#BBD7F2] bg-[#F8FAFC] text-[12px] font-semibold text-[#1565C0] transition hover:bg-white"
+              className="mt-3 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#BBD7F2] bg-[#F8FAFC] text-[12px] font-semibold text-[#1565C0] transition hover:bg-white"
             >
               <Icon type="logout" active />
               Log out
@@ -402,7 +402,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => router.push("/super-admin-platform/notifications")}
-                  className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition hover:bg-[#D6EBFD]"
+                  className="flex h-[54px] w-[54px] cursor-pointer items-center justify-center rounded-full bg-[#E3F2FD] text-[#1565C0] transition hover:bg-[#D6EBFD]"
                   aria-label="Notifications"
                 >
                   <Icon type="notifications" active />
@@ -411,9 +411,9 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => router.push("/super-admin-platform/settings")}
-                  className="flex h-[50px] cursor-pointer items-center gap-3 rounded-[15px] bg-[#F8FAFC] px-3 shadow-[0_8px_18px_rgba(148,163,184,0.12)] transition hover:bg-white"
+                  className="flex h-[58px] cursor-pointer items-center gap-3 rounded-[15px] bg-[#F8FAFC] px-4 shadow-[0_8px_18px_rgba(148,163,184,0.12)] transition hover:bg-white"
                 >
-                  <span className="block h-[34px] w-[34px] overflow-hidden rounded-full border border-white">
+                  <span className="block h-[42px] w-[42px] overflow-hidden rounded-full border border-white">
                     <ProfileAvatar
                       src={profile.avatarUrl}
                       alt={`${profile.fullName} avatar`}
