@@ -126,7 +126,7 @@ function readProfile(response: unknown): ShellProfile {
 
 function Icon({ type, active }: { type: NavIcon | "logout" | "search"; active?: boolean }) {
   const color = active ? "#1E88E5" : "#94A3B8";
-  const common = "h-[18px] w-[18px]";
+  const common = "h-[17px] w-[17px]";
 
   if (type === "search") {
     return (
@@ -242,7 +242,7 @@ function SidebarItem({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-[34px] items-center gap-3 rounded-[8px] pl-[38px] pr-3 text-[14px] font-medium transition ${
+      className={`relative flex h-[34px] items-center rounded-[8px] pl-[52px] pr-3 text-[14px] font-medium leading-none transition ${
         active ? "bg-[#E3F2FD] text-[#1E88E5]" : "text-[#94A3B8] hover:bg-[#EEF6FD] hover:text-[#1E88E5]"
       }`}
     >
@@ -253,10 +253,10 @@ function SidebarItem({
           transition={{ type: "spring", stiffness: 420, damping: 36 }}
         />
       ) : null}
-      <span className="absolute left-[17px] top-1/2 -translate-y-1/2">
+      <span className="absolute left-[30px] top-1/2 -translate-y-1/2">
         <Icon type={item.icon} active={active} />
       </span>
-      <span className="truncate">{item.label}</span>
+      <span className="whitespace-nowrap">{item.label}</span>
     </Link>
   );
 }
@@ -280,7 +280,7 @@ function NavGroup({
   return (
     <div className="space-y-2">
       {title ? (
-        <p className="px-[28px] pt-2 text-[12px] font-semibold uppercase text-[#334155]">
+        <p className="px-[12px] pt-2 text-[12px] font-semibold uppercase text-[#334155]">
           {title}
         </p>
       ) : null}
@@ -354,19 +354,19 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
   return (
     <SuperAdminShellContext.Provider value={contextValue}>
       <section className="min-h-screen min-w-[1280px] bg-[#E2E8F0] text-[#334155]">
-        <aside className="fixed left-0 top-0 flex h-screen w-[284px] flex-col overflow-hidden bg-[#F8FAFC] px-[31px] py-[28px]">
+        <aside className="fixed left-0 top-0 flex h-screen w-[327px] flex-col overflow-hidden bg-[#F8FAFC] px-[42px] py-[34px]">
           <Link href="/super-admin-platform" className="flex shrink-0 items-center gap-2">
             <Image src="/jam_medical.png" alt="Swifthelp logo" width={58} height={58} priority />
             <span className="text-[28px] font-semibold text-[#1E88E5]">Swifthelp</span>
           </Link>
 
-          <nav className="mt-6 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">
+          <nav className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">
             <NavGroup items={[mainNav[0]]} pathname={normalizedPathname} />
             <NavGroup title="Main" items={mainNav.slice(1)} pathname={normalizedPathname} />
             <NavGroup title="System" items={systemNav} pathname={normalizedPathname} />
           </nav>
 
-          <div className="mt-4 shrink-0 rounded-[12px] bg-[#E3F2FD] px-4 py-3">
+          <div className="mt-5 shrink-0 rounded-[12px] bg-[#E3F2FD] px-4 py-3">
             <p className="truncate text-[13px] font-semibold text-[#334155]">
               {profile.fullName}
             </p>
@@ -382,7 +382,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="ml-[284px] min-h-screen px-[31px] pb-16 pt-10">
+        <main className="ml-[327px] min-h-screen px-[31px] pb-16 pt-10">
           <div className="mx-auto w-full max-w-[1280px]">
             <header className="flex items-center justify-between gap-8">
               <label className="relative block h-[57px] w-[344px] rounded-[24px] bg-[#F8FAFC] shadow-[0_0_25px_rgba(148,163,184,0.15)]">

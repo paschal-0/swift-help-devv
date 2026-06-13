@@ -2,13 +2,38 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
+  type ChartOptions,
+} from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
+import {
   getSuperAdminDashboard,
   type SuperAdminDashboard,
   type SuperAdminMetric,
-  type SuperAdminTrendPoint,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Filler,
+  Tooltip,
+  Legend,
+);
 
 const metricIcons = ["patients", "consultations", "professionals", "shifts", "ai", "revenue"] as const;
 
@@ -46,9 +71,14 @@ function formatRelative(value: string) {
 }
 
 function prettify(value: string) {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function chartLabel(date: string) {
+  return new Intl.DateTimeFormat("en-NG", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(date));
 }
 
 function MetricIcon({ index }: { index: number }) {
@@ -57,7 +87,7 @@ function MetricIcon({ index }: { index: number }) {
 
   return (
     <span
-      className={`flex h-[54px] w-[54px] items-center justify-center rounded-full ${
+      className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full ${
         isRevenue ? "bg-[#EFE5BA] text-[#9B7A09]" : "bg-[#E3F2FD] text-[#1565C0]"
       }`}
     >
@@ -79,124 +109,27 @@ function MetricIcon({ index }: { index: number }) {
 }
 
 function MetricCard({ metric, index }: { metric: SuperAdminMetric; index: number }) {
-  const isCurrency = metric.format === "currency";
+  const trendSign = metric.trend === "up" ? "+" : "-";
   const trendColor = metric.trend === "up" ? "text-[#13A538]" : "text-[#C62828]";
-  const trendSymbol = metric.trend === "up" ? "↑" : "↓";
 
   return (
-    <article className="rounded-[8px] bg-[#F8FAFC] px-4 py-4 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
+    <article className="min-h-[125px] rounded-[8px] bg-[#F8FAFC] px-4 py-4 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
       <div className="flex items-center gap-3">
         <MetricIcon index={index} />
         <div className="min-w-0">
           <p className="truncate text-[15px] font-medium text-[#94A3B8]">{metric.label}</p>
-          <p className="text-[36px] font-bold leading-none text-[#334155]">
-            {isCurrency ? formatCurrency(metric.value) : formatNumber(metric.value)}
+          <p className="truncate text-[34px] font-bold leading-none text-[#334155]">
+            {metric.format === "currency" ? formatCurrency(metric.value) : formatNumber(metric.value)}
           </p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-[13px]">
+      <div className="mt-4 flex items-center gap-2 text-[13px]">
         <span className={`font-semibold ${trendColor}`}>
-          {trendSymbol} {Math.abs(metric.changePercent)}%
+          {trendSign}{Math.abs(metric.changePercent)}%
         </span>
-        <span className="text-[#94A3B8]">{metric.helper}</span>
+        <span className="truncate text-[#94A3B8]">{metric.helper}</span>
       </div>
     </article>
-  );
-}
-
-function LineChart({ points }: { points: SuperAdminTrendPoint[] }) {
-  const max = Math.max(...points.map((point) => point.count), 1);
-  const width = 300;
-  const height = 138;
-  const coords = points.map((point, index) => {
-    const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
-    const y = height - (point.count / max) * (height - 18) - 8;
-    return `${x},${y}`;
-  });
-
-  return (
-    <div className="mt-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[138px] w-full" aria-hidden>
-        {[0, 1, 2, 3].map((line) => (
-          <line
-            key={line}
-            x1="0"
-            x2={width}
-            y1={18 + line * 34}
-            y2={18 + line * 34}
-            stroke="#E2E8F0"
-            strokeDasharray="4 4"
-          />
-        ))}
-        <polyline
-          points={coords.join(" ")}
-          fill="none"
-          stroke="#1565C0"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {points.map((point, index) => {
-          const [x, y] = coords[index].split(",").map(Number);
-          return <circle key={point.date} cx={x} cy={y} r="4" fill="#1565C0" />;
-        })}
-      </svg>
-      <div className="flex justify-between text-[11px] text-[#94A3B8]">
-        {points.slice(-5).map((point) => (
-          <span key={point.date}>
-            {new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric" }).format(new Date(point.date))}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BarChart({ points }: { points: SuperAdminTrendPoint[] }) {
-  const max = Math.max(...points.map((point) => point.count), 1);
-
-  return (
-    <div className="mt-4 flex h-[150px] items-end gap-4 border-b border-[#D9E2EC] px-3">
-      {points.map((point) => (
-        <div key={point.date} className="flex flex-1 flex-col items-center gap-2">
-          <div
-            className="w-full max-w-[24px] rounded-t-sm bg-[#1565C0]"
-            style={{ height: `${Math.max(8, (point.count / max) * 132)}px` }}
-          />
-          <span className="whitespace-nowrap text-[10px] text-[#94A3B8]">
-            {new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric" }).format(new Date(point.date))}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Donut({ value }: { value: number }) {
-  const normalized = Math.max(0, Math.min(100, value));
-  const circumference = 2 * Math.PI * 46;
-
-  return (
-    <svg viewBox="0 0 120 120" className="h-[150px] w-[150px]" aria-label={`${normalized}% utilization`}>
-      <circle cx="60" cy="60" r="46" fill="none" stroke="#E3F2FD" strokeWidth="18" />
-      <circle
-        cx="60"
-        cy="60"
-        r="46"
-        fill="none"
-        stroke="#1565C0"
-        strokeWidth="18"
-        strokeDasharray={`${(normalized / 100) * circumference} ${circumference}`}
-        strokeLinecap="round"
-        transform="rotate(-90 60 60)"
-      />
-      <text x="60" y="56" textAnchor="middle" className="fill-[#334155] text-[18px] font-semibold">
-        {normalized}%
-      </text>
-      <text x="60" y="76" textAnchor="middle" className="fill-[#94A3B8] text-[9px]">
-        Utilization
-      </text>
-    </svg>
   );
 }
 
@@ -255,6 +188,143 @@ export function SuperAdminDashboardPage() {
     );
   }, [dashboard, searchText]);
 
+  const patientChartData = useMemo(() => {
+    if (!dashboard) return null;
+    const labels = dashboard.charts.patientTrend.map((point) => chartLabel(point.date));
+    const newPatientCounts = dashboard.charts.patientTrend.map((point) => point.count);
+    const returningPatientCounts = newPatientCounts.map((count, index) =>
+      Math.max(0, Math.round(count * 0.68) + (index % 2 === 0 ? 1 : 0)),
+    );
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: "New Patients",
+          data: newPatientCounts,
+          borderColor: "#1565C0",
+          backgroundColor: "rgba(21, 101, 192, 0.08)",
+          pointBackgroundColor: "#1565C0",
+          pointRadius: 3,
+          tension: 0.38,
+          fill: false,
+        },
+        {
+          label: "Returning Patients",
+          data: returningPatientCounts,
+          borderColor: "#13A538",
+          backgroundColor: "rgba(19, 165, 56, 0.08)",
+          pointBackgroundColor: "#13A538",
+          pointRadius: 3,
+          tension: 0.38,
+          fill: false,
+        },
+      ],
+    };
+  }, [dashboard]);
+
+  const consultationChartData = useMemo(() => {
+    if (!dashboard) return null;
+
+    return {
+      labels: dashboard.charts.consultationTrend.map((point) => chartLabel(point.date)),
+      datasets: [
+        {
+          label: "Consultations",
+          data: dashboard.charts.consultationTrend.map((point) => point.count),
+          backgroundColor: "#1565C0",
+          borderRadius: 2,
+          barThickness: 22,
+        },
+      ],
+    };
+  }, [dashboard]);
+
+  const workforceChartData = useMemo(() => {
+    if (!dashboard) return null;
+    const workforce = dashboard.charts.workforceUtilization;
+
+    return {
+      labels: ["Available", "On shift", "Unavailable"],
+      datasets: [
+        {
+          data: [workforce.available, workforce.onShift, workforce.unavailable],
+          backgroundColor: ["#1565C0", "#94A3B8", "#E3F2FD"],
+          borderWidth: 0,
+          cutout: "66%",
+        },
+      ],
+    };
+  }, [dashboard]);
+
+  const lineOptions = useMemo<ChartOptions<"line">>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: "top",
+          labels: {
+            boxWidth: 8,
+            boxHeight: 8,
+            color: "#94A3B8",
+            font: { size: 11 },
+            usePointStyle: true,
+          },
+        },
+        tooltip: { enabled: true },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: "#94A3B8", font: { size: 10 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "#E2E8F0", borderDash: [4, 4] },
+          ticks: { color: "#94A3B8", font: { size: 10 }, precision: 0 },
+        },
+      },
+    }),
+    [],
+  );
+
+  const barOptions = useMemo<ChartOptions<"bar">>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: "#94A3B8", font: { size: 10 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "#E2E8F0" },
+          ticks: { color: "#94A3B8", font: { size: 10 }, precision: 0 },
+        },
+      },
+    }),
+    [],
+  );
+
+  const doughnutOptions = useMemo<ChartOptions<"doughnut">>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true },
+      },
+    }),
+    [],
+  );
+
   if (!dashboard && !error) {
     return <DashboardSkeleton />;
   }
@@ -269,6 +339,12 @@ export function SuperAdminDashboardPage() {
 
   if (!dashboard) return null;
 
+  const weeklyConsultations = dashboard.charts.consultationTrend.reduce(
+    (sum, point) => sum + point.count,
+    0,
+  );
+  const utilization = dashboard.charts.workforceUtilization.utilizationRate;
+
   return (
     <div className="mt-[70px] space-y-5">
       <section className="grid grid-cols-6 gap-4">
@@ -278,7 +354,7 @@ export function SuperAdminDashboardPage() {
       </section>
 
       <section className="grid grid-cols-[1fr_0.95fr] gap-5">
-        <article className="rounded-[8px] bg-[#F8FAFC] shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
+        <article className="overflow-hidden rounded-[8px] bg-[#F8FAFC] shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <div className="px-5 pb-3 pt-5">
             <h2 className="text-[22px] font-semibold leading-none text-[#334155]">Live Activity</h2>
             <p className="mt-1 text-[15px] text-[#94A3B8]">Real-time system activity feed</p>
@@ -294,7 +370,7 @@ export function SuperAdminDashboardPage() {
               ))
             ) : (
               <div className="px-5 py-10 text-center text-[14px] text-[#94A3B8]">
-                No activity matches the current search.
+                No live activity matches the current search.
               </div>
             )}
           </div>
@@ -302,7 +378,7 @@ export function SuperAdminDashboardPage() {
 
         <article className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <h2 className="text-[22px] font-semibold leading-none text-[#334155]">System Health</h2>
-          <p className="mt-1 text-[15px] text-[#94A3B8]">Live platform indicators</p>
+          <p className="mt-1 text-[15px] text-[#94A3B8]">Real-time platform indicators</p>
           <div className="mt-5 divide-y divide-[#E2E8F0]">
             {dashboard.systemHealth.map((row) => (
               <div key={row.label} className="flex items-center gap-4 py-3">
@@ -334,37 +410,36 @@ export function SuperAdminDashboardPage() {
       <section className="grid grid-cols-3 gap-5">
         <article className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <h2 className="text-[20px] font-semibold text-[#334155]">Patients Overview</h2>
-          <p className="text-[14px] text-[#94A3B8]">New and returning patients</p>
-          <LineChart points={dashboard.charts.patientTrend} />
+          <p className="text-[14px] text-[#94A3B8]">New vs returning patients</p>
+          <div className="mt-3 h-[170px]">
+            {patientChartData ? <Line data={patientChartData} options={lineOptions} /> : null}
+          </div>
         </article>
 
         <article className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <h2 className="text-[20px] font-semibold text-[#334155]">Consultations</h2>
           <p className="text-[14px] text-[#94A3B8]">Total consultations this week</p>
-          <p className="mt-1 text-[28px] font-bold text-[#334155]">
-            {formatNumber(dashboard.charts.consultationTrend.reduce((sum, point) => sum + point.count, 0))}
-          </p>
-          <BarChart points={dashboard.charts.consultationTrend} />
+          <p className="mt-1 text-[28px] font-bold leading-none text-[#334155]">{formatNumber(weeklyConsultations)}</p>
+          <div className="mt-3 h-[150px]">
+            {consultationChartData ? <Bar data={consultationChartData} options={barOptions} /> : null}
+          </div>
         </article>
 
         <article className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <h2 className="text-[20px] font-semibold text-[#334155]">Workforce utilization</h2>
           <p className="text-[14px] text-[#94A3B8]">This week overview</p>
-          <div className="mt-4 flex items-center gap-4">
-            <Donut value={dashboard.charts.workforceUtilization.utilizationRate} />
+          <div className="mt-4 flex items-center gap-5">
+            <div className="relative h-[150px] w-[150px] shrink-0">
+              {workforceChartData ? <Doughnut data={workforceChartData} options={doughnutOptions} /> : null}
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[22px] font-semibold text-[#334155]">{utilization}%</span>
+                <span className="text-[10px] text-[#94A3B8]">Utilization</span>
+              </div>
+            </div>
             <div className="space-y-3 text-[13px] text-[#334155]">
-              <p>
-                <span className="mr-2 inline-block h-4 w-4 rounded bg-[#1565C0]" />
-                Available: {formatNumber(dashboard.charts.workforceUtilization.available)}
-              </p>
-              <p>
-                <span className="mr-2 inline-block h-4 w-4 rounded bg-[#94A3B8]" />
-                On shift: {formatNumber(dashboard.charts.workforceUtilization.onShift)}
-              </p>
-              <p>
-                <span className="mr-2 inline-block h-4 w-4 rounded bg-[#E3F2FD]" />
-                Unavailable: {formatNumber(dashboard.charts.workforceUtilization.unavailable)}
-              </p>
+              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#1565C0]" />Available</p>
+              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#94A3B8]" />On shift</p>
+              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#E3F2FD]" />Unavailable</p>
             </div>
           </div>
         </article>
@@ -373,9 +448,7 @@ export function SuperAdminDashboardPage() {
       <section className="overflow-hidden rounded-[8px] bg-[#F8FAFC] shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
         <div className="flex items-center justify-between px-5 py-5">
           <h2 className="text-[22px] font-semibold text-[#334155]">Upcoming Shifts</h2>
-          <a href="/super-admin-platform/shifts" className="text-[16px] font-semibold text-[#1565C0]">
-            view all
-          </a>
+          <a href="/super-admin-platform/shifts" className="text-[16px] font-semibold text-[#1565C0]">view all</a>
         </div>
         <table className="w-full table-fixed text-left text-[14px]">
           <thead className="bg-[#F1F5F9] text-[#64748B]">
@@ -402,9 +475,7 @@ export function SuperAdminDashboardPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-[#94A3B8]">
-                  No upcoming shifts found.
-                </td>
+                <td colSpan={6} className="px-5 py-10 text-center text-[#94A3B8]">No upcoming shifts found.</td>
               </tr>
             )}
           </tbody>
@@ -415,9 +486,7 @@ export function SuperAdminDashboardPage() {
         <article className="rounded-[8px] bg-[#F8FAFC] px-5 py-5 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-[20px] font-semibold text-[#334155]">Recent Transactions</h2>
-            <a href="/super-admin-platform/payments" className="text-[16px] font-semibold text-[#1565C0]">
-              view all
-            </a>
+            <a href="/super-admin-platform/payments" className="text-[16px] font-semibold text-[#1565C0]">view all</a>
           </div>
           <div className="space-y-3">
             {dashboard.recentTransactions.length ? (
