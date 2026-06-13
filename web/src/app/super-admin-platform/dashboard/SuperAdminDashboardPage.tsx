@@ -49,6 +49,15 @@ function formatCurrency(value: number, currency = "NGN") {
   }).format(value);
 }
 
+function formatCompactCurrency(value: number, currency = "NGN") {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-NG", {
     month: "short",
@@ -111,23 +120,27 @@ function MetricIcon({ index }: { index: number }) {
 function MetricCard({ metric, index }: { metric: SuperAdminMetric; index: number }) {
   const trendSign = metric.trend === "up" ? "+" : "-";
   const trendColor = metric.trend === "up" ? "text-[#13A538]" : "text-[#C62828]";
+  const displayValue =
+    metric.format === "currency"
+      ? formatCompactCurrency(metric.value)
+      : formatNumber(metric.value);
 
   return (
-    <article className="min-h-[125px] rounded-[8px] bg-[#F8FAFC] px-4 py-4 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
-      <div className="flex items-center gap-3">
+    <article className="min-h-[132px] rounded-[8px] bg-[#F8FAFC] px-5 py-4 shadow-[0_8px_18px_rgba(148,163,184,0.12)]">
+      <div className="flex items-center gap-4">
         <MetricIcon index={index} />
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-medium text-[#94A3B8]">{metric.label}</p>
-          <p className="truncate text-[34px] font-bold leading-none text-[#334155]">
-            {metric.format === "currency" ? formatCurrency(metric.value) : formatNumber(metric.value)}
+          <p className="text-[15px] font-medium leading-5 text-[#94A3B8]">{metric.label}</p>
+          <p className="mt-1 text-[34px] font-bold leading-none text-[#334155]">
+            {displayValue}
           </p>
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[13px]">
-        <span className={`font-semibold ${trendColor}`}>
+      <div className="mt-4 flex min-w-0 items-center gap-2 text-[13px]">
+        <span className={`shrink-0 font-semibold ${trendColor}`}>
           {trendSign}{Math.abs(metric.changePercent)}%
         </span>
-        <span className="truncate text-[#94A3B8]">{metric.helper}</span>
+        <span className="min-w-0 truncate text-[#94A3B8]">{metric.helper}</span>
       </div>
     </article>
   );
@@ -136,7 +149,7 @@ function MetricCard({ metric, index }: { metric: SuperAdminMetric; index: number
 function DashboardSkeleton() {
   return (
     <div className="mt-[70px] space-y-5">
-      <div className="grid grid-cols-6 gap-4">
+      <div className="grid grid-cols-3 gap-4 2xl:grid-cols-6">
         {Array.from({ length: 6 }, (_, index) => (
           <div key={index} className="h-[125px] animate-pulse rounded-[8px] bg-[#F8FAFC]" />
         ))}
@@ -347,7 +360,7 @@ export function SuperAdminDashboardPage() {
 
   return (
     <div className="mt-[70px] space-y-5">
-      <section className="grid grid-cols-6 gap-4">
+      <section className="grid grid-cols-3 gap-4 2xl:grid-cols-6">
         {dashboard.metrics.map((metric, index) => (
           <MetricCard key={metric.label} metric={metric} index={index} />
         ))}
