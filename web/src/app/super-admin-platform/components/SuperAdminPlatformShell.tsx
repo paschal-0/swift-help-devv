@@ -242,7 +242,7 @@ function SidebarItem({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-[40px] items-center rounded-[8px] pl-[58px] pr-3 text-[14px] font-medium leading-none transition ${
+      className={`relative flex h-[40px] w-full min-w-0 items-center rounded-[8px] pl-[58px] pr-3 text-[14px] font-medium leading-none transition ${
         active ? "bg-[#E3F2FD] text-[#1E88E5]" : "text-[#94A3B8] hover:bg-[#EEF6FD] hover:text-[#1E88E5]"
       }`}
     >
@@ -256,7 +256,7 @@ function SidebarItem({
       <span className="absolute left-[26px] top-1/2 -translate-y-1/2">
         <Icon type={item.icon} active={active} />
       </span>
-      <span className="whitespace-nowrap">{item.label}</span>
+      <span className="min-w-0 truncate whitespace-nowrap">{item.label}</span>
     </Link>
   );
 }
@@ -360,7 +360,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
             <span className="text-[28px] font-semibold text-[#1E88E5]">Swifthelp</span>
           </Link>
 
-          <nav className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">
+          <nav className="mt-7 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">
             <NavGroup items={[mainNav[0]]} pathname={normalizedPathname} />
             <NavGroup title="Main" items={mainNav.slice(1)} pathname={normalizedPathname} />
             <NavGroup title="System" items={systemNav} pathname={normalizedPathname} />

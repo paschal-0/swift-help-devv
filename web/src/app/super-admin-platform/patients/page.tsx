@@ -148,13 +148,13 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <article className="flex h-[118px] items-center gap-5 rounded-[12px] bg-[#F8FAFC] px-6 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-8 w-8" />
+    <article className="flex h-[106px] min-w-0 items-center gap-4 rounded-[12px] bg-[#F8FAFC] px-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-7 w-7" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-[18px] font-light leading-6 text-[#94A3B8]">{label}</p>
-        <p className="text-[40px] font-semibold leading-none text-[#334155]">{value}</p>
+        <p className="text-[16px] font-light leading-5 text-[#94A3B8]">{label}</p>
+        <p className="text-[36px] font-semibold leading-none text-[#334155]">{value}</p>
       </div>
     </article>
   );
@@ -162,9 +162,9 @@ function StatCard({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[190px_1fr] gap-6 border-b border-[#DDE5EF] py-5">
-      <dt className="text-[26px] font-light leading-8 text-[#94A3B8]">{label}</dt>
-      <dd className="whitespace-pre-line break-words text-[26px] font-medium leading-9 text-[#334155]">
+    <div className="grid grid-cols-[150px_1fr] gap-5 border-b border-[#DDE5EF] py-4">
+      <dt className="text-[20px] font-light leading-7 text-[#94A3B8]">{label}</dt>
+      <dd className="whitespace-pre-line break-words text-[20px] font-medium leading-7 text-[#334155]">
         {value || "Not provided"}
       </dd>
     </div>
@@ -192,12 +192,12 @@ function PatientProfileModal({
     : [];
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F8FAFC] px-[46px] py-[42px] text-[#334155]">
-      <div className="mx-auto max-w-[1670px]">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F8FAFC] px-[38px] py-[38px] text-[#334155]">
+      <div className="mx-auto max-w-[1280px]">
         <button
           type="button"
           onClick={onClose}
-          className="flex cursor-pointer items-center gap-8 text-[34px] font-semibold text-[#334155]"
+          className="flex cursor-pointer items-center gap-6 text-[32px] font-semibold text-[#334155]"
         >
           <Icon name="back" className="h-10 w-10" />
           <span>{patient?.fullName ?? "Patient profile"}</span>
@@ -208,23 +208,23 @@ function PatientProfileModal({
             Loading patient profile...
           </div>
         ) : patient ? (
-          <div className="mt-[88px] grid grid-cols-[454px_1fr_572px] gap-9">
+          <div className="mt-14 grid grid-cols-[330px_minmax(420px,1fr)_360px] gap-7">
             <div className="space-y-[34px]">
-              <article className="rounded-[20px] bg-white p-12 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <div className="h-[389px] overflow-hidden rounded-[20px] bg-[#E3F2FD]">
+              <article className="rounded-[20px] bg-white p-8 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <div className="h-[300px] overflow-hidden rounded-[20px] bg-[#E3F2FD]">
                   <ProfileAvatar
                     src={patient.avatarUrl}
                     alt={`${patient.fullName} profile photo`}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <h2 className="mt-5 truncate text-[32px] font-semibold leading-10 text-[#334155]">
+                <h2 className="mt-5 truncate text-[28px] font-semibold leading-9 text-[#334155]">
                   {patient.fullName}
                 </h2>
               </article>
 
-              <article className="rounded-[20px] bg-white px-8 py-11 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-11 text-[34px] font-semibold leading-10 text-[#334155]">
+              <article className="rounded-[20px] bg-white px-7 py-8 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-8 text-[28px] font-semibold leading-9 text-[#334155]">
                   Emergency Contact
                 </h3>
                 <dl>
@@ -259,7 +259,7 @@ function PatientProfileModal({
                 </dl>
               </article>
 
-              <div className="mx-auto flex h-[74px] w-[572px] items-center justify-center gap-6 rounded-[18px] bg-[#E2E8F0] px-7 text-[24px] font-medium text-[#94A3B8]">
+              <div className="mx-auto flex h-[68px] w-full items-center justify-center gap-5 rounded-[18px] bg-[#E2E8F0] px-5 text-[20px] font-medium text-[#94A3B8]">
                 <button
                   type="button"
                   onClick={() => toast.info("Edit patient profile is not available yet.")}
@@ -287,8 +287,8 @@ function PatientProfileModal({
               </div>
             </div>
 
-            <article className="rounded-[20px] bg-white px-8 py-12 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-              <h3 className="mb-20 text-[34px] font-semibold leading-10 text-[#334155]">
+            <article className="rounded-[20px] bg-white px-7 py-10 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+              <h3 className="mb-12 text-[30px] font-semibold leading-10 text-[#334155]">
                 Medical Information
               </h3>
               <dl>
@@ -431,7 +431,7 @@ export default function SuperAdminPatientsRoute() {
     <div className="pt-[62px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">Patients</h1>
 
-      <section className="mt-8 grid grid-cols-4 gap-6">
+      <section className="mt-8 grid grid-cols-4 gap-5">
         <StatCard label="Total patients" value={summary.totalPatients} icon="patient" tone="bg-[#DCFCE7]" />
         <StatCard label="Active Patients" value={summary.activePatients} icon="active" tone="bg-[#BFDBFE]" />
         <StatCard label="Inactive Patients" value={summary.inactivePatients} icon="inactive" tone="bg-[#FEE2E2]" />
@@ -439,9 +439,9 @@ export default function SuperAdminPatientsRoute() {
       </section>
 
       <section className="mt-9 rounded-[12px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.08)]">
-        <div className="flex h-[114px] items-center justify-between px-5">
-          <div className="flex items-center gap-3">
-            <label className="relative h-[56px] w-[390px] rounded-[28px] bg-[#E2E8F0]">
+        <div className="flex h-[104px] items-center justify-between gap-5 px-5">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <label className="relative h-[56px] w-[360px] max-w-full rounded-[28px] bg-[#E2E8F0]">
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#334155]">
                 <Icon name="search" className="h-7 w-7" />
               </span>
@@ -456,7 +456,7 @@ export default function SuperAdminPatientsRoute() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-              className="h-[56px] w-[140px] cursor-pointer rounded-[28px] border border-[#DDE5EF] bg-[#F8FAFC] px-6 text-[16px] font-light text-[#334155] outline-none"
+              className="h-[56px] w-[140px] shrink-0 cursor-pointer rounded-[28px] border border-[#DDE5EF] bg-[#F8FAFC] px-6 text-[16px] font-light text-[#334155] outline-none"
               aria-label="Patient status filter"
             >
               <option value="all">Filters</option>
@@ -468,7 +468,7 @@ export default function SuperAdminPatientsRoute() {
           <button
             type="button"
             onClick={exportRows}
-            className="h-[47px] w-[136px] cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[18px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)]"
+            className="h-[47px] w-[136px] shrink-0 cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[18px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)]"
           >
             Export
           </button>
@@ -476,14 +476,14 @@ export default function SuperAdminPatientsRoute() {
 
         <table className="w-full table-fixed text-left">
           <thead>
-            <tr className="h-10 text-[22px] font-light text-[#334155]">
-              <th className="w-[22%] px-8 font-light">Name</th>
-              <th className="w-[21%] px-4 font-light">Email</th>
-              <th className="w-[18%] px-4 font-light">Phone</th>
-              <th className="w-[10%] px-4 font-light">Status</th>
-              <th className="w-[13%] px-4 font-light">Joined date</th>
-              <th className="w-[12%] px-4 font-light">Location</th>
-              <th className="w-[8%] px-4 text-center font-light">Actions</th>
+            <tr className="h-10 text-[18px] font-light text-[#334155]">
+              <th className="w-[21%] px-6 font-light">Name</th>
+              <th className="w-[22%] px-3 font-light">Email</th>
+              <th className="w-[17%] px-3 font-light">Phone</th>
+              <th className="w-[10%] px-3 font-light">Status</th>
+              <th className="w-[13%] px-3 font-light">Joined date</th>
+              <th className="w-[12%] px-3 font-light">Location</th>
+              <th className="w-[5%] px-2 text-center font-light">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-[#F8FAFC]">
@@ -495,8 +495,8 @@ export default function SuperAdminPatientsRoute() {
               </tr>
             ) : patients.length ? (
               patients.map((patient) => (
-                <tr key={patient.id} className="h-[60px] border-t border-[#DDE5EF] text-[16px] text-[#334155]">
-                  <td className="px-8">
+                <tr key={patient.id} className="h-[60px] border-t border-[#DDE5EF] text-[15px] text-[#334155]">
+                  <td className="px-6">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#D9D9D9]">
                         <ProfileAvatar
@@ -508,16 +508,16 @@ export default function SuperAdminPatientsRoute() {
                       <span className="truncate font-medium">{patient.fullName}</span>
                     </div>
                   </td>
-                  <td className="truncate px-4 text-[#94A3B8]">{patient.email}</td>
-                  <td className="truncate px-4 text-[#94A3B8]">{patient.phoneNumber ?? "Not provided"}</td>
-                  <td className="px-4">
+                  <td className="truncate px-3 text-[#94A3B8]">{patient.email}</td>
+                  <td className="truncate px-3 text-[#94A3B8]">{patient.phoneNumber ?? "Not provided"}</td>
+                  <td className="px-3">
                     <span className={patient.status === "active" ? "font-medium text-[#008000]" : "font-medium text-[#B91C1C]"}>
                       {patient.status === "active" ? "Active" : "Suspended"}
                     </span>
                   </td>
-                  <td className="truncate px-4 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
-                  <td className="truncate px-4 text-[#94A3B8]">{patient.location}</td>
-                  <td className="relative px-4 text-center">
+                  <td className="truncate px-3 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
+                  <td className="truncate px-3 text-[#94A3B8]">{patient.location}</td>
+                  <td className="relative px-2 text-center">
                     <button
                       type="button"
                       onClick={() => setOpenMenuId(openMenuId === patient.id ? null : patient.id)}
@@ -528,12 +528,12 @@ export default function SuperAdminPatientsRoute() {
                     </button>
 
                     {openMenuId === patient.id ? (
-                      <div className="absolute right-10 top-10 z-20 w-[234px] rounded-[18px] bg-white p-7 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
+                      <div className="absolute right-2 top-10 z-20 w-[220px] rounded-[18px] bg-white p-6 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
                         <span className="absolute -top-3 right-9 h-6 w-6 rotate-45 bg-white" />
                         <button
                           type="button"
                           onClick={() => openPatientProfile(patient.id)}
-                          className="relative flex w-full cursor-pointer items-center gap-5 py-3 text-[24px] font-medium text-[#334155] transition hover:text-[#1565C0]"
+                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
                         >
                           <Icon name="eye" className="h-7 w-7" />
                           View Profile
@@ -544,7 +544,7 @@ export default function SuperAdminPatientsRoute() {
                             setOpenMenuId(null);
                             toast.info("Edit patient profile is not available yet.");
                           }}
-                          className="relative flex w-full cursor-pointer items-center gap-5 py-3 text-[24px] font-medium text-[#334155] transition hover:text-[#1565C0]"
+                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#1565C0]"
                         >
                           <Icon name="edit" className="h-7 w-7" />
                           Edit user
@@ -552,7 +552,7 @@ export default function SuperAdminPatientsRoute() {
                         <button
                           type="button"
                           onClick={() => updatePatientStatus(patient)}
-                          className="relative flex w-full cursor-pointer items-center gap-5 py-3 text-[24px] font-medium text-[#334155] transition hover:text-[#B91C1C]"
+                          className="relative flex w-full cursor-pointer items-center gap-4 py-3 text-[21px] font-medium text-[#334155] transition hover:text-[#B91C1C]"
                         >
                           <Icon name="pause" className="h-7 w-7" />
                           {patient.status === "active" ? "Suspend user" : "Reactivate user"}
