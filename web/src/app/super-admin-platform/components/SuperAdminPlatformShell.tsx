@@ -354,19 +354,19 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
   return (
     <SuperAdminShellContext.Provider value={contextValue}>
       <section className="min-h-screen min-w-[1280px] bg-[#E2E8F0] text-[#334155]">
-        <aside className="fixed left-0 top-0 flex h-screen w-[284px] flex-col overflow-hidden bg-[#F8FAFC] px-[31px] py-[36px]">
-          <Link href="/super-admin-platform" className="flex items-center gap-2">
+        <aside className="fixed left-0 top-0 flex h-screen w-[284px] flex-col overflow-hidden bg-[#F8FAFC] px-[31px] py-[28px]">
+          <Link href="/super-admin-platform" className="flex shrink-0 items-center gap-2">
             <Image src="/jam_medical.png" alt="Swifthelp logo" width={58} height={58} priority />
             <span className="text-[28px] font-semibold text-[#1E88E5]">Swifthelp</span>
           </Link>
 
-          <nav className="mt-8 flex min-h-0 flex-1 flex-col gap-5">
+          <nav className="mt-6 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#BBD7F2_transparent]">
             <NavGroup items={[mainNav[0]]} pathname={normalizedPathname} />
             <NavGroup title="Main" items={mainNav.slice(1)} pathname={normalizedPathname} />
             <NavGroup title="System" items={systemNav} pathname={normalizedPathname} />
           </nav>
 
-          <div className="mt-5 rounded-[12px] bg-[#E3F2FD] px-4 py-3">
+          <div className="mt-4 shrink-0 rounded-[12px] bg-[#E3F2FD] px-4 py-3">
             <p className="truncate text-[13px] font-semibold text-[#334155]">
               {profile.fullName}
             </p>

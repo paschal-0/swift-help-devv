@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest } from "./authApi";
+import { ApiRequestError, apiRequest } from "./authApi";
 
 export type SuperAdminMetric = {
   label: string;
@@ -71,8 +71,145 @@ export type SuperAdminDashboard = {
   }>;
 };
 
-export function getSuperAdminDashboard() {
-  return apiRequest<SuperAdminDashboard>("/admin/dashboard/platform", {
-    method: "GET",
+type LegacyAdminDashboardStats = {
+  users: {
+    total: number;
+    patients: number;
+    professionals: number;
+    organizations: number;
+    newThisPeriod: number;
+  };
+  revenue: {
+    total: number;
+    currency: string;
+  };
+  activity: {
+    totalConsultations: number;
+    totalShifts: number;
+  };
+  pendingVerifications: number;
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+};
+
+function emptyTrend(startDate: string) {
+  const start = new Date(startDate);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      date: date.toISOString().slice(0, 10),
+      count: 0,
+    };
   });
+}
+
+function mapLegacyStatsToDashboard(stats: LegacyAdminDashboardStats): SuperAdminDashboard {
+  const trend = emptyTrend(stats.period.startDate);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    admin: {
+      platformName: "Swifthelp",
+      roleLabel: "Super Admin",
+    },
+    metrics: [
+      {
+        label: "Active Patients",
+        value: stats.users.patients,
+        format: "number",
+        changePercent: 0,
+        trend: "up",
+        helper: `${stats.users.newThisPeriod} new this period`,
+      },
+      {
+        label: "Live Consultations",
+        value: stats.activity.totalConsultations,
+        format: "number",
+        changePercent: 0,
+        trend: "up",
+        helper: "consultations this period",
+      },
+      {
+        label: "Active professionals",
+        value: stats.users.professionals,
+        format: "number",
+        changePercent: 0,
+        trend: "up",
+        helper: "verified platform users",
+      },
+      {
+        label: "Open Shifts",
+        value: stats.activity.totalShifts,
+        format: "number",
+        changePercent: 0,
+        trend: "up",
+        helper: "shifts this period",
+      },
+      {
+        label: "AI triage request",
+        value: stats.pendingVerifications,
+        format: "number",
+        changePercent: 0,
+        trend: "down",
+        helper: "pending verifications",
+      },
+      {
+        label: "Revenue",
+        value: stats.revenue.total,
+        format: "currency",
+        changePercent: 0,
+        trend: "up",
+        helper: `reported in ${stats.revenue.currency}`,
+      },
+    ],
+    liveActivity: [],
+    systemHealth: [
+      { label: "User accounts", value: stats.users.total, unit: "users", status: "good" },
+      { label: "Patients", value: stats.users.patients, unit: "accounts", status: "good" },
+      { label: "Professionals", value: stats.users.professionals, unit: "accounts", status: "good" },
+      { label: "Organizations", value: stats.users.organizations, unit: "accounts", status: "good" },
+      { label: "Pending verifications", value: stats.pendingVerifications, unit: "items", status: stats.pendingVerifications ? "warning" : "good" },
+      { label: "Admin API fallback", value: 1, unit: "active", status: "warning" },
+    ],
+    charts: {
+      patientTrend: trend,
+      consultationTrend: trend.map((point, index) => ({
+        ...point,
+        count: index === trend.length - 1 ? stats.activity.totalConsultations : 0,
+      })),
+      workforceUtilization: {
+        utilizationRate: stats.users.professionals
+          ? Math.min(100, Math.round((stats.activity.totalShifts / stats.users.professionals) * 100))
+          : 0,
+        available: stats.users.professionals,
+        onShift: stats.activity.totalShifts,
+        unavailable: 0,
+      },
+    },
+    upcomingShifts: [],
+    recentTransactions: [],
+    topRegions: [],
+  };
+}
+
+export async function getSuperAdminDashboard() {
+  try {
+    return await apiRequest<SuperAdminDashboard>("/admin/dashboard/platform", {
+      method: "GET",
+    });
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 404) {
+      throw error;
+    }
+
+    const stats = await apiRequest<LegacyAdminDashboardStats>("/admin/dashboard/stats", {
+      method: "GET",
+    });
+
+    return mapLegacyStatsToDashboard(stats);
+  }
 }
