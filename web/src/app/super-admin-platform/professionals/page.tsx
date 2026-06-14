@@ -135,8 +135,8 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
           : "#16A34A";
 
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <path fill={color} d="M8.5 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2 21a6.5 6.5 0 0 1 13 0H2Zm12.4 0a8.4 8.4 0 0 0-2.1-5.5A5.8 5.8 0 0 1 22 20v1h-7.6Z" />
+    <svg viewBox="0 0 52 52" className={className} aria-hidden>
+      <path fill={color} d="M30.332 24.918C32.1304 24.918 33.5712 23.4663 33.5712 21.668C33.5712 19.8696 32.1304 18.418 30.332 18.418C28.5337 18.418 27.082 19.8696 27.082 21.668C27.082 23.4663 28.5337 24.918 30.332 24.918ZM21.6654 24.918C23.4637 24.918 24.9045 23.4663 24.9045 21.668C24.9045 19.8696 23.4637 18.418 21.6654 18.418C19.867 18.418 18.4154 19.8696 18.4154 21.668C18.4154 23.4663 19.867 24.918 21.6654 24.918ZM21.6654 27.0846C19.1412 27.0846 14.082 28.3521 14.082 30.8763V33.5846H29.2487V30.8763C29.2487 28.3521 24.1895 27.0846 21.6654 27.0846ZM30.332 27.0846C30.0179 27.0846 29.6604 27.1063 29.2812 27.1388C30.5379 28.0488 31.4154 29.273 31.4154 30.8763V33.5846H37.9154V30.8763C37.9154 28.3521 32.8562 27.0846 30.332 27.0846Z" />
     </svg>
   );
 }
@@ -301,15 +301,15 @@ function ProfessionalProfileModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-[1120px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-7 py-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        className="w-full max-w-[1000px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="flex cursor-pointer items-center gap-4 text-[22px] font-semibold leading-none text-[#334155]"
+          className="flex cursor-pointer items-center gap-3 text-[20px] font-semibold leading-none text-[#334155]"
         >
-          <Icon name="back" className="h-7 w-7" />
+          <Icon name="back" className="h-6 w-6" />
           <span>{professional?.fullName ?? "Professional profile"}</span>
         </button>
 
@@ -318,23 +318,23 @@ function ProfessionalProfileModal({
             Loading professional profile...
           </div>
         ) : professional ? (
-          <div className="mt-7 grid grid-cols-[280px_minmax(340px,1fr)_340px] gap-5">
-            <div className="space-y-4">
-              <article className="rounded-[16px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <div className="h-[185px] overflow-hidden rounded-[16px] bg-[#E3F2FD]">
+          <div className="mt-6 grid grid-cols-[250px_minmax(310px,1fr)_300px] gap-4">
+            <div className="space-y-3">
+              <article className="rounded-[15px] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <div className="h-[150px] overflow-hidden rounded-[14px] bg-[#E3F2FD]">
                   <ProfileAvatar
                     src={professional.avatarUrl}
                     alt={`${professional.fullName} profile photo`}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <h2 className="mt-3 truncate text-[20px] font-semibold leading-7 text-[#334155]">
+                <h2 className="mt-3 truncate text-[18px] font-semibold leading-6 text-[#334155]">
                   {professional.fullName}
                 </h2>
               </article>
 
-              <article className="rounded-[16px] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-3 text-[20px] font-semibold leading-7 text-[#334155]">
+              <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-2 text-[18px] font-semibold leading-6 text-[#334155]">
                   Emergency Contact
                 </h3>
                 <dl>
@@ -345,9 +345,9 @@ function ProfessionalProfileModal({
               </article>
             </div>
 
-            <div className="flex flex-col gap-5">
-              <article className="rounded-[16px] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-5 text-[24px] font-semibold leading-8 text-[#334155]">
+            <div className="flex flex-col gap-4">
+              <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-3 text-[21px] font-semibold leading-7 text-[#334155]">
                   Personal Information
                 </h3>
                 <dl>
@@ -360,33 +360,33 @@ function ProfessionalProfileModal({
                 </dl>
               </article>
 
-              <article className="rounded-[16px] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-3 text-[20px] font-semibold leading-7 text-[#334155]">Pricing</h3>
+              <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-2 text-[18px] font-semibold leading-6 text-[#334155]">Pricing</h3>
                 <dl>
                   <DetailRow label="Video Consultation:" value={`${formatMoney(professional.pricing.videoConsultationRateCents, currencyCode)} per hour`} />
                   <DetailRow label="In person visit:" value={`${formatMoney(professional.pricing.inPersonVisitRateCents, currencyCode)} per hour`} />
                 </dl>
               </article>
 
-              <div className="flex min-h-[46px] w-full items-center justify-center gap-3 rounded-[14px] bg-[#E2E8F0] px-3 text-[14px] font-medium text-[#94A3B8]">
-                <button type="button" onClick={() => onEdit(professional)} className="flex cursor-pointer items-center gap-2 transition hover:text-[#1565C0]">
-                  <Icon name="edit" className="h-5 w-5" />
+              <div className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-[13px] bg-[#E2E8F0] px-2.5 text-[12px] font-medium text-[#94A3B8]">
+                <button type="button" onClick={() => onEdit(professional)} className="flex cursor-pointer items-center gap-1.5 transition hover:text-[#1565C0]">
+                  <Icon name="edit" className="h-4 w-4" />
                   Edit Professional
                 </button>
-                <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
-                  <Icon name="pause" className="h-5 w-5" />
+                <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition hover:text-[#B91C1C]">
+                  <Icon name="pause" className="h-4 w-4" />
                   {professional.isVerified ? "Suspend Professional" : "Reactivate Professional"}
                 </button>
-                <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-2 transition hover:text-[#B91C1C]">
-                  <Icon name="trash" className="h-5 w-5" />
+                <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-1.5 transition hover:text-[#B91C1C]">
+                  <Icon name="trash" className="h-4 w-4" />
                   Delete Professional
                 </button>
               </div>
             </div>
 
-            <div className="space-y-5">
-              <article className="rounded-[16px] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-5 text-[24px] font-semibold leading-8 text-[#334155]">
+            <div className="space-y-4">
+              <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-3 text-[21px] font-semibold leading-7 text-[#334155]">
                   Professional Information
                 </h3>
                 <dl>
@@ -398,9 +398,9 @@ function ProfessionalProfileModal({
                 </dl>
               </article>
 
-              <article className="rounded-[16px] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-4 text-[20px] font-semibold leading-7 text-[#334155]">Medical license</h3>
-                <div className="space-y-3">
+              <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <h3 className="mb-3 text-[18px] font-semibold leading-6 text-[#334155]">Medical license</h3>
+                <div className="max-h-[155px] space-y-2 overflow-y-auto pr-1">
                   {professional.medicalLicense.length ? (
                     professional.medicalLicense.map((document) => (
                       <a
@@ -408,7 +408,7 @@ function ProfessionalProfileModal({
                         href={document.url ?? undefined}
                         target={document.url ? "_blank" : undefined}
                         rel="noreferrer"
-                        className="flex min-h-[58px] items-center gap-3 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155]"
+                        className="flex min-h-[52px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155]"
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] text-[#1565C0]">
                           <Icon name="file" className="h-5 w-5" />
