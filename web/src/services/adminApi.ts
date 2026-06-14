@@ -138,6 +138,86 @@ export type AdminPatientsResponse = {
   };
 };
 
+export type AdminProfessionalListItem = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  status: "active" | "suspended";
+  joinedAt: string;
+  location: string;
+  avatarUrl: string | null;
+  specialization: string;
+  rating: number;
+  consultationType: string;
+  onboardingCompleted: boolean;
+  verificationStatus: "pending" | "approved" | "rejected";
+};
+
+export type AdminProfessionalDocument = {
+  id: string;
+  name: string;
+  sizeLabel: string;
+  url: string | null;
+  status: string;
+};
+
+export type AdminProfessionalDetail = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  status: "active" | "suspended";
+  isVerified: boolean;
+  joinedAt: string;
+  avatarUrl: string | null;
+  rating: number;
+  personalInformation: {
+    gender: string | null;
+    dateOfBirth: string | null;
+    phoneNumber: string | null;
+    email: string;
+    address: string | null;
+    location: string | null;
+  };
+  professionalInformation: {
+    licenseNumber: string | null;
+    specialization: string | null;
+    consultationType: string | null;
+    experienceYears: number | null;
+    professionalBio: string | null;
+    verificationStatus: "pending" | "approved" | "rejected";
+  };
+  pricing: {
+    currencyCode: string;
+    videoConsultationRateCents: number | null;
+    inPersonVisitRateCents: number | null;
+  };
+  medicalLicense: AdminProfessionalDocument[];
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  } | null;
+  onboardingCompleted: boolean;
+};
+
+export type AdminProfessionalsResponse = {
+  summary: {
+    totalProfessionals: number;
+    activeProfessionals: number;
+    inactiveProfessionals: number;
+    suspendedProfessionals: number;
+  };
+  data: AdminProfessionalListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -154,6 +234,29 @@ export type UpdateAdminPatientPayload = {
     relationship?: string;
     phone?: string;
   } | null;
+};
+
+export type UpdateAdminProfessionalPayload = {
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  location?: string;
+  professionalBio?: string;
+  licenseNumber?: string;
+  specialization?: string;
+  experienceYears?: number;
+  consultationType?: string;
+  currencyCode?: string;
+  videoConsultationRateCents?: number;
+  inPersonVisitRateCents?: number;
+  uploadedDocuments?: Array<{
+    name: string;
+    sizeLabel: string;
+    url?: string;
+  }>;
 };
 
 type LegacyAdminDashboardStats = {
@@ -321,6 +424,28 @@ export async function listAdminPatients(params: {
   });
 }
 
+export async function listAdminProfessionals(params: {
+  search?: string;
+  isVerified?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.isVerified !== undefined) {
+    query.set("isVerified", String(params.isVerified));
+  }
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminProfessionalsResponse>(`/admin/professionals${suffix}`, {
+    method: "GET",
+  });
+}
+
 export async function getAdminPatient(patientId: string) {
   return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
     method: "GET",
@@ -332,6 +457,22 @@ export async function updateAdminPatient(
   payload: UpdateAdminPatientPayload,
 ) {
   return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminProfessional(professionalId: string) {
+  return apiRequest<AdminProfessionalDetail>(`/admin/professionals/${professionalId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminProfessional(
+  professionalId: string,
+  payload: UpdateAdminProfessionalPayload,
+) {
+  return apiRequest<AdminProfessionalDetail>(`/admin/professionals/${professionalId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -349,6 +490,12 @@ export async function updateAdminUserStatus(
 
 export async function deleteAdminUser(userId: string) {
   return apiRequest<MessageResponse>(`/admin/patients/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteAdminProfessional(professionalId: string) {
+  return apiRequest<MessageResponse>(`/admin/professionals/${professionalId}`, {
     method: "DELETE",
   });
 }
