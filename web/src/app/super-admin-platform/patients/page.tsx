@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
+  deleteAdminUser,
   getAdminPatient,
   listAdminPatients,
+  updateAdminPatient,
   updateAdminUserStatus,
   type AdminPatientDetail,
   type AdminPatientListItem,
   type AdminPatientsResponse,
+  type UpdateAdminPatientPayload,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 
@@ -31,6 +34,7 @@ type IconName =
   | "eye"
   | "edit"
   | "pause"
+  | "trash"
   | "more"
   | "back";
 
@@ -84,6 +88,14 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
     return (
       <svg viewBox="0 0 24 24" className={className} aria-hidden>
         <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM9 8h2v8H9V8Zm4 0h2v8h-2V8Z" />
+      </svg>
+    );
+  }
+
+  if (name === "trash") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden>
+        <path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z" />
       </svg>
     );
   }
@@ -145,6 +157,13 @@ function formatMedicationList(values: AdminPatientDetail["medicalInformation"]["
       .filter(Boolean)
       .join("\n"),
   );
+}
+
+function splitCsv(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function ThemedDropdown<T extends string>({
@@ -276,11 +295,15 @@ function PatientProfileModal({
   patient,
   loading,
   onClose,
+  onDelete,
+  onEdit,
   onSuspend,
 }: {
   patient: AdminPatientDetail | null;
   loading: boolean;
   onClose: () => void;
+  onDelete: (patient: AdminPatientDetail) => void;
+  onEdit: (patient: AdminPatientDetail) => void;
   onSuspend: (patient: AdminPatientDetail) => void;
 }) {
   const medications = patient
@@ -371,7 +394,7 @@ function PatientProfileModal({
               <div className="mx-auto flex min-h-[46px] w-full items-center justify-center gap-3 rounded-[14px] bg-[#E2E8F0] px-3 text-[14px] font-medium text-[#94A3B8]">
                 <button
                   type="button"
-                  onClick={() => toast.info("Edit patient profile is not available yet.")}
+                  onClick={() => onEdit(patient)}
                   className="flex cursor-pointer items-center gap-2 transition hover:text-[#1565C0]"
                 >
                   <Icon name="edit" className="h-5 w-5" />
@@ -387,10 +410,10 @@ function PatientProfileModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => toast.info("User deletion needs a confirmed backend delete flow.")}
+                  onClick={() => onDelete(patient)}
                   className="flex cursor-pointer items-center gap-2 transition hover:text-[#B91C1C]"
                 >
-                  <Icon name="edit" className="h-5 w-5" />
+                  <Icon name="trash" className="h-5 w-5" />
                   Delete user
                 </button>
               </div>
@@ -421,6 +444,286 @@ function PatientProfileModal({
   );
 }
 
+function PatientEditModal({
+  patient,
+  saving,
+  onClose,
+  onSave,
+}: {
+  patient: AdminPatientDetail;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (payload: UpdateAdminPatientPayload) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    fullName: patient.fullName,
+    email: patient.email,
+    phoneNumber: patient.phoneNumber ?? "",
+    gender: patient.personalInformation.gender ?? "",
+    dateOfBirth: patient.personalInformation.dateOfBirth
+      ? patient.personalInformation.dateOfBirth.slice(0, 10)
+      : "",
+    location:
+      patient.personalInformation.location ??
+      patient.personalInformation.address ??
+      "",
+    bloodGroup: patient.medicalInformation.bloodGroup ?? "",
+    allergies: patient.medicalInformation.allergies.join(", "),
+    healthConditions: patient.medicalInformation.healthConditions.join(", "),
+    emergencyName: patient.emergencyContact?.name ?? "",
+    emergencyRelationship: patient.emergencyContact?.relationship ?? "",
+    emergencyPhone: patient.emergencyContact?.phone ?? "",
+  });
+
+  const updateField = (key: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await onSave({
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      phoneNumber: form.phoneNumber.trim(),
+      gender: form.gender.trim(),
+      dateOfBirth: form.dateOfBirth.trim(),
+      location: form.location.trim(),
+      address: form.location.trim(),
+      bloodGroup: form.bloodGroup.trim(),
+      allergies: splitCsv(form.allergies),
+      healthConditions: splitCsv(form.healthConditions),
+      emergencyContact:
+        form.emergencyName.trim() ||
+        form.emergencyRelationship.trim() ||
+        form.emergencyPhone.trim()
+          ? {
+              name: form.emergencyName.trim(),
+              relationship: form.emergencyRelationship.trim(),
+              phone: form.emergencyPhone.trim(),
+            }
+          : null,
+    });
+  };
+
+  const inputClass =
+    "h-11 w-full rounded-[12px] border border-[#B9CBE0] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]";
+  const labelClass = "space-y-1.5 text-[13px] font-medium text-[#64748B]";
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#334155]/45 px-8 py-8 text-[#334155]"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={onClose}
+    >
+      <form
+        onSubmit={submit}
+        onMouseDown={(event) => event.stopPropagation()}
+        className="w-full max-w-[820px] rounded-[18px] bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
+              Edit patient
+            </p>
+            <h2 className="mt-1 text-[24px] font-semibold leading-8 text-[#334155]">
+              {patient.fullName}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 w-10 cursor-pointer rounded-full bg-[#E3F2FD] text-[24px] leading-none text-[#334155]"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <label className={labelClass}>
+            Full name
+            <input
+              className={inputClass}
+              value={form.fullName}
+              onChange={(event) => updateField("fullName", event.target.value)}
+              required
+            />
+          </label>
+          <label className={labelClass}>
+            Email
+            <input
+              className={inputClass}
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              required
+            />
+          </label>
+          <label className={labelClass}>
+            Phone
+            <input
+              className={inputClass}
+              value={form.phoneNumber}
+              onChange={(event) => updateField("phoneNumber", event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Gender
+            <select
+              className={inputClass}
+              value={form.gender}
+              onChange={(event) => updateField("gender", event.target.value)}
+            >
+              <option value="">Not provided</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            Date of birth
+            <input
+              className={inputClass}
+              type="date"
+              value={form.dateOfBirth}
+              onChange={(event) => updateField("dateOfBirth", event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Location
+            <input
+              className={inputClass}
+              value={form.location}
+              onChange={(event) => updateField("location", event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Blood group
+            <input
+              className={inputClass}
+              value={form.bloodGroup}
+              onChange={(event) => updateField("bloodGroup", event.target.value)}
+              placeholder="O+"
+            />
+          </label>
+          <label className={labelClass}>
+            Allergies
+            <input
+              className={inputClass}
+              value={form.allergies}
+              onChange={(event) => updateField("allergies", event.target.value)}
+              placeholder="Penicillin, dust"
+            />
+          </label>
+          <label className={labelClass}>
+            Health conditions
+            <input
+              className={inputClass}
+              value={form.healthConditions}
+              onChange={(event) => updateField("healthConditions", event.target.value)}
+              placeholder="Hypertension, asthma"
+            />
+          </label>
+          <label className={labelClass}>
+            Emergency contact name
+            <input
+              className={inputClass}
+              value={form.emergencyName}
+              onChange={(event) => updateField("emergencyName", event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Emergency relationship
+            <input
+              className={inputClass}
+              value={form.emergencyRelationship}
+              onChange={(event) => updateField("emergencyRelationship", event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            Emergency phone
+            <input
+              className={inputClass}
+              value={form.emergencyPhone}
+              onChange={(event) => updateField("emergencyPhone", event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 w-[130px] cursor-pointer rounded-[12px] border border-[#1565C0] text-[15px] font-medium text-[#1565C0]"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="h-11 w-[150px] cursor-pointer rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[15px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function DeletePatientModal({
+  patient,
+  deleting,
+  onClose,
+  onConfirm,
+}: {
+  patient: AdminPatientListItem | AdminPatientDetail;
+  deleting: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#334155]/45 px-8 py-8 text-[#334155]"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={onClose}
+    >
+      <div
+        className="w-full max-w-[430px] rounded-[18px] bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEE2E2] text-[#B91C1C]">
+          <Icon name="trash" className="h-6 w-6" />
+        </div>
+        <h2 className="mt-4 text-[22px] font-semibold leading-7 text-[#334155]">
+          Delete {patient.fullName}?
+        </h2>
+        <p className="mt-2 text-[14px] leading-6 text-[#64748B]">
+          This removes the patient account from admin listings and blocks access to the platform.
+        </p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 w-[112px] cursor-pointer rounded-[12px] border border-[#B9CBE0] text-[15px] font-medium text-[#334155]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onConfirm}
+            className="h-11 w-[128px] cursor-pointer rounded-[12px] bg-[#B91C1C] text-[15px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {deleting ? "Deleting..." : "Delete user"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminPatientsRoute() {
   const { searchText } = useSuperAdminShell();
   const [patients, setPatients] = useState<AdminPatientListItem[]>([]);
@@ -433,7 +736,14 @@ export default function SuperAdminPatientsRoute() {
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<AdminPatientDetail | null>(null);
+  const [editPatient, setEditPatient] = useState<AdminPatientDetail | null>(null);
+  const [deletePatient, setDeletePatient] = useState<
+    AdminPatientListItem | AdminPatientDetail | null
+  >(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   const effectiveSearch = search.trim() || searchText.trim();
 
@@ -478,6 +788,67 @@ export default function SuperAdminPatientsRoute() {
       toast.error(getApiErrorMessage(error));
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const openEditPatient = async (patient: AdminPatientListItem | AdminPatientDetail) => {
+    setOpenMenuId(null);
+
+    if ("medicalInformation" in patient) {
+      setEditPatient(patient);
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const detail = await getAdminPatient(patient.id);
+      setEditPatient(detail);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const savePatientEdit = async (payload: UpdateAdminPatientPayload) => {
+    if (!editPatient) return;
+
+    setSavingEdit(true);
+    try {
+      const updated = await updateAdminPatient(editPatient.id, payload);
+      toast.success("Patient profile updated.");
+      setEditPatient(null);
+      if (selectedPatient?.id === updated.id) {
+        setSelectedPatient(updated);
+      }
+      await loadPatients();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const confirmDeletePatient = async () => {
+    if (!deletePatient) return;
+
+    setDeletingUser(true);
+    try {
+      await deleteAdminUser(deletePatient.id);
+      toast.success("Patient deleted.");
+      if (selectedPatient?.id === deletePatient.id) {
+        setSelectedPatient(null);
+      }
+      if (editPatient?.id === deletePatient.id) {
+        setEditPatient(null);
+      }
+      setDeletePatient(null);
+      setOpenMenuId(null);
+      await loadPatients();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -589,8 +960,8 @@ export default function SuperAdminPatientsRoute() {
                 <th className="w-[16%] px-4 py-3 font-medium">Phone</th>
                 <th className="w-[10%] px-4 py-3 font-medium">Status</th>
                 <th className="w-[14%] px-4 py-3 font-medium">Joined date</th>
-                <th className="w-[10%] px-4 py-3 font-medium">Location</th>
-                <th className="w-[8%] px-4 py-3 text-center font-medium">Actions</th>
+                <th className="w-[9%] px-4 py-3 font-medium">Location</th>
+                <th className="w-[9%] py-3 pl-4 pr-8 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -624,34 +995,31 @@ export default function SuperAdminPatientsRoute() {
                     </td>
                     <td className="truncate px-4 py-2 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
                     <td className="truncate px-4 py-2 text-[#94A3B8]">{patient.location}</td>
-                    <td className="relative px-4 py-2 text-center">
+                    <td className="relative py-2 pl-4 pr-8 text-right">
                       <button
                         type="button"
                         onClick={() => setOpenMenuId(openMenuId === patient.id ? null : patient.id)}
-                        className="mx-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#94A3B8] transition hover:bg-[#E3F2FD] hover:text-[#334155]"
+                        className="ml-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#94A3B8] transition hover:bg-[#E3F2FD] hover:text-[#334155]"
                         aria-label={`Open actions for ${patient.fullName}`}
                       >
                         <Icon name="more" className="h-7 w-7" />
                       </button>
 
                       {openMenuId === patient.id ? (
-                        <div className="absolute right-4 top-10 z-20 w-[205px] rounded-[16px] bg-white p-4 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
+                        <div className="absolute right-8 top-10 z-20 w-[192px] rounded-[16px] bg-white p-3 text-left shadow-[0_22px_45px_rgba(15,23,42,0.22)]">
                           <span className="absolute -top-2 right-9 h-5 w-5 rotate-45 bg-white" />
                           <button
                             type="button"
                             onClick={() => openPatientProfile(patient.id)}
-                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2 py-2.5 text-[16px] font-medium leading-5 text-[#334155] transition hover:bg-[#E3F2FD] hover:text-[#1565C0]"
+                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#E3F2FD] hover:text-[#1565C0]"
                           >
                             <Icon name="eye" className="h-5 w-5 shrink-0" />
                             View Profile
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              toast.info("Edit patient profile is not available yet.");
-                            }}
-                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2 py-2.5 text-[16px] font-medium leading-5 text-[#334155] transition hover:bg-[#E3F2FD] hover:text-[#1565C0]"
+                            onClick={() => openEditPatient(patient)}
+                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#E3F2FD] hover:text-[#1565C0]"
                           >
                             <Icon name="edit" className="h-5 w-5 shrink-0" />
                             Edit user
@@ -659,10 +1027,21 @@ export default function SuperAdminPatientsRoute() {
                           <button
                             type="button"
                             onClick={() => updatePatientStatus(patient)}
-                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2 py-2.5 text-[16px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
+                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
                           >
                             <Icon name="pause" className="h-5 w-5 shrink-0" />
                             {patient.status === "active" ? "Suspend user" : "Reactivate user"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              setDeletePatient(patient);
+                            }}
+                            className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
+                          >
+                            <Icon name="trash" className="h-5 w-5 shrink-0" />
+                            Delete user
                           </button>
                         </div>
                       ) : null}
@@ -720,9 +1099,37 @@ export default function SuperAdminPatientsRoute() {
           patient={selectedPatient}
           loading={detailLoading}
           onClose={() => setSelectedPatient(null)}
+          onDelete={(patient) => setDeletePatient(patient)}
+          onEdit={(patient) => void openEditPatient(patient)}
           onSuspend={(patient) => updatePatientStatus(patient)}
         />
       )}
+
+      {editLoading ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#334155]/45 px-8 py-8 text-[#334155]">
+          <div className="rounded-[18px] bg-white p-8 text-[16px] font-medium text-[#94A3B8] shadow-[0_28px_80px_rgba(15,23,42,0.26)]">
+            Loading edit form...
+          </div>
+        </div>
+      ) : null}
+
+      {editPatient ? (
+        <PatientEditModal
+          patient={editPatient}
+          saving={savingEdit}
+          onClose={() => setEditPatient(null)}
+          onSave={savePatientEdit}
+        />
+      ) : null}
+
+      {deletePatient ? (
+        <DeletePatientModal
+          patient={deletePatient}
+          deleting={deletingUser}
+          onClose={() => setDeletePatient(null)}
+          onConfirm={confirmDeletePatient}
+        />
+      ) : null}
     </div>
   );
 }

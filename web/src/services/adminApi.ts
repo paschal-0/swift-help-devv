@@ -138,6 +138,24 @@ export type AdminPatientsResponse = {
   };
 };
 
+export type UpdateAdminPatientPayload = {
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  location?: string;
+  bloodGroup?: string;
+  allergies?: string[];
+  healthConditions?: string[];
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  } | null;
+};
+
 type LegacyAdminDashboardStats = {
   users: {
     total: number;
@@ -309,6 +327,16 @@ export async function getAdminPatient(patientId: string) {
   });
 }
 
+export async function updateAdminPatient(
+  patientId: string,
+  payload: UpdateAdminPatientPayload,
+) {
+  return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminUserStatus(
   userId: string,
   payload: { isActive: boolean; reason?: string },
@@ -316,5 +344,11 @@ export async function updateAdminUserStatus(
   return apiRequest<MessageResponse>(`/admin/users/${userId}/status`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminUser(userId: string) {
+  return apiRequest<MessageResponse>(`/admin/patients/${userId}`, {
+    method: "DELETE",
   });
 }
