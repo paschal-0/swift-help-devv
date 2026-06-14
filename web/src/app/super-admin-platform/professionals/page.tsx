@@ -301,7 +301,7 @@ function ProfessionalProfileModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-[920px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-5 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        className="w-full max-w-[880px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-5 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
@@ -318,7 +318,7 @@ function ProfessionalProfileModal({
             Loading professional profile...
           </div>
         ) : professional ? (
-          <div className="mt-5 grid grid-cols-[220px_minmax(285px,1fr)_260px] gap-3.5">
+          <div className="mt-5 grid grid-cols-[210px_minmax(270px,1fr)_250px] gap-3.5">
             <div className="space-y-3">
               <article className="rounded-[15px] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
                 <div className="h-[128px] overflow-hidden rounded-[14px] bg-[#E3F2FD]">
@@ -345,7 +345,7 @@ function ProfessionalProfileModal({
               </article>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3.5">
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
                 <h3 className="mb-3 text-[19px] font-semibold leading-6 text-[#334155]">
                   Personal Information
@@ -368,20 +368,6 @@ function ProfessionalProfileModal({
                 </dl>
               </article>
 
-              <div className="flex min-h-[38px] w-full items-center justify-center gap-2 rounded-[13px] bg-[#E2E8F0] px-2 text-[11px] font-medium text-[#94A3B8]">
-                <button type="button" onClick={() => onEdit(professional)} className="flex cursor-pointer items-center gap-1.5 transition hover:text-[#1565C0]">
-                  <Icon name="edit" className="h-4 w-4" />
-                  Edit Professional
-                </button>
-                <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap transition hover:text-[#B91C1C]">
-                  <Icon name="pause" className="h-4 w-4" />
-                  {professional.isVerified ? "Suspend Professional" : "Reactivate Professional"}
-                </button>
-                <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-1.5 transition hover:text-[#B91C1C]">
-                  <Icon name="trash" className="h-4 w-4" />
-                  Delete Professional
-                </button>
-              </div>
             </div>
 
             <div className="space-y-4">
@@ -426,6 +412,21 @@ function ProfessionalProfileModal({
                   )}
                 </div>
               </article>
+            </div>
+
+            <div className="col-span-3 flex min-h-[40px] w-full items-center justify-center gap-8 rounded-[13px] border border-[#B9CBE0] bg-[#E2E8F0] px-4 text-[12px] font-medium text-[#94A3B8]">
+              <button type="button" onClick={() => onEdit(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#1565C0]">
+                <Icon name="edit" className="h-4 w-4" />
+                Edit Professional
+              </button>
+              <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
+                <Icon name="pause" className="h-4 w-4" />
+                {professional.isVerified ? "Suspend Professional" : "Reactivate Professional"}
+              </button>
+              <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
+                <Icon name="trash" className="h-4 w-4" />
+                Delete Professional
+              </button>
             </div>
           </div>
         ) : (
