@@ -255,7 +255,7 @@ function StatCard({
   return (
     <article className="grid min-h-[122px] min-w-0 grid-cols-[64px_minmax(0,1fr)] items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-6 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
       <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-8 w-8" />
+        <Icon name={icon} className="h-[52px] w-[52px]" />
       </span>
       <div className="min-w-0">
         <p className="text-[16px] font-light leading-[19px] text-[#94A3B8]">{label}</p>
@@ -267,9 +267,9 @@ function StatCard({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[118px_1fr] gap-3 border-b border-[#DDE5EF] py-2">
-      <dt className="text-[14px] font-light leading-5 text-[#94A3B8]">{label}</dt>
-      <dd className="whitespace-pre-line break-words text-[14px] font-medium leading-5 text-[#334155]">
+    <div className="grid grid-cols-[108px_1fr] gap-3 border-b border-[#DDE5EF] py-1.5">
+      <dt className="text-[13px] font-light leading-5 text-[#94A3B8]">{label}</dt>
+      <dd className="whitespace-pre-line break-words text-[13px] font-medium leading-5 text-[#334155]">
         {value || "Not provided"}
       </dd>
     </div>
@@ -301,13 +301,13 @@ function ProfessionalProfileModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-[1000px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        className="w-full max-w-[920px] overflow-hidden rounded-[18px] bg-[#F8FAFC] px-5 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="flex cursor-pointer items-center gap-3 text-[20px] font-semibold leading-none text-[#334155]"
+          className="flex cursor-pointer items-center gap-3 text-[19px] font-semibold leading-none text-[#334155]"
         >
           <Icon name="back" className="h-6 w-6" />
           <span>{professional?.fullName ?? "Professional profile"}</span>
@@ -318,23 +318,23 @@ function ProfessionalProfileModal({
             Loading professional profile...
           </div>
         ) : professional ? (
-          <div className="mt-6 grid grid-cols-[250px_minmax(310px,1fr)_300px] gap-4">
+          <div className="mt-5 grid grid-cols-[220px_minmax(285px,1fr)_260px] gap-3.5">
             <div className="space-y-3">
               <article className="rounded-[15px] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <div className="h-[150px] overflow-hidden rounded-[14px] bg-[#E3F2FD]">
+                <div className="h-[128px] overflow-hidden rounded-[14px] bg-[#E3F2FD]">
                   <ProfileAvatar
                     src={professional.avatarUrl}
                     alt={`${professional.fullName} profile photo`}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <h2 className="mt-3 truncate text-[18px] font-semibold leading-6 text-[#334155]">
+                <h2 className="mt-3 truncate text-[17px] font-semibold leading-6 text-[#334155]">
                   {professional.fullName}
                 </h2>
               </article>
 
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-2 text-[18px] font-semibold leading-6 text-[#334155]">
+                <h3 className="mb-2 text-[17px] font-semibold leading-6 text-[#334155]">
                   Emergency Contact
                 </h3>
                 <dl>
@@ -347,7 +347,7 @@ function ProfessionalProfileModal({
 
             <div className="flex flex-col gap-4">
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-3 text-[21px] font-semibold leading-7 text-[#334155]">
+                <h3 className="mb-3 text-[19px] font-semibold leading-6 text-[#334155]">
                   Personal Information
                 </h3>
                 <dl>
@@ -361,14 +361,14 @@ function ProfessionalProfileModal({
               </article>
 
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-2 text-[18px] font-semibold leading-6 text-[#334155]">Pricing</h3>
+                <h3 className="mb-2 text-[17px] font-semibold leading-6 text-[#334155]">Pricing</h3>
                 <dl>
                   <DetailRow label="Video Consultation:" value={`${formatMoney(professional.pricing.videoConsultationRateCents, currencyCode)} per hour`} />
                   <DetailRow label="In person visit:" value={`${formatMoney(professional.pricing.inPersonVisitRateCents, currencyCode)} per hour`} />
                 </dl>
               </article>
 
-              <div className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-[13px] bg-[#E2E8F0] px-2.5 text-[12px] font-medium text-[#94A3B8]">
+              <div className="flex min-h-[38px] w-full items-center justify-center gap-2 rounded-[13px] bg-[#E2E8F0] px-2 text-[11px] font-medium text-[#94A3B8]">
                 <button type="button" onClick={() => onEdit(professional)} className="flex cursor-pointer items-center gap-1.5 transition hover:text-[#1565C0]">
                   <Icon name="edit" className="h-4 w-4" />
                   Edit Professional
@@ -386,7 +386,7 @@ function ProfessionalProfileModal({
 
             <div className="space-y-4">
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-3 text-[21px] font-semibold leading-7 text-[#334155]">
+                <h3 className="mb-3 text-[19px] font-semibold leading-6 text-[#334155]">
                   Professional Information
                 </h3>
                 <dl>
@@ -399,8 +399,8 @@ function ProfessionalProfileModal({
               </article>
 
               <article className="rounded-[15px] bg-white px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-                <h3 className="mb-3 text-[18px] font-semibold leading-6 text-[#334155]">Medical license</h3>
-                <div className="max-h-[155px] space-y-2 overflow-y-auto pr-1">
+                <h3 className="mb-3 text-[17px] font-semibold leading-6 text-[#334155]">Medical license</h3>
+                <div className="max-h-[132px] space-y-2 overflow-y-auto pr-1">
                   {professional.medicalLicense.length ? (
                     professional.medicalLicense.map((document) => (
                       <a
@@ -408,7 +408,7 @@ function ProfessionalProfileModal({
                         href={document.url ?? undefined}
                         target={document.url ? "_blank" : undefined}
                         rel="noreferrer"
-                        className="flex min-h-[52px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155]"
+                        className="flex min-h-[48px] items-center gap-2.5 rounded-[12px] border border-[#B9CBE0] px-3 py-2 text-[#334155]"
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#E3F2FD] text-[#1565C0]">
                           <Icon name="file" className="h-5 w-5" />

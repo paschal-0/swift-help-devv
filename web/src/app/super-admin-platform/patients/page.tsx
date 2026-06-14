@@ -266,7 +266,7 @@ function StatCard({
   return (
     <article className="grid min-h-[122px] min-w-0 grid-cols-[60px_minmax(0,1fr)] items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
       <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-8 w-8" />
+        <Icon name={icon} className="h-[52px] w-[52px]" />
       </span>
       <div className="min-w-0">
         <p className="whitespace-normal break-words text-[16px] font-light leading-[19px] text-[#94A3B8]">
