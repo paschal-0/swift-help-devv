@@ -218,6 +218,84 @@ export type AdminProfessionalsResponse = {
   };
 };
 
+export type AdminOrganizationStatus = "active" | "inactive" | "pending" | "suspended";
+
+export type AdminOrganizationListItem = {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string | null;
+  plan: string;
+  joinedAt: string;
+  status: AdminOrganizationStatus;
+  location: string;
+  avatarUrl: string | null;
+  organizationType: string;
+  onboardingCompleted: boolean;
+  verificationStatus: "pending" | "approved" | "rejected";
+};
+
+export type AdminOrganizationTeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  acceptedAt: string | null;
+};
+
+export type AdminOrganizationDetail = {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string | null;
+  status: AdminOrganizationStatus;
+  isVerified: boolean;
+  joinedAt: string;
+  avatarUrl: string | null;
+  organizationInformation: {
+    name: string;
+    type: string;
+    address: string | null;
+    primaryEmail: string;
+    primaryPhone: string | null;
+    memberSince: string;
+    totalStaff: number;
+    numberOfLocations: number | null;
+    facilityName: string | null;
+    facilityAddress: string | null;
+    timezone: string | null;
+    currencyCode: string;
+    verificationStatus: "pending" | "approved" | "rejected";
+  };
+  contactInformation: {
+    displayName: string;
+    email: string;
+    phoneNumber: string | null;
+    address: string | null;
+    location: string | null;
+  };
+  teamMembers: AdminOrganizationTeamMember[];
+  departments: string[];
+  onboardingCompleted: boolean;
+};
+
+export type AdminOrganizationsResponse = {
+  summary: {
+    totalOrganizations: number;
+    activeOrganizations: number;
+    pendingOrganizations: number;
+    suspendedOrganizations: number;
+  };
+  data: AdminOrganizationListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -257,6 +335,21 @@ export type UpdateAdminProfessionalPayload = {
     sizeLabel: string;
     url?: string;
   }>;
+};
+
+export type UpdateAdminOrganizationPayload = {
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  organisationName?: string;
+  organisationType?: string;
+  address?: string;
+  companyEmail?: string;
+  phone?: string;
+  numberOfLocations?: number;
+  facilityName?: string;
+  facilityAddress?: string;
+  currencyCode?: string;
 };
 
 type LegacyAdminDashboardStats = {
@@ -446,6 +539,28 @@ export async function listAdminProfessionals(params: {
   });
 }
 
+export async function listAdminOrganizations(params: {
+  search?: string;
+  isVerified?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.isVerified !== undefined) {
+    query.set("isVerified", String(params.isVerified));
+  }
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminOrganizationsResponse>(`/admin/organizations${suffix}`, {
+    method: "GET",
+  });
+}
+
 export async function getAdminPatient(patientId: string) {
   return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
     method: "GET",
@@ -478,6 +593,22 @@ export async function updateAdminProfessional(
   });
 }
 
+export async function getAdminOrganization(organizationId: string) {
+  return apiRequest<AdminOrganizationDetail>(`/admin/organizations/${organizationId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminOrganization(
+  organizationId: string,
+  payload: UpdateAdminOrganizationPayload,
+) {
+  return apiRequest<AdminOrganizationDetail>(`/admin/organizations/${organizationId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminUserStatus(
   userId: string,
   payload: { isActive: boolean; reason?: string },
@@ -496,6 +627,12 @@ export async function deleteAdminUser(userId: string) {
 
 export async function deleteAdminProfessional(professionalId: string) {
   return apiRequest<MessageResponse>(`/admin/professionals/${professionalId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteAdminOrganization(organizationId: string) {
+  return apiRequest<MessageResponse>(`/admin/organizations/${organizationId}`, {
     method: "DELETE",
   });
 }
