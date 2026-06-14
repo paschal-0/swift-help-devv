@@ -506,12 +506,12 @@ function PatientEditModal({
   };
 
   const inputClass =
-    "h-11 w-full rounded-[12px] border border-[#B9CBE0] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]";
-  const labelClass = "space-y-1.5 text-[13px] font-medium text-[#64748B]";
+    "h-9 w-full rounded-[10px] border border-[#B9CBE0] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]";
+  const labelClass = "space-y-1 text-[12px] font-medium text-[#64748B]";
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#334155]/45 px-8 py-8 text-[#334155]"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#334155]/45 px-8 py-6 text-[#334155]"
       role="dialog"
       aria-modal="true"
       onMouseDown={onClose}
@@ -519,27 +519,27 @@ function PatientEditModal({
       <form
         onSubmit={submit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-[820px] rounded-[18px] bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        className="w-full max-w-[700px] rounded-[16px] bg-white p-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
       >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">
               Edit patient
             </p>
-            <h2 className="mt-1 text-[24px] font-semibold leading-8 text-[#334155]">
+            <h2 className="mt-0.5 text-[20px] font-semibold leading-7 text-[#334155]">
               {patient.fullName}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 cursor-pointer rounded-full bg-[#E3F2FD] text-[24px] leading-none text-[#334155]"
+            className="h-9 w-9 cursor-pointer rounded-full bg-[#E3F2FD] text-[22px] leading-none text-[#334155]"
           >
             ×
           </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <label className={labelClass}>
             Full name
             <input
@@ -650,18 +650,18 @@ function PatientEditModal({
           </label>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="h-11 w-[130px] cursor-pointer rounded-[12px] border border-[#1565C0] text-[15px] font-medium text-[#1565C0]"
+            className="h-10 w-[116px] cursor-pointer rounded-[10px] border border-[#1565C0] text-[14px] font-medium text-[#1565C0]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="h-11 w-[150px] cursor-pointer rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[15px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 w-[136px] cursor-pointer rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save changes"}
           </button>
@@ -690,13 +690,13 @@ function DeletePatientModal({
       onMouseDown={onClose}
     >
       <div
-        className="w-full max-w-[430px] rounded-[18px] bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
+        className="w-full max-w-[380px] rounded-[16px] bg-white p-5 shadow-[0_28px_80px_rgba(15,23,42,0.26)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEE2E2] text-[#B91C1C]">
-          <Icon name="trash" className="h-6 w-6" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE2E2] text-[#B91C1C]">
+          <Icon name="trash" className="h-5 w-5" />
         </div>
-        <h2 className="mt-4 text-[22px] font-semibold leading-7 text-[#334155]">
+        <h2 className="mt-4 text-[20px] font-semibold leading-7 text-[#334155]">
           Delete {patient.fullName}?
         </h2>
         <p className="mt-2 text-[14px] leading-6 text-[#64748B]">
@@ -706,7 +706,7 @@ function DeletePatientModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-11 w-[112px] cursor-pointer rounded-[12px] border border-[#B9CBE0] text-[15px] font-medium text-[#334155]"
+            className="h-10 w-[104px] cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[14px] font-medium text-[#334155]"
           >
             Cancel
           </button>
@@ -714,7 +714,7 @@ function DeletePatientModal({
             type="button"
             disabled={deleting}
             onClick={onConfirm}
-            className="h-11 w-[128px] cursor-pointer rounded-[12px] bg-[#B91C1C] text-[15px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 w-[118px] cursor-pointer rounded-[10px] bg-[#B91C1C] text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {deleting ? "Deleting..." : "Delete user"}
           </button>
