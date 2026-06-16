@@ -440,6 +440,77 @@ export type AdminShiftsResponse = {
   };
 };
 
+export type AdminAiRiskLevel = "low" | "medium" | "high";
+
+export type AdminAiSymptomUser = {
+  id: string | null;
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+};
+
+export type AdminAiSymptomCheckListItem = {
+  id: string;
+  code: string;
+  user: AdminAiSymptomUser;
+  title: string;
+  primarySymptom: string;
+  associatedSymptoms: string;
+  duration: string;
+  severity: string;
+  recommendedCareType: string;
+  urgencyLevel: string;
+  riskLevel: AdminAiRiskLevel;
+  status: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminAiSymptomCheckDetail = AdminAiSymptomCheckListItem & {
+  followUpWindow: string;
+  recommendationTitle: string;
+  recommendationDescription: string;
+  redFlags: string[];
+  nextSteps: string[];
+  symptoms: Record<string, unknown>;
+  answers: Record<string, unknown>;
+};
+
+export type AdminAiSymptomChecksResponse = {
+  summary: {
+    totalSymptomChecks: number;
+    uniqueUsers: number;
+    highRiskResults: number;
+    completionRate: number;
+  };
+  charts: {
+    trend: {
+      labels: string[];
+      totalChecks: number[];
+      uniqueUsers: number[];
+    };
+    riskDistribution: {
+      low: number;
+      medium: number;
+      high: number;
+      total: number;
+    };
+    topSymptoms: Array<{
+      symptom: string;
+      count: number;
+      percentage: number;
+    }>;
+  };
+  data: AdminAiSymptomCheckListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -845,6 +916,58 @@ export async function flagAdminShift(
 
 export async function removeAdminShift(shiftId: string) {
   return apiRequest<MessageResponse>(`/admin/shifts/${shiftId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listAdminAiSymptomChecks(params: {
+  search?: string;
+  risk?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.risk && params.risk !== "all") query.set("risk", params.risk);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminAiSymptomChecksResponse>(`/admin/ai-symptom-checks${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminAiSymptomCheck(checkId: string) {
+  return apiRequest<AdminAiSymptomCheckDetail>(`/admin/ai-symptom-checks/${checkId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminAiSymptomCheckStatus(
+  checkId: string,
+  payload: { status: string; reason?: string },
+) {
+  return apiRequest<AdminAiSymptomCheckDetail>(`/admin/ai-symptom-checks/${checkId}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function flagAdminAiSymptomCheck(
+  checkId: string,
+  payload: { reason?: string } = {},
+) {
+  return apiRequest<MessageResponse>(`/admin/ai-symptom-checks/${checkId}/flag`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function removeAdminAiSymptomCheck(checkId: string) {
+  return apiRequest<MessageResponse>(`/admin/ai-symptom-checks/${checkId}`, {
     method: "DELETE",
   });
 }
