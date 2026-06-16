@@ -365,6 +365,81 @@ export type AdminBookingsResponse = {
   };
 };
 
+export type AdminShiftStatus =
+  | "draft"
+  | "awaiting_funding"
+  | "open"
+  | "partially_filled"
+  | "filled"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "expired";
+
+export type AdminShiftListItem = {
+  id: string;
+  code: string;
+  organization: string;
+  organizationUserId: string | null;
+  department: string;
+  role: string;
+  facilityName: string;
+  location: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  dateTime: string;
+  requiredSlots: number;
+  acceptedSlots: number;
+  completedSlots: number;
+  missedSlots: number;
+  status: AdminShiftStatus;
+  priority: "normal" | "urgent" | string;
+  paymentStatus: string;
+  payAmount: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminShiftDetail = AdminShiftListItem & {
+  address: string;
+  notes: string | null;
+  publishedAt: string | null;
+  cancelledAt: string | null;
+  completedAt: string | null;
+  cancellationReason: string | null;
+  fundedAmount: string;
+  releasedAmount: string;
+  remainingAmount: string;
+  assignments: Array<{
+    id: string;
+    professionalUserId: string;
+    status: string;
+    checkedInAt: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    missedAt: string | null;
+    cancelledAt: string | null;
+  }>;
+};
+
+export type AdminShiftsResponse = {
+  summary: {
+    totalShifts: number;
+    upcomingShifts: number;
+    completedShifts: number;
+    ongoingShifts: number;
+    cancelledShifts: number;
+  };
+  data: AdminShiftListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -719,6 +794,58 @@ export async function updateAdminOrganization(
 export async function getAdminBooking(bookingId: string) {
   return apiRequest<AdminBookingDetail>(`/admin/bookings/${bookingId}`, {
     method: "GET",
+  });
+}
+
+export async function listAdminShifts(params: {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminShiftsResponse>(`/admin/shifts${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminShift(shiftId: string) {
+  return apiRequest<AdminShiftDetail>(`/admin/shifts/${shiftId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminShiftStatus(
+  shiftId: string,
+  payload: { status: AdminShiftStatus; reason?: string },
+) {
+  return apiRequest<AdminShiftDetail>(`/admin/shifts/${shiftId}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function flagAdminShift(
+  shiftId: string,
+  payload: { reason?: string } = {},
+) {
+  return apiRequest<MessageResponse>(`/admin/shifts/${shiftId}/flag`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function removeAdminShift(shiftId: string) {
+  return apiRequest<MessageResponse>(`/admin/shifts/${shiftId}`, {
+    method: "DELETE",
   });
 }
 

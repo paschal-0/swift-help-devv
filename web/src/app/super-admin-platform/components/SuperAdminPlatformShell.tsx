@@ -162,6 +162,17 @@ function Icon({ type, active }: { type: NavIcon | "logout" | "search"; active?: 
     );
   }
 
+  if (type === "bookings" || type === "shifts") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden>
+        <path
+          fill={color}
+          d="M7 2h2v3h6V2h2v3h3v17H4V5h3V2Zm11 8H6v10h12V10ZM8 12h3v3H8v-3Zm5 0h3v3h-3v-3Z"
+        />
+      </svg>
+    );
+  }
+
   if (type === "ai") {
     return (
       <svg viewBox="0 0 24 24" className={common} aria-hidden>
