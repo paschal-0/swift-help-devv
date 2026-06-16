@@ -72,6 +72,16 @@ export type SuperAdminDashboard = {
   }>;
 };
 
+export type AdminNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  read: boolean;
+  createdAt: string;
+  metadata?: Record<string, unknown> | null;
+};
+
 export type AdminPatientListItem = {
   id: string;
   fullName: string;
@@ -493,6 +503,24 @@ export async function getSuperAdminDashboard() {
 
     return mapLegacyStatsToDashboard(stats);
   }
+}
+
+export async function listAdminNotifications(params: { limit?: number } = {}) {
+  const query = new URLSearchParams();
+
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminNotification[]>(`/admin/notifications${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function markAdminNotificationRead(notificationId: string) {
+  return apiRequest<AdminNotification>(`/admin/notifications/${notificationId}/read`, {
+    method: "PUT",
+  });
 }
 
 export async function listAdminPatients(params: {

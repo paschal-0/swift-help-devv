@@ -89,7 +89,6 @@ const mainNav: NavItem[] = [
 const systemNav: NavItem[] = [
   { label: "Settings", href: "/super-admin-platform/settings", icon: "settings" },
   { label: "Admin Team", href: "/super-admin-platform/admin-team", icon: "team" },
-  { label: "Notifications", href: "/super-admin-platform/notifications", icon: "notifications" },
   { label: "Audit Logs", href: "/super-admin-platform/audit-logs", icon: "audit" },
 ];
 
