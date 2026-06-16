@@ -306,6 +306,65 @@ export type AdminOrganizationsResponse = {
   };
 };
 
+export type AdminBookingStatus =
+  | "upcoming"
+  | "ongoing"
+  | "completed"
+  | "missed"
+  | "cancelled";
+
+export type AdminBookingParty = {
+  id: string | null;
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+};
+
+export type AdminBookingListItem = {
+  id: string;
+  code: string;
+  patient: AdminBookingParty;
+  professional: AdminBookingParty;
+  scheduledDate: string;
+  startTime: string;
+  endTime: string;
+  dateTime: string;
+  type: string;
+  mode: string;
+  status: AdminBookingStatus;
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminBookingDetail = AdminBookingListItem & {
+  durationMinutes: number | null;
+  reminders: {
+    email: boolean;
+    sms: boolean;
+    reminderSentAt: string | null;
+  };
+  shareSummaryWithProvider: boolean;
+  meetingUrl: string | null;
+};
+
+export type AdminBookingsResponse = {
+  summary: {
+    totalBookings: number;
+    upcomingBookings: number;
+    completedBookings: number;
+    liveBookings: number;
+    cancelledBookings: number;
+  };
+  data: AdminBookingListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -589,6 +648,26 @@ export async function listAdminOrganizations(params: {
   });
 }
 
+export async function listAdminBookings(params: {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminBookingsResponse>(`/admin/bookings${suffix}`, {
+    method: "GET",
+  });
+}
+
 export async function getAdminPatient(patientId: string) {
   return apiRequest<AdminPatientDetail>(`/admin/patients/${patientId}`, {
     method: "GET",
@@ -637,6 +716,32 @@ export async function updateAdminOrganization(
   });
 }
 
+export async function getAdminBooking(bookingId: string) {
+  return apiRequest<AdminBookingDetail>(`/admin/bookings/${bookingId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminBookingStatus(
+  bookingId: string,
+  payload: { status: AdminBookingStatus; reason?: string },
+) {
+  return apiRequest<AdminBookingDetail>(`/admin/bookings/${bookingId}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function flagAdminBooking(
+  bookingId: string,
+  payload: { reason?: string } = {},
+) {
+  return apiRequest<MessageResponse>(`/admin/bookings/${bookingId}/flag`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminUserStatus(
   userId: string,
   payload: { isActive: boolean; reason?: string },
@@ -661,6 +766,12 @@ export async function deleteAdminProfessional(professionalId: string) {
 
 export async function deleteAdminOrganization(organizationId: string) {
   return apiRequest<MessageResponse>(`/admin/organizations/${organizationId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function removeAdminBooking(bookingId: string) {
+  return apiRequest<MessageResponse>(`/admin/bookings/${bookingId}`, {
     method: "DELETE",
   });
 }
