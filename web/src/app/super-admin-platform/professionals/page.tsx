@@ -253,13 +253,17 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <article className="grid min-h-[122px] min-w-0 grid-cols-[64px_minmax(0,1fr)] items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-6 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-[52px] w-[52px]" />
+    <article className="flex min-h-[122px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-[50px] w-[50px]" />
       </span>
-      <div className="min-w-0">
-        <p className="text-[16px] font-light leading-[19px] text-[#94A3B8]">{label}</p>
-        <p className="mt-1 truncate text-[38px] font-semibold leading-none text-[#334155]">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="max-w-[160px] text-[15px] font-light leading-[18px] text-[#94A3B8]">
+          {label}
+        </p>
+        <p className="mt-1 text-[38px] font-semibold leading-none text-[#334155]">
+          {value.toLocaleString()}
+        </p>
       </div>
     </article>
   );
@@ -788,7 +792,7 @@ export default function SuperAdminProfessionalsRoute() {
     <div className="pt-[62px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">Professionals</h1>
 
-      <section className="mt-8 grid grid-cols-4 gap-6">
+      <section className="mt-8 grid grid-cols-4 gap-5">
         <StatCard label="Total professionals" value={summary.totalProfessionals} icon="professional" tone="bg-[#DCFCE7]" />
         <StatCard label="Active Professionals" value={summary.activeProfessionals} icon="active" tone="bg-[#BFDBFE]" />
         <StatCard label="Inactive Professionals" value={summary.inactiveProfessionals} icon="inactive" tone="bg-[#FEE2E2]" />
