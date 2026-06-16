@@ -209,11 +209,13 @@ function ActionMenu({
   onEdit,
   onSuspend,
   onView,
+  suspended,
 }: {
   onDelete: () => void;
   onEdit: () => void;
   onSuspend: () => void;
   onView: () => void;
+  suspended?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -252,7 +254,7 @@ function ActionMenu({
           </button>
           <button type="button" className={itemClass} onClick={() => { setOpen(false); onSuspend(); }}>
             <Icon name="pause" className="h-5 w-5 shrink-0" />
-            Suspend
+            {suspended ? "Reactivate" : "Suspend"}
           </button>
           <button type="button" className={itemClass} onClick={() => { setOpen(false); onDelete(); }}>
             <Icon name="trash" className="h-5 w-5 shrink-0" />
@@ -266,9 +268,9 @@ function ActionMenu({
 
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
-    <div className="grid min-h-[31px] grid-cols-[112px_minmax(0,1fr)] items-center border-b border-[#DDE5EF] py-1">
+    <div className="grid min-h-[32px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1">
       <span className="min-w-0 text-[13px] font-light leading-5 text-[#94A3B8]">{label}</span>
-      <span className="min-w-0 truncate text-[13px] font-semibold leading-5 text-[#334155]">
+      <span className="min-w-0 truncate text-[13px] font-semibold leading-5 text-[#334155]" title={String(value || "Not provided")}>
         {value || "Not provided"}
       </span>
     </div>
@@ -290,82 +292,85 @@ function OrganizationProfileModal({
 }) {
   const members = detail.teamMembers.slice(0, 5);
   const departments = detail.departments.length ? detail.departments : ["No departments added"];
+  const suspended = detail.status === "suspended";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/35 px-6 py-4">
-      <section className="w-full max-w-[960px] rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
+      <section className="w-full max-w-[980px] rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
         <button
           type="button"
           onClick={onClose}
-          className="mb-4 flex cursor-pointer items-center gap-3 text-[19px] font-semibold text-[#334155]"
+          className="mb-5 flex cursor-pointer items-center gap-3 text-[19px] font-semibold text-[#334155]"
         >
           <Icon name="back" className="h-6 w-6" />
           <span className="truncate">{detail.name}</span>
         </button>
 
-        <div className="grid grid-cols-[250px_minmax(0,1fr)_310px] gap-4">
-          <div className="space-y-3">
-            <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-              <div className="h-[170px] w-full overflow-hidden rounded-[14px] bg-[#E2E8F0]">
-                <ProfileAvatar
-                  src={detail.avatarUrl}
-                  alt={`${detail.name} logo`}
-                  className="h-full w-full rounded-[14px] text-[48px]"
-                />
-              </div>
-              <h2 className="mt-3 truncate text-[18px] font-semibold leading-6 text-[#334155]">
-                {detail.name}
-              </h2>
-            </article>
+        <div className="grid grid-cols-[minmax(0,1fr)_310px] gap-4">
+          <div className="grid min-w-0 grid-cols-[250px_minmax(0,1fr)] gap-4">
+            <div className="space-y-3">
+              <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+                <div className="h-[170px] w-full overflow-hidden rounded-[14px] bg-[#E2E8F0]">
+                  <ProfileAvatar
+                    src={detail.avatarUrl}
+                    alt={`${detail.name} logo`}
+                    className="h-full w-full rounded-[14px] text-[48px]"
+                  />
+                </div>
+                <h2 className="mt-3 truncate text-[18px] font-semibold leading-6 text-[#334155]">
+                  {detail.name}
+                </h2>
+              </article>
 
-            <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-              <h3 className="text-[19px] font-semibold text-[#334155]">Team Members</h3>
-              <div className="mt-3 space-y-2.5">
-                {members.length ? (
-                  members.map((member) => (
-                    <div key={member.id} className="grid grid-cols-[36px_minmax(0,1fr)_76px] items-center gap-2">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1E88E5]">
-                        {member.name.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-[14px] font-semibold text-[#334155]">{member.name}</span>
-                        <span className="block truncate text-[12px] text-[#94A3B8]">{member.email}</span>
-                      </span>
-                      <span className="h-8 rounded-[8px] border border-[#B9CBE0] px-2 text-center text-[13px] font-medium leading-8 text-[#334155]">
-                        {member.role}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-[10px] border border-dashed border-[#B9CBE0] px-4 py-6 text-center text-[13px] text-[#94A3B8]">
-                    No team members found.
-                  </p>
-                )}
-              </div>
-            </article>
-          </div>
+              <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+                <h3 className="text-[19px] font-semibold text-[#334155]">Team Members</h3>
+                <div className="mt-3 space-y-2.5">
+                  {members.length ? (
+                    members.map((member) => (
+                      <div key={member.id} className="grid grid-cols-[36px_minmax(0,1fr)_76px] items-center gap-2">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E3F2FD] text-[14px] font-semibold text-[#1E88E5]">
+                          {member.name.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[14px] font-semibold text-[#334155]">{member.name}</span>
+                          <span className="block truncate text-[12px] text-[#94A3B8]">{member.email}</span>
+                        </span>
+                        <span className="h-8 rounded-[8px] border border-[#B9CBE0] px-2 text-center text-[13px] font-medium leading-8 text-[#334155]">
+                          {member.role}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-[10px] border border-dashed border-[#B9CBE0] px-4 py-6 text-center text-[13px] text-[#94A3B8]">
+                      No team members found.
+                    </p>
+                  )}
+                </div>
+              </article>
+            </div>
 
-          <div className="space-y-3">
-            <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-              <h3 className="mb-3 text-[21px] font-semibold text-[#334155]">Personal Information</h3>
-              <InfoRow label="Name:" value={detail.contactInformation.displayName} />
-              <InfoRow label="Email:" value={detail.contactInformation.email} />
-              <InfoRow label="Phone:" value={detail.contactInformation.phoneNumber} />
-              <InfoRow label="Address:" value={detail.contactInformation.address} />
-              <InfoRow label="Location:" value={detail.contactInformation.location} />
-            </article>
+            <div className="min-w-0">
+              <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+                <h3 className="mb-3 text-[21px] font-semibold text-[#334155]">Personal Information</h3>
+                <InfoRow label="Name:" value={detail.contactInformation.displayName} />
+                <InfoRow label="Email:" value={detail.contactInformation.email} />
+                <InfoRow label="Phone:" value={detail.contactInformation.phoneNumber} />
+                <InfoRow label="Address:" value={detail.contactInformation.address} />
+                <InfoRow label="Location:" value={detail.contactInformation.location} />
+              </article>
+            </div>
 
-            <div className="grid h-[42px] grid-cols-3 overflow-hidden rounded-[12px] border border-[#B9CBE0] bg-[#E2E8F0] text-[12px] font-semibold text-[#94A3B8]">
-              <button type="button" onClick={onEdit} className="flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap hover:text-[#1565C0]">
-                <Icon name="edit" className="h-4 w-4" />
+            <div className="col-span-2 grid h-[42px] grid-cols-3 overflow-hidden rounded-[12px] border border-[#B9CBE0] bg-[#E2E8F0] text-[13px] font-semibold text-[#94A3B8]">
+              <button type="button" onClick={onEdit} className="flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap px-3 hover:text-[#1565C0]">
+                <Icon name="edit" className="h-4 w-4 shrink-0" />
                 Edit Organization
               </button>
-              <button type="button" onClick={onSuspend} className="flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap hover:text-[#1565C0]">
-                <Icon name="pause" className="h-4 w-4" />
-                Suspend organization
+              <button type="button" onClick={onSuspend} className="flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap px-3 hover:text-[#1565C0]">
+                <Icon name="pause" className="h-4 w-4 shrink-0" />
+                {suspended ? "Reactivate organization" : "Suspend organization"}
               </button>
-              <button type="button" onClick={onDelete} className="flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap hover:text-[#C1121F]">
-                <Icon name="trash" className="h-4 w-4" />
+              <button type="button" onClick={onDelete} className="flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap px-3 hover:text-[#C1121F]">
+                <Icon name="trash" className="h-4 w-4 shrink-0" />
                 Delete organization
               </button>
             </div>
@@ -569,10 +574,14 @@ export default function SuperAdminOrganizationsRoute() {
     }
   };
 
-  const suspendOrganization = async (target: AdminOrganizationListItem | AdminOrganizationDetail) => {
+  const toggleOrganizationStatus = async (target: AdminOrganizationListItem | AdminOrganizationDetail) => {
+    const reactivate = target.status === "suspended";
     try {
-      await updateAdminUserStatus(target.id, { isActive: false, reason: "Suspended by super admin" });
-      toast.success("Organization suspended.");
+      await updateAdminUserStatus(target.id, {
+        isActive: reactivate,
+        reason: reactivate ? "Reactivated by super admin" : "Suspended by super admin",
+      });
+      toast.success(reactivate ? "Organization reactivated." : "Organization suspended.");
       setSelectedDetail(null);
       await loadOrganizations();
     } catch (error) {
@@ -663,8 +672,9 @@ export default function SuperAdminOrganizationsRoute() {
                     <ActionMenu
                       onView={() => openDetail(organization.id)}
                       onEdit={() => openEdit(organization.id)}
-                      onSuspend={() => suspendOrganization(organization)}
+                      onSuspend={() => toggleOrganizationStatus(organization)}
                       onDelete={() => setDeleteTarget(organization)}
+                      suspended={organization.status === "suspended"}
                     />
                   </div>
                 </div>
@@ -709,7 +719,7 @@ export default function SuperAdminOrganizationsRoute() {
           onEdit={() => {
             setEditingDetail(selectedDetail);
           }}
-          onSuspend={() => suspendOrganization(selectedDetail)}
+          onSuspend={() => toggleOrganizationStatus(selectedDetail)}
           onDelete={() => setDeleteTarget(selectedDetail)}
         />
       ) : null}
