@@ -168,7 +168,7 @@ function ThemedDropdown<T extends string>({
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-[52px] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[26px] border border-[#DDE5EF] bg-[#F8FAFC] px-5 text-left text-[15px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+        className="inline-flex h-[52px] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[26px] border border-[#DDE5EF] bg-[#F8FAFC] px-5 text-left text-[14px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
       >
         <Icon name="filter" className="h-5 w-5 shrink-0 text-[#334155]" />
         <span className="min-w-0 flex-1 truncate">{selected.label}</span>
@@ -213,13 +213,13 @@ function StatCard({
   valueSuffix?: string;
 }) {
   return (
-    <article className="flex min-h-[118px] min-w-0 items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-8 w-8" />
+    <article className="flex min-h-[118px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-7 w-7" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="max-w-[170px] text-[15px] font-light leading-[19px] text-[#94A3B8]">{label}</p>
-        <p className="mt-2 truncate text-[34px] font-semibold leading-[36px] text-[#334155]">
+        <p className="truncate text-[14px] font-medium text-[#94A3B8]">{label}</p>
+        <p className="mt-1 truncate text-[30px] font-semibold leading-tight text-[#334155]">
           {formatNumber(value)}
           {valueSuffix}
         </p>
@@ -592,55 +592,55 @@ export default function SuperAdminAiTriageRoute() {
       </div>
 
       <div className="mt-5 grid grid-cols-[minmax(0,1.12fr)_minmax(0,0.86fr)_minmax(0,0.96fr)] gap-5">
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_78px] items-start gap-4">
+        <article className="flex h-[260px] flex-col rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-3 grid shrink-0 grid-cols-[minmax(0,1fr)_78px] items-start gap-4">
             <div className="min-w-0">
-              <h2 className="max-w-[260px] text-[20px] font-semibold leading-[22px] text-[#334155]">Symptom checks over time</h2>
-              <p className="mt-1 text-[13px] leading-5 text-[#94A3B8]">Total checks and unique users</p>
+              <h2 className="truncate text-[18px] font-semibold leading-[22px] text-[#334155]">Symptom checks over time</h2>
+              <p className="mt-1 truncate text-[13px] leading-5 text-[#94A3B8]">Total checks and unique users</p>
             </div>
-            <span className="inline-flex min-h-[42px] items-center justify-center rounded-[10px] border border-[#B9CBE0] px-3 text-center text-[12px] font-medium leading-4 text-[#64748B]">Last week</span>
+            <span className="inline-flex min-h-[38px] items-center justify-center rounded-[10px] border border-[#B9CBE0] px-3 text-center text-[12px] font-medium leading-4 text-[#64748B]">Last week</span>
           </div>
-          <div className="h-[178px]">
+          <div className="relative min-h-0 w-full flex-1">
             <Line data={trendData} options={lineOptions} />
           </div>
         </article>
 
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <h2 className="text-[20px] font-semibold leading-[24px] text-[#334155]">Risk level distribution</h2>
-          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] items-center gap-5">
-            <div className="relative h-[158px]">
+        <article className="flex h-[260px] flex-col rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <h2 className="shrink-0 text-[18px] font-semibold leading-[22px] text-[#334155]">Risk level distribution</h2>
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_100px] items-center gap-4">
+            <div className="relative flex h-full max-h-[140px] w-full items-center justify-center">
               <Doughnut data={riskData} options={doughnutOptions} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[22px] font-semibold text-[#334155]">{formatNumber(charts.riskDistribution.total)}</span>
-                <span className="text-[12px] text-[#94A3B8]">In total</span>
+                <span className="text-[20px] font-semibold text-[#334155]">{formatNumber(charts.riskDistribution.total)}</span>
+                <span className="text-[11px] text-[#94A3B8]">In total</span>
               </div>
             </div>
-            <div className="space-y-3.5 text-[13px] font-medium text-[#334155]">
-              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#1565C0]" />Low risk</p>
-              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#94A3B8]" />Medium risk</p>
-              <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#E3F2FD]" />High risk</p>
+            <div className="space-y-3.5 text-[12px] font-medium text-[#334155]">
+              <p className="flex items-center"><span className="mr-2 inline-block h-3.5 w-3.5 shrink-0 rounded bg-[#1565C0]" />Low risk</p>
+              <p className="flex items-center"><span className="mr-2 inline-block h-3.5 w-3.5 shrink-0 rounded bg-[#94A3B8]" />Medium risk</p>
+              <p className="flex items-center"><span className="mr-2 inline-block h-3.5 w-3.5 shrink-0 rounded bg-[#E3F2FD]" />High risk</p>
             </div>
           </div>
         </article>
 
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_58px] items-start gap-4">
-            <h2 className="max-w-[220px] text-[20px] font-semibold leading-[22px] text-[#334155]">Top symptoms checked</h2>
-            <button type="button" className="cursor-pointer whitespace-nowrap text-right text-[14px] font-semibold text-[#1565C0]">view all</button>
+        <article className="flex h-[260px] flex-col rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-3 grid shrink-0 grid-cols-[minmax(0,1fr)_58px] items-start gap-4">
+            <h2 className="truncate text-[18px] font-semibold leading-[22px] text-[#334155]">Top symptoms checked</h2>
+            <button type="button" className="cursor-pointer whitespace-nowrap text-right text-[13px] font-semibold text-[#1565C0]">view all</button>
           </div>
-          <div className="space-y-1">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
             {charts.topSymptoms.length ? (
               charts.topSymptoms.map((symptom) => (
-                <div key={symptom.symptom} className="grid min-h-[34px] grid-cols-[minmax(0,1fr)_92px] items-center border-b border-[#DDE5EF] text-[14px]">
+                <div key={symptom.symptom} className="grid min-h-[34px] grid-cols-[minmax(0,1fr)_85px] items-center gap-3 border-b border-[#DDE5EF] text-[13px] last:border-b-0">
                   <span className="flex min-w-0 items-center gap-2 truncate font-medium text-[#334155]">
-                    <Icon name="ai" className="h-5 w-5 shrink-0 text-[#1565C0]" />
+                    <Icon name="ai" className="h-4 w-4 shrink-0 text-[#1565C0]" />
                     <span className="truncate">{symptom.symptom}</span>
                   </span>
-                  <span className="text-right text-[#94A3B8]">({symptom.count}) {symptom.percentage}%</span>
+                  <span className="truncate text-right text-[#94A3B8]">({symptom.count}) {symptom.percentage}%</span>
                 </div>
               ))
             ) : (
-              <p className="pt-16 text-center text-[14px] text-[#94A3B8]">No symptom data available.</p>
+              <p className="pt-12 text-center text-[13px] text-[#94A3B8]">No symptom data available.</p>
             )}
           </div>
         </article>
@@ -656,7 +656,7 @@ export default function SuperAdminAiTriageRoute() {
                 setQuery(event.target.value);
                 setMeta((current) => ({ ...current, page: 1 }));
               }}
-              className="h-full w-full rounded-[26px] border-0 bg-transparent pl-16 pr-4 text-[15px] text-[#334155] outline-none placeholder:text-[#94A3B8]"
+              className="h-full w-full rounded-[26px] border-0 bg-transparent pl-16 pr-4 text-[14px] text-[#334155] outline-none placeholder:text-[#94A3B8]"
               placeholder="Search patients, symptoms, care type"
             />
           </label>
@@ -673,45 +673,45 @@ export default function SuperAdminAiTriageRoute() {
           <button
             type="button"
             onClick={exportCsv}
-            className="ml-auto h-[52px] w-[132px] cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#0D5C91] text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,145,0.2)]"
+            className="ml-auto h-[52px] w-[132px] cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#0D5C91] text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,145,0.2)]"
           >
             Export
           </button>
         </div>
 
         <div className="mx-6 mb-5 overflow-visible rounded-[14px] border border-[#DDE5EF]">
-          <div className="grid grid-cols-[1.15fr_1.15fr_1.35fr_1.35fr_1.15fr_86px] items-center border-b border-[#DDE5EF] px-6 py-5 text-[14px] font-semibold leading-5 text-[#334155]">
-            <span>User</span>
-            <span>Primary symptom</span>
-            <span>Associated symptoms</span>
-            <span>Recommended care type</span>
-            <span>Date</span>
-            <span className="pr-4 text-right">Actions</span>
+          <div className="grid grid-cols-[1.2fr_1.1fr_1.3fr_1.3fr_1fr_86px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-4 text-[13px] font-semibold leading-5 text-[#334155]">
+            <span className="truncate">User</span>
+            <span className="truncate">Primary symptom</span>
+            <span className="truncate">Associated symptoms</span>
+            <span className="truncate">Recommended care type</span>
+            <span className="truncate">Date</span>
+            <span className="truncate pr-4 text-right">Actions</span>
           </div>
 
           <div className="min-h-[520px]">
             {loading ? (
-              <p className="py-20 text-center text-[16px] text-[#94A3B8]">Loading AI symptom checks...</p>
+              <p className="py-20 text-center text-[15px] text-[#94A3B8]">Loading AI symptom checks...</p>
             ) : rows.length ? (
               rows.map((check) => (
                 <div
                   key={check.id}
-                  className="grid min-h-[64px] grid-cols-[1.15fr_1.15fr_1.35fr_1.35fr_1.15fr_86px] items-center border-b border-[#DDE5EF] px-6 py-3.5 text-[14px] text-[#94A3B8] last:border-b-0"
+                  className="grid min-h-[64px] grid-cols-[1.2fr_1.1fr_1.3fr_1.3fr_1fr_86px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-3.5 text-[13px] text-[#94A3B8] last:border-b-0"
                 >
                   <button type="button" onClick={() => openDetail(check.id)} className="flex min-w-0 cursor-pointer items-center gap-3 text-left">
                     <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
-                      <ProfileAvatar src={check.user.avatarUrl} alt={check.user.name} className="h-full w-full rounded-full" />
+                      <ProfileAvatar src={check.user.avatarUrl} alt={check.user.name} className="h-full w-full object-cover" />
                     </span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-[#334155]">{check.user.name}</span>
-                      <span className={`block text-[12px] font-semibold ${riskClass(check.riskLevel)}`}>{formatRisk(check.riskLevel)} risk</span>
+                      <span className={`block truncate text-[11px] font-semibold ${riskClass(check.riskLevel)}`}>{formatRisk(check.riskLevel)} risk</span>
                     </span>
                   </button>
-                  <span className="min-w-0 truncate pr-4">{check.primarySymptom}</span>
-                  <span className="min-w-0 truncate pr-4">{check.associatedSymptoms}</span>
-                  <span className="min-w-0 truncate pr-4">{check.recommendedCareType}</span>
-                  <span className="min-w-0 truncate pr-3">{check.date}</span>
-                  <div className="pr-4">
+                  <span className="min-w-0 truncate">{check.primarySymptom}</span>
+                  <span className="min-w-0 truncate">{check.associatedSymptoms}</span>
+                  <span className="min-w-0 truncate">{check.recommendedCareType}</span>
+                  <span className="min-w-0 truncate">{check.date}</span>
+                  <div className="flex justify-end pr-4">
                     <ActionMenu
                       onView={() => openDetail(check.id)}
                       onRemove={() => setRemoveTarget(check)}
@@ -722,7 +722,7 @@ export default function SuperAdminAiTriageRoute() {
                 </div>
               ))
             ) : (
-              <p className="py-24 text-center text-[16px] text-[#94A3B8]">
+              <p className="py-24 text-center text-[15px] text-[#94A3B8]">
                 No AI symptom checks match the current filters.
               </p>
             )}
