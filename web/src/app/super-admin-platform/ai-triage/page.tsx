@@ -532,7 +532,7 @@ export default function SuperAdminAiTriageRoute() {
   const lineOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: { padding: { top: 2, right: 8, bottom: 0, left: 0 } },
+    layout: { padding: { top: 0, right: 8, bottom: 0, left: 0 } },
     plugins: {
       legend: {
         display: true,
@@ -541,7 +541,7 @@ export default function SuperAdminAiTriageRoute() {
           boxHeight: 8,
           boxWidth: 8,
           color: "#334155",
-          padding: 14,
+          padding: 10,
           usePointStyle: true,
           font: { size: 12 },
         },
@@ -584,38 +584,38 @@ export default function SuperAdminAiTriageRoute() {
     <section className="pb-12 pt-[62px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">AI symptom checker</h1>
 
-      <div className="mt-8 grid grid-cols-4 gap-5">
+      <div className="mt-7 grid grid-cols-4 gap-5">
         <StatCard label="Total symptom checks" value={summary.totalSymptomChecks} tone="bg-[#D9DEE2] text-[#334155]" icon="ai" />
         <StatCard label="Unique users" value={summary.uniqueUsers} tone="bg-[#DCEBFF] text-[#1565C0]" icon="users" />
         <StatCard label="High risk results" value={summary.highRiskResults} tone="bg-[#FFE5E2] text-[#B91C1C]" icon="alert" />
         <StatCard label="Completion Rate" value={summary.completionRate} valueSuffix="%" tone="bg-[#D9F8DE] text-[#0D8C24]" icon="check" />
       </div>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.88fr)_minmax(0,0.82fr)] gap-5">
-        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_88px] items-start gap-4">
+      <div className="mt-5 grid grid-cols-[minmax(0,1.12fr)_minmax(0,0.86fr)_minmax(0,0.96fr)] gap-5">
+        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_78px] items-start gap-4">
             <div className="min-w-0">
-              <h2 className="max-w-[280px] text-[20px] font-semibold leading-[23px] text-[#334155]">Symptom checks over time</h2>
-              <p className="mt-1.5 text-[13px] leading-5 text-[#94A3B8]">Total checks and unique users</p>
+              <h2 className="max-w-[260px] text-[20px] font-semibold leading-[22px] text-[#334155]">Symptom checks over time</h2>
+              <p className="mt-1 text-[13px] leading-5 text-[#94A3B8]">Total checks and unique users</p>
             </div>
-            <span className="inline-flex min-h-[46px] items-center justify-center rounded-[10px] border border-[#B9CBE0] px-3 text-center text-[13px] font-medium leading-4 text-[#64748B]">Last week</span>
+            <span className="inline-flex min-h-[42px] items-center justify-center rounded-[10px] border border-[#B9CBE0] px-3 text-center text-[12px] font-medium leading-4 text-[#64748B]">Last week</span>
           </div>
-          <div className="h-[206px]">
+          <div className="h-[178px]">
             <Line data={trendData} options={lineOptions} />
           </div>
         </article>
 
-        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
           <h2 className="text-[20px] font-semibold leading-[24px] text-[#334155]">Risk level distribution</h2>
-          <div className="mt-5 grid grid-cols-[minmax(0,1fr)_118px] items-center gap-5">
-            <div className="relative h-[184px]">
+          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] items-center gap-5">
+            <div className="relative h-[158px]">
               <Doughnut data={riskData} options={doughnutOptions} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[22px] font-semibold text-[#334155]">{formatNumber(charts.riskDistribution.total)}</span>
                 <span className="text-[12px] text-[#94A3B8]">In total</span>
               </div>
             </div>
-            <div className="space-y-4 text-[13px] font-medium text-[#334155]">
+            <div className="space-y-3.5 text-[13px] font-medium text-[#334155]">
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#1565C0]" />Low risk</p>
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#94A3B8]" />Medium risk</p>
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#E3F2FD]" />High risk</p>
@@ -623,15 +623,15 @@ export default function SuperAdminAiTriageRoute() {
           </div>
         </article>
 
-        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-5 grid grid-cols-[minmax(0,1fr)_58px] items-start gap-4">
-            <h2 className="max-w-[180px] text-[20px] font-semibold leading-[22px] text-[#334155]">Top symptoms checked</h2>
+        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_58px] items-start gap-4">
+            <h2 className="max-w-[220px] text-[20px] font-semibold leading-[22px] text-[#334155]">Top symptoms checked</h2>
             <button type="button" className="cursor-pointer whitespace-nowrap text-right text-[14px] font-semibold text-[#1565C0]">view all</button>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {charts.topSymptoms.length ? (
               charts.topSymptoms.map((symptom) => (
-                <div key={symptom.symptom} className="grid min-h-[36px] grid-cols-[minmax(0,1fr)_92px] items-center border-b border-[#DDE5EF] text-[14px]">
+                <div key={symptom.symptom} className="grid min-h-[34px] grid-cols-[minmax(0,1fr)_92px] items-center border-b border-[#DDE5EF] text-[14px]">
                   <span className="flex min-w-0 items-center gap-2 truncate font-medium text-[#334155]">
                     <Icon name="ai" className="h-5 w-5 shrink-0 text-[#1565C0]" />
                     <span className="truncate">{symptom.symptom}</span>
