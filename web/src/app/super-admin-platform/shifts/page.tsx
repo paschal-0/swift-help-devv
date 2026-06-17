@@ -247,9 +247,9 @@ function ActionMenu({
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   const display = value || "Not provided";
   return (
-    <div className="grid min-h-[34px] grid-cols-[112px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1.5">
-      <span className="min-w-0 text-[13px] font-light leading-5 text-[#94A3B8]">{label}</span>
-      <span className="min-w-0 truncate text-[13px] font-semibold leading-5 text-[#334155]" title={String(display)}>
+    <div className="grid min-h-[30px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1">
+      <span className="min-w-0 text-[12px] font-light leading-5 text-[#94A3B8]">{label}</span>
+      <span className="min-w-0 truncate text-[12px] font-semibold leading-5 text-[#334155]" title={String(display)}>
         {display}
       </span>
     </div>
@@ -271,22 +271,22 @@ function ShiftDetailModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/35 px-6 py-4">
-      <section className="w-full max-w-[900px] rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
+      <section className="w-full max-w-[810px] rounded-[18px] bg-[#F8FAFC] px-5 py-4 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
         <button
           type="button"
           onClick={onClose}
-          className="mb-5 flex cursor-pointer items-center gap-3 text-[19px] font-semibold text-[#334155]"
+          className="mb-3 flex cursor-pointer items-center gap-3 text-[18px] font-semibold text-[#334155]"
         >
-          <Icon name="back" className="h-6 w-6" />
+          <Icon name="back" className="h-5 w-5" />
           <span>{detail.code}</span>
           <span className={`rounded-full bg-white px-3 py-1 text-[12px] ${statusClass(detail.status)}`}>
             {formatStatus(detail.status)}
           </span>
         </button>
 
-        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-4">
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[21px] font-semibold text-[#334155]">Shift details</h2>
+        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-3">
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Shift details</h2>
             <InfoRow label="Role:" value={detail.role} />
             <InfoRow label="Department:" value={detail.department} />
             <InfoRow label="Facility:" value={detail.facilityName} />
@@ -295,8 +295,8 @@ function ShiftDetailModal({
             <InfoRow label="Pay:" value={detail.payAmount} />
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[21px] font-semibold text-[#334155]">Organization</h2>
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Organization</h2>
             <InfoRow label="Name:" value={detail.organization} />
             <InfoRow label="Address:" value={detail.address} />
             <InfoRow label="Payment:" value={formatStatus(detail.paymentStatus)} />
@@ -305,8 +305,8 @@ function ShiftDetailModal({
             <InfoRow label="Remaining:" value={detail.remainingAmount} />
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[21px] font-semibold text-[#334155]">Staffing</h2>
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Staffing</h2>
             <InfoRow label="Required:" value={detail.requiredSlots} />
             <InfoRow label="Accepted:" value={detail.acceptedSlots} />
             <InfoRow label="Completed:" value={detail.completedSlots} />
@@ -315,19 +315,19 @@ function ShiftDetailModal({
             <InfoRow label="Priority:" value={formatStatus(detail.priority)} />
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[21px] font-semibold text-[#334155]">Admin controls</h2>
-            <p className="mb-3 min-h-[54px] rounded-[12px] border border-dashed border-[#B9CBE0] bg-[#E3F2FD] px-4 py-3 text-[13px] leading-5 text-[#334155]">
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Admin controls</h2>
+            <p className="mb-2 min-h-[46px] rounded-[12px] border border-dashed border-[#B9CBE0] bg-[#E3F2FD] px-3 py-2 text-[12px] leading-5 text-[#334155]">
               {detail.notes || detail.cancellationReason || "No notes have been added to this shift."}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={onFlag} className="h-10 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#1565C0] hover:text-[#1565C0]">
+              <button type="button" onClick={onFlag} className="h-9 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#1565C0] hover:text-[#1565C0]">
                 Flag
               </button>
-              <button type="button" onClick={onSuspend} className="h-10 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
+              <button type="button" onClick={onSuspend} className="h-9 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
                 Suspend
               </button>
-              <button type="button" onClick={onRemove} className="h-10 cursor-pointer rounded-[10px] bg-[#C1121F] text-[12px] font-semibold text-white">
+              <button type="button" onClick={onRemove} className="h-9 cursor-pointer rounded-[10px] bg-[#C1121F] text-[12px] font-semibold text-white">
                 Remove
               </button>
             </div>

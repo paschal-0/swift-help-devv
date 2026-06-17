@@ -213,13 +213,13 @@ function StatCard({
   valueSuffix?: string;
 }) {
   return (
-    <article className="flex min-h-[112px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${tone}`}>
+    <article className="flex min-h-[118px] min-w-0 items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone}`}>
         <Icon name={icon} className="h-8 w-8" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="max-w-[150px] text-[15px] font-light leading-[18px] text-[#94A3B8]">{label}</p>
-        <p className="mt-1 truncate text-[36px] font-semibold leading-none text-[#334155]">
+        <p className="max-w-[170px] text-[15px] font-light leading-[19px] text-[#94A3B8]">{label}</p>
+        <p className="mt-2 truncate text-[34px] font-semibold leading-[36px] text-[#334155]">
           {formatNumber(value)}
           {valueSuffix}
         </p>
@@ -291,9 +291,9 @@ function ActionMenu({
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   const display = value || "Not provided";
   return (
-    <div className="grid min-h-[32px] grid-cols-[124px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1">
-      <span className="min-w-0 text-[13px] font-light leading-5 text-[#94A3B8]">{label}</span>
-      <span className="min-w-0 truncate text-[13px] font-semibold leading-5 text-[#334155]" title={String(display)}>
+    <div className="grid min-h-[30px] grid-cols-[112px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1">
+      <span className="min-w-0 text-[12px] font-light leading-5 text-[#94A3B8]">{label}</span>
+      <span className="min-w-0 truncate text-[12px] font-semibold leading-5 text-[#334155]" title={String(display)}>
         {display}
       </span>
     </div>
@@ -315,22 +315,22 @@ function AiSymptomDetailModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/35 px-6 py-4">
-      <section className="w-full max-w-[880px] rounded-[18px] bg-[#F8FAFC] px-6 py-5 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
+      <section className="w-full max-w-[800px] rounded-[18px] bg-[#F8FAFC] px-5 py-4 shadow-[0_28px_80px_rgba(15,23,42,0.25)]">
         <button
           type="button"
           onClick={onClose}
-          className="mb-4 flex cursor-pointer items-center gap-3 text-[19px] font-semibold text-[#334155]"
+          className="mb-3 flex cursor-pointer items-center gap-3 text-[18px] font-semibold text-[#334155]"
         >
-          <Icon name="back" className="h-6 w-6" />
+          <Icon name="back" className="h-5 w-5" />
           <span className="min-w-0 truncate">{detail.user.name}</span>
           <span className={`rounded-full bg-white px-3 py-1 text-[12px] ${riskClass(detail.riskLevel)}`}>
             {formatRisk(detail.riskLevel)} risk
           </span>
         </button>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-4">
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[20px] font-semibold text-[#334155]">Check details</h2>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-3">
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Check details</h2>
             <InfoRow label="Patient:" value={detail.user.name} />
             <InfoRow label="Email:" value={detail.user.email} />
             <InfoRow label="Date:" value={detail.date} />
@@ -339,8 +339,8 @@ function AiSymptomDetailModal({
             <InfoRow label="Follow-up:" value={detail.followUpWindow} />
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-3 text-[20px] font-semibold text-[#334155]">Symptom summary</h2>
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Symptom summary</h2>
             <InfoRow label="Primary:" value={detail.primarySymptom} />
             <InfoRow label="Associated:" value={detail.associatedSymptoms} />
             <InfoRow label="Duration:" value={detail.duration} />
@@ -348,38 +348,38 @@ function AiSymptomDetailModal({
             <InfoRow label="Care type:" value={detail.recommendedCareType} />
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-2 text-[20px] font-semibold text-[#334155]">Recommendation</h2>
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Recommendation</h2>
             <p className="text-[14px] font-semibold text-[#334155]">{detail.recommendationTitle}</p>
-            <p className="mt-2 max-h-[96px] overflow-auto rounded-[12px] border border-dashed border-[#B9CBE0] bg-[#E3F2FD] px-3 py-2 text-[13px] leading-5 text-[#334155]">
+            <p className="mt-2 max-h-[76px] overflow-auto rounded-[12px] border border-dashed border-[#B9CBE0] bg-[#E3F2FD] px-3 py-2 text-[12px] leading-5 text-[#334155]">
               {detail.recommendationDescription}
             </p>
           </article>
 
-          <article className="rounded-[14px] bg-white p-4 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
-            <h2 className="mb-2 text-[20px] font-semibold text-[#334155]">Admin review</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+          <article className="rounded-[14px] bg-white p-3.5 shadow-[0_18px_34px_rgba(148,163,184,0.14)]">
+            <h2 className="mb-2 text-[18px] font-semibold text-[#334155]">Admin review</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-[12px] bg-[#F8FAFC] p-2.5">
                 <p className="mb-1 text-[12px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Red flags</p>
-                <p className="line-clamp-3 text-[13px] leading-5 text-[#334155]">
+                <p className="line-clamp-3 text-[12px] leading-5 text-[#334155]">
                   {detail.redFlags.length ? detail.redFlags.join(", ") : "None recorded"}
                 </p>
               </div>
-              <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+              <div className="rounded-[12px] bg-[#F8FAFC] p-2.5">
                 <p className="mb-1 text-[12px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">Next steps</p>
-                <p className="line-clamp-3 text-[13px] leading-5 text-[#334155]">
+                <p className="line-clamp-3 text-[12px] leading-5 text-[#334155]">
                   {detail.nextSteps.length ? detail.nextSteps.join(", ") : "None recorded"}
                 </p>
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <button type="button" onClick={onFlag} className="h-10 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#1565C0] hover:text-[#1565C0]">
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <button type="button" onClick={onFlag} className="h-9 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#1565C0] hover:text-[#1565C0]">
                 Flag
               </button>
-              <button type="button" onClick={onSuspend} className="h-10 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
+              <button type="button" onClick={onSuspend} className="h-9 cursor-pointer rounded-[10px] border border-[#B9CBE0] text-[12px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
                 Suspend
               </button>
-              <button type="button" onClick={onRemove} className="h-10 cursor-pointer rounded-[10px] bg-[#C1121F] text-[12px] font-semibold text-white">
+              <button type="button" onClick={onRemove} className="h-9 cursor-pointer rounded-[10px] bg-[#C1121F] text-[12px] font-semibold text-white">
                 Remove
               </button>
             </div>
@@ -532,10 +532,24 @@ export default function SuperAdminAiTriageRoute() {
   const lineOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: true, labels: { boxWidth: 8, usePointStyle: true } } },
+    layout: { padding: { top: 2, right: 8, bottom: 0, left: 0 } },
+    plugins: {
+      legend: {
+        display: true,
+        align: "center",
+        labels: {
+          boxHeight: 8,
+          boxWidth: 8,
+          color: "#334155",
+          padding: 14,
+          usePointStyle: true,
+          font: { size: 12 },
+        },
+      },
+    },
     scales: {
-      x: { grid: { display: false }, ticks: { color: "#94A3B8" } },
-      y: { beginAtZero: true, grid: { color: "#E2E8F0" }, ticks: { color: "#94A3B8" } },
+      x: { grid: { display: false }, ticks: { color: "#94A3B8", font: { size: 11 }, maxRotation: 0, padding: 6 } },
+      y: { beginAtZero: true, grid: { color: "#E2E8F0" }, ticks: { color: "#94A3B8", font: { size: 11 }, padding: 6 } },
     },
   };
 
@@ -567,41 +581,41 @@ export default function SuperAdminAiTriageRoute() {
   const pageCount = Math.max(meta.totalPages || 1, 1);
 
   return (
-    <section className="pb-10 pt-[68px]">
+    <section className="pb-12 pt-[62px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">AI symptom checker</h1>
 
-      <div className="mt-8 grid grid-cols-4 gap-4">
+      <div className="mt-8 grid grid-cols-4 gap-5">
         <StatCard label="Total symptom checks" value={summary.totalSymptomChecks} tone="bg-[#D9DEE2] text-[#334155]" icon="ai" />
         <StatCard label="Unique users" value={summary.uniqueUsers} tone="bg-[#DCEBFF] text-[#1565C0]" icon="users" />
         <StatCard label="High risk results" value={summary.highRiskResults} tone="bg-[#FFE5E2] text-[#B91C1C]" icon="alert" />
         <StatCard label="Completion Rate" value={summary.completionRate} valueSuffix="%" tone="bg-[#D9F8DE] text-[#0D8C24]" icon="check" />
       </div>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.86fr)_minmax(0,0.86fr)] gap-4">
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-[20px] font-semibold leading-none text-[#334155]">Symptom checks over time</h2>
-              <p className="mt-2 text-[13px] text-[#94A3B8]">Total checks and unique users</p>
+      <div className="mt-5 grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.88fr)_minmax(0,0.82fr)] gap-5">
+        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_88px] items-start gap-4">
+            <div className="min-w-0">
+              <h2 className="max-w-[280px] text-[20px] font-semibold leading-[23px] text-[#334155]">Symptom checks over time</h2>
+              <p className="mt-1.5 text-[13px] leading-5 text-[#94A3B8]">Total checks and unique users</p>
             </div>
-            <span className="rounded-[10px] border border-[#B9CBE0] px-3 py-1.5 text-[13px] font-medium text-[#64748B]">Last week</span>
+            <span className="inline-flex min-h-[46px] items-center justify-center rounded-[10px] border border-[#B9CBE0] px-3 text-center text-[13px] font-medium leading-4 text-[#64748B]">Last week</span>
           </div>
-          <div className="h-[170px]">
+          <div className="h-[206px]">
             <Line data={trendData} options={lineOptions} />
           </div>
         </article>
 
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <h2 className="text-[20px] font-semibold leading-none text-[#334155]">Risk level distribution</h2>
-          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_110px] items-center gap-4">
-            <div className="relative h-[175px]">
+        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <h2 className="text-[20px] font-semibold leading-[24px] text-[#334155]">Risk level distribution</h2>
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)_118px] items-center gap-5">
+            <div className="relative h-[184px]">
               <Doughnut data={riskData} options={doughnutOptions} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[22px] font-semibold text-[#334155]">{formatNumber(charts.riskDistribution.total)}</span>
                 <span className="text-[12px] text-[#94A3B8]">In total</span>
               </div>
             </div>
-            <div className="space-y-3 text-[13px] font-medium text-[#334155]">
+            <div className="space-y-4 text-[13px] font-medium text-[#334155]">
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#1565C0]" />Low risk</p>
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#94A3B8]" />Medium risk</p>
               <p><span className="mr-2 inline-block h-4 w-4 rounded bg-[#E3F2FD]" />High risk</p>
@@ -609,15 +623,15 @@ export default function SuperAdminAiTriageRoute() {
           </div>
         </article>
 
-        <article className="h-[260px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-[20px] font-semibold leading-none text-[#334155]">Top symptoms checked</h2>
-            <button type="button" className="cursor-pointer text-[14px] font-semibold text-[#1565C0]">view all</button>
+        <article className="h-[292px] rounded-[14px] bg-[#F8FAFC] p-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+          <div className="mb-5 grid grid-cols-[minmax(0,1fr)_58px] items-start gap-4">
+            <h2 className="max-w-[180px] text-[20px] font-semibold leading-[22px] text-[#334155]">Top symptoms checked</h2>
+            <button type="button" className="cursor-pointer whitespace-nowrap text-right text-[14px] font-semibold text-[#1565C0]">view all</button>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {charts.topSymptoms.length ? (
               charts.topSymptoms.map((symptom) => (
-                <div key={symptom.symptom} className="grid min-h-[34px] grid-cols-[minmax(0,1fr)_92px] items-center border-b border-[#DDE5EF] text-[14px]">
+                <div key={symptom.symptom} className="grid min-h-[36px] grid-cols-[minmax(0,1fr)_92px] items-center border-b border-[#DDE5EF] text-[14px]">
                   <span className="flex min-w-0 items-center gap-2 truncate font-medium text-[#334155]">
                     <Icon name="ai" className="h-5 w-5 shrink-0 text-[#1565C0]" />
                     <span className="truncate">{symptom.symptom}</span>
@@ -632,9 +646,9 @@ export default function SuperAdminAiTriageRoute() {
         </article>
       </div>
 
-      <article className="mt-5 rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-        <div className="flex items-center gap-4 px-5 py-5">
-          <label className="relative h-[52px] w-[390px] shrink-0 rounded-[26px] bg-[#E8EEF5]">
+      <article className="mt-5 rounded-[16px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+        <div className="flex items-center gap-5 px-6 py-5">
+          <label className="relative h-[52px] w-[420px] shrink-0 rounded-[26px] bg-[#E8EEF5]">
             <Icon name="search" className="absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-[#334155]" />
             <input
               value={query}
@@ -648,7 +662,7 @@ export default function SuperAdminAiTriageRoute() {
           </label>
           <ThemedDropdown
             ariaLabel="Filter AI symptom checks"
-            className="w-[230px]"
+            className="w-[240px]"
             options={riskFilterOptions}
             value={filter}
             onChange={(value) => {
@@ -665,8 +679,8 @@ export default function SuperAdminAiTriageRoute() {
           </button>
         </div>
 
-        <div className="mx-5 overflow-visible rounded-[12px] border border-[#DDE5EF]">
-          <div className="grid grid-cols-[1.2fr_1.2fr_1.4fr_1.4fr_1.05fr_92px] items-center border-b border-[#DDE5EF] px-6 py-4 text-[15px] font-semibold text-[#334155]">
+        <div className="mx-6 mb-5 overflow-visible rounded-[14px] border border-[#DDE5EF]">
+          <div className="grid grid-cols-[1.15fr_1.15fr_1.35fr_1.35fr_1.15fr_86px] items-center border-b border-[#DDE5EF] px-6 py-5 text-[14px] font-semibold leading-5 text-[#334155]">
             <span>User</span>
             <span>Primary symptom</span>
             <span>Associated symptoms</span>
@@ -682,7 +696,7 @@ export default function SuperAdminAiTriageRoute() {
               rows.map((check) => (
                 <div
                   key={check.id}
-                  className="grid min-h-[58px] grid-cols-[1.2fr_1.2fr_1.4fr_1.4fr_1.05fr_92px] items-center border-b border-[#DDE5EF] px-6 py-3 text-[14px] text-[#94A3B8] last:border-b-0"
+                  className="grid min-h-[64px] grid-cols-[1.15fr_1.15fr_1.35fr_1.35fr_1.15fr_86px] items-center border-b border-[#DDE5EF] px-6 py-3.5 text-[14px] text-[#94A3B8] last:border-b-0"
                 >
                   <button type="button" onClick={() => openDetail(check.id)} className="flex min-w-0 cursor-pointer items-center gap-3 text-left">
                     <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
