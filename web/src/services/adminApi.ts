@@ -511,6 +511,44 @@ export type AdminAiSymptomChecksResponse = {
   };
 };
 
+export type AdminAuditLogCategory =
+  | "all"
+  | "users"
+  | "verification"
+  | "payment"
+  | "system";
+
+export type AdminAuditLog = {
+  id: string;
+  adminId: string;
+  adminEmail: string;
+  action: string;
+  actionLabel: string;
+  category: string;
+  details: Record<string, unknown> | null;
+  targetUserId: string | null;
+  targetUserType: string | null;
+  targetDetail: string;
+  ipAddress: string;
+  userAgent: string | null;
+  createdAt: string;
+};
+
+export type AdminAuditLogsResponse = {
+  summary: {
+    totalLogEntries: number;
+    criticalActionsToday: number;
+    verificationsToday: number;
+  };
+  data: AdminAuditLog[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -969,6 +1007,28 @@ export async function flagAdminAiSymptomCheck(
 export async function removeAdminAiSymptomCheck(checkId: string) {
   return apiRequest<MessageResponse>(`/admin/ai-symptom-checks/${checkId}`, {
     method: "DELETE",
+  });
+}
+
+export async function listAdminAuditLogs(params: {
+  search?: string;
+  category?: AdminAuditLogCategory;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.category && params.category !== "all") {
+    query.set("category", params.category);
+  }
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminAuditLogsResponse>(`/admin/logs${suffix}`, {
+    method: "GET",
   });
 }
 
