@@ -589,6 +589,96 @@ export type AdminAuditLogsResponse = {
   };
 };
 
+export type AdminReferralRate = {
+  level: number;
+  title: string;
+  patientSignup: number;
+  professionalSignup: number;
+  organizationOnboarded: number;
+  monthlyBonus: number;
+  unlockMinReferrals: number;
+  unlockMinProfessionals: number;
+  unlockMinOrganizations: number;
+};
+
+export type AdminReferralTier = {
+  level: number;
+  badge: string;
+  title: string;
+  description: string;
+  activeCount: number;
+  totalPaidCents: number;
+  currency: string;
+  metrics: Array<{
+    label: string;
+    value: string;
+  }>;
+  thresholds: {
+    referrals: number;
+    professionals: number;
+    organizations: number;
+  };
+};
+
+export type AdminReferrerListItem = {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  userType: string;
+  level: string;
+  referralCount: number;
+  earnedCents: number;
+  pendingCents: number;
+  currency: string;
+  status: string;
+  joinedAt: string;
+};
+
+export type AdminReferralPayout = {
+  id: string;
+  referrerId: string;
+  referrerName: string;
+  referrerAvatarUrl: string | null;
+  referredUserName: string;
+  referredUserType: string;
+  level: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+};
+
+export type AdminReferralsResponse = {
+  summary: {
+    totalReferrals: number;
+    totalPaidOutCents: number;
+    pendingPaidOutCents: number;
+    level3Ambassadors: number;
+    currency: string;
+  };
+  tiers: AdminReferralTier[];
+  referrers: {
+    data: AdminReferrerListItem[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  payouts: {
+    data: AdminReferralPayout[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  rates: AdminReferralRate[];
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -1069,6 +1159,36 @@ export async function listAdminAuditLogs(params: {
 
   return apiRequest<AdminAuditLogsResponse>(`/admin/logs${suffix}`, {
     method: "GET",
+  });
+}
+
+export async function listAdminReferrals(params: {
+  search?: string;
+  level?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.level && params.level !== "all") query.set("level", params.level);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminReferralsResponse>(`/admin/referrals${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminReferralLevel(
+  level: number,
+  payload: Partial<AdminReferralRate>,
+) {
+  return apiRequest<AdminReferralRate>(`/admin/referrals/levels/${level}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 
