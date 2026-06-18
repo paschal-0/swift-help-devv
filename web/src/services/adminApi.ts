@@ -82,6 +82,46 @@ export type AdminNotification = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type AdminTeamRole = "admin" | "super_admin";
+export type AdminTeamStatus = "active" | "suspended";
+
+export type AdminTeamMember = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  role: AdminTeamRole;
+  roleLabel: string;
+  permission: string;
+  status: AdminTeamStatus;
+  isVerified: boolean;
+  joinedAt: string;
+  lastActiveAt: string;
+  avatarUrl: string | null;
+};
+
+export type AdminTeamResponse = {
+  summary: {
+    totalAdmins: number;
+    superAdmins: number;
+    standardAdmins: number;
+  };
+  data: AdminTeamMember[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+export type InviteAdminTeamMemberPayload = {
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  role?: AdminTeamRole;
+};
+
 export type AdminPatientListItem = {
   id: string;
   fullName: string;
@@ -1032,6 +1072,35 @@ export async function listAdminAuditLogs(params: {
   });
 }
 
+export async function listAdminTeam(params: {
+  search?: string;
+  role?: AdminTeamRole | "all";
+  isVerified?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.role && params.role !== "all") query.set("role", params.role);
+  if (params.isVerified !== undefined) query.set("isVerified", String(params.isVerified));
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminTeamResponse>(`/admin/team${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function inviteAdminTeamMember(payload: InviteAdminTeamMemberPayload) {
+  return apiRequest<AdminTeamMember>("/admin/team/invite", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminBookingStatus(
   bookingId: string,
   payload: { status: AdminBookingStatus; reason?: string },
@@ -1059,6 +1128,22 @@ export async function updateAdminUserStatus(
   return apiRequest<MessageResponse>(`/admin/users/${userId}/status`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminAccountRole(
+  userId: string,
+  payload: { role: AdminTeamRole },
+) {
+  return apiRequest<MessageResponse>(`/admin/users/${userId}/role`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminAccount(userId: string) {
+  return apiRequest<MessageResponse>(`/admin/users/${userId}`, {
+    method: "DELETE",
   });
 }
 
