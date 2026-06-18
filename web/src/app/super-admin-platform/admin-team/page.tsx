@@ -415,18 +415,23 @@ export default function SuperAdminTeamRoute() {
         <div className="mt-7 overflow-visible rounded-[14px] border border-[#D8E2EE] bg-[#F8FAFC]">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col className="w-[22%]" />
-              <col className="w-[22%]" />
+              <col className="w-[21%]" />
+              <col className="w-[21%]" />
               <col className="w-[15%]" />
               <col className="w-[16%]" />
-              <col className="w-[15%]" />
-              <col className="w-[10%]" />
+              <col className="w-[13%]" />
+              <col className="w-[14%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-[#D8E2EE] text-left">
                 {["Admin", "Email", "Role", "Permission", "Last active", "Actions"].map((header) => (
-                  <th key={header} className="px-6 py-4 text-[18px] font-medium leading-6 text-[#334155]">
-                    {header}
+                  <th
+                    key={header}
+                    className={`py-4 text-[18px] font-medium leading-6 text-[#334155] ${
+                      header === "Actions" ? "px-8 text-center" : "px-6"
+                    }`}
+                  >
+                    <span className="block truncate">{header}</span>
                   </th>
                 ))}
               </tr>
@@ -465,7 +470,7 @@ export default function SuperAdminTeamRoute() {
                     <td className="px-6 py-4 text-[15px] font-light text-[#94A3B8]">
                       {formatLastActive(member.lastActiveAt)}
                     </td>
-                    <td className="relative px-6 py-4 text-right">
+                    <td className="relative px-8 py-4 text-center">
                       <button
                         type="button"
                         onClick={() => setMenuFor((current) => (current === member.id ? null : member.id))}
@@ -475,7 +480,7 @@ export default function SuperAdminTeamRoute() {
                         <Icon name="more" className="h-5 w-5" />
                       </button>
                       {menuFor === member.id ? (
-                        <div className="absolute right-5 top-[48px] z-40 w-[210px] rounded-[16px] bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
+                        <div className="absolute right-8 top-[48px] z-40 w-[210px] rounded-[16px] bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
                           <button
                             type="button"
                             onClick={() => {
