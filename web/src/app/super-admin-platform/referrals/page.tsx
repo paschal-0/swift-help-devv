@@ -94,6 +94,23 @@ const levelOptions: DropdownOption<LevelFilter>[] = [
 ];
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
+  if (name === "referral") {
+    return (
+      <svg viewBox="0 0 52 52" className={className} aria-hidden>
+        <path
+          fill="currentColor"
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M20.0417 16.25C19.7543 16.25 19.4788 16.3641 19.2756 16.5673C19.0725 16.7705 18.9583 17.046 18.9583 17.3333V17.875H16.25V28.1667H28.1667V17.875H25.4583V17.3333C25.4583 17.046 25.3442 16.7705 25.141 16.5673C24.9379 16.3641 24.6623 16.25 24.375 16.25H20.0417ZM24.375 22.75C24.6623 22.75 24.9379 22.6359 25.141 22.4327C25.3442 22.2295 25.4583 21.954 25.4583 21.6667V21.125H27.0833V27.0833H24.375V23.8333H20.0417V27.0833H17.3333V21.125H18.9583V21.6667C18.9583 21.954 19.0725 22.2295 19.2756 22.4327C19.4788 22.6359 19.7543 22.75 20.0417 22.75H24.375ZM17.3333 18.9583H18.9583V20.0417H17.3333V18.9583ZM27.0833 20.0417H25.4583V18.9583H27.0833V20.0417ZM23.2917 24.9167V27.0833H21.125V24.9167H23.2917ZM21.6667 17.3333V18.9583H20.0417V20.0417H21.6667V21.6667H22.75V20.0417H24.375V18.9583H22.75V17.3333H21.6667Z"
+        />
+        <path
+          fill="currentColor"
+          d="M29.2501 27.6276C29.2501 27.053 29.4784 26.5019 29.8847 26.0955C30.2911 25.6892 30.8422 25.4609 31.4168 25.4609C31.9914 25.4609 32.5425 25.6892 32.9489 26.0955C33.3552 26.5019 33.5835 27.053 33.5835 27.6276C33.5835 28.2022 33.3552 28.7533 32.9489 29.1597C32.5425 29.566 31.9914 29.7943 31.4168 29.7943C30.8422 29.7943 30.2911 29.566 29.8847 29.1597C29.4784 28.7533 29.2501 28.2022 29.2501 27.6276ZM31.4168 30.8776C29.9706 30.8776 27.0835 31.6695 27.0835 33.2414V34.6693H22.2085C21.8136 34.6693 21.5574 34.5268 21.3944 34.3432C21.2226 34.1498 21.1251 33.8768 21.1251 33.5859V31.6435L22.9089 33.4272L23.6748 32.6613L20.5835 29.57L17.4922 32.6613L18.2581 33.4272L20.0418 31.6435V33.5859C20.0418 34.1076 20.2151 34.6471 20.5851 35.0631C20.9637 35.4888 21.52 35.7526 22.2085 35.7526H35.7501V33.2414C35.7501 31.6695 32.8631 30.8776 31.4168 30.8776Z"
+        />
+      </svg>
+    );
+  }
+
   const paths: Record<IconName, string> = {
     calendar:
       "M7 2h2v3h6V2h2v3h3v17H4V5h3V2Zm11 8H6v10h12V10ZM8 12h3v3H8v-3Zm5 0h3v3h-3v-3Z",
@@ -227,13 +244,13 @@ function StatCard({
   value: string;
 }) {
   return (
-    <article className="flex min-h-[118px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-6 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
+    <article className="flex min-h-[104px] min-w-0 items-center gap-3 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
         <Icon name={icon} className="h-7 w-7" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[16px] font-light leading-5 text-[#94A3B8]">{label}</p>
-        <p className="mt-1 truncate text-[36px] font-semibold leading-none text-[#334155]">{value}</p>
+        <p className="text-[14px] font-light leading-4 text-[#94A3B8]">{label}</p>
+        <p className="mt-1 truncate text-[30px] font-semibold leading-none text-[#334155]">{value}</p>
       </div>
     </article>
   );
@@ -301,18 +318,18 @@ function ReferralTierCard({ tier }: { tier: AdminReferralTier }) {
     tier.level === 1 ? "bg-[#1565C0]" : tier.level === 2 ? "bg-[#16A34A]" : "bg-[#B45309]";
 
   return (
-    <article className={`min-w-0 rounded-[18px] border p-5 ${tone}`}>
-      <div className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-semibold text-white ${badge}`}>
+    <article className={`min-w-0 rounded-[16px] border p-4 ${tone}`}>
+      <div className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold text-white ${badge}`}>
         <Icon name={tier.level === 3 ? "crown" : "star"} className="h-4 w-4" />
         {tier.badge}
       </div>
-      <h3 className="mt-8 text-[24px] font-semibold leading-7 text-[#334155]">{tier.title}</h3>
-      <p className="mt-2 min-h-[58px] text-[17px] font-light leading-6 text-[#94A3B8]">{tier.description}</p>
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <h3 className="mt-5 text-[21px] font-semibold leading-6 text-[#334155]">{tier.title}</h3>
+      <p className="mt-2 min-h-[48px] text-[15px] font-light leading-5 text-[#94A3B8]">{tier.description}</p>
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
         {tier.metrics.map((metric) => (
-          <div key={metric.label} className="min-h-[70px] rounded-lg bg-white/85 px-3 py-3">
-            <p className="text-[13px] font-medium leading-4 text-[#334155]">{metric.label}</p>
-            <p className="mt-1 text-[18px] font-semibold leading-5 text-[#334155]">{metric.value}</p>
+          <div key={metric.label} className="min-h-[60px] rounded-lg bg-white/85 px-3 py-2.5">
+            <p className="text-[12px] font-medium leading-4 text-[#334155]">{metric.label}</p>
+            <p className="mt-1 text-[16px] font-semibold leading-5 text-[#334155]">{metric.value}</p>
           </div>
         ))}
       </div>
@@ -331,13 +348,13 @@ function RateInput({
 }) {
   return (
     <label className="block">
-      <span className="text-[16px] font-light leading-5 text-[#334155]">{label}</span>
+      <span className="text-[14px] font-light leading-5 text-[#334155]">{label}</span>
       <input
         type="number"
         min="0"
         value={Number.isFinite(value) ? value : 0}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-3 h-[52px] w-full rounded-[14px] border border-[#D5E1EF] bg-[#E3F2FD] px-4 text-[17px] font-semibold text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+        className="mt-2 h-[46px] w-full rounded-[12px] border border-[#D5E1EF] bg-[#E3F2FD] px-4 text-[15px] font-semibold text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
       />
     </label>
   );
@@ -359,11 +376,11 @@ function LevelRateCard({
   };
 
   return (
-    <article className="flex min-h-[440px] min-w-0 flex-col rounded-[18px] border border-[#DDE5EF] bg-[#F8FAFC] p-5">
-      <h3 className="text-[22px] font-semibold leading-7 text-[#334155]">
+    <article className="flex min-h-[390px] min-w-0 flex-col rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC] p-4">
+      <h3 className="text-[20px] font-semibold leading-6 text-[#334155]">
         Level {rate.level} - {rate.title}
       </h3>
-      <div className="mt-6 grid flex-1 gap-5">
+      <div className="mt-5 grid flex-1 gap-4">
         {rate.level === 1 ? (
           <>
             <RateInput label="Patient sign up" value={rate.patientSignup} onChange={(value) => update("patientSignup", value)} />
@@ -383,7 +400,7 @@ function LevelRateCard({
         type="button"
         disabled={saving}
         onClick={onSave}
-        className="mt-7 h-[52px] rounded-[18px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F83] text-[18px] font-semibold text-white shadow-[0_14px_28px_rgba(21,101,192,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-5 h-[48px] rounded-[16px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F83] text-[16px] font-semibold text-white shadow-[0_14px_28px_rgba(21,101,192,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? "Saving..." : "Save rates"}
       </button>
@@ -393,7 +410,7 @@ function LevelRateCard({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[220px] items-center justify-center rounded-b-[18px] border-x border-b border-[#DDE5EF] bg-[#F8FAFC] text-center text-[16px] font-medium text-[#94A3B8]">
+    <div className="flex min-h-[200px] items-center justify-center rounded-b-[18px] border-x border-b border-[#DDE5EF] bg-[#F8FAFC] text-center text-[15px] font-medium text-[#94A3B8]">
       {message}
     </div>
   );
@@ -500,12 +517,12 @@ export default function SuperAdminReferralsRoute() {
   };
 
   return (
-    <section className="pb-12 pt-[68px]">
-      <div className="mb-7 flex items-center justify-between gap-5">
-        <h1 className="text-[34px] font-semibold leading-tight text-[#334155]">Referrals</h1>
+    <section className="pb-10 pt-[56px]">
+      <div className="mb-6 flex items-center justify-between gap-5">
+        <h1 className="text-[32px] font-semibold leading-tight text-[#334155]">Referrals</h1>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-4">
         <StatCard
           icon="referral"
           label="Total referrals"
@@ -536,14 +553,14 @@ export default function SuperAdminReferralsRoute() {
         />
       </div>
 
-      <article className="mt-7 rounded-[18px] bg-[#F8FAFC] px-7 pb-8 pt-7 shadow-[0_12px_28px_rgba(148,163,184,0.10)]">
-        <div className="flex flex-wrap items-center gap-x-9 gap-y-3">
+      <article className="mt-6 rounded-[18px] bg-[#F8FAFC] px-5 pb-6 pt-5 shadow-[0_12px_28px_rgba(148,163,184,0.10)]">
+        <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
           {tabs.map((item) => (
             <button
               key={item.value}
               type="button"
               onClick={() => setTab(item.value)}
-              className={`relative h-11 cursor-pointer px-1 text-[24px] font-semibold leading-none transition ${
+              className={`relative h-10 cursor-pointer px-1 text-[22px] font-semibold leading-none transition ${
                 tab === item.value ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#334155]"
               }`}
             >
@@ -556,7 +573,7 @@ export default function SuperAdminReferralsRoute() {
         </div>
 
         {tab === "overview" ? (
-          <div className="mt-8 grid gap-5 xl:grid-cols-3">
+          <div className="mt-6 grid gap-4 xl:grid-cols-3">
             {(tiers.length ? tiers : []).map((tier) => (
               <ReferralTierCard key={tier.level} tier={tier} />
             ))}
@@ -569,7 +586,7 @@ export default function SuperAdminReferralsRoute() {
         ) : null}
 
         {tab === "levels" ? (
-          <div className="mt-8 grid gap-5 xl:grid-cols-3">
+          <div className="mt-6 grid gap-4 xl:grid-cols-3">
             {rates.map((rate) => (
               <LevelRateCard
                 key={rate.level}
@@ -584,8 +601,8 @@ export default function SuperAdminReferralsRoute() {
 
         {tab === "referrers" || tab === "payouts" ? (
           <>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <label className="flex h-[56px] min-w-[320px] flex-1 items-center gap-4 rounded-[28px] bg-[#E8EEF5] px-5 text-[#334155]">
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <label className="flex h-[52px] min-w-[320px] flex-1 items-center gap-4 rounded-[26px] bg-[#E8EEF5] px-5 text-[#334155]">
                 <Icon name="search" className="h-6 w-6 shrink-0" />
                 <input
                   value={query}
@@ -610,7 +627,7 @@ export default function SuperAdminReferralsRoute() {
               <button
                 type="button"
                 onClick={exportRows}
-                className="ml-auto inline-flex h-[52px] min-w-[136px] items-center justify-center gap-2 rounded-[18px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F83] px-6 text-[17px] font-semibold text-white shadow-[0_14px_26px_rgba(21,101,192,0.22)] transition hover:brightness-105"
+                className="ml-auto inline-flex h-[50px] min-w-[132px] items-center justify-center gap-2 rounded-[17px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F83] px-6 text-[16px] font-semibold text-white shadow-[0_14px_26px_rgba(21,101,192,0.22)] transition hover:brightness-105"
               >
                 <Icon name="download" className="h-5 w-5" />
                 Export
@@ -624,7 +641,7 @@ export default function SuperAdminReferralsRoute() {
             )}
 
             {tab === "referrers" ? (
-              <div className="flex items-center justify-between rounded-b-[18px] border-x border-b border-[#DDE5EF] bg-[#F8FAFC] px-6 py-5">
+              <div className="flex items-center justify-between rounded-b-[18px] border-x border-b border-[#DDE5EF] bg-[#F8FAFC] px-5 py-4">
                 <p className="text-[15px] font-light text-[#94A3B8]">
                   Showing {meta.total ? `${(meta.page - 1) * meta.limit + 1}-${Math.min(meta.page * meta.limit, meta.total)} of ${meta.total}` : "0"} referrers
                 </p>
@@ -671,7 +688,7 @@ function ReferrersTable({
 
   return (
     <div className="mt-6 overflow-visible rounded-t-[18px] border border-b-0 border-[#DDE5EF] bg-[#F8FAFC]">
-      <div className="grid grid-cols-[1.7fr_1fr_0.8fr_0.8fr_1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-5 text-[17px] font-semibold text-[#334155]">
+      <div className="grid grid-cols-[1.7fr_1fr_0.8fr_0.8fr_1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-5 py-4 text-[15px] font-semibold text-[#334155]">
         <span>Referrer</span>
         <span>User type</span>
         <span>level</span>
@@ -683,10 +700,10 @@ function ReferrersTable({
       {rows.map((row) => (
         <div
           key={row.id}
-          className="grid min-h-[64px] grid-cols-[1.7fr_1fr_0.8fr_0.8fr_1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-3 text-[15px] text-[#94A3B8]"
+          className="grid min-h-[60px] grid-cols-[1.7fr_1fr_0.8fr_0.8fr_1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-5 py-2.5 text-[14px] text-[#94A3B8]"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <ProfileAvatar src={row.avatarUrl} alt={`${row.name} avatar`} className="h-[34px] w-[34px] shrink-0 rounded-full" />
+            <ProfileAvatar src={row.avatarUrl} alt={`${row.name} avatar`} className="h-8 w-8 shrink-0 rounded-full" />
             <div className="min-w-0">
               <p className="truncate font-semibold text-[#334155]">{row.name}</p>
               <p className="truncate text-[12px] font-medium text-[#94A3B8]">{row.email}</p>
@@ -717,7 +734,7 @@ function PayoutsTable({
 
   return (
     <div className="mt-6 overflow-visible rounded-[18px] border border-[#DDE5EF] bg-[#F8FAFC]">
-      <div className="grid grid-cols-[1.45fr_1.4fr_0.8fr_1fr_1.1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-5 text-[17px] font-semibold text-[#334155]">
+      <div className="grid grid-cols-[1.45fr_1.4fr_0.8fr_1fr_1.1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-5 py-4 text-[15px] font-semibold text-[#334155]">
         <span>Referrer</span>
         <span>Referred user</span>
         <span>level</span>
@@ -729,10 +746,10 @@ function PayoutsTable({
       {rows.map((row) => (
         <div
           key={row.id}
-          className="grid min-h-[64px] grid-cols-[1.45fr_1.4fr_0.8fr_1fr_1.1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-6 py-3 text-[15px] text-[#94A3B8] last:border-b-0"
+          className="grid min-h-[60px] grid-cols-[1.45fr_1.4fr_0.8fr_1fr_1.1fr_1fr_76px] items-center gap-4 border-b border-[#DDE5EF] px-5 py-2.5 text-[14px] text-[#94A3B8] last:border-b-0"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <ProfileAvatar src={row.referrerAvatarUrl} alt={`${row.referrerName} avatar`} className="h-[34px] w-[34px] shrink-0 rounded-full" />
+            <ProfileAvatar src={row.referrerAvatarUrl} alt={`${row.referrerName} avatar`} className="h-8 w-8 shrink-0 rounded-full" />
             <span className="min-w-0 truncate font-semibold text-[#334155]">{row.referrerName}</span>
           </div>
           <span className="truncate">{row.referredUserName}</span>

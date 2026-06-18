@@ -17,7 +17,7 @@ import {
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 
-type StatusFilter = "all" | "upcoming" | "ongoing" | "completed" | "cancelled";
+type StatusFilter = "all" | "open" | "in_progress" | "completed" | "cancelled";
 
 type DropdownOption<T extends string> = {
   label: string;
@@ -46,17 +46,9 @@ const defaultSummary: AdminShiftsResponse["summary"] = {
 const statusFilterOptions: DropdownOption<StatusFilter>[] = [
   { value: "all", label: "Filter: All shifts" },
   { value: "completed", label: "Filter: Completed" },
-  { value: "upcoming", label: "Filter: Upcoming" },
-  { value: "ongoing", label: "Filter: Ongoing" },
+  { value: "open", label: "Filter: Upcoming" },
+  { value: "in_progress", label: "Filter: Ongoing" },
   { value: "cancelled", label: "Filter: Cancelled" },
-];
-
-const tabs: Array<{ label: string; value: StatusFilter }> = [
-  { label: "All", value: "all" },
-  { label: "Completed", value: "completed" },
-  { label: "Upcoming", value: "upcoming" },
-  { label: "Ongoing", value: "ongoing" },
-  { label: "Cancelled", value: "cancelled" },
 ];
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
@@ -437,27 +429,6 @@ export default function SuperAdminShiftsRoute() {
       </div>
 
       <article className="mt-8 rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-        <div className="flex items-center gap-8 px-8 pt-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => {
-                setFilter(tab.value);
-                setMeta((current) => ({ ...current, page: 1 }));
-              }}
-              className={`relative h-12 cursor-pointer px-1 text-[24px] font-medium leading-none transition ${
-                filter === tab.value ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#334155]"
-              }`}
-            >
-              {tab.label}
-              {filter === tab.value ? (
-                <span className="absolute bottom-0 left-0 right-0 h-1.5 rounded-full bg-[#1565C0]" />
-              ) : null}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center gap-4 px-5 py-5">
           <label className="relative h-[52px] w-[390px] shrink-0 rounded-[26px] bg-[#E8EEF5]">
             <Icon name="search" className="absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-[#334155]" />
