@@ -88,12 +88,14 @@ function ThemedDropdown<T extends string>({
   onChange,
   options,
   value,
+  showIcon = true,
 }: {
   ariaLabel: string;
   className?: string;
   onChange: (value: T) => void;
   options: DropdownOption<T>[];
   value: T;
+  showIcon?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -117,7 +119,7 @@ function ThemedDropdown<T extends string>({
         onClick={() => setOpen((current) => !current)}
         className="inline-flex h-[52px] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[26px] border border-[#DDE5EF] bg-[#F8FAFC] px-5 text-left text-[15px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
       >
-        <Icon name="filter" className="h-5 w-5 shrink-0 text-[#334155]" />
+        {showIcon && <Icon name="filter" className="h-5 w-5 shrink-0 text-[#334155]" />}
         <span className="min-w-0 flex-1 truncate">{selected.label}</span>
         <svg viewBox="0 0 24 24" className={`h-5 w-5 shrink-0 text-[#64748B] transition ${open ? "rotate-180" : ""}`} aria-hidden>
           <path fill="currentColor" d="m7 10 5 5 5-5H7Z" />
@@ -301,7 +303,7 @@ export default function SuperAdminTeamRoute() {
         phoneNumber: inviteForm.phoneNumber.trim() || undefined,
         role: inviteForm.role,
       });
-      toast.success("Admin invited successfully.");
+      toast.success("Admin invite email sent.");
       setInviteOpen(false);
       setInviteForm({ fullName: "", email: "", phoneNumber: "", role: "admin" });
       await loadTeam();
@@ -413,12 +415,12 @@ export default function SuperAdminTeamRoute() {
         <div className="mt-7 overflow-visible rounded-[14px] border border-[#D8E2EE] bg-[#F8FAFC]">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[24%]" />
-              <col className="w-[17%]" />
-              <col className="w-[18%]" />
-              <col className="w-[13%]" />
-              <col className="w-[4%]" />
+              <col className="w-[22%]" />
+              <col className="w-[22%]" />
+              <col className="w-[15%]" />
+              <col className="w-[16%]" />
+              <col className="w-[15%]" />
+              <col className="w-[10%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-[#D8E2EE] text-left">
@@ -634,6 +636,7 @@ export default function SuperAdminTeamRoute() {
                   options={roleOptions}
                   value={inviteForm.role}
                   onChange={(role) => setInviteForm((current) => ({ ...current, role }))}
+                  showIcon={false}
                 />
               </div>
             </div>
