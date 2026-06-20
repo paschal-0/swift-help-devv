@@ -850,6 +850,15 @@ export type AdminPaymentGatewayRow = {
   name: string;
   status: "connected" | "setup_needed" | string;
   actionLabel: string;
+  updatedAt: string | null;
+  fields: Array<{
+    key: string;
+    label: string;
+    secret: boolean;
+    placeholder: string;
+    configured: boolean;
+    maskedValue: string | null;
+  }>;
 };
 
 export type AdminPaymentsOverview = {
@@ -1454,6 +1463,33 @@ export async function getAdminPaymentsOverview(params: {
   return apiRequest<AdminPaymentsOverview>(`/admin/payments/overview${suffix}`, {
     method: "GET",
   });
+}
+
+export async function configureAdminPaymentGateway(
+  gatewayId: string,
+  payload: { fields: Record<string, string> },
+) {
+  return apiRequest<AdminPaymentGatewayRow>(
+    `/admin/payments/gateways/${encodeURIComponent(gatewayId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function testAdminPaymentGateway(gatewayId: string) {
+  return apiRequest<{ message: string; gateway: AdminPaymentGatewayRow }>(
+    `/admin/payments/gateways/${encodeURIComponent(gatewayId)}/test`,
+    { method: "POST" },
+  );
+}
+
+export async function disconnectAdminPaymentGateway(gatewayId: string) {
+  return apiRequest<MessageResponse>(
+    `/admin/payments/gateways/${encodeURIComponent(gatewayId)}`,
+    { method: "DELETE" },
+  );
 }
 
 export async function getAdminPaymentTransaction(transactionId: string) {

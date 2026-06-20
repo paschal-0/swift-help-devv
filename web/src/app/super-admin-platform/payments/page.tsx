@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
+  configureAdminPaymentGateway,
+  disconnectAdminPaymentGateway,
   flagAdminPaymentTransaction,
   getAdminPaymentTransaction,
   getAdminPaymentsOverview,
   removeAdminPaymentTransaction,
+  testAdminPaymentGateway,
+  type AdminPaymentGatewayRow,
   type AdminPaymentReferralPayoutRow,
   type AdminPaymentStatus,
   type AdminPaymentSubscriptionRow,
@@ -286,6 +290,8 @@ export default function SuperAdminPaymentsRoute() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<AdminPaymentTransaction | null>(null);
+  const [configuringGateway, setConfiguringGateway] = useState<AdminPaymentGatewayRow | null>(null);
+  const [savingGateway, setSavingGateway] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -432,6 +438,47 @@ export default function SuperAdminPaymentsRoute() {
 
   const unavailableAction = () => toast.info("This row is not linked to a payment transaction yet.");
 
+  const handleSaveGateway = async (gatewayId: string, fields: Record<string, string>) => {
+    setSavingGateway(true);
+    try {
+      const updated = await configureAdminPaymentGateway(gatewayId, { fields });
+      setOverview((current) => ({
+        ...current,
+        configuration: {
+          ...current.configuration,
+          gateways: current.configuration.gateways.map((gateway) =>
+            gateway.id === updated.id ? updated : gateway,
+          ),
+        },
+      }));
+      setConfiguringGateway(null);
+      toast.success(`${updated.name} configured securely.`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingGateway(false);
+    }
+  };
+
+  const handleTestGateway = async (gateway: AdminPaymentGatewayRow) => {
+    try {
+      const response = await testAdminPaymentGateway(gateway.id);
+      toast.success(response.message);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const handleDisconnectGateway = async (gateway: AdminPaymentGatewayRow) => {
+    try {
+      await disconnectAdminPaymentGateway(gateway.id);
+      await loadPayments();
+      toast.success(`${gateway.name} disconnected.`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   return (
     <section className="min-w-0 pb-12">
       <div className="mb-7">
@@ -535,7 +582,14 @@ export default function SuperAdminPaymentsRoute() {
           {activeTab === "referrals" ? (
             <ReferralPayoutsTable rows={tableRows.referralPayouts.data} onUnavailable={unavailableAction} />
           ) : null}
-          {activeTab === "configuration" ? <ConfigurationPanel overview={overview} /> : null}
+          {activeTab === "configuration" ? (
+            <ConfigurationPanel
+              overview={overview}
+              onConfigure={setConfiguringGateway}
+              onDisconnect={handleDisconnectGateway}
+              onTest={handleTestGateway}
+            />
+          ) : null}
         </div>
 
         {activeTab === "transactions" ? (
@@ -568,6 +622,15 @@ export default function SuperAdminPaymentsRoute() {
       </div>
 
       {viewing ? <PaymentDetailModal transaction={viewing} onClose={() => setViewing(null)} /> : null}
+      {configuringGateway ? (
+        <GatewayConfigModal
+          key={configuringGateway.id}
+          gateway={configuringGateway}
+          saving={savingGateway}
+          onClose={() => setConfiguringGateway(null)}
+          onSave={handleSaveGateway}
+        />
+      ) : null}
     </section>
   );
 }
@@ -707,7 +770,17 @@ function ReferralPayoutsTable({
   );
 }
 
-function ConfigurationPanel({ overview }: { overview: AdminPaymentsOverview }) {
+function ConfigurationPanel({
+  overview,
+  onConfigure,
+  onDisconnect,
+  onTest,
+}: {
+  overview: AdminPaymentsOverview;
+  onConfigure: (gateway: AdminPaymentGatewayRow) => void;
+  onDisconnect: (gateway: AdminPaymentGatewayRow) => void;
+  onTest: (gateway: AdminPaymentGatewayRow) => void;
+}) {
   const plans = overview.configuration.plans;
   const starter = plans.find((plan) => plan.tier === "free") ?? plans[0];
   const pro = plans.find((plan) => ["professional", "basic"].includes(plan.tier)) ?? plans[1];
@@ -735,26 +808,149 @@ function ConfigurationPanel({ overview }: { overview: AdminPaymentsOverview }) {
       <h2 className="mt-16 text-[22px] font-semibold text-[#334155]">Payment gateways</h2>
       <div className="mt-6 space-y-7">
         {overview.configuration.gateways.map((gateway) => (
-          <div key={gateway.id} className="grid grid-cols-[minmax(0,1fr)_140px_112px] items-center gap-3 text-[18px] text-[#334155]">
-            <span className="truncate">{gateway.name}</span>
-            <span className={`justify-self-end rounded-full px-4 py-2 text-[16px] font-semibold ${statusClass(gateway.status)}`}>
+          <div
+            key={gateway.id}
+            className="grid gap-3 text-[18px] text-[#334155] lg:grid-cols-[minmax(0,1fr)_150px_280px] lg:items-center"
+          >
+            <div className="min-w-0">
+              <span className="block truncate">{gateway.name}</span>
+              {gateway.updatedAt ? (
+                <span className="mt-1 block truncate text-[12px] text-[#94A3B8]">
+                  Updated {formatDate(gateway.updatedAt)}
+                </span>
+              ) : null}
+            </div>
+            <span
+              className={`w-fit rounded-full px-4 py-2 text-[16px] font-semibold lg:justify-self-end ${statusClass(gateway.status)}`}
+            >
               {gateway.status === "connected" ? "Connected" : "Setup needed"}
             </span>
-            <button
-              type="button"
-              onClick={() => toast.info(`${gateway.name} setup is managed from system configuration.`)}
-              className={`h-9 rounded-[12px] px-4 text-[15px] font-medium ${
-                gateway.status === "connected" ? "text-[#334155]" : "bg-[#1565C0] text-white"
-              }`}
-            >
-              {gateway.actionLabel}
-            </button>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {gateway.status === "connected" ? (
+                <button
+                  type="button"
+                  onClick={() => onTest(gateway)}
+                  className="h-9 rounded-[12px] border border-[#D6E0EA] px-4 text-[14px] font-medium text-[#334155]"
+                >
+                  Test
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onConfigure(gateway)}
+                className="h-9 rounded-[12px] bg-[#1565C0] px-4 text-[14px] font-medium text-white"
+              >
+                {gateway.actionLabel}
+              </button>
+              {gateway.status === "connected" ? (
+                <button
+                  type="button"
+                  onClick={() => onDisconnect(gateway)}
+                  className="h-9 rounded-[12px] border border-[#FCA5A5] px-4 text-[14px] font-medium text-[#B91C1C]"
+                >
+                  Disconnect
+                </button>
+              ) : null}
+            </div>
           </div>
         ))}
         {!overview.configuration.gateways.length ? (
           <p className="py-8 text-[15px] font-medium text-[#94A3B8]">No payment gateway configuration is available yet.</p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function GatewayConfigModal({
+  gateway,
+  onClose,
+  onSave,
+  saving,
+}: {
+  gateway: AdminPaymentGatewayRow;
+  onClose: () => void;
+  onSave: (gatewayId: string, fields: Record<string, string>) => void;
+  saving: boolean;
+}) {
+  const [fields, setFields] = useState<Record<string, string>>({});
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave(gateway.id, fields);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#334155]/45 px-4 py-8">
+      <form
+        onSubmit={submit}
+        className="max-h-[88vh] w-full max-w-[620px] overflow-y-auto rounded-[16px] bg-[#F8FAFC] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">Secure gateway setup</p>
+            <h2 className="mt-2 truncate text-[26px] font-semibold text-[#334155]">{gateway.name}</h2>
+            <p className="mt-2 max-w-[500px] text-[14px] leading-6 text-[#64748B]">
+              Values are encrypted before storage and are never shown again. Leave an existing field blank to keep it unchanged.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EAF2FB] text-[#334155]"
+          >
+            <Icon name="close" className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-7 space-y-4">
+          {gateway.fields.map((field) => (
+            <label key={field.key} className="block min-w-0">
+              <span className="flex flex-wrap items-center justify-between gap-2 text-[14px] font-semibold text-[#334155]">
+                <span>{field.label}</span>
+                {field.configured ? (
+                  <span className="rounded-full bg-[#EAF2FB] px-3 py-1 text-[12px] font-medium text-[#1565C0]">
+                    Saved {field.maskedValue ?? ""}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-[#FEF3C7] px-3 py-1 text-[12px] font-medium text-[#A16207]">
+                    Required
+                  </span>
+                )}
+              </span>
+              <input
+                type={field.secret ? "password" : "text"}
+                value={fields[field.key] ?? ""}
+                onChange={(event) =>
+                  setFields((current) => ({ ...current, [field.key]: event.target.value }))
+                }
+                placeholder={field.configured ? "Leave blank to keep current value" : field.placeholder}
+                autoComplete="off"
+                spellCheck={false}
+                className="mt-2 h-12 w-full rounded-[14px] border border-[#D6E0EA] bg-white px-4 text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="mt-8 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="h-11 rounded-[14px] border border-[#D6E0EA] px-5 text-[15px] font-medium text-[#334155] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="h-11 rounded-[14px] bg-[#1565C0] px-5 text-[15px] font-medium text-white disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save configuration"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
