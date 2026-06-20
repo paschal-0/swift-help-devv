@@ -442,6 +442,8 @@ export type AdminReviewDetail = AdminReviewListItem & {
       totalReviews: number;
       averageRating: number;
       criticalReviews: number;
+      positiveReviews: number;
+      negativeReviews: number;
       fiveStarReviews: number;
       uniqueProfessionals: number;
     };
@@ -459,8 +461,25 @@ export type AdminReviewsResponse = {
     totalReviews: number;
     averageRating: number;
     criticalReviews: number;
+    positiveReviews: number;
+    negativeReviews: number;
     fiveStarReviews: number;
     uniqueProfessionals: number;
+  };
+  charts: {
+    ratingDistribution: Array<{
+      rating: number;
+      count: number;
+      percentage: number;
+    }>;
+    topProfessionals: Array<{
+      id: string;
+      name: string;
+      avatarUrl: string | null;
+      specialization: string;
+      reviewCount: number;
+      averageRating: number;
+    }>;
   };
   data: AdminReviewListItem[];
   meta: {

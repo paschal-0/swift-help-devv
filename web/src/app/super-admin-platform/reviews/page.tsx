@@ -23,8 +23,19 @@ const defaultSummary: AdminReviewsResponse["summary"] = {
   totalReviews: 0,
   averageRating: 0,
   criticalReviews: 0,
+  positiveReviews: 0,
+  negativeReviews: 0,
   fiveStarReviews: 0,
   uniqueProfessionals: 0,
+};
+
+const defaultCharts: AdminReviewsResponse["charts"] = {
+  ratingDistribution: [5, 4, 3, 2, 1].map((rating) => ({
+    rating,
+    count: 0,
+    percentage: 0,
+  })),
+  topProfessionals: [],
 };
 
 const ratingFilterOptions: Array<{ label: string; value: RatingFilter }> = [
@@ -100,11 +111,13 @@ function RatingBadge({ rating }: { rating: number }) {
 
 function StatCard({
   color,
+  helper,
   label,
   tone,
   value,
 }: {
   color: string;
+  helper?: string;
   label: string;
   tone: string;
   value: string | number;
@@ -117,6 +130,73 @@ function StatCard({
       <div className="min-w-0">
         <p className="text-[14px] font-light leading-[17px] text-[#94A3B8]">{label}</p>
         <p className="mt-1 truncate text-[34px] font-semibold leading-none text-[#334155]" title={String(value)}>{value}</p>
+        {helper ? <p className="mt-2 truncate text-[12px] font-semibold text-[#0D8C24]">{helper}</p> : null}
+      </div>
+    </article>
+  );
+}
+
+function RatingDistributionCard({
+  distribution,
+}: {
+  distribution: AdminReviewsResponse["charts"]["ratingDistribution"];
+}) {
+  const rows = distribution.length ? distribution : defaultCharts.ratingDistribution;
+
+  return (
+    <article className="min-w-0 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <h2 className="text-[20px] font-semibold leading-6 text-[#334155]">Rating distribution</h2>
+      <div className="mt-5 space-y-3.5">
+        {rows.map((item) => (
+          <div key={item.rating} className="grid grid-cols-[30px_minmax(0,1fr)_44px] items-center gap-3">
+            <span className="flex items-center gap-0.5 text-[15px] font-semibold text-[#1565C0]">
+              {item.rating}
+              <Icon name="star" className="h-3.5 w-3.5" />
+            </span>
+            <span className="h-3 overflow-hidden rounded-full bg-[#DDE5EF]">
+              <span
+                className="block h-full rounded-full bg-[#1565C0]"
+                style={{ width: `${Math.min(item.percentage, 100)}%` }}
+              />
+            </span>
+            <span className="text-right text-[14px] font-semibold text-[#94A3B8]">{item.percentage}%</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function TopProfessionalsCard({
+  professionals,
+}: {
+  professionals: AdminReviewsResponse["charts"]["topProfessionals"];
+}) {
+  return (
+    <article className="min-w-0 rounded-[14px] bg-[#F8FAFC] px-5 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <h2 className="text-[20px] font-semibold leading-6 text-[#334155]">Top rated professionals</h2>
+      <div className="mt-5 space-y-3">
+        {professionals.length ? (
+          professionals.map((professional) => (
+            <div key={professional.id} className="grid grid-cols-[34px_minmax(0,1fr)_54px] items-center gap-3">
+              <span className="h-8 w-8 overflow-hidden rounded-full bg-[#E2E8F0]">
+                <ProfileAvatar src={professional.avatarUrl} alt={professional.name} className="h-full w-full rounded-full" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[14px] font-medium text-[#334155]">{professional.name}</span>
+                <span className="block truncate text-[11px] text-[#94A3B8]">{professional.reviewCount} reviews</span>
+              </span>
+              <span className="flex items-center justify-end gap-0.5 text-[15px] font-semibold text-[#1565C0]">
+                <Icon name="star" className="h-4 w-4" />
+                {professional.averageRating.toFixed(1)}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="py-8 text-center text-[14px] font-medium text-[#94A3B8]">
+            No rated professionals yet.
+          </p>
+        )}
       </div>
     </article>
   );
@@ -269,38 +349,38 @@ function ReviewDetailModal({
   const titleName = detail.professional.name.split(" ")[0] || detail.professional.name;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(51,65,85,0.45)] px-5 py-10">
-      <section className="w-full max-w-[860px] overflow-hidden rounded-[18px] bg-[#F8FAFC] shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
-        <div className="flex items-center gap-5 px-12 pt-9">
+    <div className="fixed inset-0 z-50 flex items-start justify-end overflow-y-auto bg-[rgba(51,65,85,0.45)] px-6 py-10 pr-[5vw]">
+      <section className="w-full max-w-[720px] overflow-hidden rounded-[18px] bg-[#F8FAFC] shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+        <div className="flex items-center gap-4 px-9 pt-8">
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full text-[#334155] hover:bg-[#E3F2FD]" aria-label="Close review detail">
             <Icon name="back" />
           </button>
-          <h2 className="min-w-0 truncate text-[24px] font-semibold leading-8 text-[#334155]">{titleName} reviews</h2>
+          <h2 className="min-w-0 truncate text-[21px] font-semibold leading-7 text-[#334155]">{titleName} reviews</h2>
         </div>
 
-        <div className="px-12 pb-10 pt-12">
-          <div className="grid grid-cols-[220px_minmax(0,1fr)] gap-10">
+        <div className="px-9 pb-9 pt-10">
+          <div className="grid grid-cols-[170px_minmax(0,1fr)] gap-8">
             <div className="min-w-0">
-              <p className="text-[78px] font-semibold leading-none text-[#334155]">{averageRating.toFixed(1)}</p>
-              <div className="mt-5 flex items-center gap-1">
+              <p className="text-[62px] font-semibold leading-none text-[#334155]">{averageRating.toFixed(1)}</p>
+              <div className="mt-4 flex items-center gap-1">
                 {Array.from({ length: 5 }, (_, index) => (
                   <Icon
                     key={index}
                     name="star"
-                    className={`h-7 w-7 ${index < Math.round(averageRating) ? "text-[#F5B81C]" : "text-[#CBD5E1]"}`}
+                    className={`h-5 w-5 ${index < Math.round(averageRating) ? "text-[#F5B81C]" : "text-[#CBD5E1]"}`}
                   />
                 ))}
               </div>
-              <p className="mt-3 text-[22px] font-semibold leading-7 text-[#334155]">({reviews.length} reviews)</p>
+              <p className="mt-3 text-[17px] font-semibold leading-6 text-[#334155]">({reviews.length} reviews)</p>
             </div>
-            <div className="space-y-4 pt-1">
+            <div className="space-y-3 pt-1">
               {distribution.map((item) => (
                 <div key={item.rating} className="grid grid-cols-[34px_minmax(0,1fr)_52px] items-center gap-3">
                   <span className="flex items-center gap-0.5 text-[15px] font-semibold text-[#B9970B]">
                     {item.rating}
                     <Icon name="star" className="h-3.5 w-3.5" />
                   </span>
-                  <span className="h-3.5 overflow-hidden rounded-full bg-[#9DAEC3]">
+                  <span className="h-3 overflow-hidden rounded-full bg-[#9DAEC3]">
                     <span
                       className="block h-full rounded-full bg-[#B9970B]"
                       style={{ width: `${item.percentage}%` }}
@@ -312,13 +392,13 @@ function ReviewDetailModal({
             </div>
           </div>
 
-          <div className="mt-12 flex flex-wrap items-center gap-4">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             {(["all", "5", "4", "3", "2", "1"] as ModalRatingFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setRatingFilter(value)}
-                className={`inline-flex h-12 min-w-[88px] items-center justify-center gap-2 rounded-full border px-6 text-[18px] font-semibold transition ${
+                className={`inline-flex h-10 min-w-[78px] items-center justify-center gap-2 rounded-full border px-5 text-[15px] font-semibold transition ${
                   ratingFilter === value
                     ? "border-[#B9970B] bg-[#B9970B] text-white"
                     : "border-[#B9970B] bg-white text-[#B9970B] hover:bg-[#FFF8DB]"
@@ -330,20 +410,20 @@ function ReviewDetailModal({
             ))}
           </div>
 
-          <div className="mt-8 h-px bg-[#DDE5EF]" />
+          <div className="mt-7 h-px bg-[#DDE5EF]" />
 
-          <div className="mt-8 space-y-9">
+          <div className="mt-7 space-y-7">
             {displayReviews.length ? displayReviews.map((review) => (
-              <article key={review.id} className="grid grid-cols-[64px_minmax(0,1fr)_90px] gap-4">
-                <span className="h-14 w-14 overflow-hidden rounded-full bg-[#E2E8F0]">
+              <article key={review.id} className="grid grid-cols-[52px_minmax(0,1fr)_82px] gap-4">
+                <span className="h-12 w-12 overflow-hidden rounded-full bg-[#E2E8F0]">
                   <ProfileAvatar src={review.patient.avatarUrl} alt={review.patient.name} className="h-full w-full rounded-full" />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="truncate text-[20px] font-semibold leading-7 text-[#334155]">{review.patient.name}</h3>
-                  <p className="mt-5 text-[20px] font-light leading-7 text-[#334155]">
+                  <h3 className="truncate text-[17px] font-semibold leading-6 text-[#334155]">{review.patient.name}</h3>
+                  <p className="mt-3 text-[15px] font-light leading-6 text-[#334155]">
                     {review.comment || "No written feedback was provided."}
                   </p>
-                  <p className="mt-4 text-[17px] font-light text-[#94A3B8]">{formatDate(review.createdAt)}</p>
+                  <p className="mt-3 text-[14px] font-light text-[#94A3B8]">{formatDate(review.createdAt)}</p>
                 </div>
                 <div className="flex justify-end">
                   <RatingBadge rating={review.rating} />
@@ -356,7 +436,7 @@ function ReviewDetailModal({
             )}
           </div>
 
-          <div className="mt-10 grid grid-cols-2 gap-3">
+          <div className="mt-8 grid grid-cols-2 gap-3">
             <button type="button" onClick={onFlag} className="h-11 cursor-pointer rounded-[12px] border border-[#B9CBE0] text-[14px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
               Flag selected review
             </button>
@@ -376,6 +456,7 @@ export default function SuperAdminReviewsRoute() {
   const [filter, setFilter] = useState<RatingFilter>("all");
   const [rows, setRows] = useState<AdminReviewListItem[]>([]);
   const [summary, setSummary] = useState(defaultSummary);
+  const [charts, setCharts] = useState(defaultCharts);
   const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<AdminReviewDetail | null>(null);
@@ -394,11 +475,13 @@ export default function SuperAdminReviewsRoute() {
       });
       setRows(response.data);
       setSummary(response.summary);
+      setCharts(response.charts);
       setMeta(response.meta);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
       setRows([]);
       setSummary(defaultSummary);
+      setCharts(defaultCharts);
     } finally {
       setLoading(false);
     }
@@ -444,12 +527,40 @@ export default function SuperAdminReviewsRoute() {
     <section className="pb-10 pt-[68px]">
       <h1 className="text-[34px] font-semibold leading-none text-[#334155]">Reviews & Feedback</h1>
 
-      <div className="mt-8 grid grid-cols-5 gap-4">
-        <StatCard label="Total Reviews" value={summary.totalReviews.toLocaleString()} tone="bg-[#D9DEE2]" color="text-[#334155]" />
-        <StatCard label="Average Rating" value={summary.averageRating.toFixed(1)} tone="bg-[#F5F0C9]" color="text-[#B6920B]" />
-        <StatCard label="5 Star Reviews" value={summary.fiveStarReviews.toLocaleString()} tone="bg-[#D9F8DE]" color="text-[#0D8C24]" />
-        <StatCard label="Critical Reviews" value={summary.criticalReviews.toLocaleString()} tone="bg-[#FFE5E2]" color="text-[#B91C1C]" />
-        <StatCard label="Professionals Rated" value={summary.uniqueProfessionals.toLocaleString()} tone="bg-[#DCEBFF]" color="text-[#1565C0]" />
+      <div className="mt-8 grid grid-cols-4 gap-4">
+        <StatCard
+          label="Total Reviews"
+          value={summary.totalReviews.toLocaleString()}
+          helper={`${summary.uniqueProfessionals.toLocaleString()} professionals rated`}
+          tone="bg-[#D9DEE2]"
+          color="text-[#334155]"
+        />
+        <StatCard
+          label="Average Rating"
+          value={summary.averageRating.toFixed(1)}
+          helper={`${summary.fiveStarReviews.toLocaleString()} five-star reviews`}
+          tone="bg-[#F5F0C9]"
+          color="text-[#B6920B]"
+        />
+        <StatCard
+          label="Positive"
+          value={summary.positiveReviews.toLocaleString()}
+          helper={`${summary.totalReviews ? Math.round((summary.positiveReviews / summary.totalReviews) * 100) : 0}% of total`}
+          tone="bg-[#D9F8DE]"
+          color="text-[#0D8C24]"
+        />
+        <StatCard
+          label="Negative"
+          value={summary.negativeReviews.toLocaleString()}
+          helper={`${summary.totalReviews ? Math.round((summary.negativeReviews / summary.totalReviews) * 100) : 0}% of total`}
+          tone="bg-[#FFE5E2]"
+          color="text-[#B91C1C]"
+        />
+      </div>
+
+      <div className="mt-5 grid grid-cols-[minmax(0,1.55fr)_minmax(280px,1fr)] gap-4">
+        <RatingDistributionCard distribution={charts.ratingDistribution} />
+        <TopProfessionalsCard professionals={charts.topProfessionals} />
       </div>
 
       <article className="mt-8 rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
