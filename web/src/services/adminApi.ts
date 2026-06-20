@@ -72,6 +72,101 @@ export type SuperAdminDashboard = {
   }>;
 };
 
+export type AdminReportCard = {
+  label: string;
+  value: number;
+  format: "number" | "currency" | "duration" | "rating";
+  changePercent: number;
+  trend: "up" | "down";
+  helper: string;
+};
+
+export type AdminReportPoint = {
+  date: string;
+  count?: number;
+  total?: number;
+  subscriptions?: number;
+  commissions?: number;
+  shifts?: number;
+  consultations?: number;
+  completed?: number;
+  cancelled?: number;
+};
+
+export type AdminReportsAnalytics = {
+  generatedAt: string;
+  currency: string;
+  overview: {
+    cards: AdminReportCard[];
+    charts: {
+      userGrowth: AdminReportPoint[];
+      consultationType: { video: number; inPerson: number };
+      revenueOverTime: AdminReportPoint[];
+      shiftsVsConsultations: AdminReportPoint[];
+    };
+    topProfessionals: AdminProfessionalReportRow[];
+  };
+  financial: {
+    cards: AdminReportCard[];
+    charts: {
+      monthlyRevenue: AdminReportPoint[];
+      subscriptionPlanRevenue: Array<{ label: string; amount: number }>;
+    };
+    transactions: Array<{
+      id: string;
+      from: string;
+      avatarUrl: string | null;
+      type: string;
+      amount: number;
+      currency: string;
+      date: string;
+      method: string;
+      status: string;
+    }>;
+  };
+  operational: {
+    cards: AdminReportCard[];
+    charts: {
+      bookingsVsCancellations: AdminReportPoint[];
+      consultationType: { video: number; inPerson: number };
+      organizationFillRates: Array<{ organization: string; fillRate: number }>;
+      aiSymptomUsage: AdminReportPoint[];
+    };
+    appointments: Array<{
+      id: string;
+      patient: string;
+      patientAvatarUrl: string | null;
+      professional: string;
+      professionalAvatarUrl: string | null;
+      type: string;
+      date: string;
+      duration: string;
+      status: string;
+    }>;
+  };
+  professional: {
+    cards: AdminReportCard[];
+    charts: {
+      specialtyConsultations: Array<{ label: string; count: number }>;
+      ratingDistribution: Array<{ rating: number; count: number }>;
+    };
+    leaderboard: AdminProfessionalReportRow[];
+  };
+};
+
+export type AdminProfessionalReportRow = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  specialty: string;
+  consultations: number;
+  shifts: number;
+  averageRating: number;
+  revenue: number;
+  currency: string;
+  status: string;
+};
+
 export type AdminNotification = {
   id: string;
   type: string;
@@ -1101,6 +1196,12 @@ export async function getSuperAdminDashboard() {
 
     return mapLegacyStatsToDashboard(stats);
   }
+}
+
+export async function getAdminReportsAnalytics() {
+  return apiRequest<AdminReportsAnalytics>("/admin/reports/analytics", {
+    method: "GET",
+  });
 }
 
 export async function listAdminNotifications(params: { limit?: number } = {}) {
