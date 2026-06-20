@@ -769,6 +769,17 @@ export type AdminAuditLogsResponse = {
   };
 };
 
+export type AdminSystemConfig = {
+  id: string;
+  key: string;
+  value: string;
+  description: string;
+  category?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminReferralRate = {
   level: number;
   title: string;
@@ -1563,6 +1574,49 @@ export async function getAdminPaymentsOverview(params: {
 
   return apiRequest<AdminPaymentsOverview>(`/admin/payments/overview${suffix}`, {
     method: "GET",
+  });
+}
+
+export async function listAdminSystemConfigs(params: { category?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.category) query.set("category", params.category);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminSystemConfig[]>(`/admin/system-configs${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function createAdminSystemConfig(payload: {
+  key: string;
+  value: string;
+  description: string;
+  category?: string;
+  isActive?: boolean;
+}) {
+  return apiRequest<AdminSystemConfig>("/admin/system-configs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminSystemConfig(
+  configId: string,
+  payload: Partial<Pick<AdminSystemConfig, "value" | "description" | "category" | "isActive">>,
+) {
+  return apiRequest<AdminSystemConfig>(`/admin/system-configs/${configId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return apiRequest<MessageResponse>("/admin/settings/password", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

@@ -861,13 +861,13 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
         <table className="w-full min-w-[820px] table-fixed border-collapse xl:min-w-0">
           <thead className="bg-[#E1E8F0] text-left text-[15px] font-medium text-[#334155] xl:text-[17px]">
             <tr>
-              <th className="w-[22%] px-5 py-4 font-medium xl:px-6">Professional</th>
-              <th className="w-[14%] px-3 py-4 font-medium xl:px-4">Speciality</th>
-              <th className="w-[15%] px-3 py-4 font-medium xl:px-4">Consultations</th>
+              <th className="w-[20%] px-5 py-4 font-medium xl:px-6">Professional</th>
+              <th className="w-[12%] px-3 py-4 font-medium xl:px-4">Speciality</th>
+              <th className="w-[14%] px-3 py-4 font-medium xl:px-4">Consultations</th>
               <th className="w-[8%] px-3 py-4 font-medium xl:px-4">Shifts</th>
               <th className="w-[12%] px-3 py-4 font-medium xl:px-4">Avg rating</th>
-              <th className="w-[18%] px-3 py-4 font-medium xl:px-4">Revenue</th>
-              <th className="w-[11%] py-4 pl-3 pr-5 font-medium xl:pl-4 xl:pr-6">Status</th>
+              <th className="w-[21%] px-3 py-4 font-medium xl:px-4">Revenue</th>
+              <th className="w-[13%] py-4 pl-3 pr-5 font-medium xl:pl-4 xl:pr-6">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#DDE5EF] text-[13px] text-[#94A3B8] xl:text-[14px]">
