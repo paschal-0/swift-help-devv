@@ -250,7 +250,7 @@ function ProfessionalCell({ row }: { row: AdminProfessionalReportRow }) {
       <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
         <ProfileAvatar src={row.avatarUrl} alt={`${row.name} avatar`} className="h-full w-full rounded-full" />
       </span>
-      <span className="block min-w-0 truncate text-[#334155]">{row.name}</span>
+      <span className="block min-w-0 truncate text-[13px] text-[#334155] xl:text-[14px]">{row.name}</span>
     </span>
   );
 }
@@ -839,26 +839,38 @@ function MetricBlock({ color, label, total, value }: { color: string; label: str
 }
 
 function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]; title: string }) {
+  const isLeaderboard = title.toLowerCase().includes("leaderboard");
+
   return (
     <section className="mt-5 overflow-hidden rounded-[8px] bg-[#F8FAFC]">
       <div className="flex min-h-[70px] items-center justify-between gap-4 px-6">
         <h2 className="truncate text-[20px] font-semibold text-[#334155]">{title}</h2>
-        <span className="shrink-0 text-[14px] font-semibold text-[#1565C0]">View all</span>
+        <div className="flex shrink-0 items-center gap-4">
+          {isLeaderboard ? (
+            <button
+              type="button"
+              className="hidden h-11 rounded-full border border-[#D6E0EA] px-7 text-[14px] font-medium text-[#334155] sm:inline-flex sm:items-center"
+            >
+              Filter by specialty
+            </button>
+          ) : null}
+          <span className="text-[14px] font-semibold text-[#1565C0]">View all</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] table-fixed border-collapse">
-          <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
+        <table className="w-full min-w-[820px] table-fixed border-collapse xl:min-w-0">
+          <thead className="bg-[#E1E8F0] text-left text-[15px] font-medium text-[#334155] xl:text-[17px]">
             <tr>
-              <th className="w-[22%] px-6 py-4 font-medium">Professional</th>
-              <th className="w-[18%] px-4 py-4 font-medium">Speciality</th>
-              <th className="w-[14%] px-4 py-4 font-medium">Consultations</th>
-              <th className="w-[12%] px-4 py-4 font-medium">Shifts</th>
-              <th className="w-[14%] px-4 py-4 font-medium">Average rating</th>
-              <th className="w-[12%] px-4 py-4 font-medium">Revenue</th>
-              <th className="w-[8%] py-4 pl-4 pr-6 font-medium">Status</th>
+              <th className="w-[22%] px-5 py-4 font-medium xl:px-6">Professional</th>
+              <th className="w-[16%] px-3 py-4 font-medium xl:px-4">Speciality</th>
+              <th className="w-[13%] px-3 py-4 font-medium xl:px-4">Consultations</th>
+              <th className="w-[8%] px-3 py-4 font-medium xl:px-4">Shifts</th>
+              <th className="w-[12%] px-3 py-4 font-medium xl:px-4">Avg rating</th>
+              <th className="w-[18%] px-3 py-4 font-medium xl:px-4">Revenue</th>
+              <th className="w-[11%] py-4 pl-3 pr-5 font-medium xl:pl-4 xl:pr-6">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+          <tbody className="divide-y divide-[#DDE5EF] text-[13px] text-[#94A3B8] xl:text-[14px]">
             {!rows.length ? (
               <tr>
                 <td colSpan={7}><EmptyState message="No professionals match the current filters." /></td>
@@ -866,13 +878,13 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
             ) : null}
             {rows.map((row) => (
               <tr key={row.id} className="h-[64px] transition-colors hover:bg-slate-50/50">
-                <td className="max-w-0 truncate px-6 py-3 font-medium"><ProfessionalCell row={row} /></td>
-                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#1565C0]">{row.specialty}</td>
-                <td className="max-w-0 truncate px-4 py-3">{row.consultations}</td>
-                <td className="max-w-0 truncate px-4 py-3">{row.shifts}</td>
-                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#334155]">{row.averageRating || 0} ★</td>
-                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#0D8C24]">{formatCurrency(row.revenue, row.currency)}</td>
-                <td className="max-w-0 truncate py-3 pl-4 pr-6 font-semibold text-[#1565C0]">{row.status}</td>
+                <td className="max-w-0 truncate px-5 py-3 font-medium xl:px-6"><ProfessionalCell row={row} /></td>
+                <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#1565C0] xl:px-4">{row.specialty}</td>
+                <td className="max-w-0 truncate px-3 py-3 xl:px-4">{row.consultations}</td>
+                <td className="max-w-0 truncate px-3 py-3 xl:px-4">{row.shifts}</td>
+                <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#334155] xl:px-4">{row.averageRating || 0} ★</td>
+                <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#0D8C24] xl:px-4">{formatCurrency(row.revenue, row.currency)}</td>
+                <td className="max-w-0 truncate py-3 pl-3 pr-5 font-semibold text-[#1565C0] xl:pl-4 xl:pr-6">{row.status}</td>
               </tr>
             ))}
           </tbody>
