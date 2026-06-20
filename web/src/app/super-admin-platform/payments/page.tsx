@@ -1,10 +1,802 @@
-import { SuperAdminPlaceholderPage } from "../components/SuperAdminPlaceholderPage";
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import {
+  flagAdminPaymentTransaction,
+  getAdminPaymentTransaction,
+  getAdminPaymentsOverview,
+  removeAdminPaymentTransaction,
+  type AdminPaymentReferralPayoutRow,
+  type AdminPaymentStatus,
+  type AdminPaymentSubscriptionRow,
+  type AdminPaymentTransaction,
+  type AdminPaymentsOverview,
+} from "@/services/adminApi";
+import { getApiErrorMessage } from "@/services/authApi";
+
+type PaymentTab = "transactions" | "subscriptions" | "referrals" | "configuration";
+type StatusFilter = "all" | AdminPaymentStatus;
+type IconName =
+  | "active"
+  | "card"
+  | "chevron"
+  | "close"
+  | "download"
+  | "eye"
+  | "flag"
+  | "filter"
+  | "more"
+  | "payout"
+  | "search"
+  | "trash";
+
+const statusOptions: Array<{ label: string; value: StatusFilter }> = [
+  { label: "Filters", value: "all" },
+  { label: "Completed", value: "completed" },
+  { label: "Pending", value: "pending" },
+  { label: "Failed", value: "failed" },
+  { label: "Refunded", value: "refunded" },
+  { label: "Cancelled", value: "cancelled" },
+];
+
+const defaultOverview: AdminPaymentsOverview = {
+  summary: {
+    revenueThisMonth: 0,
+    revenueCurrency: "USD",
+    revenueChangePercent: 0,
+    activeSubscriptions: 0,
+    pendingPayouts: 0,
+    pendingPayoutCurrency: "NGN",
+    failedPayments: 0,
+  },
+  transactions: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
+  subscriptions: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
+  referralPayouts: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
+  configuration: { plans: [], gateways: [] },
+};
+
+function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
+  const paths: Record<IconName, string> = {
+    active: "M7 3h10v3h3v15H4V6h3V3Zm2 3h6V5H9v1Zm2.1 10.1 5.3-5.3 1.4 1.4-6.7 6.7-3.9-3.9 1.4-1.4 2.5 2.5Z",
+    card: "M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11Zm2 2V10h14V8.5a.5.5 0 0 0-.5-.5h-13a.5.5 0 0 0-.5.5Zm0 4v5a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-5H5Zm2 2h5v2H7v-2Z",
+    chevron: "m7 10 5 5 5-5H7Z",
+    close: "m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z",
+    download: "M11 4h2v8.2l3.1-3.1 1.4 1.4-5.5 5.5-5.5-5.5 1.4-1.4 3.1 3.1V4Zm-6 14h14v2H5v-2Z",
+    eye: "M12 5c5.5 0 9 5.2 9 7s-3.5 7-9 7-9-5.2-9-7 3.5-7 9-7Zm0 2c-4.1 0-6.7 3.8-7 5 .3 1.2 2.9 5 7 5s6.7-3.8 7-5c-.3-1.2-2.9-5-7-5Zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z",
+    flag: "M5 3h12l-1.5 4L17 11H7v10H5V3Zm2 2v4h7.1l-.7-2 .7-2H7Z",
+    filter: "M4 6h16v2H4V6Zm3 5h10v2H7v-2Zm3 5h4v2h-4v-2Z",
+    more: "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+    payout: "M4 7h16v11H4V7Zm2 2v7h12V9H6Zm4 2h4v2h-4v-2ZM7 4h10v2H7V4Zm2-2h6v1.5H9V2Z",
+    search: "M9.5 3a6.5 6.5 0 0 0-5.04 10.61L2.3 15.78l1.42 1.41 2.16-2.16A6.5 6.5 0 1 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm5.6 9.7 4.6 4.58-1.42 1.42-4.58-4.6 1.4-1.4Z",
+    trash: "M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z",
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path fill="currentColor" d={paths[name]} />
+    </svg>
+  );
+}
+
+function formatCurrency(value: number, currency = "USD") {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: currency === "NGN" ? "NGN" : currency || "USD",
+    maximumFractionDigits: value % 1 ? 2 : 0,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Not provided";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function labelize(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function statusClass(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("active") || normalized.includes("completed") || normalized.includes("connected")) {
+    return "bg-[#D9F8DE] text-[#0D8C24]";
+  }
+  if (normalized.includes("pending") || normalized.includes("setup")) {
+    return "bg-[#FEF3C7] text-[#A16207]";
+  }
+  return "bg-[#FFE5E2] text-[#B91C1C]";
+}
+
+function StatCard({
+  icon,
+  label,
+  tone,
+  value,
+  helper,
+}: {
+  icon: IconName;
+  label: string;
+  tone: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <article className="grid min-h-[118px] min-w-0 grid-cols-[56px_minmax(0,1fr)] items-center gap-4 overflow-hidden rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-7 w-7" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] font-light leading-[18px] text-[#94A3B8]">{label}</span>
+        <span className="mt-1 block truncate text-[34px] font-semibold leading-none text-[#334155]" title={value}>
+          {value}
+        </span>
+        {helper ? <span className="mt-2 block truncate text-[12px] font-semibold text-[#0D8C24]">{helper}</span> : null}
+      </span>
+    </article>
+  );
+}
+
+function StatusDropdown({
+  onChange,
+  value,
+}: {
+  onChange: (value: StatusFilter) => void;
+  value: StatusFilter;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const selected = statusOptions.find((option) => option.value === value) ?? statusOptions[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-full max-w-[150px] shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-[24px] border border-[#D6E0EA] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155]"
+      >
+        <Icon name="filter" className="h-4 w-4 shrink-0" />
+        <span className="truncate">{selected.label}</span>
+        <Icon name="chevron" className="h-4 w-4 shrink-0 text-[#94A3B8]" />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-[54px] z-30 w-48 overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+          {statusOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={`block w-full px-4 py-3 text-left text-[14px] font-medium ${
+                option.value === value ? "bg-[#E3F2FD] text-[#1565C0]" : "text-[#64748B] hover:bg-[#F8FAFC]"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ActionMenu({
+  onFlag,
+  onRemove,
+  onView,
+}: {
+  onFlag: () => void;
+  onRemove: () => void;
+  onView: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const handleClick = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div ref={ref} className="relative flex justify-end">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-9 w-9 items-center justify-center rounded-full text-[#94A3B8] hover:bg-[#EAF2FB] hover:text-[#1565C0]"
+        aria-label="Open row actions"
+      >
+        <Icon name="more" className="h-5 w-5" />
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-10 z-40 w-[160px] rounded-[14px] bg-white py-3 shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+          <button type="button" onClick={() => handleClick(onView)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+            <Icon name="eye" className="h-5 w-5" />
+            View
+          </button>
+          <button type="button" onClick={() => handleClick(onRemove)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+            <Icon name="trash" className="h-5 w-5" />
+            Remove
+          </button>
+          <button type="button" onClick={() => handleClick(onFlag)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+            <Icon name="flag" className="h-5 w-5" />
+            Flag
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function UserCell({ user }: { user: { name: string; avatarUrl: string | null; email?: string | null } }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
+        <ProfileAvatar src={user.avatarUrl} alt={`${user.name} avatar`} className="h-full w-full rounded-full" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[14px] font-medium text-[#334155]">{user.name}</span>
+        {user.email ? <span className="block truncate text-[11px] text-[#94A3B8]">{user.email}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+function EmptyRows({ columns, message }: { columns: number; message: string }) {
+  return (
+    <tr>
+      <td colSpan={columns} className="h-64 text-center text-[15px] font-medium text-[#94A3B8]">
+        {message}
+      </td>
+    </tr>
+  );
+}
 
 export default function SuperAdminPaymentsRoute() {
+  const [activeTab, setActiveTab] = useState<PaymentTab>("transactions");
+  const [overview, setOverview] = useState<AdminPaymentsOverview>(defaultOverview);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState<AdminPaymentTransaction | null>(null);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getAdminPaymentsOverview({
+        search: debouncedSearch,
+        status,
+        page,
+        limit: 10,
+      });
+      setOverview(response);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, page, status]);
+
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, status]);
+
+  const tableRows = useMemo(() => {
+    const needle = debouncedSearch.toLowerCase();
+    if (!needle) return overview;
+    return {
+      ...overview,
+      subscriptions: {
+        ...overview.subscriptions,
+        data: overview.subscriptions.data.filter((row) =>
+          [row.user.name, row.user.email ?? "", row.userType, row.plan, row.status].some((value) =>
+            value.toLowerCase().includes(needle),
+          ),
+        ),
+      },
+      referralPayouts: {
+        ...overview.referralPayouts,
+        data: overview.referralPayouts.data.filter((row) =>
+          [row.referrer.name, row.referrer.email ?? "", row.level, row.trigger, row.bankWallet, row.status].some((value) =>
+            value.toLowerCase().includes(needle),
+          ),
+        ),
+      },
+    };
+  }, [debouncedSearch, overview]);
+
+  const handleViewTransaction = async (transactionId: string) => {
+    try {
+      const detail = await getAdminPaymentTransaction(transactionId);
+      setViewing(detail);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const handleFlagTransaction = async (transactionId: string) => {
+    try {
+      await flagAdminPaymentTransaction(transactionId, { reason: "Flagged from payments workspace" });
+      toast.success("Payment row flagged.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const handleRemoveTransaction = async (transactionId: string) => {
+    try {
+      await removeAdminPaymentTransaction(transactionId);
+      toast.success("Payment row removed.");
+      loadPayments();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const exportCsv = () => {
+    const headersByTab: Record<PaymentTab, string[]> = {
+      transactions: ["User", "ID", "Type", "Amount", "Date", "Method", "Status"],
+      subscriptions: ["User", "User type", "Plan", "Started", "Next billing", "Amount", "Status"],
+      referrals: ["Referrer", "Level", "Trigger", "Amount", "Bank/wallet", "Date", "Status"],
+      configuration: ["Name", "Type", "Monthly", "Yearly", "Status"],
+    };
+    const rowsByTab: Record<PaymentTab, string[][]> = {
+      transactions: tableRows.transactions.data.map((row) => [
+        row.user.name,
+        row.externalTransactionId,
+        labelize(row.type),
+        formatCurrency(row.amount, row.currency),
+        formatDate(row.createdAt),
+        row.paymentMethod,
+        labelize(row.status),
+      ]),
+      subscriptions: tableRows.subscriptions.data.map((row) => [
+        row.user.name,
+        row.userType,
+        row.plan,
+        formatDate(row.startedAt),
+        formatDate(row.nextBillingAt),
+        formatCurrency(row.amount, row.currency),
+        labelize(row.status),
+      ]),
+      referrals: tableRows.referralPayouts.data.map((row) => [
+        row.referrer.name,
+        row.level,
+        row.trigger,
+        formatCurrency(row.amount, row.currency),
+        row.bankWallet,
+        formatDate(row.createdAt),
+        row.status,
+      ]),
+      configuration: tableRows.configuration.plans.map((row) => [
+        row.name,
+        row.targetUserType,
+        formatCurrency(row.monthlyPrice, row.currency),
+        formatCurrency(row.yearlyPrice, row.currency),
+        row.isActive ? "Active" : "Inactive",
+      ]),
+    };
+    const rows = rowsByTab[activeTab];
+    if (!rows.length) {
+      toast.info("There are no payment rows to export.");
+      return;
+    }
+
+    const csv = [headersByTab[activeTab], ...rows]
+      .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `swifthelp-${activeTab}-payments.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const unavailableAction = () => toast.info("This row is not linked to a payment transaction yet.");
+
   return (
-    <SuperAdminPlaceholderPage
-      title="Payments"
-      description="Monitor payment transactions, refunds, payout readiness, failed payments, and platform revenue."
-    />
+    <section className="min-w-0 pb-12">
+      <div className="mb-7">
+        <h1 className="text-[34px] font-semibold leading-tight text-[#334155]">Payments</h1>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        <StatCard
+          icon="card"
+          label="revenue this month"
+          tone="bg-[#D7DED8] text-[#334155]"
+          value={formatCurrency(overview.summary.revenueThisMonth, overview.summary.revenueCurrency)}
+          helper={`${overview.summary.revenueChangePercent >= 0 ? "up" : "down"} ${Math.abs(overview.summary.revenueChangePercent)}% vs last month`}
+        />
+        <StatCard
+          icon="active"
+          label="Active subscriptions"
+          tone="bg-[#D9F8DE] text-[#0D8C24]"
+          value={String(overview.summary.activeSubscriptions)}
+        />
+        <StatCard
+          icon="payout"
+          label="Pending payouts"
+          tone="bg-[#FEF3C7] text-[#B9970B]"
+          value={formatCurrency(overview.summary.pendingPayouts, overview.summary.pendingPayoutCurrency)}
+        />
+        <StatCard
+          icon="card"
+          label="Failed payments"
+          tone="bg-[#FFE5E2] text-[#C62828]"
+          value={String(overview.summary.failedPayments)}
+        />
+      </div>
+
+      <div className="mt-8 overflow-hidden rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+        <div className="px-5 pt-6 sm:px-8">
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+            {[
+              ["transactions", "Transactions"],
+              ["subscriptions", "Subscriptions"],
+              ["referrals", "Referral payouts"],
+              ["configuration", "Configuration"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value as PaymentTab)}
+                className={`h-10 border-b-[6px] text-[21px] font-medium leading-none transition ${
+                  activeTab === value
+                    ? "border-[#1565C0] text-[#1565C0]"
+                    : "border-transparent text-[#94A3B8] hover:text-[#334155]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab !== "configuration" ? (
+            <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center">
+              <label className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[24px] bg-[#E9EFF6] px-5 text-[#334155] lg:max-w-[390px]">
+                <Icon name="search" className="h-5 w-5 shrink-0" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search patients by name, email, location"
+                  className="min-w-0 flex-1 bg-transparent text-[14px] font-light text-[#334155] outline-none placeholder:text-[#94A3B8]"
+                />
+              </label>
+              {activeTab === "transactions" ? <StatusDropdown value={status} onChange={setStatus} /> : null}
+              <button
+                type="button"
+                onClick={exportCsv}
+                className="ml-auto flex h-12 w-[132px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[16px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)]"
+              >
+                <Icon name="download" className="h-4 w-4" />
+                Export
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6">
+          {activeTab === "transactions" ? (
+            <TransactionsTable
+              loading={loading}
+              rows={tableRows.transactions.data}
+              onFlag={handleFlagTransaction}
+              onRemove={handleRemoveTransaction}
+              onView={handleViewTransaction}
+            />
+          ) : null}
+          {activeTab === "subscriptions" ? (
+            <SubscriptionsTable
+              rows={tableRows.subscriptions.data}
+              onFlag={(row) => handleFlagTransaction(row.transactionId)}
+              onRemove={(row) => handleRemoveTransaction(row.transactionId)}
+              onView={(row) => handleViewTransaction(row.transactionId)}
+            />
+          ) : null}
+          {activeTab === "referrals" ? (
+            <ReferralPayoutsTable rows={tableRows.referralPayouts.data} onUnavailable={unavailableAction} />
+          ) : null}
+          {activeTab === "configuration" ? <ConfigurationPanel overview={overview} /> : null}
+        </div>
+
+        {activeTab === "transactions" ? (
+          <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-4 px-6 py-5 text-[14px] text-[#94A3B8]">
+            <span>
+              Showing {overview.transactions.data.length ? (page - 1) * 10 + 1 : 0}-
+              {Math.min(page * 10, overview.transactions.meta.total)} of {overview.transactions.meta.total} users
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                className="h-9 w-9 rounded-[8px] border border-[#D6E0EA] text-[#94A3B8] disabled:opacity-40"
+              >
+                {"<"}
+              </button>
+              <span className="flex h-9 min-w-9 items-center justify-center rounded-[8px] bg-[#E3F2FD] px-3 text-[#1565C0]">{page}</span>
+              <button
+                type="button"
+                disabled={page >= overview.transactions.meta.totalPages}
+                onClick={() => setPage((current) => Math.min(current + 1, overview.transactions.meta.totalPages))}
+                className="h-9 w-9 rounded-[8px] border border-[#D6E0EA] text-[#94A3B8] disabled:opacity-40"
+              >
+                {">"}
+              </button>
+            </div>
+          </div>
+        ) : <div className="h-8" />}
+      </div>
+
+      {viewing ? <PaymentDetailModal transaction={viewing} onClose={() => setViewing(null)} /> : null}
+    </section>
+  );
+}
+
+function TransactionsTable({
+  loading,
+  onFlag,
+  onRemove,
+  onView,
+  rows,
+}: {
+  loading: boolean;
+  onFlag: (id: string) => void;
+  onRemove: (id: string) => void;
+  onView: (id: string) => void;
+  rows: AdminPaymentTransaction[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[1040px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+          <tr>
+            <th className="w-[20%] px-7 py-3 font-medium">User</th>
+            <th className="w-[12%] px-4 py-3 font-medium">ID</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Type</th>
+            <th className="w-[10%] px-4 py-3 font-medium">Amount</th>
+            <th className="w-[14%] px-4 py-3 font-medium">Date</th>
+            <th className="w-[14%] px-4 py-3 font-medium">Method</th>
+            <th className="w-[10%] px-4 py-3 font-medium">Status</th>
+            <th className="w-[8%] px-7 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+          {loading ? <EmptyRows columns={8} message="Loading payments..." /> : null}
+          {!loading && !rows.length ? <EmptyRows columns={8} message="No payment transactions match the current filters." /> : null}
+          {!loading && rows.map((row) => (
+            <tr key={row.id} className="h-[58px]">
+              <td className="px-7 py-3"><UserCell user={row.user} /></td>
+              <td className="truncate px-4 py-3">{row.externalTransactionId}</td>
+              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{labelize(row.type)}</td>
+              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="truncate px-4 py-3">{formatDate(row.createdAt)}</td>
+              <td className="truncate px-4 py-3">{row.paymentMethod}</td>
+              <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SubscriptionsTable({
+  onFlag,
+  onRemove,
+  onView,
+  rows,
+}: {
+  onFlag: (row: AdminPaymentSubscriptionRow) => void;
+  onRemove: (row: AdminPaymentSubscriptionRow) => void;
+  onView: (row: AdminPaymentSubscriptionRow) => void;
+  rows: AdminPaymentSubscriptionRow[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[1040px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+          <tr>
+            <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
+            <th className="w-[13%] px-4 py-3 font-medium">User type</th>
+            <th className="w-[10%] px-4 py-3 font-medium">Plan</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Started</th>
+            <th className="w-[14%] px-4 py-3 font-medium">Next billing</th>
+            <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
+            <th className="w-[10%] px-4 py-3 font-medium">Status</th>
+            <th className="w-[10%] px-7 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+          {!rows.length ? <EmptyRows columns={8} message="No subscription payments are available yet." /> : null}
+          {rows.map((row) => (
+            <tr key={row.id} className="h-[58px]">
+              <td className="px-7 py-3"><UserCell user={row.user} /></td>
+              <td className="truncate px-4 py-3">{row.userType}</td>
+              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.plan}</td>
+              <td className="truncate px-4 py-3">{formatDate(row.startedAt)}</td>
+              <td className="truncate px-4 py-3">{formatDate(row.nextBillingAt)}</td>
+              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ReferralPayoutsTable({
+  onUnavailable,
+  rows,
+}: {
+  onUnavailable: () => void;
+  rows: AdminPaymentReferralPayoutRow[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[1040px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+          <tr>
+            <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
+            <th className="w-[11%] px-4 py-3 font-medium">level</th>
+            <th className="w-[18%] px-4 py-3 font-medium">Trigger</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Amount</th>
+            <th className="w-[17%] px-4 py-3 font-medium">Bank/wallet</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Date</th>
+            <th className="w-[10%] px-7 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+          {!rows.length ? <EmptyRows columns={7} message="No referral payouts are available yet." /> : null}
+          {rows.map((row) => (
+            <tr key={row.id} className="h-[58px]">
+              <td className="px-7 py-3"><UserCell user={row.referrer} /></td>
+              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.level}</td>
+              <td className="truncate px-4 py-3">{row.trigger}</td>
+              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="truncate px-4 py-3">{row.bankWallet}</td>
+              <td className="truncate px-4 py-3">{formatDate(row.createdAt)}</td>
+              <td className="px-7 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ConfigurationPanel({ overview }: { overview: AdminPaymentsOverview }) {
+  const plans = overview.configuration.plans;
+  const starter = plans.find((plan) => plan.tier === "free") ?? plans[0];
+  const pro = plans.find((plan) => ["professional", "basic"].includes(plan.tier)) ?? plans[1];
+  const enterprise = plans.find((plan) => plan.tier === "enterprise") ?? plans[2];
+  const planFields = [
+    { label: "Starter plan (free)", plan: starter },
+    { label: "Pro Plan (monthly)", plan: pro },
+    { label: "Enterprise Plan (custom pricing)", plan: enterprise },
+  ];
+
+  return (
+    <div className="px-5 pb-20 pt-2 sm:px-8">
+      <h2 className="text-[22px] font-semibold text-[#334155]">Subscription plan pricing</h2>
+      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        {planFields.map(({ label, plan }) => (
+          <label key={label} className="block min-w-0">
+            <span className="block truncate text-[18px] font-light text-[#334155]">{label}</span>
+            <span className="mt-3 flex h-[46px] items-center rounded-[14px] border border-[#D6E0EA] bg-[#E3F2FD] px-4 text-[15px] font-medium text-[#334155]">
+              {plan ? formatCurrency(plan.monthlyPrice, plan.currency) : "Not configured"}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <h2 className="mt-16 text-[22px] font-semibold text-[#334155]">Payment gateways</h2>
+      <div className="mt-6 space-y-7">
+        {overview.configuration.gateways.map((gateway) => (
+          <div key={gateway.id} className="grid grid-cols-[minmax(0,1fr)_140px_112px] items-center gap-3 text-[18px] text-[#334155]">
+            <span className="truncate">{gateway.name}</span>
+            <span className={`justify-self-end rounded-full px-4 py-2 text-[16px] font-semibold ${statusClass(gateway.status)}`}>
+              {gateway.status === "connected" ? "Connected" : "Setup needed"}
+            </span>
+            <button
+              type="button"
+              onClick={() => toast.info(`${gateway.name} setup is managed from system configuration.`)}
+              className={`h-9 rounded-[12px] px-4 text-[15px] font-medium ${
+                gateway.status === "connected" ? "text-[#334155]" : "bg-[#1565C0] text-white"
+              }`}
+            >
+              {gateway.actionLabel}
+            </button>
+          </div>
+        ))}
+        {!overview.configuration.gateways.length ? (
+          <p className="py-8 text-[15px] font-medium text-[#94A3B8]">No payment gateway configuration is available yet.</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PaymentDetailModal({
+  onClose,
+  transaction,
+}: {
+  onClose: () => void;
+  transaction: AdminPaymentTransaction;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#334155]/45 px-4 py-8">
+      <div className="max-h-[88vh] w-full max-w-[680px] overflow-y-auto rounded-[16px] bg-[#F8FAFC] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">Payment transaction</p>
+            <h2 className="mt-2 truncate text-[26px] font-semibold text-[#334155]">{transaction.user.name}</h2>
+            <p className="mt-1 truncate text-[14px] text-[#94A3B8]">{transaction.externalTransactionId}</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EAF2FB] text-[#334155]">
+            <Icon name="close" className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-7 grid gap-4 sm:grid-cols-2">
+          {[
+            ["Amount", formatCurrency(transaction.amount, transaction.currency)],
+            ["Status", labelize(transaction.status)],
+            ["Type", labelize(transaction.type)],
+            ["Method", transaction.paymentMethod],
+            ["Date", formatDate(transaction.createdAt)],
+            ["Platform fee", formatCurrency(transaction.platformFee, transaction.currency)],
+            ["Professional fee", formatCurrency(transaction.professionalFee, transaction.currency)],
+            ["Refund", transaction.refundAmount ? formatCurrency(transaction.refundAmount, transaction.currency) : "No refund"],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0 rounded-[12px] border border-[#DDE5EF] bg-white px-4 py-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">{label}</p>
+              <p className="mt-1 truncate text-[16px] font-semibold text-[#334155]">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

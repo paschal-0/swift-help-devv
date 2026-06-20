@@ -764,6 +764,137 @@ export type AdminReferralsResponse = {
   rates: AdminReferralRate[];
 };
 
+export type AdminPaymentStatus =
+  | "pending"
+  | "completed"
+  | "failed"
+  | "refunded"
+  | "partially_refunded"
+  | "cancelled";
+
+export type AdminPaymentType =
+  | "subscription"
+  | "consultation"
+  | "shift_booking"
+  | "commission"
+  | "refund"
+  | "withdrawal";
+
+export type AdminPaymentUser = {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  avatarUrl: string | null;
+};
+
+export type AdminPaymentTransaction = {
+  id: string;
+  user: AdminPaymentUser;
+  userType: string;
+  type: AdminPaymentType | string;
+  status: AdminPaymentStatus | string;
+  amount: number;
+  platformFee: number;
+  professionalFee: number;
+  currency: string;
+  paymentMethod: string;
+  externalTransactionId: string;
+  metadata: Record<string, unknown>;
+  refundedAt: string | null;
+  refundAmount: number | null;
+  refundReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminPaymentSubscriptionRow = {
+  id: string;
+  transactionId: string;
+  user: AdminPaymentUser;
+  userType: string;
+  plan: string;
+  startedAt: string;
+  nextBillingAt: string;
+  amount: number;
+  currency: string;
+  status: string;
+};
+
+export type AdminPaymentReferralPayoutRow = {
+  id: string;
+  referrer: AdminPaymentUser;
+  level: string;
+  trigger: string;
+  amount: number;
+  currency: string;
+  bankWallet: string;
+  status: string;
+  createdAt: string;
+};
+
+export type AdminPaymentPlanRow = {
+  id: string;
+  name: string;
+  tier: string;
+  targetUserType: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  currency: string;
+  isActive: boolean;
+  isPopular: boolean;
+};
+
+export type AdminPaymentGatewayRow = {
+  id: string;
+  name: string;
+  status: "connected" | "setup_needed" | string;
+  actionLabel: string;
+};
+
+export type AdminPaymentsOverview = {
+  summary: {
+    revenueThisMonth: number;
+    revenueCurrency: string;
+    revenueChangePercent: number;
+    activeSubscriptions: number;
+    pendingPayouts: number;
+    pendingPayoutCurrency: string;
+    failedPayments: number;
+  };
+  transactions: {
+    data: AdminPaymentTransaction[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  subscriptions: {
+    data: AdminPaymentSubscriptionRow[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  referralPayouts: {
+    data: AdminPaymentReferralPayoutRow[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  configuration: {
+    plans: AdminPaymentPlanRow[];
+    gateways: AdminPaymentGatewayRow[];
+  };
+};
+
 export type UpdateAdminPatientPayload = {
   fullName?: string;
   email?: string;
@@ -1300,6 +1431,50 @@ export async function updateAdminReferralLevel(
   return apiRequest<AdminReferralRate>(`/admin/referrals/levels/${level}`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminPaymentsOverview(params: {
+  search?: string;
+  status?: string;
+  type?: string;
+  page?: number;
+  limit?: number;
+} = {}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.type && params.type !== "all") query.set("type", params.type);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminPaymentsOverview>(`/admin/payments/overview${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminPaymentTransaction(transactionId: string) {
+  return apiRequest<AdminPaymentTransaction>(`/admin/payments/transactions/${transactionId}`, {
+    method: "GET",
+  });
+}
+
+export async function flagAdminPaymentTransaction(
+  transactionId: string,
+  payload: { reason?: string } = {},
+) {
+  return apiRequest<MessageResponse>(`/admin/payments/transactions/${transactionId}/flag`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function removeAdminPaymentTransaction(transactionId: string) {
+  return apiRequest<MessageResponse>(`/admin/payments/transactions/${transactionId}`, {
+    method: "DELETE",
   });
 }
 
