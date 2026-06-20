@@ -248,7 +248,7 @@ function StatCard({
   return (
     <article className="flex min-h-[104px] min-w-0 items-center gap-3 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
       <span className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
-        <Icon name={icon} className="h-7 w-7" />
+        <Icon name={icon} className={icon === "referral" ? "h-10 w-10" : "h-7 w-7"} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-light leading-4 text-[#94A3B8]">{label}</p>
