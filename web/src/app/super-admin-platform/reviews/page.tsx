@@ -17,6 +17,7 @@ import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
 
 type RatingFilter = "all" | "5" | "4" | "3" | "low";
 type IconName = "back" | "filter" | "flag" | "more" | "search" | "star" | "trash" | "view";
+type ModalRatingFilter = "all" | "5" | "4" | "3" | "2" | "1";
 
 const defaultSummary: AdminReviewsResponse["summary"] = {
   totalReviews: 0,
@@ -88,6 +89,15 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+function RatingBadge({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex h-9 min-w-[72px] items-center justify-center gap-1 rounded-full border border-[#B9970B] px-4 text-[15px] font-semibold text-[#B9970B]">
+      <Icon name="star" className="h-4 w-4" />
+      {rating}
+    </span>
+  );
+}
+
 function StatCard({
   color,
   label,
@@ -100,13 +110,13 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <article className="flex min-h-[122px] min-w-0 items-center gap-4 rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
-        <Icon name="star" className="h-8 w-8" />
+    <article className="grid min-h-[122px] min-w-0 grid-cols-[48px_minmax(0,1fr)] items-center gap-4 overflow-hidden rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${tone} ${color}`}>
+        <Icon name="star" className="h-6 w-6" />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="max-w-[160px] text-[15px] font-light leading-[18px] text-[#94A3B8]">{label}</p>
-        <p className="mt-1 truncate text-[38px] font-semibold leading-none text-[#334155]">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[14px] font-light leading-[17px] text-[#94A3B8]">{label}</p>
+        <p className="mt-1 truncate text-[34px] font-semibold leading-none text-[#334155]" title={String(value)}>{value}</p>
       </div>
     </article>
   );
@@ -225,88 +235,126 @@ function ActionMenu({
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div className="grid min-h-[34px] grid-cols-[140px_minmax(0,1fr)] items-center gap-3 border-b border-[#DDE5EF] py-1.5">
-      <span className="min-w-0 text-[13px] font-light leading-5 text-[#94A3B8]">{label}</span>
-      <span className="min-w-0 truncate text-[13px] font-semibold leading-5 text-[#334155]" title={String(value || "Not provided")}>
-        {value || "Not provided"}
-      </span>
-    </div>
-  );
-}
-
 function ReviewDetailModal({
   detail,
   onClose,
   onFlag,
   onRemove,
+  reviews,
 }: {
   detail: AdminReviewDetail;
   onClose: () => void;
   onFlag: () => void;
   onRemove: () => void;
+  reviews: AdminReviewListItem[];
 }) {
+  const [ratingFilter, setRatingFilter] = useState<ModalRatingFilter>("all");
+  const averageRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : detail.rating;
+  const distribution = [5, 4, 3, 2, 1].map((rating) => {
+    const count = reviews.filter((review) => review.rating === rating).length;
+    const percentage = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
+    return { rating, count, percentage };
+  });
+  const filteredReviews =
+    ratingFilter === "all"
+      ? reviews
+      : reviews.filter((review) => review.rating === Number(ratingFilter));
+  const displayReviews = filteredReviews.length ? filteredReviews : reviews.slice(0, 1);
+  const titleName = detail.professional.name.split(" ")[0] || detail.professional.name;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.38)] px-5 py-6">
-      <section className="max-h-[90vh] w-full max-w-[760px] overflow-auto rounded-[18px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
-        <div className="flex items-center justify-between border-b border-[#DDE5EF] px-7 py-5">
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-[#334155] hover:bg-[#E3F2FD]" aria-label="Close review detail">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(51,65,85,0.45)] px-5 py-10">
+      <section className="w-full max-w-[860px] overflow-hidden rounded-[18px] bg-[#F8FAFC] shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+        <div className="flex items-center gap-5 px-12 pt-9">
+          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full text-[#334155] hover:bg-[#E3F2FD]" aria-label="Close review detail">
             <Icon name="back" />
           </button>
-          <span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${sentimentClass(detail.sentiment)}`}>
-            {formatSentiment(detail.sentiment)}
-          </span>
+          <h2 className="min-w-0 truncate text-[24px] font-semibold leading-8 text-[#334155]">{titleName} reviews</h2>
         </div>
 
-        <div className="px-7 py-6">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex min-w-0 items-center gap-4">
-              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
-                <ProfileAvatar src={detail.professional.avatarUrl} alt={detail.professional.name} className="h-full w-full rounded-full" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="truncate text-[24px] font-semibold leading-7 text-[#334155]">{detail.professional.name}</h2>
-                <p className="mt-1 truncate text-[14px] font-medium text-[#94A3B8]">{detail.professional.specialization}</p>
+        <div className="px-12 pb-10 pt-12">
+          <div className="grid grid-cols-[220px_minmax(0,1fr)] gap-10">
+            <div className="min-w-0">
+              <p className="text-[78px] font-semibold leading-none text-[#334155]">{averageRating.toFixed(1)}</p>
+              <div className="mt-5 flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Icon
+                    key={index}
+                    name="star"
+                    className={`h-7 w-7 ${index < Math.round(averageRating) ? "text-[#F5B81C]" : "text-[#CBD5E1]"}`}
+                  />
+                ))}
               </div>
+              <p className="mt-3 text-[22px] font-semibold leading-7 text-[#334155]">({reviews.length} reviews)</p>
             </div>
-            <div className="shrink-0 text-right">
-              <Stars rating={detail.rating} />
-              <p className="mt-1 text-[14px] font-semibold text-[#334155]">{detail.rating}/5</p>
+            <div className="space-y-4 pt-1">
+              {distribution.map((item) => (
+                <div key={item.rating} className="grid grid-cols-[34px_minmax(0,1fr)_52px] items-center gap-3">
+                  <span className="flex items-center gap-0.5 text-[15px] font-semibold text-[#B9970B]">
+                    {item.rating}
+                    <Icon name="star" className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="h-3.5 overflow-hidden rounded-full bg-[#9DAEC3]">
+                    <span
+                      className="block h-full rounded-full bg-[#B9970B]"
+                      style={{ width: `${item.percentage}%` }}
+                    />
+                  </span>
+                  <span className="text-right text-[15px] font-semibold text-[#94A3B8]">{item.percentage}%</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <blockquote className="mt-6 rounded-[14px] bg-[#F8FAFC] px-5 py-4 text-[15px] leading-7 text-[#334155]">
-            {detail.comment || "No written feedback was provided."}
-          </blockquote>
-
-          <div className="mt-6 grid grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#334155]">Review</h3>
-              <div className="mt-3">
-                <InfoRow label="Patient" value={detail.patient.name} />
-                <InfoRow label="Patient email" value={detail.patient.email} />
-                <InfoRow label="Consultation ID" value={detail.consultationId} />
-                <InfoRow label="Submitted" value={formatDate(detail.createdAt)} />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#334155]">Professional</h3>
-              <div className="mt-3">
-                <InfoRow label="Email" value={detail.professional.email} />
-                <InfoRow label="Consultation type" value={detail.professionalProfile.consultationType} />
-                <InfoRow label="Location" value={detail.professionalProfile.primaryPracticeLocation} />
-                <InfoRow label="Verification" value={detail.professionalProfile.verificationStatus} />
-              </div>
-            </div>
+          <div className="mt-12 flex flex-wrap items-center gap-4">
+            {(["all", "5", "4", "3", "2", "1"] as ModalRatingFilter[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setRatingFilter(value)}
+                className={`inline-flex h-12 min-w-[88px] items-center justify-center gap-2 rounded-full border px-6 text-[18px] font-semibold transition ${
+                  ratingFilter === value
+                    ? "border-[#B9970B] bg-[#B9970B] text-white"
+                    : "border-[#B9970B] bg-white text-[#B9970B] hover:bg-[#FFF8DB]"
+                }`}
+              >
+                <Icon name="star" className="h-5 w-5" />
+                {value === "all" ? "All" : value}
+              </button>
+            ))}
           </div>
 
-          <div className="mt-7 grid grid-cols-2 gap-3">
+          <div className="mt-8 h-px bg-[#DDE5EF]" />
+
+          <div className="mt-8 space-y-9">
+            {displayReviews.map((review) => (
+              <article key={review.id} className="grid grid-cols-[64px_minmax(0,1fr)_90px] gap-4">
+                <span className="h-14 w-14 overflow-hidden rounded-full bg-[#E2E8F0]">
+                  <ProfileAvatar src={review.patient.avatarUrl} alt={review.patient.name} className="h-full w-full rounded-full" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="truncate text-[20px] font-semibold leading-7 text-[#334155]">{review.patient.name}</h3>
+                  <p className="mt-5 text-[20px] font-light leading-7 text-[#334155]">
+                    {review.comment || "No written feedback was provided."}
+                  </p>
+                  <p className="mt-4 text-[17px] font-light text-[#94A3B8]">{formatDate(review.createdAt)}</p>
+                </div>
+                <div className="flex justify-end">
+                  <RatingBadge rating={review.rating} />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-10 grid grid-cols-2 gap-3">
             <button type="button" onClick={onFlag} className="h-11 cursor-pointer rounded-[12px] border border-[#B9CBE0] text-[14px] font-semibold text-[#334155] hover:border-[#A16207] hover:text-[#A16207]">
-              Flag review
+              Flag selected review
             </button>
             <button type="button" onClick={onRemove} className="h-11 cursor-pointer rounded-[12px] bg-[#C1121F] text-[14px] font-semibold text-white">
-              Remove review
+              Remove selected review
             </button>
           </div>
         </div>
@@ -327,6 +375,17 @@ export default function SuperAdminReviewsRoute() {
   const [removeTarget, setRemoveTarget] = useState<AdminReviewListItem | AdminReviewDetail | null>(null);
 
   const mergedSearch = useMemo(() => query.trim() || searchText.trim(), [query, searchText]);
+  const selectedProfessionalReviews = useMemo(() => {
+    if (!selectedDetail) return [];
+
+    const sameProfessionalRows = rows.filter(
+      (review) =>
+        review.professional.id === selectedDetail.professional.id &&
+        review.id !== selectedDetail.id,
+    );
+
+    return [selectedDetail, ...sameProfessionalRows];
+  }, [rows, selectedDetail]);
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -421,7 +480,7 @@ export default function SuperAdminReviewsRoute() {
         </div>
 
         <div className="mx-5 overflow-visible rounded-[12px] border border-[#DDE5EF]">
-          <div className="grid grid-cols-[1.25fr_1.2fr_1fr_0.85fr_1.6fr_0.95fr_86px] items-center border-b border-[#DDE5EF] px-6 py-4 text-[15px] font-semibold text-[#334155]">
+          <div className="grid grid-cols-[minmax(170px,1.2fr)_minmax(120px,0.9fr)_minmax(120px,0.9fr)_minmax(112px,0.75fr)_minmax(150px,1.35fr)_minmax(96px,0.7fr)_56px] items-center border-b border-[#DDE5EF] px-6 py-4 text-[15px] font-semibold text-[#334155]">
             <span>Professional</span>
             <span>Patient</span>
             <span>Rating</span>
@@ -438,7 +497,7 @@ export default function SuperAdminReviewsRoute() {
               rows.map((review) => (
                 <div
                   key={review.id}
-                  className="grid min-h-[68px] grid-cols-[1.25fr_1.2fr_1fr_0.85fr_1.6fr_0.95fr_86px] items-center border-b border-[#DDE5EF] px-6 py-3 text-[14px] text-[#94A3B8] last:border-b-0"
+                  className="grid min-h-[68px] grid-cols-[minmax(170px,1.2fr)_minmax(120px,0.9fr)_minmax(120px,0.9fr)_minmax(112px,0.75fr)_minmax(150px,1.35fr)_minmax(96px,0.7fr)_56px] items-center border-b border-[#DDE5EF] px-6 py-3 text-[14px] text-[#94A3B8] last:border-b-0"
                 >
                   <button type="button" onClick={() => openDetail(review.id)} className="flex min-w-0 cursor-pointer items-center gap-3 text-left">
                     <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
@@ -510,6 +569,7 @@ export default function SuperAdminReviewsRoute() {
           onClose={() => setSelectedDetail(null)}
           onFlag={() => flagReview(selectedDetail)}
           onRemove={() => setRemoveTarget(selectedDetail)}
+          reviews={selectedProfessionalReviews}
         />
       ) : null}
 
