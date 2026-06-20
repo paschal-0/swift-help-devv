@@ -240,29 +240,32 @@ function ReviewDetailModal({
   onClose,
   onFlag,
   onRemove,
-  reviews,
 }: {
   detail: AdminReviewDetail;
   onClose: () => void;
   onFlag: () => void;
   onRemove: () => void;
-  reviews: AdminReviewListItem[];
 }) {
   const [ratingFilter, setRatingFilter] = useState<ModalRatingFilter>("all");
+  const reviews = detail.professionalReviews.data.length
+    ? detail.professionalReviews.data
+    : [detail];
   const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    detail.professionalReviews.summary.totalReviews > 0
+      ? detail.professionalReviews.summary.averageRating
       : detail.rating;
-  const distribution = [5, 4, 3, 2, 1].map((rating) => {
-    const count = reviews.filter((review) => review.rating === rating).length;
-    const percentage = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
-    return { rating, count, percentage };
-  });
+  const distribution = detail.professionalReviews.distribution.length
+    ? detail.professionalReviews.distribution
+    : [5, 4, 3, 2, 1].map((rating) => ({
+        rating,
+        count: rating === detail.rating ? 1 : 0,
+        percentage: rating === detail.rating ? 100 : 0,
+      }));
   const filteredReviews =
     ratingFilter === "all"
       ? reviews
       : reviews.filter((review) => review.rating === Number(ratingFilter));
-  const displayReviews = filteredReviews.length ? filteredReviews : reviews.slice(0, 1);
+  const displayReviews = filteredReviews;
   const titleName = detail.professional.name.split(" ")[0] || detail.professional.name;
 
   return (
@@ -330,7 +333,7 @@ function ReviewDetailModal({
           <div className="mt-8 h-px bg-[#DDE5EF]" />
 
           <div className="mt-8 space-y-9">
-            {displayReviews.map((review) => (
+            {displayReviews.length ? displayReviews.map((review) => (
               <article key={review.id} className="grid grid-cols-[64px_minmax(0,1fr)_90px] gap-4">
                 <span className="h-14 w-14 overflow-hidden rounded-full bg-[#E2E8F0]">
                   <ProfileAvatar src={review.patient.avatarUrl} alt={review.patient.name} className="h-full w-full rounded-full" />
@@ -346,7 +349,11 @@ function ReviewDetailModal({
                   <RatingBadge rating={review.rating} />
                 </div>
               </article>
-            ))}
+            )) : (
+              <p className="rounded-[14px] bg-white px-5 py-8 text-center text-[15px] font-medium text-[#94A3B8]">
+                No reviews match this rating filter.
+              </p>
+            )}
           </div>
 
           <div className="mt-10 grid grid-cols-2 gap-3">
@@ -375,17 +382,6 @@ export default function SuperAdminReviewsRoute() {
   const [removeTarget, setRemoveTarget] = useState<AdminReviewListItem | AdminReviewDetail | null>(null);
 
   const mergedSearch = useMemo(() => query.trim() || searchText.trim(), [query, searchText]);
-  const selectedProfessionalReviews = useMemo(() => {
-    if (!selectedDetail) return [];
-
-    const sameProfessionalRows = rows.filter(
-      (review) =>
-        review.professional.id === selectedDetail.professional.id &&
-        review.id !== selectedDetail.id,
-    );
-
-    return [selectedDetail, ...sameProfessionalRows];
-  }, [rows, selectedDetail]);
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -569,7 +565,6 @@ export default function SuperAdminReviewsRoute() {
           onClose={() => setSelectedDetail(null)}
           onFlag={() => flagReview(selectedDetail)}
           onRemove={() => setRemoveTarget(selectedDetail)}
-          reviews={selectedProfessionalReviews}
         />
       ) : null}
 

@@ -437,6 +437,21 @@ export type AdminReviewDetail = AdminReviewListItem & {
     primaryPracticeLocation: string | null;
     licenseNumber: string | null;
   };
+  professionalReviews: {
+    summary: {
+      totalReviews: number;
+      averageRating: number;
+      criticalReviews: number;
+      fiveStarReviews: number;
+      uniqueProfessionals: number;
+    };
+    distribution: Array<{
+      rating: number;
+      count: number;
+      percentage: number;
+    }>;
+    data: AdminReviewListItem[];
+  };
 };
 
 export type AdminReviewsResponse = {
