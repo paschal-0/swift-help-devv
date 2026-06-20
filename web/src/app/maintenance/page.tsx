@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function MaintenancePage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#E6EDF6] px-6 py-12 text-[#334155]">
@@ -20,20 +18,6 @@ export default function MaintenancePage() {
           We are applying platform updates right now. Patient, professional, and organization workspaces
           are temporarily unavailable. Admin access remains open.
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            className="rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-5 py-3 text-[15px] font-semibold text-white shadow-sm"
-            href="/get-started/login"
-          >
-            Sign in
-          </Link>
-          <Link
-            className="rounded-[10px] border border-[#1565C0] px-5 py-3 text-[15px] font-semibold text-[#1565C0]"
-            href="/super-admin-platform"
-          >
-            Admin workspace
-          </Link>
-        </div>
       </section>
     </main>
   );

@@ -72,6 +72,11 @@ const descriptions: Record<string, string> = {
   "settings.integration.webhookUrl": "Primary webhook URL for platform event delivery",
 };
 
+const primaryButtonClass =
+  "inline-flex min-h-[46px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-8 text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(21,101,192,0.2)] transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60";
+const secondaryButtonClass =
+  "inline-flex min-h-[46px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-white px-8 text-[15px] font-semibold text-[#1565C0] transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60";
+
 function isEnabled(value: string | undefined) {
   return String(value || "false").toLowerCase() === "true";
 }
@@ -153,14 +158,14 @@ function Toggle({
       type="button"
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#1565C0]/40 disabled:opacity-50 ${
+      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
         checked ? "bg-[#1565C0]" : "bg-[#CBD5E1]"
       }`}
       aria-pressed={checked}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
-          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        className={`absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border bg-white shadow-sm transition ${
+          checked ? "left-[22px] border-[#1565C0]" : "left-0.5 border-[#94A3B8]"
         }`}
       />
     </button>
@@ -319,7 +324,7 @@ export default function SuperAdminSettingsRoute() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative h-11 truncate px-1 pb-3 text-[18px] font-semibold tracking-tight transition-colors ${
+              className={`relative h-11 cursor-pointer truncate px-1 pb-3 text-[18px] font-semibold tracking-tight transition-colors ${
                 activeTab === tab.id ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#475569]"
               }`}
             >
@@ -378,7 +383,7 @@ export default function SuperAdminSettingsRoute() {
                       "settings.primaryCurrency",
                     ])
                   }
-                  className="h-11 min-w-[132px] rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-6 text-[16px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+                  className={primaryButtonClass}
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>
@@ -405,7 +410,7 @@ export default function SuperAdminSettingsRoute() {
                     !isEnabled(values["settings.maintenanceMode"]),
                   )
                 }
-                className="mt-5 rounded-[8px] border border-[#1565C0] px-4 py-2 text-[14px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
+                className={`mt-5 ${secondaryButtonClass}`}
               >
                 {isEnabled(values["settings.maintenanceMode"])
                   ? "Disable maintenance mode"
@@ -504,7 +509,7 @@ export default function SuperAdminSettingsRoute() {
                   <button
                     type="submit"
                     disabled={savingPassword}
-                    className="h-11 rounded-[12px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
+                    className={secondaryButtonClass}
                   >
                     {savingPassword ? "Updating..." : "Update password"}
                   </button>
@@ -526,7 +531,7 @@ export default function SuperAdminSettingsRoute() {
                 onClick={() =>
                   toggleConfig("settings.security.twoFactor", !isEnabled(values["settings.security.twoFactor"]))
                 }
-                className="mt-5 rounded-[10px] border border-[#1565C0] px-5 py-2.5 text-[15px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
+                className={`mt-5 ${secondaryButtonClass}`}
               >
                 {isEnabled(values["settings.security.twoFactor"])
                   ? "Disable two factor authentication"
@@ -601,7 +606,7 @@ export default function SuperAdminSettingsRoute() {
                   type="button"
                   disabled={saving}
                   onClick={() => saveKeys(["settings.integration.webhookUrl"])}
-                  className="h-11 rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-7 text-[16px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+                  className={primaryButtonClass}
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>
