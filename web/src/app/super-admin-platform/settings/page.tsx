@@ -91,13 +91,13 @@ function Field({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="block truncate text-[18px] font-light text-[#0F172A]">{label}</span>
+      <span className="block truncate text-[16px] font-medium tracking-tight text-[#0F172A]">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
-        className="mt-3 h-[56px] w-full rounded-[14px] border border-[#A8B7CC] bg-transparent px-5 text-[16px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+        className="mt-2.5 h-[52px] w-full rounded-[12px] border border-[#A8B7CC] bg-transparent px-4 text-[15px] font-medium text-[#334155] transition-all outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0] focus:bg-white focus:ring-1 focus:ring-[#1565C0]/20"
       />
     </label>
   );
@@ -116,18 +116,25 @@ function SelectField({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="block truncate text-[18px] font-light text-[#0F172A]">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-3 h-[56px] w-full rounded-[14px] border border-[#A8B7CC] bg-transparent px-5 text-[16px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <span className="block truncate text-[16px] font-medium tracking-tight text-[#0F172A]">{label}</span>
+      <div className="relative mt-2.5">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-[52px] w-full appearance-none rounded-[12px] border border-[#A8B7CC] bg-transparent pr-10 pl-4 text-[15px] font-medium text-[#334155] transition-all outline-none focus:border-[#1565C0] focus:bg-white focus:ring-1 focus:ring-[#1565C0]/20"
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#64748B]">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
     </label>
   );
 }
@@ -146,14 +153,14 @@ function Toggle({
       type="button"
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-5 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#1565C0]/40 disabled:opacity-50 ${
         checked ? "bg-[#1565C0]" : "bg-[#CBD5E1]"
       }`}
       aria-pressed={checked}
     >
       <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
         }`}
       />
     </button>
@@ -162,7 +169,7 @@ function Toggle({
 
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[14px] border border-[#DDE5EF] bg-[#F8FAFC] px-7 py-6 ${className}`}>
+    <section className={`rounded-[14px] border border-[#DDE5EF] bg-[#F8FAFC] p-6 lg:p-7 ${className}`}>
       {children}
     </section>
   );
@@ -171,8 +178,8 @@ function Panel({ children, className = "" }: { children: ReactNode; className?: 
 function StatusPill({ active, label }: { active: boolean; label: string }) {
   return (
     <span
-      className={`rounded-full px-4 py-1 text-[14px] font-medium ${
-        active ? "bg-[#BFF4CD] text-[#0D8C24]" : "border border-[#EF4444] text-[#B91C1C]"
+      className={`rounded-full px-3.5 py-1 text-[13px] font-semibold tracking-wide uppercase ${
+        active ? "bg-[#BFF4CD] text-[#0D8C24]" : "border border-[#FECACA] bg-red-50 text-[#B91C1C]"
       }`}
     >
       {label}
@@ -301,24 +308,24 @@ export default function SuperAdminSettingsRoute() {
 
   return (
     <section className="min-w-0 pb-12">
-      <div className="mb-8">
-        <h1 className="text-[34px] font-semibold leading-tight text-[#334155]">Settings</h1>
+      <div className="mb-6">
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-[#334155]">Settings</h1>
       </div>
 
-      <div className="rounded-[8px] bg-[#F8FAFC] px-8 py-8 lg:px-12">
-        <div className="mb-9 flex min-w-0 flex-wrap items-center justify-center gap-x-9 gap-y-3">
+      <div className="rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-6 shadow-sm lg:p-10">
+        <div className="mb-8 flex min-w-0 flex-wrap items-center justify-start gap-x-8 gap-y-2 border-b border-[#E2E8F0] pb-px">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative h-10 truncate text-[22px] font-semibold ${
-                activeTab === tab.id ? "text-[#1565C0]" : "text-[#94A3B8]"
+              className={`relative h-11 truncate px-1 pb-3 text-[18px] font-semibold tracking-tight transition-colors ${
+                activeTab === tab.id ? "text-[#1565C0]" : "text-[#94A3B8] hover:text-[#475569]"
               }`}
             >
               {tab.label}
               {activeTab === tab.id ? (
-                <span className="absolute inset-x-0 -bottom-1 h-1.5 rounded-full bg-[#1565C0]" />
+                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#1565C0]" />
               ) : null}
             </button>
           ))}
@@ -331,10 +338,10 @@ export default function SuperAdminSettingsRoute() {
         ) : null}
 
         {!loading && activeTab === "general" ? (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <Panel>
-              <h2 className="text-[20px] font-semibold text-[#334155]">Platform information</h2>
-              <div className="mt-9 grid gap-x-5 gap-y-7 lg:grid-cols-2">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Platform information</h2>
+              <div className="mt-6 grid gap-x-6 gap-y-5 lg:grid-cols-2">
                 <Field
                   label="Platform Name"
                   value={values["settings.platformName"]}
@@ -359,7 +366,7 @@ export default function SuperAdminSettingsRoute() {
                   options={["NGN", "USD", "GBP", "EUR"]}
                 />
               </div>
-              <div className="mt-9 flex justify-end">
+              <div className="mt-7 flex justify-end">
                 <button
                   type="button"
                   disabled={saving}
@@ -371,7 +378,7 @@ export default function SuperAdminSettingsRoute() {
                       "settings.primaryCurrency",
                     ])
                   }
-                  className="h-12 w-[150px] rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[18px] font-medium text-white disabled:opacity-60"
+                  className="h-11 min-w-[132px] rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-6 text-[16px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>
@@ -379,13 +386,13 @@ export default function SuperAdminSettingsRoute() {
             </Panel>
             <Panel className="min-h-[250px]">
               <div className="flex items-start justify-between gap-4">
-                <h2 className="text-[20px] font-semibold text-[#334155]">Maintenance mode</h2>
+                <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Maintenance mode</h2>
                 <StatusPill
                   active={!isEnabled(values["settings.maintenanceMode"])}
                   label={isEnabled(values["settings.maintenanceMode"]) ? "Maintenance on" : "Platform is live"}
                 />
               </div>
-              <p className="mt-7 max-w-[780px] text-[18px] leading-7 text-[#0F172A]">
+              <p className="mt-6 max-w-[780px] text-[16px] leading-7 text-[#0F172A]">
                 Enable maintenance mode to take the platform offline for all users while updates are applied.
                 Admins can still access.
               </p>
@@ -398,7 +405,7 @@ export default function SuperAdminSettingsRoute() {
                     !isEnabled(values["settings.maintenanceMode"]),
                   )
                 }
-                className="mt-5 rounded-[8px] border border-[#1565C0] px-4 py-2 text-[15px] font-medium text-[#1565C0] disabled:opacity-60"
+                className="mt-5 rounded-[8px] border border-[#1565C0] px-4 py-2 text-[14px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
               >
                 {isEnabled(values["settings.maintenanceMode"])
                   ? "Disable maintenance mode"
@@ -409,10 +416,10 @@ export default function SuperAdminSettingsRoute() {
         ) : null}
 
         {!loading && activeTab === "platform" ? (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <Panel>
-              <h2 className="text-[20px] font-semibold text-[#334155]">Feature toggles</h2>
-              <div className="mt-7 space-y-7">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Feature toggles</h2>
+              <div className="mt-6 divide-y divide-[#E2E8F0]">
                 {[
                   ["settings.feature.professionalLiveTracking", "Professional live tracking"],
                   ["settings.feature.videoConsultations", "Video consultations"],
@@ -420,10 +427,10 @@ export default function SuperAdminSettingsRoute() {
                   ["settings.feature.patientSelfBooking", "Patient self-booking"],
                   ["settings.feature.autoFraudDetection", "Auto fraud detection"],
                 ].map(([key, label]) => (
-                  <div key={key} className="flex items-center justify-between gap-8">
+                  <div key={key} className="flex items-center justify-between gap-8 py-4 first:pt-0 last:pb-0">
                     <div className="min-w-0">
-                      <p className="truncate text-[18px] font-light text-[#334155]">{label}</p>
-                      <p className="truncate text-[15px] text-[#94A3B8]">{descriptions[key]}</p>
+                      <p className="truncate text-[16px] font-semibold text-[#334155]">{label}</p>
+                      <p className="mt-0.5 truncate text-[14px] text-[#94A3B8]">{descriptions[key]}</p>
                     </div>
                     <Toggle
                       checked={isEnabled(values[key])}
@@ -435,13 +442,13 @@ export default function SuperAdminSettingsRoute() {
               </div>
             </Panel>
             <Panel className="min-h-[220px]">
-              <h2 className="text-[20px] font-semibold text-[#334155]">Verification requirements</h2>
-              <div className="mt-8 flex items-center justify-between gap-8">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Verification requirements</h2>
+              <div className="mt-6 flex items-center justify-between gap-8">
                 <div className="min-w-0">
-                  <p className="truncate text-[18px] font-light text-[#334155]">
+                  <p className="truncate text-[16px] font-semibold text-[#334155]">
                     Require medical licence for professionals
                   </p>
-                  <p className="truncate text-[15px] text-[#94A3B8]">
+                  <p className="mt-0.5 truncate text-[14px] text-[#94A3B8]">
                     Get notified when a professional starts their journey to the facility
                   </p>
                 </div>
@@ -458,11 +465,11 @@ export default function SuperAdminSettingsRoute() {
         ) : null}
 
         {!loading && activeTab === "security" ? (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <Panel>
               <form onSubmit={handlePasswordSubmit}>
-                <h2 className="text-[20px] font-semibold text-[#334155]">Change password</h2>
-                <div className="mt-8 grid gap-x-5 gap-y-6">
+                <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Change password</h2>
+                <div className="mt-6 grid gap-x-6 gap-y-5">
                   <Field
                     label="Current password"
                     type="password"
@@ -493,11 +500,11 @@ export default function SuperAdminSettingsRoute() {
                     />
                   </div>
                 </div>
-                <div className="mt-8 flex justify-end">
+                <div className="mt-7 flex justify-end">
                   <button
                     type="submit"
                     disabled={savingPassword}
-                    className="h-12 rounded-[14px] border border-[#1565C0] px-6 text-[17px] font-medium text-[#1565C0] disabled:opacity-60"
+                    className="h-11 rounded-[12px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
                   >
                     {savingPassword ? "Updating..." : "Update password"}
                   </button>
@@ -506,10 +513,10 @@ export default function SuperAdminSettingsRoute() {
             </Panel>
             <Panel>
               <div className="flex items-start justify-between gap-4">
-                <h2 className="text-[20px] font-semibold text-[#334155]">Two-factor authentication</h2>
+                <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Two-factor authentication</h2>
                 <StatusPill active={false} label={isEnabled(values["settings.security.twoFactor"]) ? "On" : "Off"} />
               </div>
-              <p className="mt-7 max-w-[820px] text-[18px] leading-7 text-[#0F172A]">
+              <p className="mt-6 max-w-[820px] text-[16px] leading-7 text-[#0F172A]">
                 Add an extra layer of security to your account. You&apos;ll be asked for a verification code each
                 time you log in.
               </p>
@@ -519,7 +526,7 @@ export default function SuperAdminSettingsRoute() {
                 onClick={() =>
                   toggleConfig("settings.security.twoFactor", !isEnabled(values["settings.security.twoFactor"]))
                 }
-                className="mt-6 rounded-[10px] border border-[#1565C0] px-5 py-3 text-[16px] font-medium text-[#1565C0] disabled:opacity-60"
+                className="mt-5 rounded-[10px] border border-[#1565C0] px-5 py-2.5 text-[15px] font-semibold text-[#1565C0] transition-colors hover:bg-[#E3F2FD] disabled:opacity-60"
               >
                 {isEnabled(values["settings.security.twoFactor"])
                   ? "Disable two factor authentication"
@@ -527,17 +534,17 @@ export default function SuperAdminSettingsRoute() {
               </button>
             </Panel>
             <Panel>
-              <h2 className="text-[20px] font-semibold text-[#334155]">Platform security settings</h2>
-              <div className="mt-8 space-y-7">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Platform security settings</h2>
+              <div className="mt-6 divide-y divide-[#E2E8F0]">
                 {[
                   ["settings.security.force2fa", "Force 2FA for all admins"],
                   ["settings.security.sessionTimeout", "Session timeout (30 min inactivity)"],
                   ["settings.security.ipAllowlist", "IP allowlist for admin access"],
                 ].map(([key, label]) => (
-                  <div key={key} className="flex items-center justify-between gap-8">
+                  <div key={key} className="flex items-center justify-between gap-8 py-4 first:pt-0 last:pb-0">
                     <div className="min-w-0">
-                      <p className="truncate text-[17px] font-light text-[#334155]">{label}</p>
-                      <p className="truncate text-[14px] text-[#94A3B8]">{descriptions[key]}</p>
+                      <p className="truncate text-[16px] font-semibold text-[#334155]">{label}</p>
+                      <p className="mt-0.5 truncate text-[14px] text-[#94A3B8]">{descriptions[key]}</p>
                     </div>
                     <Toggle
                       checked={isEnabled(values[key])}
@@ -552,20 +559,20 @@ export default function SuperAdminSettingsRoute() {
         ) : null}
 
         {!loading && activeTab === "integration" ? (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <Panel>
-              <h2 className="text-[20px] font-semibold text-[#334155]">Connected Integrations</h2>
-              <div className="mt-7 space-y-7">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Connected Integrations</h2>
+              <div className="mt-6 divide-y divide-[#E2E8F0]">
                 {[
                   ["settings.integration.paystack", "Paystack", "Payment processing"],
                   ["settings.integration.stripe", "Stripe", "International card payments"],
                   ["settings.integration.sendgrid", "SendGrid", "Transactional email delivery"],
                   ["settings.integration.daily", "Daily", "Video consultation rooms"],
                 ].map(([key, label, helper]) => (
-                  <div key={key} className="flex items-center justify-between gap-8">
+                  <div key={key} className="flex items-center justify-between gap-8 py-4 first:pt-0 last:pb-0">
                     <div className="min-w-0">
-                      <p className="truncate text-[18px] font-light text-[#334155]">{label}</p>
-                      <p className="truncate text-[15px] text-[#94A3B8]">{helper}</p>
+                      <p className="truncate text-[16px] font-semibold text-[#334155]">{label}</p>
+                      <p className="mt-0.5 truncate text-[14px] text-[#94A3B8]">{helper}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
                       <StatusPill active={isEnabled(values[key])} label={isEnabled(values[key]) ? "Connected" : "Setup needed"} />
@@ -580,8 +587,8 @@ export default function SuperAdminSettingsRoute() {
               </div>
             </Panel>
             <Panel>
-              <h2 className="text-[20px] font-semibold text-[#334155]">Webhook settings</h2>
-              <div className="mt-8">
+              <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">Webhook settings</h2>
+              <div className="mt-6">
                 <Field
                   label="Primary webhook URL"
                   placeholder="https://example.com/webhooks/swifthelp"
@@ -589,12 +596,12 @@ export default function SuperAdminSettingsRoute() {
                   onChange={(value) => updateValue("settings.integration.webhookUrl", value)}
                 />
               </div>
-              <div className="mt-8 flex justify-end">
+              <div className="mt-7 flex justify-end">
                 <button
                   type="button"
                   disabled={saving}
                   onClick={() => saveKeys(["settings.integration.webhookUrl"])}
-                  className="h-12 rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-8 text-[17px] font-medium text-white disabled:opacity-60"
+                  className="h-11 rounded-[12px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-7 text-[16px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

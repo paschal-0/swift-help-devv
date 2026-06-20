@@ -3,6 +3,28 @@ import { NextResponse, type NextRequest } from "next/server";
 const COUNTRY_COOKIE = "swifthelp_country";
 const COUNTRY_SOURCE_COOKIE = "swifthelp_country_source";
 const DEFAULT_COUNTRY = "ng";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "http://localhost:5000";
+const MAINTENANCE_CACHE_TTL_MS = 10_000;
+const MAINTENANCE_BLOCKED_PREFIXES = [
+  "/patient-platform",
+  "/professional-platform",
+  "/organisation-platform",
+  "/organization-platform",
+  "/patient/onboarding",
+  "/professional/onboarding",
+  "/organisation/onboarding",
+  "/organization/onboarding",
+  "/communication",
+];
+
+let maintenanceCache:
+  | {
+      enabled: boolean;
+      expiresAt: number;
+    }
+  | undefined;
 
 const SUPPORTED_COUNTRY_CODES = new Set(
   [
@@ -268,13 +290,34 @@ const GEO_HEADER_NAMES = [
   "x-appengine-country",
 ];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const countryFromPath = getCountryFromPath(pathname);
 
   if (countryFromPath) {
+    const strippedPath = stripCountryFromPath(pathname);
+
+    if (
+      shouldBlockForMaintenance(strippedPath) &&
+      (await isMaintenanceModeEnabled())
+    ) {
+      const maintenanceUrl = request.nextUrl.clone();
+      maintenanceUrl.pathname = "/maintenance";
+      maintenanceUrl.search = "";
+
+      const response = NextResponse.rewrite(maintenanceUrl);
+      response.cookies.set(COUNTRY_COOKIE, countryFromPath, {
+        maxAge: 60 * 60 * 24 * 180,
+        path: "/",
+        sameSite: "lax",
+      });
+      response.headers.set("x-swifthelp-country", countryFromPath);
+      response.headers.set("x-swifthelp-maintenance", "1");
+      return response;
+    }
+
     const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = stripCountryFromPath(pathname);
+    rewriteUrl.pathname = strippedPath;
     const storedCountry = normalizeCountryCode(
       request.cookies.get(COUNTRY_COOKIE)?.value,
     );
@@ -390,4 +433,49 @@ function normalizeCountryCode(value?: string | null) {
   const normalizedCountry = country === "gb" ? "uk" : country;
 
   return SUPPORTED_COUNTRY_CODES.has(normalizedCountry) ? normalizedCountry : null;
+}
+
+function shouldBlockForMaintenance(pathname: string) {
+  if (pathname === "/maintenance" || pathname.startsWith("/super-admin-platform")) {
+    return false;
+  }
+
+  return MAINTENANCE_BLOCKED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+async function isMaintenanceModeEnabled() {
+  const now = Date.now();
+
+  if (maintenanceCache && now < maintenanceCache.expiresAt) {
+    return maintenanceCache.enabled;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/maintenance-status`, {
+      cache: "no-store",
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const payload = (await response.json()) as {
+      data?: { maintenanceMode?: boolean };
+      maintenanceMode?: boolean;
+    };
+    const enabled = Boolean(payload.data?.maintenanceMode ?? payload.maintenanceMode);
+    maintenanceCache = {
+      enabled,
+      expiresAt: now + MAINTENANCE_CACHE_TTL_MS,
+    };
+
+    return enabled;
+  } catch {
+    return false;
+  }
 }
