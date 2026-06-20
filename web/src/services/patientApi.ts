@@ -728,6 +728,53 @@ export function getPatientSubscription() {
   );
 }
 
+export type PatientBilling = {
+  subscription: { autoRenew: boolean; status: string };
+  currentPlan: {
+    id: string;
+    name: string;
+    tier: string;
+    priceLabel: string;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    currency: string;
+    features: string[];
+  } | null;
+  availablePlans: Array<{
+    id: string;
+    name: string;
+    tier: string;
+    priceLabel: string;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    currency: string;
+    features: string[];
+    isPopular: boolean;
+  }>;
+  paymentMethods: Array<{
+    id: string;
+    brand: string;
+    last4: string;
+    isDefault: boolean;
+  }>;
+  billingHistory: Array<{
+    id: string;
+    transactionId: string;
+    date: string;
+    amount: number;
+    currency: string;
+    plan: string;
+    status: string;
+    paymentMethod: string | null;
+  }>;
+};
+
+export function getPatientBilling() {
+  return apiRequest<PatientBilling>("/profile/billing", {
+    method: "GET",
+  });
+}
+
 export function updatePatientSubscriptionAutoRenew(enabled: boolean) {
   return apiRequest<Record<string, unknown>>(
     "/profile/subscriptions/auto-renew",

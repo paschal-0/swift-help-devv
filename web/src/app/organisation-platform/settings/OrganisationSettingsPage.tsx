@@ -20,6 +20,12 @@ const premiumEase = [0.32, 0.72, 0, 1] as const;
 const microInteractionClass =
   "cursor-pointer transform-gpu transition duration-200 ease-out hover:-translate-y-0.5 active:scale-[0.97]";
 
+function formatLabel(value: string) {
+  return value
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 type SettingsTab = (typeof settingTabs)[number];
 type OperatingDay = (typeof operatingDays)[number];
 
@@ -65,7 +71,7 @@ type BillingHistoryItem = {
   date: string;
   amount: string;
   plan: string;
-  status: "Completed";
+  status: string;
 };
 
 const defaultNotificationSections: NotificationSection[] = [
@@ -182,37 +188,8 @@ const planCards: PlanCard[] = [
   },
 ];
 
-const initialPaymentMethods: PaymentMethod[] = [
-  { id: "pm-primary", label: "Mastercard **** **** 3456", highlighted: true },
-  { id: "pm-secondary", label: "Mastercard **** **** 3456" },
-];
-
-const initialBillingHistory: BillingHistoryItem[] = [
-  {
-    id: "bill-1",
-    transactionId: "de22422dd",
-    date: "Dec 21, 2025",
-    amount: "$2000",
-    plan: "Starter",
-    status: "Completed",
-  },
-  {
-    id: "bill-2",
-    transactionId: "de22422dd",
-    date: "Dec 21, 2025",
-    amount: "$2000",
-    plan: "Starter",
-    status: "Completed",
-  },
-  {
-    id: "bill-3",
-    transactionId: "de22422dd",
-    date: "Dec 21, 2025",
-    amount: "$2000",
-    plan: "Starter",
-    status: "Completed",
-  },
-];
+const initialPaymentMethods: PaymentMethod[] = [];
+const initialBillingHistory: BillingHistoryItem[] = [];
 
 function ChevronDownIcon() {
   return (
@@ -545,18 +522,25 @@ export function OrganisationSettingsPage() {
         setOperatingStartTime(String(operatingPreference?.startTime ?? "8:00 AM"));
         setOperatingEndTime(String(operatingPreference?.endTime ?? "8:00 AM"));
         setTwoFactorEnabled(Boolean(security.twoFactorEnabled));
+        setPaymentMethods(
+          settings.billing.paymentMethods.map((method, index) => ({
+            id: method.id,
+            label: `${method.brand}${method.last4 ? ` **** ${method.last4}` : ""}`,
+            highlighted: method.isDefault || index === 0,
+          })),
+        );
         setBillingHistory(
           settings.billing.billingHistory.map((item) => ({
             id: item.id,
-            transactionId: item.paymentReference ?? item.id,
+            transactionId: item.paymentReference ?? item.reference ?? item.id,
             date: new Intl.DateTimeFormat("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             }).format(new Date(item.createdAt)),
             amount: formatOrganizationMoney(item.amountCents, item.currency),
-            plan: item.description ?? "Organization",
-            status: "Completed" as const,
+            plan: item.description ?? formatLabel(item.type),
+            status: formatLabel(item.status),
           })),
         );
       })
@@ -1053,7 +1037,7 @@ export function OrganisationSettingsPage() {
         </h2>
 
         <div className="mt-5 space-y-3">
-          {paymentMethods.map((method) => (
+          {paymentMethods.length ? paymentMethods.map((method) => (
             <motion.div
               key={method.id}
               whileHover={{ x: 3 }}
@@ -1079,7 +1063,11 @@ export function OrganisationSettingsPage() {
                 <CancelIcon />
               </motion.button>
             </motion.div>
-          ))}
+          )) : (
+            <div className="rounded-[12px] border border-dashed border-[#C9D7E6] bg-[#F8FAFC] px-4 py-5 text-[15px] text-[#94A3B8]">
+              No organization payment method has been linked yet.
+            </div>
+          )}
         </div>
       </motion.article>
 
@@ -1117,7 +1105,7 @@ export function OrganisationSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {billingHistory.map((item) => (
+              {billingHistory.length ? billingHistory.map((item) => (
                 <motion.tr
                   key={item.id}
                   whileHover={{ backgroundColor: "#F8FAFC" }}
@@ -1142,7 +1130,13 @@ export function OrganisationSettingsPage() {
                     </motion.button>
                   </td>
                 </motion.tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">
+                    No organization billing history is available yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

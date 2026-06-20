@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   getProfessionalProfile,
   getProfessionalSettings,
+  formatApiMoney,
   updateProfessionalAccountSettings,
   updateProfessionalAvailability,
   updateProfessionalNotificationSettings,
@@ -87,6 +88,16 @@ function formatSettingLabel(key: string) {
     .replace(/([A-Z])/g, " $1")
     .replace(/[_-]/g, " ")
     .replace(/^./, (value) => value.toUpperCase());
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 function SelectField({
@@ -776,8 +787,85 @@ export function ProfessionalSettingsPage() {
         {!loading && activeTab === "billing" ? (
           <div className="space-y-5">
             <SettingsCard title="Billing and plan">
-              <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
-                No professional billing plan was returned for this account.
+              <div className="grid gap-4 lg:grid-cols-3">
+                {[
+                  {
+                    label: "Total earned",
+                    value: formatApiMoney(settings?.billing?.summary.totalEarned ?? 0, settings?.billing?.summary.currency ?? "NGN"),
+                  },
+                  {
+                    label: "Available balance",
+                    value: formatApiMoney(settings?.billing?.summary.availableBalance ?? 0, settings?.billing?.summary.currency ?? "NGN"),
+                  },
+                  {
+                    label: "Pending earnings",
+                    value: formatApiMoney(settings?.billing?.summary.pendingEarnings ?? 0, settings?.billing?.summary.currency ?? "NGN"),
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-[14px] border border-[#DDE6F0] bg-white p-5">
+                    <p className="text-[14px] font-medium text-[#94A3B8]">{item.label}</p>
+                    <p className="mt-2 truncate text-[24px] font-semibold text-[#334155]">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Payout methods">
+              <div className="space-y-3">
+                {settings?.billing?.paymentMethods.length ? (
+                  settings.billing.paymentMethods.map((method) => (
+                    <div key={method.id} className="flex min-h-[64px] items-center justify-between gap-4 rounded-[14px] border border-[#DDE6F0] bg-white px-5 py-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-[16px] font-semibold text-[#334155]">{method.brand}</p>
+                        <p className="truncate text-[13px] text-[#94A3B8]">
+                          {method.accountName} {method.last4 ? `- **** ${method.last4}` : ""}
+                        </p>
+                      </div>
+                      {method.isDefault ? (
+                        <span className="rounded-full bg-[#D9F8DE] px-3 py-1 text-[12px] font-semibold text-[#0D8C24]">Default</span>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
+                    No payout method has been added yet.
+                  </div>
+                )}
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Recent billing activity">
+              <div className="overflow-x-auto rounded-[14px] border border-[#DDE6F0]">
+                <table className="min-w-[760px] w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[#DDE6F0] bg-white text-[15px] font-semibold text-[#64748B]">
+                      <th className="px-5 py-4">Transaction ID</th>
+                      <th className="px-5 py-4">Date</th>
+                      <th className="px-5 py-4">Amount</th>
+                      <th className="px-5 py-4">Source</th>
+                      <th className="px-5 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settings?.billing?.billingHistory.length ? (
+                      settings.billing.billingHistory.map((item) => (
+                        <tr key={`${item.type}-${item.id}`} className="border-b border-[#DDE6F0] last:border-b-0">
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.transactionId.slice(0, 8)}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{formatDate(item.date)}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{formatApiMoney(item.amountCents, item.currency)}</td>
+                          <td className="px-5 py-4 text-[#94A3B8]">{item.plan}</td>
+                          <td className="px-5 py-4 font-semibold text-[#0E9F3E]">{formatSettingLabel(item.status)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-8 text-center text-[#94A3B8]">
+                          No professional billing activity yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </SettingsCard>
           </div>

@@ -175,7 +175,10 @@ export type OrganizationBilling = {
   currency: string;
   status: string;
   paymentReference: string | null;
+  reference?: string | null;
   description: string | null;
+  invoiceUrl?: string | null;
+  invoicePdf?: string | null;
   createdAt: string;
 };
 
@@ -313,7 +316,12 @@ export type OrganizationSettings = {
   securityPreferences: Record<string, unknown>;
   billing: {
     currentPlan: Record<string, unknown>;
-    paymentMethods: Array<Record<string, unknown>>;
+    paymentMethods: Array<{
+      id: string;
+      brand: string;
+      last4: string;
+      isDefault: boolean;
+    }>;
     billingHistory: OrganizationBilling[];
     credit?: OrganizationBillingCredit;
   };

@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
 import type { PatientProfilePayload } from "@/services/authApi";
 import {
+  getPatientBilling,
   getPatientProfile,
   getPatientSubscription,
   updatePatientAccount,
   updatePatientNotificationPreferences,
   updatePatientSecurityPreferences,
   updatePatientSubscriptionAutoRenew,
+  type PatientBilling,
 } from "@/services/patientApi";
 
 type SettingsTab = "general" | "notifications" | "security" | "billing";
@@ -56,6 +58,8 @@ type BillingHistoryItem = {
   plan: string;
   status: string;
 };
+
+type BillingPlan = NonNullable<PatientBilling["currentPlan"]>;
 
 const tabs: Array<{ id: SettingsTab; label: string }> = [
   { id: "general", label: "General" },
@@ -513,6 +517,8 @@ export function PatientSettingsPage() {
   const [security, setSecurity] = useState<Record<SecurityKey, boolean>>(defaultSecurity);
   const [subscriptionStatus, setSubscriptionStatus] = useState("inactive");
   const [autoRenew, setAutoRenew] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<BillingPlan | null>(null);
+  const [availablePlans, setAvailablePlans] = useState<PatientBilling["availablePlans"]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
   const [sessionLabel, setSessionLabel] = useState("Current browser session");
@@ -524,6 +530,10 @@ export function PatientSettingsPage() {
         getPatientProfile(),
         getPatientSubscription(),
       ]);
+      const billingResponse = await getPatientBilling().then(
+        (value) => ({ status: "fulfilled" as const, value }),
+        (reason) => ({ status: "rejected" as const, reason }),
+      );
 
       if (profileResponse.status === "fulfilled") {
         const { account, profile } = profileResponse.value;
@@ -561,8 +571,10 @@ export function PatientSettingsPage() {
           medicalHistory: asBoolean(securityPreferences.medicalHistory, defaultSecurity.medicalHistory),
           aiRecommendations: asBoolean(securityPreferences.aiRecommendations, defaultSecurity.aiRecommendations),
         });
-        setPaymentMethods(parsePaymentMethods(billing.paymentMethods));
-        setBillingHistory(parseBillingHistory(billing.billingHistory));
+        if (billingResponse.status !== "fulfilled") {
+          setPaymentMethods(parsePaymentMethods(billing.paymentMethods));
+          setBillingHistory(parseBillingHistory(billing.billingHistory));
+        }
       } else {
         toast.error(getApiErrorMessage(profileResponse.reason));
       }
@@ -570,6 +582,23 @@ export function PatientSettingsPage() {
       if (subscriptionResponse.status === "fulfilled") {
         setAutoRenew(subscriptionResponse.value.autoRenew);
         setSubscriptionStatus(subscriptionResponse.value.status);
+      }
+
+      if (billingResponse.status === "fulfilled") {
+        setAutoRenew(billingResponse.value.subscription.autoRenew);
+        setSubscriptionStatus(billingResponse.value.subscription.status);
+        setCurrentPlan(billingResponse.value.currentPlan);
+        setAvailablePlans(billingResponse.value.availablePlans);
+        setPaymentMethods(billingResponse.value.paymentMethods);
+        setBillingHistory(
+          billingResponse.value.billingHistory.map((item) => ({
+            id: item.id,
+            date: item.date,
+            amount: formatMoneyValue(item.amount, item.currency),
+            plan: item.plan,
+            status: item.status,
+          })),
+        );
       }
     } finally {
       setLoading(false);
@@ -597,11 +626,19 @@ export function PatientSettingsPage() {
   }, []);
 
   const planLabel = useMemo(() => {
+    if (currentPlan?.name) {
+      return currentPlan.name;
+    }
     if (!subscriptionStatus || subscriptionStatus === "inactive") {
       return "No active plan";
     }
     return subscriptionStatus.charAt(0).toUpperCase() + subscriptionStatus.slice(1);
-  }, [subscriptionStatus]);
+  }, [currentPlan?.name, subscriptionStatus]);
+
+  const highlightedPlan = useMemo(
+    () => availablePlans.find((plan) => plan.id !== currentPlan?.id) ?? availablePlans[0] ?? null,
+    [availablePlans, currentPlan?.id],
+  );
 
   const updateGeneralField = (field: keyof GeneralForm, value: string) => {
     setGeneralForm((current) => ({ ...current, [field]: value }));
@@ -994,19 +1031,15 @@ export function PatientSettingsPage() {
                       </p>
                     </div>
                     <p className="text-[28px] font-semibold text-[#334155] sm:text-[34px]">
-                      $10<span className="text-[#94A3B8]">/Month</span>
+                      {currentPlan?.priceLabel ?? "Not configured"}
                     </p>
                   </div>
                   <div className="mt-8 space-y-3 text-[16px] font-medium text-[#334155] sm:text-[18px]">
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Book consultations
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Access medical records
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Basic reminders
-                    </p>
+                    {(currentPlan?.features?.length ? currentPlan.features : ["Book consultations", "Access medical records", "Basic reminders"]).slice(0, 3).map((feature) => (
+                      <p key={feature} className="flex items-center gap-2">
+                        <CheckBadgeIcon /> {feature}
+                      </p>
+                    ))}
                   </div>
                   <button
                     type="button"
@@ -1020,23 +1053,19 @@ export function PatientSettingsPage() {
                 <div className="rounded-[16px] border-2 border-[#1565C0] bg-[#0F172A] p-5 text-white sm:p-7">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="text-[24px] font-semibold sm:text-[28px]">Pro</h3>
-                      <p className="mt-2 text-[18px] font-medium text-[#CBD5E1]">365 Days</p>
+                      <h3 className="text-[24px] font-semibold sm:text-[28px]">{highlightedPlan?.name ?? "Pro"}</h3>
+                      <p className="mt-2 text-[18px] font-medium text-[#CBD5E1]">Available plan</p>
                     </div>
                     <p className="text-[28px] font-semibold sm:text-[34px]">
-                      $10<span className="text-[#CBD5E1]">/Month</span>
+                      {highlightedPlan?.priceLabel ?? "Not configured"}
                     </p>
                   </div>
                   <div className="mt-8 space-y-3 text-[16px] font-medium text-[#E2E8F0] sm:text-[18px]">
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Priority consultations
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Expanded health reports
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <CheckBadgeIcon /> Advanced reminders
-                    </p>
+                    {(highlightedPlan?.features?.length ? highlightedPlan.features : ["Priority consultations", "Expanded health reports", "Advanced reminders"]).slice(0, 3).map((feature) => (
+                      <p key={feature} className="flex items-center gap-2">
+                        <CheckBadgeIcon /> {feature}
+                      </p>
+                    ))}
                   </div>
                   <button
                     type="button"

@@ -444,6 +444,32 @@ export type ProfessionalSettings = {
   account: AuthUser | null;
   notificationPreferences: Record<string, boolean>;
   securityPreferences: Record<string, boolean>;
+  billing?: {
+    currentPlan: {
+      id: string;
+      name: string;
+      priceLabel: string;
+      status: string;
+    };
+    summary: EarningsSummary;
+    paymentMethods: Array<{
+      id: string;
+      brand: string;
+      last4: string;
+      accountName: string;
+      isDefault: boolean;
+    }>;
+    billingHistory: Array<{
+      id: string;
+      transactionId: string;
+      date: string;
+      amountCents: number;
+      currency: string;
+      plan: string;
+      status: string;
+      type: string;
+    }>;
+  };
 };
 
 export type ProfessionalVerificationStatus = {
