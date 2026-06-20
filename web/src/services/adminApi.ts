@@ -405,6 +405,57 @@ export type AdminBookingsResponse = {
   };
 };
 
+export type AdminReviewSentiment = "positive" | "neutral" | "critical";
+
+export type AdminReviewParty = {
+  id: string | null;
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+};
+
+export type AdminReviewProfessional = AdminReviewParty & {
+  specialization: string;
+};
+
+export type AdminReviewListItem = {
+  id: string;
+  professional: AdminReviewProfessional;
+  patient: AdminReviewParty;
+  consultationId: string | null;
+  rating: number;
+  sentiment: AdminReviewSentiment;
+  comment: string | null;
+  date: string;
+  createdAt: string;
+};
+
+export type AdminReviewDetail = AdminReviewListItem & {
+  professionalProfile: {
+    verificationStatus: "pending" | "approved" | "rejected";
+    consultationType: string;
+    primaryPracticeLocation: string | null;
+    licenseNumber: string | null;
+  };
+};
+
+export type AdminReviewsResponse = {
+  summary: {
+    totalReviews: number;
+    averageRating: number;
+    criticalReviews: number;
+    fiveStarReviews: number;
+    uniqueProfessionals: number;
+  };
+  data: AdminReviewListItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
 export type AdminShiftStatus =
   | "draft"
   | "awaiting_funding"
@@ -1036,6 +1087,32 @@ export async function getAdminBooking(bookingId: string) {
   });
 }
 
+export async function listAdminReviews(params: {
+  search?: string;
+  rating?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.rating && params.rating !== "all") query.set("rating", params.rating);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminReviewsResponse>(`/admin/reviews${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminReview(reviewId: string) {
+  return apiRequest<AdminReviewDetail>(`/admin/reviews/${reviewId}`, {
+    method: "GET",
+  });
+}
+
 export async function listAdminShifts(params: {
   search?: string;
   status?: string;
@@ -1241,6 +1318,16 @@ export async function flagAdminBooking(
   });
 }
 
+export async function flagAdminReview(
+  reviewId: string,
+  payload: { reason?: string } = {},
+) {
+  return apiRequest<MessageResponse>(`/admin/reviews/${reviewId}/flag`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminUserStatus(
   userId: string,
   payload: { isActive: boolean; reason?: string },
@@ -1287,6 +1374,12 @@ export async function deleteAdminOrganization(organizationId: string) {
 
 export async function removeAdminBooking(bookingId: string) {
   return apiRequest<MessageResponse>(`/admin/bookings/${bookingId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function removeAdminReview(reviewId: string) {
+  return apiRequest<MessageResponse>(`/admin/reviews/${reviewId}`, {
     method: "DELETE",
   });
 }
