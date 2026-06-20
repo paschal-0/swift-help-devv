@@ -846,16 +846,16 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
         <span className="shrink-0 text-[14px] font-semibold text-[#1565C0]">View all</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[980px] w-full table-fixed border-collapse">
+        <table className="w-full min-w-[980px] table-fixed border-collapse">
           <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
             <tr>
-              <th className="w-[20%] px-7 py-3 font-medium">Professional</th>
-              <th className="w-[18%] px-4 py-3 font-medium">Speciality</th>
-              <th className="w-[14%] px-4 py-3 font-medium">Consultations</th>
-              <th className="w-[12%] px-4 py-3 font-medium">Shifts</th>
-              <th className="w-[14%] px-4 py-3 font-medium">Average rating</th>
-              <th className="w-[14%] px-4 py-3 font-medium">Revenue</th>
-              <th className="w-[8%] px-4 py-3 font-medium">Status</th>
+              <th className="w-[22%] px-6 py-4 font-medium">Professional</th>
+              <th className="w-[18%] px-4 py-4 font-medium">Speciality</th>
+              <th className="w-[14%] px-4 py-4 font-medium">Consultations</th>
+              <th className="w-[12%] px-4 py-4 font-medium">Shifts</th>
+              <th className="w-[14%] px-4 py-4 font-medium">Average rating</th>
+              <th className="w-[12%] px-4 py-4 font-medium">Revenue</th>
+              <th className="w-[8%] py-4 pl-4 pr-6 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
@@ -865,14 +865,14 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
               </tr>
             ) : null}
             {rows.map((row) => (
-              <tr key={row.id} className="h-[58px]">
-                <td className="px-7 py-3"><ProfessionalCell row={row} /></td>
-                <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.specialty}</td>
-                <td className="truncate px-4 py-3">{row.consultations}</td>
-                <td className="truncate px-4 py-3">{row.shifts}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#334155]">{row.averageRating || 0} ★</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#0D8C24]">{formatCurrency(row.revenue, row.currency)}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.status}</td>
+              <tr key={row.id} className="h-[64px] transition-colors hover:bg-slate-50/50">
+                <td className="max-w-0 truncate px-6 py-3 font-medium"><ProfessionalCell row={row} /></td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#1565C0]">{row.specialty}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.consultations}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.shifts}</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#334155]">{row.averageRating || 0} ★</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#0D8C24]">{formatCurrency(row.revenue, row.currency)}</td>
+                <td className="max-w-0 truncate py-3 pl-4 pr-6 font-semibold text-[#1565C0]">{row.status}</td>
               </tr>
             ))}
           </tbody>
@@ -890,16 +890,16 @@ function TransactionsTable({ rows }: { rows: AdminReportsAnalytics["financial"][
         <span className="shrink-0 text-[14px] font-semibold text-[#1565C0]">View all</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[940px] w-full table-fixed border-collapse">
+        <table className="w-full min-w-[940px] table-fixed border-collapse">
           <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
             <tr>
-              <th className="w-[15%] px-7 py-3 font-medium">ID</th>
-              <th className="w-[18%] px-4 py-3 font-medium">From</th>
-              <th className="w-[16%] px-4 py-3 font-medium">Type</th>
-              <th className="w-[13%] px-4 py-3 font-medium">Amount</th>
-              <th className="w-[16%] px-4 py-3 font-medium">Date</th>
-              <th className="w-[13%] px-4 py-3 font-medium">Method</th>
-              <th className="w-[9%] px-4 py-3 font-medium">Status</th>
+              <th className="w-[16%] px-6 py-4 font-medium">ID</th>
+              <th className="w-[18%] px-4 py-4 font-medium">From</th>
+              <th className="w-[16%] px-4 py-4 font-medium">Type</th>
+              <th className="w-[13%] px-4 py-4 font-medium">Amount</th>
+              <th className="w-[16%] px-4 py-4 font-medium">Date</th>
+              <th className="w-[13%] px-4 py-4 font-medium">Method</th>
+              <th className="w-[9%] py-4 pl-4 pr-6 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
@@ -909,14 +909,14 @@ function TransactionsTable({ rows }: { rows: AdminReportsAnalytics["financial"][
               </tr>
             ) : null}
             {rows.map((row) => (
-              <tr key={row.id} className="h-[58px]">
-                <td className="truncate px-7 py-3">{row.id}</td>
-                <td className="truncate px-4 py-3 text-[#334155]">{row.from}</td>
-                <td className="truncate px-4 py-3">{row.type}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#0D8C24]">{formatCurrency(row.amount, row.currency)}</td>
-                <td className="truncate px-4 py-3">{formatDate(row.date)}</td>
-                <td className="truncate px-4 py-3">{row.method}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.status}</td>
+              <tr key={row.id} className="h-[64px] transition-colors hover:bg-slate-50/50">
+                <td className="max-w-0 truncate px-6 py-3 font-mono text-xs">{row.id}</td>
+                <td className="max-w-0 truncate px-4 py-3 text-[#334155]">{row.from}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.type}</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#0D8C24]">{formatCurrency(row.amount, row.currency)}</td>
+                <td className="max-w-0 truncate px-4 py-3">{formatDate(row.date)}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.method}</td>
+                <td className="max-w-0 truncate py-3 pl-4 pr-6 font-semibold text-[#1565C0]">{row.status}</td>
               </tr>
             ))}
           </tbody>
@@ -934,16 +934,16 @@ function AppointmentsTable({ rows }: { rows: AdminReportsAnalytics["operational"
         <span className="shrink-0 text-[14px] font-semibold text-[#1565C0]">View all</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[940px] w-full table-fixed border-collapse">
+        <table className="w-full min-w-[940px] table-fixed border-collapse">
           <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
             <tr>
-              <th className="w-[15%] px-7 py-3 font-medium">ID</th>
-              <th className="w-[17%] px-4 py-3 font-medium">Patient</th>
-              <th className="w-[18%] px-4 py-3 font-medium">Professional</th>
-              <th className="w-[13%] px-4 py-3 font-medium">Type</th>
-              <th className="w-[17%] px-4 py-3 font-medium">Date & time</th>
-              <th className="w-[10%] px-4 py-3 font-medium">Duration</th>
-              <th className="w-[10%] px-4 py-3 font-medium">Status</th>
+              <th className="w-[15%] px-6 py-4 font-medium">ID</th>
+              <th className="w-[18%] px-4 py-4 font-medium">Patient</th>
+              <th className="w-[18%] px-4 py-4 font-medium">Professional</th>
+              <th className="w-[12%] px-4 py-4 font-medium">Type</th>
+              <th className="w-[17%] px-4 py-4 font-medium">Date & time</th>
+              <th className="w-[10%] px-4 py-4 font-medium">Duration</th>
+              <th className="w-[10%] py-4 pl-4 pr-6 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
@@ -953,14 +953,14 @@ function AppointmentsTable({ rows }: { rows: AdminReportsAnalytics["operational"
               </tr>
             ) : null}
             {rows.map((row) => (
-              <tr key={row.id} className="h-[58px]">
-                <td className="truncate px-7 py-3">{row.id}</td>
-                <td className="truncate px-4 py-3 text-[#334155]">{row.patient}</td>
-                <td className="truncate px-4 py-3 text-[#334155]">{row.professional}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#0D8C24]">{row.type}</td>
-                <td className="truncate px-4 py-3">{formatDate(row.date)}</td>
-                <td className="truncate px-4 py-3">{row.duration}</td>
-                <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.status}</td>
+              <tr key={row.id} className="h-[64px] transition-colors hover:bg-slate-50/50">
+                <td className="max-w-0 truncate px-6 py-3 font-mono text-xs">{row.id}</td>
+                <td className="max-w-0 truncate px-4 py-3 text-[#334155]">{row.patient}</td>
+                <td className="max-w-0 truncate px-4 py-3 text-[#334155]">{row.professional}</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#0D8C24]">{row.type}</td>
+                <td className="max-w-0 truncate px-4 py-3">{formatDate(row.date)}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.duration}</td>
+                <td className="max-w-0 truncate py-3 pl-4 pr-6 font-semibold text-[#1565C0]">{row.status}</td>
               </tr>
             ))}
           </tbody>
