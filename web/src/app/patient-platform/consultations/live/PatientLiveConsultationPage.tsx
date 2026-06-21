@@ -11,6 +11,7 @@ import {
   getPatientLiveUrl,
   getPatientConsultationRoom,
   confirmPatientConsultationComplete,
+  disputePatientConsultationCompletion,
   joinPatientConsultation,
   leavePatientConsultation,
   listPatientConsultations,
@@ -124,11 +125,15 @@ export function PatientLiveConsultationPage() {
   const [isLeaving, setIsLeaving] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
   const [isConfirmingComplete, setIsConfirmingComplete] = useState(false);
+  const [isDisputingCompletion, setIsDisputingCompletion] = useState(false);
 
   const consultation = room?.consultation ?? null;
   const providerName = room?.provider?.name ?? "Provider";
   const providerSpecialty =
     room?.provider?.specialization ?? consultation?.consultationLabel ?? "-";
+  const completionDisputed = consultation?.paymentStatus === "disputed";
+  const completionReviewRequired =
+    consultation?.paymentStatus === "review_required";
   const patientConsentSaved = participants.some(
     (participant) =>
       participant.role.toLowerCase() === "patient" &&
@@ -484,12 +489,33 @@ export function PatientLiveConsultationPage() {
       setRoom((current) =>
         current ? { ...current, consultation: updated } : current,
       );
-      toast.success("Consultation confirmed and payment released.");
-      router.push("/patient-platform/consultations/rate");
+      toast.success("Confirmation saved. Payment releases after both sides confirm.");
+      if (updated.status === "completed") {
+        router.push("/patient-platform/consultations/rate");
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
       setIsConfirmingComplete(false);
+    }
+  };
+
+  const disputeCompletion = async () => {
+    if (!consultation || isDisputingCompletion) return;
+    setIsDisputingCompletion(true);
+    try {
+      const updated = await disputePatientConsultationCompletion(
+        consultation.id,
+        { reason: "Patient reported that care was not received." },
+      );
+      setRoom((current) =>
+        current ? { ...current, consultation: updated } : current,
+      );
+      toast.success("Report submitted. Payment remains held for review.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsDisputingCompletion(false);
     }
   };
 
@@ -636,12 +662,18 @@ export function PatientLiveConsultationPage() {
             {consultation?.status === "ended_unconfirmed" ? (
               <div className="mt-4 rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] p-3">
                 <p className="text-[13px] font-medium leading-4 tracking-[-0.03em] text-[#334155]">
-                  This consultation is waiting for your confirmation.
+                  {completionDisputed
+                    ? "Your report is under review."
+                    : completionReviewRequired
+                      ? "This consultation is under Swifthelp review."
+                      : "This consultation is waiting for your confirmation."}
                 </p>
                 <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">
-                  Rejoin if anything is unfinished. Confirm completion only
-                  when you received the help you needed.
+                  {completionDisputed || completionReviewRequired
+                    ? "Payment remains held while the case is reviewed."
+                    : "Rejoin if anything is unfinished. Confirm completion only when you received the help you needed."}
                 </p>
+                {!completionDisputed && !completionReviewRequired ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -658,9 +690,20 @@ export function PatientLiveConsultationPage() {
                     className="inline-flex h-[32px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-[#1565C0] bg-white px-3 text-[11px] font-medium tracking-[-0.03em] text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
                   >
                     <CheckIcon />
-                    {isConfirmingComplete ? "Confirming" : "Confirm done"}
+                    {isConfirmingComplete ? "Confirming" : "Confirm care received"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDisputingCompletion}
+                    onClick={() => void disputeCompletion()}
+                    className="inline-flex h-[32px] cursor-pointer items-center justify-center rounded-[8px] border border-[#B91C1C] bg-[#FEF2F2] px-3 text-[11px] font-medium tracking-[-0.03em] text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                  >
+                    {isDisputingCompletion
+                      ? "Submitting"
+                      : "I did not receive care"}
                   </button>
                 </div>
+                ) : null}
               </div>
             ) : null}
           </div>

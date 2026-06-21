@@ -79,6 +79,13 @@ export type PatientConsultation = {
   confirmationDueAt?: string | null;
   confirmedAt?: string | null;
   confirmedByUserId?: string | null;
+  patientConfirmedAt?: string | null;
+  patientConfirmedByUserId?: string | null;
+  professionalConfirmedAt?: string | null;
+  professionalConfirmedByUserId?: string | null;
+  disputedAt?: string | null;
+  disputedByUserId?: string | null;
+  disputeReason?: string | null;
   liveStartedAt?: string | null;
   liveEndedAt?: string | null;
   billableDurationSeconds?: number;
@@ -128,6 +135,8 @@ export type PatientUpdate = {
   actionLabel?: string;
   actionHref?: string;
   actionKind?: "rejoin" | "details" | string;
+  paymentStatus?: string | null;
+  completionConfirmationStatus?: string | null;
 };
 
 export type PatientDashboard = {
@@ -1077,6 +1086,19 @@ export function confirmPatientConsultationComplete(consultationId: string) {
   return apiRequest<PatientConsultation>(
     `/patient/consultations/${encodeURIComponent(consultationId)}/confirm-complete`,
     { method: "POST" },
+  );
+}
+
+export function disputePatientConsultationCompletion(
+  consultationId: string,
+  payload: { reason?: string },
+) {
+  return apiRequest<PatientConsultation>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/dispute`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
   );
 }
 

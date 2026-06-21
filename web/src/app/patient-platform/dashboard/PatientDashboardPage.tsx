@@ -9,6 +9,7 @@ import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
   confirmPatientConsultationComplete,
+  disputePatientConsultationCompletion,
   getPatientDashboard,
   type PatientDashboard,
 } from "@/services/patientApi";
@@ -206,6 +207,7 @@ export function PatientDashboardPage() {
   const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
+  const [disputingConsultationId, setDisputingConsultationId] = useState<string | null>(null);
   const [activityPage, setActivityPage] = useState(1);
 
   const query = searchText.trim().toLowerCase();
@@ -287,11 +289,27 @@ export function PatientDashboardPage() {
     try {
       await confirmPatientConsultationComplete(consultationId);
       setDismissedUpdateIds((current) => [...current, updateId]);
-      toast.success("Consultation confirmed and payment released.");
+      toast.success("Confirmation saved. Payment releases after both sides confirm.");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
       setConfirmingConsultationId(null);
+    }
+  };
+
+  const disputeConsultation = async (consultationId: string, updateId: string) => {
+    if (disputingConsultationId) return;
+    setDisputingConsultationId(consultationId);
+    try {
+      await disputePatientConsultationCompletion(consultationId, {
+        reason: "Patient reported that care was not received.",
+      });
+      setDismissedUpdateIds((current) => [...current, updateId]);
+      toast.success("Report submitted. Payment remains held for review.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setDisputingConsultationId(null);
     }
   };
 
@@ -563,6 +581,9 @@ export function PatientDashboardPage() {
               visibleUpdates.slice(0, 2).map((update) => {
                 const isUnfinishedConsultation =
                   update.type === "unfinished_consultation" && Boolean(update.consultationId);
+                const isUnderReview =
+                  update.paymentStatus === "disputed" ||
+                  update.paymentStatus === "review_required";
                 return (
                 <div key={update.id} className="min-h-[158px] rounded-md border border-[#1E88E5] p-2">
                   <div className="flex items-center justify-between">
@@ -573,7 +594,11 @@ export function PatientDashboardPage() {
                   </div>
                   <h3 className="mt-3 text-[15px] font-normal leading-[17px] tracking-[-0.04em] text-[#334155]">{update.title}</h3>
                   <p className="mt-[7px] line-clamp-3 max-w-[264px] text-[12px] font-light leading-[15px] tracking-[-0.04em] text-[#64748B]">{update.body}</p>
-                  {isUnfinishedConsultation ? (
+                  {isUnfinishedConsultation && isUnderReview ? (
+                    <p className="mt-3 rounded-[7px] bg-[#FEF3C7] px-3 py-2 text-[10px] font-medium leading-4 tracking-[-0.03em] text-[#92400E]">
+                      Payment remains held while Swifthelp reviews this consultation.
+                    </p>
+                  ) : isUnfinishedConsultation ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -596,7 +621,19 @@ export function PatientDashboardPage() {
                       >
                         <CheckIcon />
                         <span className="whitespace-nowrap">
-                          {confirmingConsultationId === update.consultationId ? "Confirming" : "Confirm done"}
+                          {confirmingConsultationId === update.consultationId ? "Confirming" : "Confirm care"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disputingConsultationId === update.consultationId}
+                        onClick={() => void disputeConsultation(update.consultationId!, update.id)}
+                        className="inline-flex h-[30px] min-w-[132px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-[#B91C1C] bg-[#FEF2F2] px-3 text-[10px] font-medium leading-none tracking-[-0.03em] text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                      >
+                        <span className="whitespace-nowrap">
+                          {disputingConsultationId === update.consultationId
+                            ? "Submitting"
+                            : "I did not receive care"}
                         </span>
                       </button>
                     </div>

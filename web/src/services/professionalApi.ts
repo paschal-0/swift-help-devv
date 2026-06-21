@@ -149,6 +149,13 @@ export type ProfessionalConsultation = {
   confirmationDueAt?: string | null;
   confirmedAt?: string | null;
   confirmedByUserId?: string | null;
+  patientConfirmedAt?: string | null;
+  patientConfirmedByUserId?: string | null;
+  professionalConfirmedAt?: string | null;
+  professionalConfirmedByUserId?: string | null;
+  disputedAt?: string | null;
+  disputedByUserId?: string | null;
+  disputeReason?: string | null;
   startedAt: string | null;
   completedAt: string | null;
   liveStartedAt?: string | null;

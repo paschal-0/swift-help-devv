@@ -454,7 +454,7 @@ export function ProfessionalLiveConsultationPage() {
         cameraEnabled: false,
         microphoneEnabled: false,
       });
-      toast.success("Consultation completed and medical record updated");
+      toast.success("Completion saved. Payment remains held until the patient confirms care received.");
       router.push("/professional-platform/schedule");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -737,6 +737,12 @@ export function ProfessionalLiveConsultationPage() {
   const waitingParticipants = participants.filter(
     (participant) => participant.status === "waiting",
   );
+  const professionalAlreadyConfirmed = Boolean(
+    consultation?.professionalConfirmedAt,
+  );
+  const completionDisputed = consultation?.paymentStatus === "disputed";
+  const completionReviewRequired =
+    consultation?.paymentStatus === "review_required";
 
   const markAiDraftReviewed = async () => {
     if (!consultation) return;
@@ -867,6 +873,23 @@ export function ProfessionalLiveConsultationPage() {
             <span className="mt-7 inline-flex w-fit rounded-[16px] bg-[#A6A100] px-4 py-1 text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-white">
               {formatStatus(consultation?.status)}
             </span>
+            {consultation?.status === "ended_unconfirmed" ? (
+              <div className="mt-4 rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] p-3">
+                <p className="text-[13px] font-medium leading-4 tracking-[-0.03em] text-[#334155]">
+                  {completionDisputed
+                    ? "Patient reported that care was not received."
+                    : completionReviewRequired
+                      ? "This consultation is under Swifthelp review."
+                      : professionalAlreadyConfirmed
+                        ? "Waiting for patient confirmation."
+                        : "Mark this consultation complete after saving your clinical notes."}
+                </p>
+                <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">
+                  Payment is held until both sides confirm, unless Swifthelp
+                  review resolves the case.
+                </p>
+              </div>
+            ) : null}
           </div>
         }
         sharedInfoContent={
@@ -1149,10 +1172,19 @@ export function ProfessionalLiveConsultationPage() {
             <button
               type="button"
               onClick={() => void completeSession()}
-              disabled={!consultation || isCompleting}
-              className="mt-4 h-11 w-full rounded-[12px] bg-[#1565C0] text-[13px] font-medium text-white disabled:opacity-60"
+              disabled={
+                !consultation ||
+                isCompleting ||
+                professionalAlreadyConfirmed ||
+                completionReviewRequired
+              }
+              className="mt-4 h-11 w-full cursor-pointer rounded-[12px] bg-[#1565C0] text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isCompleting ? "Completing..." : "Complete consultation"}
+              {isCompleting
+                ? "Saving completion..."
+                : professionalAlreadyConfirmed
+                  ? "Completion already marked"
+                  : "Mark consultation complete"}
             </button>
           </aside>
         </div>
