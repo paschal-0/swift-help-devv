@@ -504,9 +504,9 @@ export function PatientMyProfilePage() {
           >
             <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
 
-            <div className="earnings-scroll mt-[19px] w-full overflow-x-auto overscroll-x-contain pb-2">
-              <div className="min-w-[560px]">
-                <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-end gap-4 border-b-[3px] border-[#E2E8F0] pb-1 md:gap-6">
+            <div className="mt-[19px] w-full overflow-hidden pb-2">
+              <div className="w-full">
+                <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] items-end gap-3 border-b-[3px] border-[#E2E8F0] pb-1">
                   <div className="relative pb-2 text-center md:pl-2 md:text-left">
                     <span className="text-[14px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0] md:text-[16px]">
                       Activity
@@ -524,7 +524,7 @@ export function PatientMyProfilePage() {
                 <div className="space-y-[13px] pt-[17px]">
                   {filteredActivities.length ? (
                     paginatedActivities.map((item) => (
-                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-center gap-4 md:gap-6">
+                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] items-center gap-3">
                         <span className="min-w-0 truncate text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:pl-2 md:text-[12.403px]">
                           {item.activity}
                         </span>
@@ -532,7 +532,7 @@ export function PatientMyProfilePage() {
                           {item.dateTime}
                         </span>
                         <div className="flex justify-center">
-                          <span className={`inline-flex h-[25px] w-full max-w-[124px] items-center justify-center truncate rounded-[6px] border px-2 text-[11px] font-normal leading-[14px] tracking-[-0.05em] md:text-[12px] ${getActivityStatusClass(item.status)}`}>
+                          <span className={`inline-flex h-[25px] w-full max-w-[110px] items-center justify-center truncate rounded-[6px] border px-2 text-[10px] font-normal leading-[14px] tracking-[-0.04em] sm:text-[11px] ${getActivityStatusClass(item.status)}`}>
                             {item.status}
                           </span>
                         </div>
@@ -548,6 +548,7 @@ export function PatientMyProfilePage() {
                     pageSize={PAGE_SIZE}
                     totalItems={filteredActivities.length}
                     onPageChange={setActivityPage}
+                    compact
                   />
                 ) : null}
               </div>
