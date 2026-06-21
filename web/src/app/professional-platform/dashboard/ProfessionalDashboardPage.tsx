@@ -31,6 +31,7 @@ import {
   type ProfessionalDashboard,
   type ProfessionalNotification,
 } from "@/services/professionalApi";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type AppointmentStatus =
   | "Done"
@@ -63,6 +64,8 @@ type IncomingRequest = {
 type ImportantNotice = NonNullable<ProfessionalDashboard["importantNotices"]>[number];
 
 type EarningsRange = "today" | "week";
+
+const PAGE_SIZE = 5;
 
 type EarningsPoint = {
   label: string;
@@ -737,6 +740,8 @@ export function ProfessionalDashboardPage() {
     [],
   );
   const [professionalName, setProfessionalName] = useState("Professional");
+  const [appointmentPage, setAppointmentPage] = useState(1);
+  const [requestPage, setRequestPage] = useState(1);
 
   const query = searchText.trim().toLowerCase();
   const now = useMemo(() => new Date(), []);
@@ -980,11 +985,24 @@ export function ProfessionalDashboardPage() {
     );
   }, [dashboardRequests, query]);
 
+  const appointmentTotalPages = Math.max(1, Math.ceil(visibleAppointments.length / PAGE_SIZE));
+  const requestTotalPages = Math.max(1, Math.ceil(visibleRequests.length / PAGE_SIZE));
+  const safeAppointmentPage = Math.min(appointmentPage, appointmentTotalPages);
+  const safeRequestPage = Math.min(requestPage, requestTotalPages);
+  const paginatedAppointments = visibleAppointments.slice(
+    (safeAppointmentPage - 1) * PAGE_SIZE,
+    safeAppointmentPage * PAGE_SIZE,
+  );
+  const paginatedRequests = visibleRequests.slice(
+    (safeRequestPage - 1) * PAGE_SIZE,
+    safeRequestPage * PAGE_SIZE,
+  );
+
   const activeAppointment =
-    visibleAppointments.find(
+    paginatedAppointments.find(
       (appointment) => appointment.id === activeAppointmentId,
     ) ??
-    visibleAppointments[0] ??
+    paginatedAppointments[0] ??
     null;
 
   const earningsSeries = useMemo<EarningsPoint[]>(() => {
@@ -1539,7 +1557,7 @@ export function ProfessionalDashboardPage() {
 
                   <div className="grid grid-cols-[52px_1fr] gap-2">
                     <div className="flex flex-col gap-2">
-                      {visibleAppointments.map((appointment, index) => (
+                      {paginatedAppointments.map((appointment, index) => (
                         <div
                           key={`${appointment.id}-time`}
                           className="flex min-h-[60px] flex-col items-center justify-center lg:h-[50px] lg:min-h-0"
@@ -1551,7 +1569,7 @@ export function ProfessionalDashboardPage() {
                           >
                             {appointment.timeLabel}
                           </span>
-                          {index < visibleAppointments.length - 1 ? (
+                          {index < paginatedAppointments.length - 1 ? (
                             <span className="mt-1 h-7 border-l border-dashed border-[#94A3B8]" />
                           ) : null}
                         </div>
@@ -1559,7 +1577,7 @@ export function ProfessionalDashboardPage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      {visibleAppointments.map((appointment) => {
+                      {paginatedAppointments.map((appointment) => {
                         const isActive =
                           appointment.id === activeAppointment?.id;
 
@@ -1602,6 +1620,13 @@ export function ProfessionalDashboardPage() {
                       })}
                     </div>
                   </div>
+                  <PaginationControls
+                    page={safeAppointmentPage}
+                    pageSize={PAGE_SIZE}
+                    totalItems={visibleAppointments.length}
+                    onPageChange={setAppointmentPage}
+                    className="mt-1"
+                  />
                 </div>
 
                 {activeAppointment ? (
@@ -1726,7 +1751,7 @@ export function ProfessionalDashboardPage() {
               ) : null
             ) : (
               <div className="mt-5 space-y-3">
-                {visibleRequests.map((request) => (
+                {paginatedRequests.map((request) => (
                   <motion.article
                     key={request.id}
                     whileHover={{ y: -1 }}
@@ -1785,6 +1810,12 @@ export function ProfessionalDashboardPage() {
                     </div>
                   </motion.article>
                 ))}
+                <PaginationControls
+                  page={safeRequestPage}
+                  pageSize={PAGE_SIZE}
+                  totalItems={visibleRequests.length}
+                  onPageChange={setRequestPage}
+                />
               </div>
             )}
           </article>

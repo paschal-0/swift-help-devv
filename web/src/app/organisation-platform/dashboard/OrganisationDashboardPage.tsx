@@ -20,6 +20,7 @@ import {
   createTeamRoom,
 } from "@/services/communicationApi";
 import { useOrganisationPlatformShell } from "../components/OrganisationPlatformShell";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type ShiftRow = {
   id: string;
@@ -42,6 +43,8 @@ type CommunicationRecipient = {
   group: "team" | "professional";
   disabled?: boolean;
 };
+
+const PAGE_SIZE = 5;
 
 const roomCommandCopy: Record<
   CommunicationCommandKind,
@@ -280,6 +283,9 @@ export function OrganisationDashboardPage() {
   const [emergencyLocation, setEmergencyLocation] = useState("");
   const [isLoadingRoomOptions, setIsLoadingRoomOptions] = useState(false);
   const [isStartingRoom, setIsStartingRoom] = useState(false);
+  const [shiftPage, setShiftPage] = useState(1);
+  const [responsePage, setResponsePage] = useState(1);
+  const [attentionPage, setAttentionPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -349,6 +355,22 @@ export function OrganisationDashboardPage() {
       `${item.title} ${item.tags.join(" ")}`.toLowerCase().includes(normalizedQuery)
     );
   }, [dashboardAttentionItems, normalizedQuery]);
+
+  const shiftTotalPages = Math.max(1, Math.ceil(visibleShiftRows.length / PAGE_SIZE));
+  const responseTotalPages = Math.max(1, Math.ceil(visibleResponses.length / PAGE_SIZE));
+  const attentionTotalPages = Math.max(1, Math.ceil(visibleAttentionItems.length / PAGE_SIZE));
+  const safeShiftPage = Math.min(shiftPage, shiftTotalPages);
+  const safeResponsePage = Math.min(responsePage, responseTotalPages);
+  const safeAttentionPage = Math.min(attentionPage, attentionTotalPages);
+  const paginatedShiftRows = visibleShiftRows.slice((safeShiftPage - 1) * PAGE_SIZE, safeShiftPage * PAGE_SIZE);
+  const paginatedResponses = visibleResponses.slice(
+    (safeResponsePage - 1) * PAGE_SIZE,
+    safeResponsePage * PAGE_SIZE,
+  );
+  const paginatedAttentionItems = visibleAttentionItems.slice(
+    (safeAttentionPage - 1) * PAGE_SIZE,
+    safeAttentionPage * PAGE_SIZE,
+  );
   const teamRecipients = useMemo(
     () => roomTeamMembers.map(teamMemberToRecipient),
     [roomTeamMembers],
@@ -674,7 +696,7 @@ export function OrganisationDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleShiftRows.map((row) => (
+              {paginatedShiftRows.map((row) => (
                 <tr key={row.id} className="text-sm text-[#334155] transition-colors duration-200 hover:bg-[#f5f9ff]">
                   <td className="border-b border-[#334155] px-4 py-4 font-medium">{row.id}</td>
                   <td className="border-b border-[#334155] px-4 py-4 font-medium">{row.department}</td>
@@ -699,6 +721,14 @@ export function OrganisationDashboardPage() {
             <div className="px-4 py-8 text-sm text-[#64748B]">No shifts match the current search.</div>
           ) : null}
         </div>
+        {visibleShiftRows.length ? (
+          <PaginationControls
+            page={safeShiftPage}
+            pageSize={PAGE_SIZE}
+            totalItems={visibleShiftRows.length}
+            onPageChange={setShiftPage}
+          />
+        ) : null}
       </motion.section>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[379px_minmax(0,1fr)]">
@@ -738,7 +768,7 @@ export function OrganisationDashboardPage() {
         >
           <h2 className="text-[18px] font-semibold tracking-[-0.05em] text-[#334155]">Recent Responses</h2>
           <div className="mt-5 space-y-5">
-            {visibleResponses.map((item) => (
+            {paginatedResponses.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-[10px] transition duration-200 hover:bg-[#f6faff] hover:px-2 hover:py-1">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E3F2FD] text-sm font-semibold text-[#1565C0] transition duration-200 hover:scale-105">
@@ -759,6 +789,14 @@ export function OrganisationDashboardPage() {
               <div className="py-6 text-sm text-[#64748B]">No responses match the current search.</div>
             ) : null}
           </div>
+          {visibleResponses.length ? (
+            <PaginationControls
+              page={safeResponsePage}
+              pageSize={PAGE_SIZE}
+              totalItems={visibleResponses.length}
+              onPageChange={setResponsePage}
+            />
+          ) : null}
           <button
             type="button"
             onClick={() => openRoute("/organisation-platform/reports")}
@@ -786,7 +824,7 @@ export function OrganisationDashboardPage() {
         </div>
 
         <div className="mt-5 space-y-4">
-          {visibleAttentionItems.map((item) => (
+          {paginatedAttentionItems.map((item) => (
             (() => {
               const detailHref = item.shiftId
                 ? `/organisation-platform/shifts/${item.shiftId}`
@@ -842,6 +880,14 @@ export function OrganisationDashboardPage() {
             <div className="py-8 text-sm text-[#64748B]">No alerts match the current search.</div>
           ) : null}
         </div>
+        {visibleAttentionItems.length ? (
+          <PaginationControls
+            page={safeAttentionPage}
+            pageSize={PAGE_SIZE}
+            totalItems={visibleAttentionItems.length}
+            onPageChange={setAttentionPage}
+          />
+        ) : null}
       </motion.section>
 
       {roomModalKind ? (

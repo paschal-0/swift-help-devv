@@ -14,6 +14,7 @@ import {
 } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type AppointmentStatus = "Done" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled";
 
@@ -37,6 +38,8 @@ type ActivityItem = {
   time: string;
   status: "Completed" | "Pending";
 };
+
+const PAGE_SIZE = 5;
 
 function formatDay(value: string) {
   const date = new Date(value);
@@ -203,6 +206,7 @@ export function PatientDashboardPage() {
   const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
+  const [activityPage, setActivityPage] = useState(1);
 
   const query = searchText.trim().toLowerCase();
 
@@ -311,8 +315,15 @@ export function PatientDashboardPage() {
       ? activities.filter((item) => [item.activity, item.time, item.status].join(" ").toLowerCase().includes(query))
       : activities;
 
-    return filtered.slice(0, 3);
+    return filtered;
   }, [dashboard?.activities, query]);
+
+  const activityTotalPages = Math.max(1, Math.ceil(visibleActivities.length / PAGE_SIZE));
+  const safeActivityPage = Math.min(activityPage, activityTotalPages);
+  const paginatedActivities = visibleActivities.slice(
+    (safeActivityPage - 1) * PAGE_SIZE,
+    safeActivityPage * PAGE_SIZE,
+  );
 
   const stats = useMemo(
     () => [
@@ -636,16 +647,16 @@ export function PatientDashboardPage() {
 
             <div className="mt-3">
               {visibleActivities.length ? (
-                visibleActivities.map((activity) => (
+                paginatedActivities.map((activity) => (
                   <button
                     key={activity.id}
                     type="button"
                     onClick={() => router.push("/patient-platform/consultations")}
-                    className="grid h-[61px] w-full cursor-pointer grid-cols-[1fr_1fr_160px] items-center border-b border-[#334155] px-6 text-left"
+                    className="grid min-h-[61px] w-full cursor-pointer grid-cols-[minmax(0,1fr)_minmax(150px,1fr)_140px] items-center gap-4 border-b border-[#334155] px-6 py-3 text-left transition hover:bg-[#E3F2FD]/35"
                   >
-                    <span className="text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">{activity.activity}</span>
-                    <span className="text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">{activity.time}</span>
-                    <span className={`justify-self-center rounded-3xl px-[10px] py-1 text-[18px] leading-5 tracking-[-0.05em] ${
+                    <span className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[-0.04em] text-[#334155]">{activity.activity}</span>
+                    <span className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[-0.04em] text-[#334155]">{activity.time}</span>
+                    <span className={`inline-flex min-h-[28px] min-w-[108px] max-w-[132px] items-center justify-center justify-self-center truncate rounded-3xl px-3 text-[14px] leading-5 tracking-[-0.04em] ${
                       activity.status === "Completed" ? "bg-[#D9F6E7] text-[#15A937]" : "bg-[#FEF3C7] text-[#B45309]"
                     }`}>
                       {activity.status}
@@ -658,6 +669,14 @@ export function PatientDashboardPage() {
                 </div>
               )}
             </div>
+            {visibleActivities.length ? (
+              <PaginationControls
+                page={safeActivityPage}
+                pageSize={PAGE_SIZE}
+                totalItems={visibleActivities.length}
+                onPageChange={setActivityPage}
+              />
+            ) : null}
           </div>
         </div>
       </article>

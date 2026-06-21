@@ -17,6 +17,7 @@ import {
   type ProfessionalProfileResponse,
 } from "@/services/professionalApi";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type InfoRow = {
   label: string;
@@ -45,6 +46,7 @@ type PricingDraft = {
 };
 
 const fallbackActivities: ActivityItem[] = [];
+const PAGE_SIZE = 5;
 const emptyPersonalInformation: InfoRow[] = [
   { label: "Gender", value: "Not provided" },
   { label: "Date of Birth", value: "Not provided" },
@@ -177,6 +179,7 @@ export function ProfessionalMyProfilePage() {
   const [isUploadingAvatar, setUploadingAvatar] = useState(false);
   const [isPricingOpen, setPricingOpen] = useState(false);
   const [isSavingPricing, setSavingPricing] = useState(false);
+  const [activityPage, setActivityPage] = useState(1);
   const [pricingDraft, setPricingDraft] = useState<PricingDraft>({
     videoConsultationRate: "",
     inPersonVisitRate: "",
@@ -274,6 +277,13 @@ export function ProfessionalMyProfilePage() {
       `${item.activity} ${item.dateTime} ${item.status}`.toLowerCase().includes(query)
     );
   }, [notifications, query]);
+
+  const activityTotalPages = Math.max(1, Math.ceil(filteredActivities.length / PAGE_SIZE));
+  const safeActivityPage = Math.min(activityPage, activityTotalPages);
+  const paginatedActivities = filteredActivities.slice(
+    (safeActivityPage - 1) * PAGE_SIZE,
+    safeActivityPage * PAGE_SIZE,
+  );
 
   const filteredLicenseFiles = useMemo(() => {
     if (!query) return backendLicenseFiles;
@@ -491,8 +501,8 @@ export function ProfessionalMyProfilePage() {
             <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
 
             <div className="mt-[19px] overflow-x-auto">
-              <div className="min-w-[527px]">
-                <div className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1">
+              <div className="min-w-[560px]">
+                <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1">
                   <div className="relative pb-2 text-center">
                     <span className="text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0]">Activity</span>
                     <span className="absolute bottom-[-5px] left-0 h-1 w-20 bg-[#1565C0]" />
@@ -503,12 +513,12 @@ export function ProfessionalMyProfilePage() {
 
                 <div className="space-y-[13px] pt-[17px]">
                   {filteredActivities.length ? (
-                    filteredActivities.map((item) => (
-                      <div key={item.id} className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-center gap-6">
-                        <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
-                        <span className="text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
+                    paginatedActivities.map((item) => (
+                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-center gap-6">
+                        <span className="min-w-0 truncate text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
+                        <span className="min-w-0 truncate text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
                         <span
-                          className={`inline-flex h-[23px] w-[83px] items-center justify-center rounded-[6px] border text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] ${
+                          className={`inline-flex h-[25px] w-full max-w-[124px] items-center justify-center justify-self-center truncate rounded-[6px] border px-2 text-[12px] font-normal leading-[14px] tracking-[-0.05em] ${
                             item.status === "Completed"
                               ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
                               : "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
@@ -522,6 +532,14 @@ export function ProfessionalMyProfilePage() {
                     <SearchEmptyState />
                   )}
                 </div>
+                {filteredActivities.length ? (
+                  <PaginationControls
+                    page={safeActivityPage}
+                    pageSize={PAGE_SIZE}
+                    totalItems={filteredActivities.length}
+                    onPageChange={setActivityPage}
+                  />
+                ) : null}
               </div>
             </div>
           </motion.section>

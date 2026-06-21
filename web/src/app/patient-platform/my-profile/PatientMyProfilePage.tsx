@@ -8,6 +8,7 @@ import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 import { getApiErrorMessage, updatePatientProfile, uploadProfileAvatar } from "@/services/authApi";
 import { getPatientProfile, updatePatientAccount } from "@/services/patientApi";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type InfoRow = {
   label: string;
@@ -87,6 +88,8 @@ const initialEmergencyContact: EmergencyContact = {
   relationship: "",
   phone: "",
 };
+
+const PAGE_SIZE = 5;
 
 function EditIcon({ subtle = false }: { subtle?: boolean }) {
   return (
@@ -246,6 +249,7 @@ export function PatientMyProfilePage() {
   const [activeEditSection, setActiveEditSection] = useState<EditSection | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [activityPage, setActivityPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const query = searchText.trim().toLowerCase();
@@ -318,6 +322,13 @@ export function PatientMyProfilePage() {
       `${item.activity} ${item.dateTime} ${item.status}`.toLowerCase().includes(query)
     );
   }, [query, recentActivities]);
+
+  const activityTotalPages = Math.max(1, Math.ceil(filteredActivities.length / PAGE_SIZE));
+  const safeActivityPage = Math.min(activityPage, activityTotalPages);
+  const paginatedActivities = filteredActivities.slice(
+    (safeActivityPage - 1) * PAGE_SIZE,
+    safeActivityPage * PAGE_SIZE,
+  );
 
   const personalInformationRows = useMemo(
     () => [
@@ -494,8 +505,8 @@ export function PatientMyProfilePage() {
             <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
 
             <div className="earnings-scroll mt-[19px] w-full overflow-x-auto overscroll-x-contain pb-2">
-              <div className="min-w-[450px] md:min-w-[527px]">
-                <div className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-end gap-4 border-b-[3px] border-[#E2E8F0] pb-1 md:gap-6">
+              <div className="min-w-[560px]">
+                <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-end gap-4 border-b-[3px] border-[#E2E8F0] pb-1 md:gap-6">
                   <div className="relative pb-2 text-center md:pl-2 md:text-left">
                     <span className="text-[14px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0] md:text-[16px]">
                       Activity
@@ -512,16 +523,16 @@ export function PatientMyProfilePage() {
 
                 <div className="space-y-[13px] pt-[17px]">
                   {filteredActivities.length ? (
-                    filteredActivities.map((item) => (
-                      <div key={item.id} className="grid grid-cols-[1.6fr_1.1fr_0.8fr] items-center gap-4 md:gap-6">
-                        <span className="text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:pl-2 md:text-[12.403px]">
+                    paginatedActivities.map((item) => (
+                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-center gap-4 md:gap-6">
+                        <span className="min-w-0 truncate text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:pl-2 md:text-[12.403px]">
                           {item.activity}
                         </span>
-                        <span className="text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:text-[12.403px]">
+                        <span className="min-w-0 truncate text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:text-[12.403px]">
                           {item.dateTime}
                         </span>
                         <div className="flex justify-center">
-                          <span className={`inline-flex h-[23px] w-full max-w-[92px] items-center justify-center truncate rounded-[6px] border px-2 text-[11px] font-normal leading-[14px] tracking-[-0.05em] md:text-[12.403px] ${getActivityStatusClass(item.status)}`}>
+                          <span className={`inline-flex h-[25px] w-full max-w-[124px] items-center justify-center truncate rounded-[6px] border px-2 text-[11px] font-normal leading-[14px] tracking-[-0.05em] md:text-[12px] ${getActivityStatusClass(item.status)}`}>
                             {item.status}
                           </span>
                         </div>
@@ -531,6 +542,14 @@ export function PatientMyProfilePage() {
                     <SearchEmptyState />
                   )}
                 </div>
+                {filteredActivities.length ? (
+                  <PaginationControls
+                    page={safeActivityPage}
+                    pageSize={PAGE_SIZE}
+                    totalItems={filteredActivities.length}
+                    onPageChange={setActivityPage}
+                  />
+                ) : null}
               </div>
             </div>
           </motion.section>
