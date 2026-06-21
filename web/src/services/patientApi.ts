@@ -553,7 +553,10 @@ export type PatientConsultationRoom = {
 };
 
 export function getPatientDashboard() {
-  return apiRequest<PatientDashboard>("/patient/dashboard", { method: "GET" });
+  return apiRequest<PatientDashboard>("/patient/dashboard", {
+    method: "GET",
+    cache: "no-store",
+  });
 }
 
 export function getPatientProfile() {

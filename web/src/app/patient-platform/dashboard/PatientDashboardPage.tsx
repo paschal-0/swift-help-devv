@@ -250,6 +250,14 @@ export function PatientDashboardPage() {
     return updates.filter((item) => [item.title, item.body, item.date].join(" ").toLowerCase().includes(query));
   }, [dashboard?.updates, dismissedUpdateIds, query]);
 
+  const pendingFollowUpCount = useMemo(
+    () =>
+      (dashboard?.updates ?? []).filter(
+        (item) => item.id.includes("-next-step-") && !dismissedUpdateIds.includes(item.id),
+      ).length,
+    [dashboard?.updates, dismissedUpdateIds],
+  );
+
   const visibleActivities = useMemo(() => {
     const activities = (dashboard?.activities ?? []).map((activity) => ({
       id: activity.id,
@@ -284,11 +292,11 @@ export function PatientDashboardPage() {
       },
       {
         title: "Pending Follow-Ups",
-        value: `${dashboard?.metrics.pendingFollowUps ?? 0} Action Needed`,
+        value: `${pendingFollowUpCount} Action Needed`,
         onClick: () => router.push("/patient-platform/consultations"),
       },
     ],
-    [dashboard?.metrics, router],
+    [dashboard?.metrics, pendingFollowUpCount, router],
   );
 
   const goPrevDay = () => setSelectedDayIndex((current) => Math.max(0, current - 1));
