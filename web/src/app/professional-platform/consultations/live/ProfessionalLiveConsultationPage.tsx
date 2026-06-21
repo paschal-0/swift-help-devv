@@ -189,6 +189,7 @@ export function ProfessionalLiveConsultationPage() {
           meetingUrl: access.meetingUrl,
           roomToken: access.roomToken,
           canJoin: access.canJoin,
+          sdk: access.sdk,
         });
         if (access.participant) setParticipants([access.participant]);
         setSummary(nextRoom.consultation.reason ?? "");
@@ -559,6 +560,12 @@ export function ProfessionalLiveConsultationPage() {
         consultation.id,
         {
           transcript: transcript?.text ?? undefined,
+          professionalDraft: {
+            summary: summary.trim() || undefined,
+            notes: notes.trim() || undefined,
+            prescriptions: prescription.trim() || undefined,
+            nextSteps: nextSteps.trim() || undefined,
+          },
         },
       );
       setRoom((current) =>
@@ -1076,6 +1083,10 @@ export function ProfessionalLiveConsultationPage() {
             <h2 className="text-[16px] font-semibold tracking-[-0.05em] text-[#334155]">
               Clinical notes
             </h2>
+            <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">
+              Draft uses the consultation reason, intake, chat, transcript, and
+              the notes currently in this panel.
+            </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"

@@ -113,6 +113,7 @@ export type ConsultationSessionStatus =
   | "arrived"
   | "in_progress"
   | "ongoing"
+  | "ended_unconfirmed"
   | "completed"
   | "missed"
   | "cancelled";
@@ -142,6 +143,12 @@ export type ProfessionalConsultation = {
   feeAmountCents: number;
   currency: string;
   earningsStatus: "pending" | "available" | "paid_out";
+  paymentStatus?: string | null;
+  completionConfirmationStatus?: string | null;
+  rejoinExpiresAt?: string | null;
+  confirmationDueAt?: string | null;
+  confirmedAt?: string | null;
+  confirmedByUserId?: string | null;
   startedAt: string | null;
   completedAt: string | null;
   liveStartedAt?: string | null;
@@ -506,6 +513,16 @@ export type ProfessionalDashboard = {
   activeSession: ProfessionalConsultation | null;
   upcomingSessions: ProfessionalConsultation[];
   pendingRequests: ProfessionalConsultationRequest[];
+  importantNotices?: Array<{
+    id: string;
+    title: string;
+    body: string;
+    date: string;
+    kind: string;
+    consultationId?: string | null;
+    actionLabel?: string;
+    actionHref?: string;
+  }>;
   earnings: EarningsSummary;
   performance: {
     completedSessions: number;
@@ -763,7 +780,15 @@ export function getProfessionalConsultationAiDocument(consultationId: string) {
 
 export function generateProfessionalConsultationAiDocument(
   consultationId: string,
-  payload: { transcript?: string } = {},
+  payload: {
+    transcript?: string;
+    professionalDraft?: {
+      summary?: string;
+      notes?: string;
+      prescriptions?: string;
+      nextSteps?: string;
+    };
+  } = {},
 ) {
   return apiRequest<ProfessionalConsultationAiDocument>(
     `/professional/consultations/${encodeURIComponent(consultationId)}/ai-document/generate`,

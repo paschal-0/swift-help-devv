@@ -29,6 +29,7 @@ import {
   type ProfessionalConsultation,
   type ProfessionalConsultationRequest,
   type ProfessionalDashboard,
+  type ProfessionalNotification,
 } from "@/services/professionalApi";
 
 type AppointmentStatus =
@@ -58,6 +59,8 @@ type IncomingRequest = {
   duration: string;
   deadline: string;
 };
+
+type ImportantNotice = NonNullable<ProfessionalDashboard["importantNotices"]>[number];
 
 type EarningsRange = "today" | "week";
 
@@ -730,6 +733,9 @@ export function ProfessionalDashboardPage() {
   const [dashboardAppointments, setDashboardAppointments] = useState<
     Appointment[]
   >([]);
+  const [importantNotices, setImportantNotices] = useState<ImportantNotice[]>(
+    [],
+  );
   const [professionalName, setProfessionalName] = useState("Professional");
 
   const query = searchText.trim().toLowerCase();
@@ -765,6 +771,7 @@ export function ProfessionalDashboardPage() {
         setDashboardRequests(
           data.pendingRequests.map(mapRequestToIncomingRequest),
         );
+        setImportantNotices(data.importantNotices ?? []);
         if (mappedAppointments[0]) {
           setActiveAppointmentId(mappedAppointments[0].id);
         } else {
@@ -858,6 +865,33 @@ export function ProfessionalDashboardPage() {
       }
     };
 
+    const handleNotificationCreated = (event: MessageEvent) => {
+      const notification = JSON.parse(event.data) as ProfessionalNotification;
+      const consultationId =
+        typeof notification.metadata?.consultationId === "string"
+          ? notification.metadata.consultationId
+          : null;
+      if (!consultationId) return;
+
+      const notice: ImportantNotice = {
+        id: `notification-${notification.id}`,
+        title: notification.title,
+        body: notification.message ?? "Consultation update available.",
+        date: notification.createdAt,
+        kind: "consultation_notice",
+        consultationId,
+        actionLabel: "Open consultation",
+        actionHref: `/professional-platform/consultations/live?consultationId=${encodeURIComponent(consultationId)}`,
+      };
+      setImportantNotices((current) => [
+        notice,
+        ...current.filter(
+          (item) =>
+            item.id !== notice.id && item.consultationId !== consultationId,
+        ),
+      ].slice(0, 5));
+    };
+
     void createAuthenticatedEventSource(getProfessionalLiveUrl()).then(
       (source) => {
         if (cancelled) {
@@ -877,6 +911,10 @@ export function ProfessionalDashboardPage() {
           "professional.consultation_request.updated",
           handleRequestUpdated,
         );
+        source.addEventListener(
+          "professional.notification.created",
+          handleNotificationCreated,
+        );
       },
     );
 
@@ -893,6 +931,10 @@ export function ProfessionalDashboardPage() {
       eventSource?.removeEventListener(
         "professional.consultation_request.updated",
         handleRequestUpdated,
+      );
+      eventSource?.removeEventListener(
+        "professional.notification.created",
+        handleNotificationCreated,
       );
       eventSource?.close();
     };
@@ -1641,10 +1683,47 @@ export function ProfessionalDashboardPage() {
               </button>
             </div>
 
-            {visibleRequests.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
-                No request matches your search.
+            {importantNotices.length ? (
+              <div className="mt-5 space-y-3">
+                {importantNotices.map((notice) => (
+                  <article
+                    key={notice.id}
+                    className="rounded-xl border border-[#1565C0] bg-[#E3F2FD] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="inline-flex h-[18px] items-center rounded-[15px] bg-[#F8FAFC] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.04em] text-[#1565C0]">
+                        Important notice
+                      </span>
+                      <span className="text-[10px] leading-[15px] tracking-[-0.04em] text-[#64748B]">
+                        {formatDateLabel(notice.date)}
+                      </span>
+                    </div>
+                    <h4 className="mt-3 text-[15px] font-medium leading-[17px] tracking-[-0.04em] text-[#334155]">
+                      {notice.title}
+                    </h4>
+                    <p className="mt-1 line-clamp-3 text-[12px] leading-[15px] tracking-[-0.03em] text-[#64748B]">
+                      {notice.body}
+                    </p>
+                    {notice.actionHref ? (
+                      <button
+                        type="button"
+                        onClick={() => router.push(notice.actionHref!)}
+                        className={`mt-3 inline-flex h-[30px] cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[11px] font-medium tracking-[-0.03em] text-[#E3F2FD] ${microInteractionClass}`}
+                      >
+                        {notice.actionLabel ?? "Open"}
+                      </button>
+                    ) : null}
+                  </article>
+                ))}
               </div>
+            ) : null}
+
+            {visibleRequests.length === 0 ? (
+              importantNotices.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
+                  No request matches your search.
+                </div>
+              ) : null
             ) : (
               <div className="mt-5 space-y-3">
                 {visibleRequests.map((request) => (

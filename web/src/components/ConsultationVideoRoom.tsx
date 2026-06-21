@@ -325,13 +325,6 @@ async function ignoreDailyResult(action: (() => unknown) | undefined) {
   }
 }
 
-async function runDailyControl(action: (() => unknown) | undefined) {
-  if (!action) {
-    throw new Error("Daily control is unavailable.");
-  }
-  await Promise.resolve(action());
-}
-
 function normalizeDailyEventPayload(args: unknown[]) {
   const payload = args.find(
     (item): item is Record<string, unknown> =>
@@ -1295,11 +1288,13 @@ export function ConsultationVideoRoom({
           throw error;
         }
       }
-    } catch {
+    } catch (error) {
       setControlNotice(
         recordingActive
           ? "Recording could not be stopped. It will be finalized when the call ends."
-          : "Recording could not be started. Check recording permissions and try again.",
+          : error instanceof Error
+            ? error.message
+            : "Recording could not be started. Check recording permissions and try again.",
       );
     } finally {
       setBusyControl(null);
