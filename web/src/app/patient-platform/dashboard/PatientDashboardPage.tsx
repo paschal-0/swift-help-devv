@@ -7,7 +7,11 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { usePatientPlatformShell } from "../components/PatientPlatformShell";
 import { getApiErrorMessage } from "@/services/authApi";
-import { getPatientDashboard, type PatientDashboard } from "@/services/patientApi";
+import {
+  confirmPatientConsultationComplete,
+  getPatientDashboard,
+  type PatientDashboard,
+} from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 
@@ -117,6 +121,28 @@ function CalendarIcon({ className = "h-8 w-8" }: { className?: string }) {
   );
 }
 
+function RefreshIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 5a7 7 0 0 1 6.32 4H16v2h6V5h-2v2.02A9 9 0 1 0 20.95 14h-2.06A7 7 0 1 1 12 5Z"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="m9.55 17.65-5.2-5.2 1.4-1.4 3.8 3.78 8.7-8.68 1.4 1.4-10.1 10.1Z"
+      />
+    </svg>
+  );
+}
+
 function StatCard({
   title,
   value,
@@ -176,6 +202,7 @@ export function PatientDashboardPage() {
   const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
   const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
 
   const query = searchText.trim().toLowerCase();
 
@@ -249,6 +276,20 @@ export function PatientDashboardPage() {
     if (!query) return updates;
     return updates.filter((item) => [item.title, item.body, item.date].join(" ").toLowerCase().includes(query));
   }, [dashboard?.updates, dismissedUpdateIds, query]);
+
+  const confirmConsultation = async (consultationId: string, updateId: string) => {
+    if (confirmingConsultationId) return;
+    setConfirmingConsultationId(consultationId);
+    try {
+      await confirmPatientConsultationComplete(consultationId);
+      setDismissedUpdateIds((current) => [...current, updateId]);
+      toast.success("Consultation confirmed and payment released.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setConfirmingConsultationId(null);
+    }
+  };
 
   const pendingFollowUpCount = useMemo(
     () =>
@@ -508,28 +549,62 @@ export function PatientDashboardPage() {
           <h2 className="text-[18px] font-medium leading-5 tracking-[-0.05em] text-[#334155]">Important Updates</h2>
           <div className="mt-4 space-y-2">
             {visibleUpdates.length ? (
-              visibleUpdates.slice(0, 2).map((update) => (
+              visibleUpdates.slice(0, 2).map((update) => {
+                const isUnfinishedConsultation =
+                  update.type === "unfinished_consultation" && Boolean(update.consultationId);
+                return (
                 <div key={update.id} className="min-h-[158px] rounded-md border border-[#1E88E5] p-2">
                   <div className="flex items-center justify-between">
                     <span className="inline-flex h-[16.56px] min-w-[59px] items-center justify-center rounded-[15px] bg-[#E3F2FD] text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      Due soon
+                      {isUnfinishedConsultation ? "Action needed" : "Due soon"}
                     </span>
                     <span className="text-[10px] leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{formatShortDate(update.date)}</span>
                   </div>
-                  <h3 className="mt-[18px] text-[16px] font-normal leading-[15px] tracking-[-0.05em] text-[#334155]">{update.title}</h3>
-                  <p className="mt-[7px] max-w-[264px] text-[13px] font-light leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{update.body}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDismissedUpdateIds((current) => [...current, update.id]);
-                      toast.success("Reminder marked");
-                    }}
-                    className="mt-3 inline-flex h-[23.47px] min-w-[68px] cursor-pointer items-center justify-center rounded-[4.3px] bg-[#1565C0] px-2 text-[8px] tracking-[-0.05em] text-[#F8FAFC]"
-                  >
-                    Set Reminder+Details
-                  </button>
+                  <h3 className="mt-3 text-[15px] font-normal leading-[17px] tracking-[-0.04em] text-[#334155]">{update.title}</h3>
+                  <p className="mt-[7px] line-clamp-3 max-w-[264px] text-[12px] font-light leading-[15px] tracking-[-0.04em] text-[#64748B]">{update.body}</p>
+                  {isUnfinishedConsultation ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(
+                            update.actionHref ??
+                              `/patient-platform/consultations/live?consultationId=${encodeURIComponent(update.consultationId!)}&rejoin=1`,
+                          )
+                        }
+                        className="inline-flex h-[30px] min-w-[112px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[10px] font-medium leading-none tracking-[-0.03em] text-[#E3F2FD] shadow-[0_8px_14px_rgba(30,136,229,0.18)] transition hover:-translate-y-0.5"
+                      >
+                        <RefreshIcon />
+                        <span className="whitespace-nowrap">Rejoin</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={confirmingConsultationId === update.consultationId}
+                        onClick={() => void confirmConsultation(update.consultationId!, update.id)}
+                        className="inline-flex h-[30px] min-w-[126px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-[#1565C0] bg-[#F8FAFC] px-3 text-[10px] font-medium leading-none tracking-[-0.03em] text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                      >
+                        <CheckIcon />
+                        <span className="whitespace-nowrap">
+                          {confirmingConsultationId === update.consultationId ? "Confirming" : "Confirm done"}
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDismissedUpdateIds((current) => [...current, update.id]);
+                        toast.success("Reminder marked");
+                      }}
+                      className="mt-3 inline-flex h-[30px] min-w-[96px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[10px] font-medium tracking-[-0.03em] text-[#E3F2FD] transition hover:-translate-y-0.5"
+                    >
+                      <CheckIcon />
+                      Set reminder
+                    </button>
+                  )}
                 </div>
-              ))
+              );
+              })
             ) : (
               <div className="rounded-lg border border-dashed border-[#94A3B8] p-4 text-sm text-[#64748B]">
                 No updates match your search.

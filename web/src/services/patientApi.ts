@@ -68,10 +68,17 @@ export type PatientConsultation = {
     | "arrived"
     | "in_progress"
     | "ongoing"
+    | "ended_unconfirmed"
     | "completed"
     | "missed"
     | "cancelled"
     | string;
+  paymentStatus?: string | null;
+  completionConfirmationStatus?: string | null;
+  rejoinExpiresAt?: string | null;
+  confirmationDueAt?: string | null;
+  confirmedAt?: string | null;
+  confirmedByUserId?: string | null;
   liveStartedAt?: string | null;
   liveEndedAt?: string | null;
   billableDurationSeconds?: number;
@@ -115,6 +122,12 @@ export type PatientUpdate = {
   title: string;
   body: string;
   date: string;
+  type?: "unfinished_consultation" | "follow_up" | "appointment" | string;
+  consultationId?: string;
+  appointmentId?: string;
+  actionLabel?: string;
+  actionHref?: string;
+  actionKind?: "rejoin" | "details" | string;
 };
 
 export type PatientDashboard = {
@@ -1049,9 +1062,20 @@ export function joinPatientConsultation(consultationId: string) {
   );
 }
 
+export function rejoinPatientConsultation(consultationId: string) {
+  return apiRequest<CommunicationRoomAccess>(
+    `/patient/consultations/${encodeURIComponent(consultationId)}/rejoin`,
+    { method: "POST" },
+  );
+}
+
 export function completePatientConsultation(consultationId: string) {
+  return confirmPatientConsultationComplete(consultationId);
+}
+
+export function confirmPatientConsultationComplete(consultationId: string) {
   return apiRequest<PatientConsultation>(
-    `/patient/consultations/${encodeURIComponent(consultationId)}/complete`,
+    `/patient/consultations/${encodeURIComponent(consultationId)}/confirm-complete`,
     { method: "POST" },
   );
 }

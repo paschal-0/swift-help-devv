@@ -10,9 +10,11 @@ import {
 import {
   getPatientLiveUrl,
   getPatientConsultationRoom,
+  confirmPatientConsultationComplete,
   joinPatientConsultation,
   leavePatientConsultation,
   listPatientConsultations,
+  rejoinPatientConsultation,
   sendPatientConsultationMessage,
   updatePatientConsultationPresence,
   type PatientConsultation,
@@ -65,8 +67,32 @@ function formatStatus(value?: string | null) {
     .join(" ");
 }
 
+function RefreshIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 5a7 7 0 0 1 6.32 4H16v2h6V5h-2v2.02A9 9 0 1 0 20.95 14h-2.06A7 7 0 1 1 12 5Z"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="m9.55 17.65-5.2-5.2 1.4-1.4 3.8 3.78 8.7-8.68 1.4 1.4-10.1 10.1Z"
+      />
+    </svg>
+  );
+}
+
 function isActive(consultation: PatientConsultation) {
-  return ["scheduled", "ongoing"].includes(consultation.status);
+  return ["scheduled", "in_progress", "ongoing", "ended_unconfirmed"].includes(
+    consultation.status,
+  );
 }
 
 export function PatientLiveConsultationPage() {
@@ -97,6 +123,7 @@ export function PatientLiveConsultationPage() {
   const [messageDraft, setMessageDraft] = useState("");
   const [isLeaving, setIsLeaving] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
+  const [isConfirmingComplete, setIsConfirmingComplete] = useState(false);
 
   const consultation = room?.consultation ?? null;
   const providerName = room?.provider?.name ?? "Provider";
@@ -117,6 +144,7 @@ export function PatientLiveConsultationPage() {
       try {
         const requestedId =
           searchParams.get("consultationId") ?? searchParams.get("id");
+        const shouldRejoin = searchParams.get("rejoin") === "1";
         const storedId = window.sessionStorage.getItem(
           ACTIVE_CONSULTATION_STORAGE_KEY,
         );
@@ -141,7 +169,9 @@ export function PatientLiveConsultationPage() {
         );
         const [nextRoom, access] = await Promise.all([
           getPatientConsultationRoom(consultationId),
-          joinPatientConsultation(consultationId),
+          shouldRejoin
+            ? rejoinPatientConsultation(consultationId)
+            : joinPatientConsultation(consultationId),
         ]);
 
         if (cancelled) return;
@@ -232,7 +262,9 @@ export function PatientLiveConsultationPage() {
       const notification = JSON.parse(event.data) as PatientNotification;
       if (
         notification.consultationId !== consultation.id ||
-        notification.metadata?.status !== "completed"
+        !["completed", "ended_unconfirmed"].includes(
+          String(notification.metadata?.status ?? ""),
+        )
       ) {
         return;
       }
@@ -240,6 +272,10 @@ export function PatientLiveConsultationPage() {
         ACTIVE_CONSULTATION_STORAGE_KEY,
         consultation.id,
       );
+      if (notification.metadata?.status === "ended_unconfirmed") {
+        toast.info("Please confirm completion or rejoin if you still need help.");
+        return;
+      }
       if (notification.metadata?.endReason === "professional_completed") {
         toast.success("Your professional has completed the consultation.");
         router.push("/patient-platform/consultations/rate");
@@ -261,6 +297,10 @@ export function PatientLiveConsultationPage() {
           updatedConsultation.endReason !== "professional_completed")
       ) {
         router.push("/patient-platform/consultations");
+        return;
+      }
+      if (updatedConsultation.status === "ended_unconfirmed") {
+        toast.info("Confirm completion or rejoin if anything is unfinished.");
       }
     };
 
@@ -415,6 +455,44 @@ export function PatientLiveConsultationPage() {
     }
   };
 
+  const rejoinSession = async () => {
+    if (!consultation) return;
+    try {
+      const access = await rejoinPatientConsultation(consultation.id);
+      const nextRoom = await getPatientConsultationRoom(consultation.id);
+      setRoom(nextRoom);
+      setVideoAccessError(null);
+      setVideoAccess({
+        roomId: access.roomId,
+        roomName: access.roomName,
+        meetingUrl: access.meetingUrl,
+        roomToken: access.roomToken,
+        canJoin: access.canJoin,
+        waitingRoomStatus: access.waitingRoomStatus,
+      });
+      toast.success("Consultation reopened.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const confirmComplete = async () => {
+    if (!consultation || isConfirmingComplete) return;
+    setIsConfirmingComplete(true);
+    try {
+      const updated = await confirmPatientConsultationComplete(consultation.id);
+      setRoom((current) =>
+        current ? { ...current, consultation: updated } : current,
+      );
+      toast.success("Consultation confirmed and payment released.");
+      router.push("/patient-platform/consultations/rate");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsConfirmingComplete(false);
+    }
+  };
+
   const allowClinicalAi = async () => {
     if (!videoAccess?.roomId || isSavingConsent || patientConsentSaved) return;
     setIsSavingConsent(true);
@@ -555,6 +633,36 @@ export function PatientLiveConsultationPage() {
             <span className="mt-7 inline-flex w-fit rounded-[16px] bg-[#A6A100] px-4 py-1 text-[14px] font-medium leading-[23px] tracking-[-0.07em] text-white">
               {formatStatus(consultation?.status)}
             </span>
+            {consultation?.status === "ended_unconfirmed" ? (
+              <div className="mt-4 rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] p-3">
+                <p className="text-[13px] font-medium leading-4 tracking-[-0.03em] text-[#334155]">
+                  This consultation is waiting for your confirmation.
+                </p>
+                <p className="mt-1 text-[11px] leading-4 tracking-[-0.03em] text-[#64748B]">
+                  Rejoin if anything is unfinished. Confirm completion only
+                  when you received the help you needed.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void rejoinSession()}
+                    className="inline-flex h-[32px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[11px] font-medium tracking-[-0.03em] text-[#E3F2FD] shadow-[0_8px_14px_rgba(30,136,229,0.18)] transition hover:-translate-y-0.5"
+                  >
+                    <RefreshIcon />
+                    Rejoin
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isConfirmingComplete}
+                    onClick={() => void confirmComplete()}
+                    className="inline-flex h-[32px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-[#1565C0] bg-white px-3 text-[11px] font-medium tracking-[-0.03em] text-[#1565C0] transition hover:bg-[#E3F2FD] disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:text-[#94A3B8]"
+                  >
+                    <CheckIcon />
+                    {isConfirmingComplete ? "Confirming" : "Confirm done"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         }
         sharedInfoContent={
