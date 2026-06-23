@@ -10,7 +10,9 @@ import {
   getAdminPaymentTransaction,
   getAdminPaymentsOverview,
   removeAdminPaymentTransaction,
+  resolveAdminConsultationEscrow,
   testAdminPaymentGateway,
+  type AdminConsultationEscrowRow,
   type AdminPaymentGatewayRow,
   type AdminPaymentReferralPayoutRow,
   type AdminPaymentStatus,
@@ -20,7 +22,8 @@ import {
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 
-type PaymentTab = "transactions" | "subscriptions" | "referrals" | "configuration";
+type PaymentTab = "transactions" | "subscriptions" | "referrals" | "escrows" | "configuration";
+type EscrowAction = "release_to_professional" | "refund_patient" | "partial_refund" | "send_to_review";
 type StatusFilter = "all" | AdminPaymentStatus;
 type IconName =
   | "active"
@@ -58,6 +61,7 @@ const defaultOverview: AdminPaymentsOverview = {
   transactions: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
   subscriptions: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
   referralPayouts: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
+  escrows: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
   configuration: { plans: [], gateways: [] },
 };
 
@@ -109,10 +113,10 @@ function labelize(value: string) {
 
 function statusClass(status: string) {
   const normalized = status.toLowerCase();
-  if (normalized.includes("active") || normalized.includes("completed") || normalized.includes("connected")) {
+  if (normalized.includes("active") || normalized.includes("completed") || normalized.includes("connected") || normalized.includes("released")) {
     return "bg-[#D9F8DE] text-[#0D8C24]";
   }
-  if (normalized.includes("pending") || normalized.includes("setup")) {
+  if (normalized.includes("pending") || normalized.includes("setup") || normalized.includes("review") || normalized.includes("awaiting") || normalized.includes("held")) {
     return "bg-[#FEF3C7] text-[#A16207]";
   }
   return "bg-[#FFE5E2] text-[#B91C1C]";
@@ -292,6 +296,11 @@ export default function SuperAdminPaymentsRoute() {
   const [viewing, setViewing] = useState<AdminPaymentTransaction | null>(null);
   const [configuringGateway, setConfiguringGateway] = useState<AdminPaymentGatewayRow | null>(null);
   const [savingGateway, setSavingGateway] = useState(false);
+  const [resolvingEscrow, setResolvingEscrow] = useState<{
+    row: AdminConsultationEscrowRow;
+    action: EscrowAction;
+  } | null>(null);
+  const [savingEscrowResolution, setSavingEscrowResolution] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -344,6 +353,20 @@ export default function SuperAdminPaymentsRoute() {
           ),
         ),
       },
+      escrows: {
+        ...(overview.escrows ?? defaultOverview.escrows!),
+        data: (overview.escrows?.data ?? []).filter((row) =>
+          [
+            row.payer.name,
+            row.payer.email ?? "",
+            row.professional.name,
+            row.professional.email ?? "",
+            row.consultationLabel,
+            row.escrowStatus,
+            row.paymentStatus ?? "",
+          ].some((value) => value.toLowerCase().includes(needle)),
+        ),
+      },
     };
   }, [debouncedSearch, overview]);
 
@@ -380,6 +403,7 @@ export default function SuperAdminPaymentsRoute() {
       transactions: ["User", "ID", "Type", "Amount", "Date", "Method", "Status"],
       subscriptions: ["User", "User type", "Plan", "Started", "Next billing", "Amount", "Status"],
       referrals: ["Referrer", "Level", "Trigger", "Amount", "Bank/wallet", "Date", "Status"],
+      escrows: ["Patient", "Professional", "Consultation", "Amount", "Escrow status", "Payment", "Updated"],
       configuration: ["Name", "Type", "Monthly", "Yearly", "Status"],
     };
     const rowsByTab: Record<PaymentTab, string[][]> = {
@@ -409,6 +433,15 @@ export default function SuperAdminPaymentsRoute() {
         row.bankWallet,
         formatDate(row.createdAt),
         row.status,
+      ]),
+      escrows: (tableRows.escrows?.data ?? []).map((row) => [
+        row.payer.name,
+        row.professional.name,
+        row.consultationLabel,
+        formatCurrency(row.amount, row.currency),
+        labelize(row.escrowStatus),
+        labelize(row.paymentStatus ?? "held"),
+        formatDate(row.updatedAt),
       ]),
       configuration: tableRows.configuration.plans.map((row) => [
         row.name,
@@ -479,6 +512,37 @@ export default function SuperAdminPaymentsRoute() {
     }
   };
 
+  const handleResolveEscrow = async (
+    row: AdminConsultationEscrowRow,
+    action: EscrowAction,
+    payload: { note?: string; refundAmountCents?: number },
+  ) => {
+    setSavingEscrowResolution(true);
+    try {
+      const updated = await resolveAdminConsultationEscrow(row.id, {
+        action,
+        note: payload.note,
+        refundAmountCents: payload.refundAmountCents,
+      });
+      setOverview((current) => ({
+        ...current,
+        escrows: {
+          ...(current.escrows ?? defaultOverview.escrows!),
+          data: (current.escrows?.data ?? []).map((item) =>
+            item.id === updated.id ? updated : item,
+          ),
+        },
+      }));
+      setResolvingEscrow(null);
+      toast.success("Escrow updated.");
+      await loadPayments();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingEscrowResolution(false);
+    }
+  };
+
   return (
     <section className="min-w-0 pb-12">
       <div className="mb-7">
@@ -520,6 +584,7 @@ export default function SuperAdminPaymentsRoute() {
               ["transactions", "Transactions"],
               ["subscriptions", "Subscriptions"],
               ["referrals", "Referral payouts"],
+              ["escrows", `Escrow review${overview.summary.escrowReviewCount ? ` (${overview.summary.escrowReviewCount})` : ""}`],
               ["configuration", "Configuration"],
             ].map(([value, label]) => (
               <button
@@ -582,6 +647,12 @@ export default function SuperAdminPaymentsRoute() {
           {activeTab === "referrals" ? (
             <ReferralPayoutsTable rows={tableRows.referralPayouts.data} onUnavailable={unavailableAction} />
           ) : null}
+          {activeTab === "escrows" ? (
+            <EscrowReviewTable
+              rows={tableRows.escrows?.data ?? []}
+              onResolve={(row, action) => setResolvingEscrow({ row, action })}
+            />
+          ) : null}
           {activeTab === "configuration" ? (
             <ConfigurationPanel
               overview={overview}
@@ -622,6 +693,21 @@ export default function SuperAdminPaymentsRoute() {
       </div>
 
       {viewing ? <PaymentDetailModal transaction={viewing} onClose={() => setViewing(null)} /> : null}
+      {resolvingEscrow ? (
+        <EscrowResolutionModal
+          action={resolvingEscrow.action}
+          row={resolvingEscrow.row}
+          saving={savingEscrowResolution}
+          onClose={() => setResolvingEscrow(null)}
+          onSubmit={(payload) =>
+            handleResolveEscrow(
+              resolvingEscrow.row,
+              resolvingEscrow.action,
+              payload,
+            )
+          }
+        />
+      ) : null}
       {configuringGateway ? (
         <GatewayConfigModal
           key={configuringGateway.id}
@@ -762,6 +848,83 @@ function ReferralPayoutsTable({
               <td className="truncate px-4 py-3">{row.bankWallet}</td>
               <td className="truncate px-4 py-3">{formatDate(row.createdAt)}</td>
               <td className="px-7 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EscrowReviewTable({
+  onResolve,
+  rows,
+}: {
+  onResolve: (row: AdminConsultationEscrowRow, action: EscrowAction) => void;
+  rows: AdminConsultationEscrowRow[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[1180px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
+          <tr>
+            <th className="w-[18%] px-7 py-3 font-medium">Patient</th>
+            <th className="w-[18%] px-4 py-3 font-medium">Professional</th>
+            <th className="w-[15%] px-4 py-3 font-medium">Consultation</th>
+            <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
+            <th className="w-[13%] px-4 py-3 font-medium">Escrow</th>
+            <th className="w-[10%] px-4 py-3 font-medium">Updated</th>
+            <th className="w-[15%] px-7 py-3 text-right font-medium">Decision</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+          {!rows.length ? <EmptyRows columns={7} message="No consultation escrows need review right now." /> : null}
+          {rows.map((row) => (
+            <tr key={row.id} className="h-[76px] align-middle">
+              <td className="px-7 py-3"><UserCell user={row.payer} /></td>
+              <td className="px-4 py-3"><UserCell user={row.professional} /></td>
+              <td className="px-4 py-3">
+                <span className="block truncate font-semibold text-[#334155]" title={row.consultationLabel}>
+                  {row.consultationLabel}
+                </span>
+                <span className="mt-1 block truncate text-[11px] text-[#94A3B8]">
+                  {labelize(row.completionConfirmationStatus ?? row.consultationStatus ?? "waiting")}
+                </span>
+              </td>
+              <td className="truncate px-4 py-3 font-semibold text-[#334155]">
+                {formatCurrency(row.amount, row.currency)}
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-[12px] font-semibold ${statusClass(row.escrowStatus)}`}>
+                  <span className="truncate">{labelize(row.escrowStatus)}</span>
+                </span>
+              </td>
+              <td className="truncate px-4 py-3">{formatDate(row.updatedAt)}</td>
+              <td className="px-7 py-3">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onResolve(row, "release_to_professional")}
+                    className="h-8 cursor-pointer rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-3 text-[11px] font-semibold text-white shadow-[0_8px_14px_rgba(21,101,192,0.16)]"
+                  >
+                    Release
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onResolve(row, "refund_patient")}
+                    className="h-8 cursor-pointer rounded-[8px] border border-[#B91C1C] bg-[#FEF2F2] px-3 text-[11px] font-semibold text-[#B91C1C]"
+                  >
+                    Refund
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onResolve(row, "partial_refund")}
+                    className="h-8 cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-white px-3 text-[11px] font-semibold text-[#1565C0]"
+                  >
+                    Partial
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -955,6 +1118,124 @@ function GatewayConfigModal({
   );
 }
 
+function EscrowResolutionModal({
+  action,
+  onClose,
+  onSubmit,
+  row,
+  saving,
+}: {
+  action: EscrowAction;
+  onClose: () => void;
+  onSubmit: (payload: { note?: string; refundAmountCents?: number }) => void;
+  row: AdminConsultationEscrowRow;
+  saving: boolean;
+}) {
+  const [note, setNote] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
+  const isPartial = action === "partial_refund";
+  const actionLabel =
+    action === "release_to_professional"
+      ? "Release payment"
+      : action === "refund_patient"
+        ? "Refund patient"
+        : action === "partial_refund"
+          ? "Apply partial refund"
+          : "Send to review";
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const amount = Number(refundAmount);
+    if (isPartial && (!Number.isFinite(amount) || amount <= 0 || amount >= row.amount)) {
+      toast.error("Enter a partial refund amount less than the escrow amount.");
+      return;
+    }
+    onSubmit({
+      note: note.trim() || undefined,
+      refundAmountCents: isPartial ? Math.round(amount * 100) : undefined,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#334155]/45 px-4 py-8">
+      <form
+        onSubmit={submit}
+        className="max-h-[88vh] w-full max-w-[620px] overflow-y-auto rounded-[16px] bg-[#F8FAFC] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">Escrow decision</p>
+            <h2 className="mt-2 truncate text-[26px] font-semibold text-[#334155]">{actionLabel}</h2>
+            <p className="mt-2 max-w-[500px] text-[14px] leading-6 text-[#64748B]">
+              Review the consultation escrow before changing money state. This action is logged for audit.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#EAF2FB] text-[#334155] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Icon name="close" className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <InfoTile label="Patient" value={row.payer.name} />
+          <InfoTile label="Professional" value={row.professional.name} />
+          <InfoTile label="Consultation" value={row.consultationLabel} />
+          <InfoTile label="Escrow amount" value={formatCurrency(row.amount, row.currency)} />
+        </div>
+
+        {isPartial ? (
+          <label className="mt-5 block">
+            <span className="text-[14px] font-semibold text-[#334155]">Refund amount</span>
+            <input
+              type="number"
+              min="0"
+              max={row.amount}
+              step="0.01"
+              value={refundAmount}
+              onChange={(event) => setRefundAmount(event.target.value)}
+              placeholder={`Less than ${formatCurrency(row.amount, row.currency)}`}
+              className="mt-2 h-12 w-full rounded-[14px] border border-[#D6E0EA] bg-white px-4 text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+            />
+          </label>
+        ) : null}
+
+        <label className="mt-5 block">
+          <span className="text-[14px] font-semibold text-[#334155]">Decision note</span>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            rows={4}
+            placeholder="Add a short reason for the audit trail"
+            className="mt-2 w-full resize-none rounded-[14px] border border-[#D6E0EA] bg-white px-4 py-3 text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+          />
+        </label>
+
+        <div className="mt-8 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="h-11 cursor-pointer rounded-[14px] border border-[#D6E0EA] px-5 text-[15px] font-medium text-[#334155] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="h-11 cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-5 text-[15px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Saving..." : actionLabel}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function PaymentDetailModal({
   onClose,
   transaction,
@@ -993,6 +1274,15 @@ function PaymentDetailModal({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-[12px] border border-[#DDE5EF] bg-white px-4 py-3">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">{label}</p>
+      <p className="mt-1 truncate text-[16px] font-semibold text-[#334155]" title={value}>{value}</p>
     </div>
   );
 }

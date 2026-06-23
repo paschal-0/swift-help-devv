@@ -939,6 +939,31 @@ export type AdminPaymentReferralPayoutRow = {
   createdAt: string;
 };
 
+export type AdminConsultationEscrowRow = {
+  id: string;
+  consultationId: string;
+  appointmentId: string | null;
+  payer: AdminPaymentUser & { id: string | null };
+  professional: AdminPaymentUser;
+  consultationLabel: string;
+  consultationStatus: string | null;
+  completionConfirmationStatus: string | null;
+  paymentStatus: string | null;
+  escrowStatus: string;
+  amount: number;
+  platformFee: number;
+  professionalAmount: number;
+  currency: string;
+  disputedAt: string | null;
+  reviewStartedAt: string | null;
+  releasedAt: string | null;
+  refundedAt: string | null;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminPaymentPlanRow = {
   id: string;
   name: string;
@@ -976,6 +1001,7 @@ export type AdminPaymentsOverview = {
     pendingPayouts: number;
     pendingPayoutCurrency: string;
     failedPayments: number;
+    escrowReviewCount?: number;
   };
   transactions: {
     data: AdminPaymentTransaction[];
@@ -997,6 +1023,15 @@ export type AdminPaymentsOverview = {
   };
   referralPayouts: {
     data: AdminPaymentReferralPayoutRow[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  escrows?: {
+    data: AdminConsultationEscrowRow[];
     meta: {
       total: number;
       page: number;
@@ -1667,6 +1702,36 @@ export async function removeAdminPaymentTransaction(transactionId: string) {
   return apiRequest<MessageResponse>(`/admin/payments/transactions/${transactionId}`, {
     method: "DELETE",
   });
+}
+
+export async function listAdminConsultationEscrows() {
+  return apiRequest<{
+    data: AdminConsultationEscrowRow[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }>("/admin/payments/escrows", {
+    method: "GET",
+  });
+}
+
+export async function resolveAdminConsultationEscrow(
+  escrowId: string,
+  payload: {
+    action:
+      | "release_to_professional"
+      | "refund_patient"
+      | "partial_refund"
+      | "send_to_review";
+    refundAmountCents?: number;
+    note?: string;
+  },
+) {
+  return apiRequest<AdminConsultationEscrowRow>(
+    `/admin/payments/escrows/${encodeURIComponent(escrowId)}/resolve`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function listAdminTeam(params: {
