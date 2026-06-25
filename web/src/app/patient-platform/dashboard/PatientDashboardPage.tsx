@@ -11,7 +11,9 @@ import {
   confirmPatientConsultationComplete,
   disputePatientConsultationCompletion,
   getPatientDashboard,
+  initializePaystackConsultationPayment,
   type PatientDashboard,
+  verifyPaystackConsultationPayment,
 } from "@/services/patientApi";
 import { formatDurationFromTimes } from "@/utils/appointmentTime";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -147,6 +149,17 @@ function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
+function PaymentIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5v-13Zm2 2V9h14V7.5H5Zm0 4v7h14v-7H5Zm2 4h5v1.5H7V15.5Z"
+      />
+    </svg>
+  );
+}
+
 function StatCard({
   title,
   value,
@@ -217,6 +230,7 @@ export function PatientDashboardPage() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
   const [disputingConsultationId, setDisputingConsultationId] = useState<string | null>(null);
+  const [payingConsultationId, setPayingConsultationId] = useState<string | null>(null);
   const [activityPage, setActivityPage] = useState(1);
 
   const query = searchText.trim().toLowerCase();
@@ -251,6 +265,35 @@ export function PatientDashboardPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    const isPaystackReturn = params.get("payment") === "paystack";
+    if (!isPaystackReturn || !reference) return;
+    const paymentReference = reference;
+
+    let isMounted = true;
+    async function verifyPaymentReturn() {
+      try {
+        await verifyPaystackConsultationPayment(paymentReference);
+        const response = await getPatientDashboard();
+        if (!isMounted) return;
+        setDashboard(response);
+        setActiveAppointmentId(response.appointments[0]?.id ?? "");
+        toast.success("Payment verified. Your consultation is now ready.");
+      } catch (error) {
+        if (isMounted) toast.error(getApiErrorMessage(error));
+      } finally {
+        if (isMounted) router.replace("/patient-platform", { scroll: false });
+      }
+    }
+
+    void verifyPaymentReturn();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const appointments = useMemo<Appointment[]>(() => {
     const consultationByAppointmentId = new Map(
@@ -326,6 +369,28 @@ export function PatientDashboardPage() {
       toast.error(getApiErrorMessage(error));
     } finally {
       setDisputingConsultationId(null);
+    }
+  };
+
+  const payForConsultation = async (consultationId: string) => {
+    if (payingConsultationId) return;
+    setPayingConsultationId(consultationId);
+    try {
+      const payment = await initializePaystackConsultationPayment(consultationId);
+      if (payment.alreadyPaid) {
+        const response = await getPatientDashboard();
+        setDashboard(response);
+        setActiveAppointmentId(response.appointments[0]?.id ?? "");
+        toast.success("Payment is already verified.");
+        return;
+      }
+      if (!payment.authorizationUrl) {
+        throw new Error("Paystack checkout URL was not returned");
+      }
+      window.location.assign(payment.authorizationUrl);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setPayingConsultationId(null);
     }
   };
 
@@ -595,6 +660,10 @@ export function PatientDashboardPage() {
           <div className="mt-4 space-y-2">
             {visibleUpdates.length ? (
               visibleUpdates.slice(0, 2).map((update) => {
+                const isPaymentPending =
+                  update.type === "payment_pending_consultation" ||
+                  update.actionKind === "pay_consultation" ||
+                  update.paymentStatus === "payment_pending";
                 const isUnfinishedConsultation =
                   update.type === "unfinished_consultation" && Boolean(update.consultationId);
                 const isUnderReview =
@@ -604,13 +673,25 @@ export function PatientDashboardPage() {
                 <div key={update.id} className="min-h-[158px] rounded-md border border-[#1E88E5] p-2">
                   <div className="flex items-center justify-between">
                     <span className="inline-flex h-[16.56px] min-w-[59px] items-center justify-center rounded-[15px] bg-[#E3F2FD] text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
-                      {isUnfinishedConsultation ? "Action needed" : "Due soon"}
+                      {isPaymentPending ? "Payment due" : isUnfinishedConsultation ? "Action needed" : "Due soon"}
                     </span>
                     <span className="text-[10px] leading-[15px] tracking-[-0.05em] text-[#94A3B8]">{formatShortDate(update.date)}</span>
                   </div>
                   <h3 className="mt-3 text-[15px] font-normal leading-[17px] tracking-[-0.04em] text-[#334155]">{update.title}</h3>
                   <p className="mt-[7px] line-clamp-3 max-w-[264px] text-[12px] font-light leading-[15px] tracking-[-0.04em] text-[#64748B]">{update.body}</p>
-                  {isUnfinishedConsultation && isUnderReview ? (
+                  {isPaymentPending ? (
+                    <button
+                      type="button"
+                      disabled={!update.consultationId || payingConsultationId === update.consultationId}
+                      onClick={() => update.consultationId && void payForConsultation(update.consultationId)}
+                      className="mt-3 inline-flex h-[30px] min-w-[104px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[10px] font-medium leading-none tracking-[-0.03em] text-[#E3F2FD] shadow-[0_8px_14px_rgba(30,136,229,0.18)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <PaymentIcon />
+                      <span className="whitespace-nowrap">
+                        {payingConsultationId === update.consultationId ? "Opening" : "Pay now"}
+                      </span>
+                    </button>
+                  ) : isUnfinishedConsultation && isUnderReview ? (
                     <p className="mt-3 rounded-[7px] bg-[#FEF3C7] px-3 py-2 text-[10px] font-medium leading-4 tracking-[-0.03em] text-[#92400E]">
                       Payment remains held while Swifthelp reviews this consultation.
                     </p>

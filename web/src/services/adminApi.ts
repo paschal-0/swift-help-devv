@@ -1013,6 +1013,8 @@ export type AdminPaymentGatewayRow = {
     label: string;
     secret: boolean;
     placeholder: string;
+    required?: boolean;
+    helperText?: string | null;
     configured: boolean;
     maskedValue: string | null;
   }>;

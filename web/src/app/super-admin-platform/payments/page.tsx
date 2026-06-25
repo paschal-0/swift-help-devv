@@ -1076,6 +1076,10 @@ function GatewayConfigModal({
                   <span className="rounded-full bg-[#EAF2FB] px-3 py-1 text-[12px] font-medium text-[#1565C0]">
                     Saved {field.maskedValue ?? ""}
                   </span>
+                ) : field.required === false ? (
+                  <span className="rounded-full bg-[#EAF2FB] px-3 py-1 text-[12px] font-medium text-[#64748B]">
+                    Optional
+                  </span>
                 ) : (
                   <span className="rounded-full bg-[#FEF3C7] px-3 py-1 text-[12px] font-medium text-[#A16207]">
                     Required
@@ -1093,6 +1097,11 @@ function GatewayConfigModal({
                 spellCheck={false}
                 className="mt-2 h-12 w-full rounded-[14px] border border-[#D6E0EA] bg-white px-4 text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
               />
+              {field.helperText ? (
+                <span className="mt-1.5 block text-[12px] leading-5 text-[#64748B]">
+                  {field.helperText}
+                </span>
+              ) : null}
             </label>
           ))}
         </div>

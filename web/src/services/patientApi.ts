@@ -129,14 +129,30 @@ export type PatientUpdate = {
   title: string;
   body: string;
   date: string;
-  type?: "unfinished_consultation" | "follow_up" | "appointment" | string;
+  type?:
+    | "unfinished_consultation"
+    | "payment_pending_consultation"
+    | "follow_up"
+    | "appointment"
+    | string;
   consultationId?: string;
   appointmentId?: string;
   actionLabel?: string;
   actionHref?: string;
-  actionKind?: "rejoin" | "details" | string;
+  actionKind?: "rejoin" | "pay_consultation" | "details" | string;
   paymentStatus?: string | null;
   completionConfirmationStatus?: string | null;
+};
+
+export type PaystackConsultationPayment = {
+  alreadyPaid?: boolean;
+  authorizationUrl?: string;
+  accessCode?: string | null;
+  reference?: string;
+  transactionId?: string;
+  consultationId?: string;
+  paymentStatus?: string;
+  escrowStatus?: string;
 };
 
 export type PatientDashboard = {
@@ -1117,6 +1133,20 @@ export function rejoinPatientConsultation(consultationId: string) {
     `/patient/consultations/${encodeURIComponent(consultationId)}/rejoin`,
     { method: "POST" },
   );
+}
+
+export function initializePaystackConsultationPayment(consultationId: string) {
+  return apiRequest<PaystackConsultationPayment>("/payments/paystack/initialize", {
+    method: "POST",
+    body: JSON.stringify({ consultationId }),
+  });
+}
+
+export function verifyPaystackConsultationPayment(reference: string) {
+  return apiRequest<PaystackConsultationPayment>("/payments/paystack/verify", {
+    method: "POST",
+    body: JSON.stringify({ reference }),
+  });
 }
 
 export function completePatientConsultation(consultationId: string) {
