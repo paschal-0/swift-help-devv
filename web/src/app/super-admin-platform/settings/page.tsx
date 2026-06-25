@@ -103,6 +103,12 @@ function isEnabled(value: string | undefined) {
   return String(value || "false").toLowerCase() === "true";
 }
 
+function providerCategoryLabel(category: ProviderRolesConfig["categories"][number] | undefined) {
+  if (category?.id === "general") return "General Consultation";
+  if (category?.id === "specialist") return "Speciality";
+  return category?.name || "Provider category";
+}
+
 function Field({
   label,
   onChange,
@@ -133,11 +139,13 @@ function Field({
 function SelectField({
   label,
   onChange,
+  optionLabels,
   options,
   value,
 }: {
   label: string;
   onChange: (value: string) => void;
+  optionLabels?: Record<string, string>;
   options: string[];
   value: string;
 }) {
@@ -152,7 +160,7 @@ function SelectField({
         >
           {options.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {optionLabels?.[option] ?? option}
             </option>
           ))}
         </select>
@@ -565,10 +573,12 @@ export default function SuperAdminSettingsRoute() {
                 {providerRoles.categories.map((category) => (
                   <article key={category.id} className="rounded-[12px] border border-[#DDE5EF] bg-white p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="min-w-0 truncate text-[16px] font-bold text-[#334155]">{category.name}</h3>
+                      <h3 className="min-w-0 text-[14px] font-bold leading-5 text-[#334155]">
+                        {providerCategoryLabel(category)}
+                      </h3>
                       <StatusPill active={category.isActive} label={category.isActive ? "Active" : "Inactive"} />
                     </div>
-                    <p className="mt-2 text-[13px] leading-5 text-[#64748B]">{category.description}</p>
+                    <p className="mt-2 text-[12px] leading-5 text-[#64748B]">{category.description}</p>
                   </article>
                 ))}
               </div>
@@ -589,7 +599,7 @@ export default function SuperAdminSettingsRoute() {
                           <p className="truncate font-semibold">{role.bookingLabel}</p>
                           <p className="mt-0.5 truncate text-[12px] text-[#94A3B8]">{role.name}</p>
                         </div>
-                        <span className="min-w-0 truncate">{category?.name ?? role.categoryId}</span>
+                        <span className="min-w-0 text-[13px] leading-5">{providerCategoryLabel(category)}</span>
                         <span className="min-w-0 truncate">{role.requiredCertificates.join(", ") || "None"}</span>
                         <Toggle
                           checked={role.isActive}
@@ -613,6 +623,7 @@ export default function SuperAdminSettingsRoute() {
                     value={roleDraft.categoryId}
                     onChange={(value) => setRoleDraft((current) => ({ ...current, categoryId: value }))}
                     options={providerRoles.categories.map((category) => category.id)}
+                    optionLabels={Object.fromEntries(providerRoles.categories.map((category) => [category.id, providerCategoryLabel(category)]))}
                   />
                   <Field
                     label="Role name"

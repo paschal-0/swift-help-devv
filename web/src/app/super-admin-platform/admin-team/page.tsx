@@ -207,7 +207,7 @@ function filterParams(filter: TeamFilter) {
 }
 
 export default function SuperAdminTeamRoute() {
-  const { searchText } = useSuperAdminShell();
+  const { isSuperAdmin, searchText } = useSuperAdminShell();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TeamFilter>("all");
   const [rows, setRows] = useState<AdminTeamMember[]>([]);
@@ -280,6 +280,10 @@ export default function SuperAdminTeamRoute() {
   };
 
   const submitInvite = async () => {
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can invite admin users.");
+      return;
+    }
     if (!inviteForm.fullName.trim() || !inviteForm.email.trim()) {
       toast.error("Full name and email are required.");
       return;
@@ -305,6 +309,10 @@ export default function SuperAdminTeamRoute() {
   };
 
   const changeRole = async (member: AdminTeamMember, role: AdminTeamRole) => {
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can update admin roles.");
+      return;
+    }
     setSaving(true);
     try {
       await updateAdminAccountRole(member.id, { role });
@@ -320,6 +328,10 @@ export default function SuperAdminTeamRoute() {
   };
 
   const toggleStatus = async (member: AdminTeamMember) => {
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can suspend or reactivate admins.");
+      return;
+    }
     setSaving(true);
     try {
       const activate = member.status === "suspended";
@@ -339,6 +351,10 @@ export default function SuperAdminTeamRoute() {
 
   const confirmDelete = async () => {
     if (!deleting) return;
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can delete admins.");
+      return;
+    }
     setSaving(true);
     try {
       await deleteAdminAccount(deleting.id);
@@ -393,13 +409,15 @@ export default function SuperAdminTeamRoute() {
               }}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            className="h-[52px] min-w-[156px] cursor-pointer rounded-[16px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F86] px-6 text-[17px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,150,0.20)] transition hover:brightness-105"
-          >
-            Invite admin
-          </button>
+          {isSuperAdmin ? (
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="h-[52px] min-w-[156px] cursor-pointer rounded-[16px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F86] px-6 text-[17px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,150,0.20)] transition hover:brightness-105"
+            >
+              Invite admin
+            </button>
+          ) : null}
         </div>
 
         <div className="mt-7 overflow-visible rounded-[14px] border border-[#D8E2EE] bg-[#F8FAFC]">
@@ -482,37 +500,41 @@ export default function SuperAdminTeamRoute() {
                             <Icon name="eye" className="h-5 w-5 shrink-0" />
                             View profile
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditing(member);
-                              setMenuFor(null);
-                            }}
-                            className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#334155] transition hover:bg-[#E3F2FD]"
-                          >
-                            <Icon name="edit" className="h-5 w-5 shrink-0" />
-                            Edit role
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void toggleStatus(member)}
-                            disabled={saving}
-                            className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#334155] transition hover:bg-[#E3F2FD] disabled:opacity-60"
-                          >
-                            <Icon name="pause" className="h-5 w-5 shrink-0" />
-                            {member.status === "suspended" ? "Reactivate admin" : "Suspend admin"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleting(member);
-                              setMenuFor(null);
-                            }}
-                            className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
-                          >
-                            <Icon name="trash" className="h-5 w-5 shrink-0" />
-                            Delete admin
-                          </button>
+                          {isSuperAdmin ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditing(member);
+                                  setMenuFor(null);
+                                }}
+                                className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#334155] transition hover:bg-[#E3F2FD]"
+                              >
+                                <Icon name="edit" className="h-5 w-5 shrink-0" />
+                                Edit role
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void toggleStatus(member)}
+                                disabled={saving}
+                                className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#334155] transition hover:bg-[#E3F2FD] disabled:opacity-60"
+                              >
+                                <Icon name="pause" className="h-5 w-5 shrink-0" />
+                                {member.status === "suspended" ? "Reactivate admin" : "Suspend admin"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleting(member);
+                                  setMenuFor(null);
+                                }}
+                                className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-[14px] font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+                              >
+                                <Icon name="trash" className="h-5 w-5 shrink-0" />
+                                Delete admin
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       ) : null}
                     </td>

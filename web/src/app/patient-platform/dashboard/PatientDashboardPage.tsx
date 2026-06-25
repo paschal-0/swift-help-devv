@@ -203,7 +203,16 @@ export function PatientDashboardPage() {
   const { searchText } = usePatientPlatformShell();
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [activeAppointmentId, setActiveAppointmentId] = useState("");
-  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
+  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const value = window.localStorage.getItem("swifthelp.dismissedPatientUpdateIds");
+      const parsed = value ? JSON.parse(value) : [];
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
   const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
@@ -211,6 +220,13 @@ export function PatientDashboardPage() {
   const [activityPage, setActivityPage] = useState(1);
 
   const query = searchText.trim().toLowerCase();
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "swifthelp.dismissedPatientUpdateIds",
+      JSON.stringify(dismissedUpdateIds.slice(-100)),
+    );
+  }, [dismissedUpdateIds]);
 
   useEffect(() => {
     let isMounted = true;
@@ -288,7 +304,7 @@ export function PatientDashboardPage() {
     setConfirmingConsultationId(consultationId);
     try {
       await confirmPatientConsultationComplete(consultationId);
-      setDismissedUpdateIds((current) => [...current, updateId]);
+      setDismissedUpdateIds((current) => (current.includes(updateId) ? current : [...current, updateId]));
       toast.success("Confirmation saved. Payment releases after both sides confirm.");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -304,7 +320,7 @@ export function PatientDashboardPage() {
       await disputePatientConsultationCompletion(consultationId, {
         reason: "Patient reported that care was not received.",
       });
-      setDismissedUpdateIds((current) => [...current, updateId]);
+      setDismissedUpdateIds((current) => (current.includes(updateId) ? current : [...current, updateId]));
       toast.success("Report submitted. Payment remains held for review.");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -641,7 +657,7 @@ export function PatientDashboardPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setDismissedUpdateIds((current) => [...current, update.id]);
+                        setDismissedUpdateIds((current) => (current.includes(update.id) ? current : [...current, update.id]));
                         toast.success("Reminder marked");
                       }}
                       className="mt-3 inline-flex h-[30px] min-w-[96px] cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[10px] font-medium tracking-[-0.03em] text-[#E3F2FD] transition hover:-translate-y-0.5"

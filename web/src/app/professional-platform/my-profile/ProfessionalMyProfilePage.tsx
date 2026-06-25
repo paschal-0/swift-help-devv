@@ -549,7 +549,7 @@ export function ProfessionalMyProfilePage() {
 
         <div className="space-y-3">
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18, ease: "easeOut" }}>
-            <SectionCard title="Profssional Information" className="pb-5" onEdit={handleEdit}>
+            <SectionCard title="Professional Information" className="pb-5" onEdit={handleEdit}>
               <ProfileInfoRows rows={backendProfessionalInformation} />
             </SectionCard>
           </motion.div>

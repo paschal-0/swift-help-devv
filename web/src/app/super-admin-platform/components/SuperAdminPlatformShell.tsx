@@ -68,6 +68,8 @@ type ProfileResponse = {
 };
 
 type SuperAdminShellContextValue = {
+  profile: ShellProfile;
+  isSuperAdmin: boolean;
   searchText: string;
   setSearchText: (value: string) => void;
 };
@@ -351,8 +353,8 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
   }, [router]);
 
   const contextValue = useMemo(
-    () => ({ searchText, setSearchText }),
-    [searchText],
+    () => ({ profile, isSuperAdmin: profile.role === "super_admin", searchText, setSearchText }),
+    [profile, searchText],
   );
 
   const logout = async () => {

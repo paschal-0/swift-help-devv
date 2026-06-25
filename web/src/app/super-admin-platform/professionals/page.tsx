@@ -282,6 +282,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 function ProfessionalProfileModal({
+  canManageDestructiveActions,
   loading,
   onClose,
   onDelete,
@@ -289,6 +290,7 @@ function ProfessionalProfileModal({
   onSuspend,
   professional,
 }: {
+  canManageDestructiveActions: boolean;
   loading: boolean;
   onClose: () => void;
   onDelete: (professional: AdminProfessionalDetail) => void;
@@ -424,14 +426,18 @@ function ProfessionalProfileModal({
                 <Icon name="edit" className="h-4 w-4" />
                 Edit Professional
               </button>
-              <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
-                <Icon name="pause" className="h-4 w-4" />
-                {professional.isVerified ? "Suspend Professional" : "Reactivate Professional"}
-              </button>
-              <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
-                <Icon name="trash" className="h-4 w-4" />
-                Delete Professional
-              </button>
+              {canManageDestructiveActions ? (
+                <>
+                  <button type="button" onClick={() => onSuspend(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
+                    <Icon name="pause" className="h-4 w-4" />
+                    {professional.isVerified ? "Suspend Professional" : "Reactivate Professional"}
+                  </button>
+                  <button type="button" onClick={() => onDelete(professional)} className="flex cursor-pointer items-center gap-2 whitespace-nowrap transition hover:text-[#B91C1C]">
+                    <Icon name="trash" className="h-4 w-4" />
+                    Delete Professional
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -610,7 +616,7 @@ function DeleteProfessionalModal({
 }
 
 export default function SuperAdminProfessionalsRoute() {
-  const { searchText } = useSuperAdminShell();
+  const { isSuperAdmin, searchText } = useSuperAdminShell();
   const [professionals, setProfessionals] = useState<AdminProfessionalListItem[]>([]);
   const [summary, setSummary] = useState<AdminProfessionalsResponse["summary"]>(defaultSummary);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -714,6 +720,10 @@ export default function SuperAdminProfessionalsRoute() {
     professional: AdminProfessionalListItem | AdminProfessionalDetail,
     isActive = professional.status !== "active",
   ) => {
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can suspend or reactivate professional profiles.");
+      return;
+    }
     try {
       await updateAdminUserStatus(professional.id, {
         isActive,
@@ -738,6 +748,10 @@ export default function SuperAdminProfessionalsRoute() {
 
   const confirmDeleteProfessional = async () => {
     if (!deleteProfessional) return;
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can delete professional profiles.");
+      return;
+    }
 
     setDeletingUser(true);
     try {
@@ -894,14 +908,18 @@ export default function SuperAdminProfessionalsRoute() {
                             <Icon name="edit" className="h-5 w-5 shrink-0" />
                             Edit user
                           </button>
-                          <button type="button" onClick={() => updateProfessionalStatus(professional)} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
-                            <Icon name="pause" className="h-5 w-5 shrink-0" />
-                            {professional.status === "active" ? "Suspend user" : "Reactivate user"}
-                          </button>
-                          <button type="button" onClick={() => { setOpenMenuId(null); setDeleteProfessional(professional); }} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
-                            <Icon name="trash" className="h-5 w-5 shrink-0" />
-                            Delete user
-                          </button>
+                          {isSuperAdmin ? (
+                            <>
+                              <button type="button" onClick={() => updateProfessionalStatus(professional)} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
+                                <Icon name="pause" className="h-5 w-5 shrink-0" />
+                                {professional.status === "active" ? "Suspend user" : "Reactivate user"}
+                              </button>
+                              <button type="button" onClick={() => { setOpenMenuId(null); setDeleteProfessional(professional); }} className="relative flex w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-xl px-2.5 py-2 text-[14px] font-medium leading-5 text-[#334155] transition hover:bg-[#FEE2E2] hover:text-[#B91C1C]">
+                                <Icon name="trash" className="h-5 w-5 shrink-0" />
+                                Delete user
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       ) : null}
                     </td>
@@ -940,6 +958,7 @@ export default function SuperAdminProfessionalsRoute() {
           onDelete={(professional) => setDeleteProfessional(professional)}
           onEdit={(professional) => void openEditProfessional(professional)}
           onSuspend={(professional) => updateProfessionalStatus(professional)}
+          canManageDestructiveActions={isSuperAdmin}
         />
       )}
 

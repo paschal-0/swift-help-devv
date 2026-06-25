@@ -10,25 +10,49 @@ import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
 import {
   listPatientProviderRoles,
+  type PatientProviderCategory,
   type PatientProviderRole,
 } from "@/services/patientApi";
 
 const consultationTypes = ["Virtual", "In person", "Both"] as const;
-const specialityOptions = [
-  "Doctor",
-  "Nurse",
-  "Pharmacist",
-  "Therapist",
-  "Dentist",
-  "Laboratory Scientist",
-  "Radiographer",
-  "Other",
-] as const;
+const fallbackProviderCategories: PatientProviderCategory[] = [
+  {
+    id: "general",
+    name: "General Consultation",
+    description: "Broad, first-line care and support.",
+    isActive: true,
+  },
+  {
+    id: "specialist",
+    name: "Speciality",
+    description: "Focused evaluation for a specific health concern.",
+    isActive: true,
+  },
+];
+const fallbackProviderRoles: PatientProviderRole[] = [
+  {
+    id: "general-gp",
+    categoryId: "general",
+    name: "GP / General Practitioner",
+    bookingLabel: "General GP Consultation",
+    description: "General symptoms review, advice, care guidance, and support.",
+    searchKeywords: ["gp", "doctor", "general"],
+    requiredCertificates: ["Medical licence"],
+    verificationRequired: true,
+    isActive: true,
+  },
+];
 
 const locationOptions = Array.from(
   new Set(defaultCountries.map((country) => country[0] as string)),
 ).sort((left, right) => left.localeCompare(right));
 const licenseNumberPattern = /^[A-Za-z0-9][A-Za-z0-9 ./-]*$/;
+
+function formatProviderCategoryLabel(category: PatientProviderCategory | undefined) {
+  if (category?.id === "general") return "General Consultation";
+  if (category?.id === "specialist") return "Speciality";
+  return category?.name || "General Consultation";
+}
 
 function SelectedRadio() {
   return (
@@ -50,11 +74,13 @@ export function ProfessionalOnboardingOnePage() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
+  const [providerCategories, setProviderCategories] = useState<PatientProviderCategory[]>(fallbackProviderCategories);
   const [providerRoles, setProviderRoles] = useState<PatientProviderRole[]>([]);
   const [formValues, setFormValues] = useState({
     professionalName: "",
     licenseNumber: "",
-    speciality: "Doctor",
+    providerCategory: "general",
+    providerRole: "general-gp",
     yearsOfExperience: "",
     consultationType: "Virtual",
     primaryPracticeLocation: "United States",
@@ -65,34 +91,59 @@ export function ProfessionalOnboardingOnePage() {
     listPatientProviderRoles()
       .then((config) => {
         if (!isMounted) return;
+        const activeCategories = config.categories.filter((category) => category.isActive !== false);
         const activeRoles = config.roles.filter((role) => role.isActive !== false);
-        setProviderRoles(activeRoles);
-        if (activeRoles.length) {
-          setFormValues((current) => ({
+        const categories = activeCategories.length ? activeCategories : fallbackProviderCategories;
+        const roles = activeRoles.length ? activeRoles : fallbackProviderRoles;
+        setProviderCategories(categories);
+        setProviderRoles(roles);
+        setFormValues((current) => {
+          const categoryStillAvailable = categories.some((category) => category.id === current.providerCategory);
+          const nextCategoryId = categoryStillAvailable ? current.providerCategory : categories[0]?.id ?? "general";
+          const rolesForCategory = roles.filter((role) => role.categoryId === nextCategoryId);
+          const nextRoleId = rolesForCategory.some((role) => role.id === current.providerRole)
+            ? current.providerRole
+            : rolesForCategory[0]?.id ?? roles[0]?.id ?? "";
+          return {
             ...current,
-            speciality: activeRoles.some((role) => role.bookingLabel === current.speciality)
-              ? current.speciality
-              : activeRoles[0].bookingLabel,
-          }));
-        }
+            providerCategory: nextCategoryId,
+            providerRole: nextRoleId,
+          };
+        });
       })
-      .catch(() => setProviderRoles([]));
+      .catch(() => {
+        setProviderCategories(fallbackProviderCategories);
+        setProviderRoles(fallbackProviderRoles);
+      });
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const dynamicSpecialityOptions =
-    providerRoles.length > 0
-      ? providerRoles.map((role) => role.bookingLabel || role.name)
-      : [...specialityOptions];
+  const activeProviderRoles = providerRoles.length ? providerRoles : fallbackProviderRoles;
+  const roleOptions = activeProviderRoles.filter((role) => role.categoryId === formValues.providerCategory);
+  const selectedProviderRole =
+    activeProviderRoles.find((role) => role.id === formValues.providerRole) ??
+    roleOptions[0] ??
+    activeProviderRoles[0];
+
+  const handleProviderCategoryChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const categoryId = event.target.value;
+    const firstRole = activeProviderRoles.find((role) => role.categoryId === categoryId);
+    setHasInteracted(true);
+    setFormValues((current) => ({
+      ...current,
+      providerCategory: categoryId,
+      providerRole: firstRole?.id ?? "",
+    }));
+  };
 
   const handleFieldChange =
     (
       field:
         | "professionalName"
         | "licenseNumber"
-        | "speciality"
+        | "providerRole"
         | "yearsOfExperience"
         | "primaryPracticeLocation",
     ) =>
@@ -111,8 +162,10 @@ export function ProfessionalOnboardingOnePage() {
         ? "Please enter your license number."
         : !licenseNumberPattern.test(formValues.licenseNumber.trim())
           ? "License number can include letters, numbers, spaces, hyphens, slashes, and periods."
-          : formValues.speciality.trim().length === 0
-            ? "Please select your speciality."
+          : formValues.providerCategory.trim().length === 0
+            ? "Please select your consultation category."
+          : formValues.providerRole.trim().length === 0
+            ? "Please select your role."
             : formValues.yearsOfExperience.trim().length === 0 || Number(formValues.yearsOfExperience) < 0
               ? "Please enter a valid years of experience value."
               : formValues.consultationType.trim().length === 0
@@ -145,7 +198,10 @@ export function ProfessionalOnboardingOnePage() {
       await updateProfessionalProfile({
         professionalName: formValues.professionalName.trim(),
         licenseNumber: formValues.licenseNumber.trim(),
-        specialization: formValues.speciality,
+        specialization:
+          selectedProviderRole?.bookingLabel ||
+          selectedProviderRole?.name ||
+          formatProviderCategoryLabel(providerCategories.find((category) => category.id === formValues.providerCategory)),
         experienceYears: Number(formValues.yearsOfExperience),
         consultationType: formValues.consultationType,
         primaryPracticeLocation: formValues.primaryPracticeLocation,
@@ -256,17 +312,37 @@ export function ProfessionalOnboardingOnePage() {
 
                 <div className="flex flex-col gap-3">
                   <span className="text-[16px] font-light leading-[22px] tracking-[-0.05em] text-black md:text-[18px]">
-                    Speciality
+                    Consultation category
                   </span>
                   <label className="relative h-[47px] w-full rounded-[18px] border border-[#9eb1cf] md:h-[68px]">
                     <select
-                      value={formValues.speciality}
-                      onChange={handleFieldChange("speciality")}
-                      className="h-full w-full appearance-none rounded-[18px] border-0 bg-transparent pl-[24px] pr-[56px] text-[16px] font-light leading-[22px] tracking-[-0.05em] text-[#94a3b8] outline-none md:text-[18px]"
+                      value={formValues.providerCategory}
+                      onChange={handleProviderCategoryChange}
+                      className="h-full w-full cursor-pointer appearance-none rounded-[18px] border-0 bg-transparent pl-[24px] pr-[56px] text-[15px] font-light leading-[22px] tracking-[-0.02em] text-[#334155] outline-none md:text-[16px]"
                     >
-                      {dynamicSpecialityOptions.map((speciality) => (
-                        <option key={speciality} value={speciality}>
-                          {speciality}
+                      {providerCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {formatProviderCategoryLabel(category)}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-[25px] top-1/2 h-[14px] w-[14px] -translate-y-1/2 rotate-45 border-b-[3px] border-r-[3px] border-[#9eb1cf]" />
+                  </label>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <span className="text-[16px] font-light leading-[22px] tracking-[-0.05em] text-black md:text-[18px]">
+                    Roles
+                  </span>
+                  <label className="relative h-[47px] w-full rounded-[18px] border border-[#9eb1cf] md:h-[68px]">
+                    <select
+                      value={formValues.providerRole}
+                      onChange={handleFieldChange("providerRole")}
+                      className="h-full w-full cursor-pointer appearance-none rounded-[18px] border-0 bg-transparent pl-[24px] pr-[56px] text-[14px] font-light leading-[20px] tracking-[-0.01em] text-[#334155] outline-none md:text-[15px]"
+                    >
+                      {(roleOptions.length ? roleOptions : activeProviderRoles).map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.bookingLabel || role.name}
                         </option>
                       ))}
                     </select>
