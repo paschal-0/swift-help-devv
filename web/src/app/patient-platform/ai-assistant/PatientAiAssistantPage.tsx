@@ -88,7 +88,12 @@ function urgencyCopy(urgency?: PatientMedicalRecordsRecommendation["urgencyLevel
 
 function recommendationActions(recommendation: PatientMedicalRecordsRecommendation | null) {
   if (!recommendation) return [];
+  const providerRole = recommendation.providerRoleRecommendation;
   const actions = [
+    providerRole?.recommendedRoleLabel
+      ? `Recommended provider role: ${providerRole.recommendedRoleLabel}`
+      : "",
+    providerRole?.reason ?? "",
     ...(recommendation.selfCareAdvice ?? []),
     recommendation.shouldBookConsultation ? `Book ${recommendation.recommendedCareType ?? "care"}` : "",
     recommendation.followUpWindow ? `Follow up: ${recommendation.followUpWindow}` : "",
@@ -196,6 +201,107 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   );
 }
 
+function CareTypeIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M10.8 3.4h2.4v4.4h4.4v2.4h-4.4v4.4h-2.4v-4.4H6.4V7.8h4.4V3.4ZM5 17.2h14v2.2H5v-2.2Z"
+      />
+    </svg>
+  );
+}
+
+function providerCategoryLabel(category?: string) {
+  return category === "specialist" ? "Speciality" : "General Consultation";
+}
+
+function ProviderRoleSuggestionCard({
+  recommendation,
+  draft,
+  onBook,
+  onReviewUrgent,
+}: {
+  recommendation: PatientMedicalRecordsRecommendation;
+  draft: AssistantDraft;
+  onBook: () => void;
+  onReviewUrgent: () => void;
+}) {
+  const providerRole = recommendation.providerRoleRecommendation;
+  const urgency = urgencyCopy(providerRole?.urgency ?? recommendation.urgencyLevel);
+  const isCritical = isCriticalRecommendation(recommendation);
+  const symptom =
+    recommendation.symptomSummary?.primarySymptom ||
+    draft.primarySymptom ||
+    recommendation.recommendedCareType ||
+    "your symptoms";
+  const roleLabel =
+    providerRole?.recommendedRoleLabel ||
+    recommendation.recommendedCareType ||
+    "a suitable provider";
+  const categoryLabel = providerCategoryLabel(providerRole?.recommendedCategory);
+
+  return (
+    <div className="mr-auto w-full max-w-[520px] rounded-[18px] border border-[#BFDBFE] bg-white p-4 shadow-[0_16px_35px_rgba(30,136,229,0.10)]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-[#E3F2FD] px-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#1565C0]">
+          <CareTypeIcon />
+          AI provider suggestion
+        </span>
+        <span className={`inline-flex min-h-7 items-center rounded-full px-3 text-[12px] font-semibold ${urgency.className}`}>
+          {urgency.label}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[14px] bg-[#F8FAFC] px-3 py-3">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
+            Care type
+          </span>
+          <span className="mt-1 block text-[15px] font-semibold leading-5 tracking-[-0.04em] text-[#1565C0]">
+            {categoryLabel}
+          </span>
+        </div>
+        <div className="rounded-[14px] bg-[#F8FAFC] px-3 py-3">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
+            Specific role
+          </span>
+          <span className="mt-1 block break-words text-[15px] font-semibold leading-5 tracking-[-0.04em] text-[#334155]">
+            {roleLabel}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-[13px] leading-5 tracking-[-0.03em] text-[#64748B]">
+        For <span className="font-semibold text-[#334155]">{symptom}</span>, Swift AI matched this to{" "}
+        <span className="font-semibold text-[#334155]">{roleLabel}</span>
+        {providerRole?.reason
+          ? ` because ${providerRole.reason.charAt(0).toLowerCase()}${providerRole.reason.slice(1)}`
+          : "."}
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onBook}
+          className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#0B5C9D_64%,#073E72_100%)] px-4 text-[13px] font-semibold leading-5 tracking-[-0.03em] text-white shadow-[0_10px_22px_rgba(21,101,192,0.20)] transition hover:-translate-y-0.5 hover:brightness-105"
+        >
+          Book {roleLabel}
+        </button>
+        {isCritical ? (
+          <button
+            type="button"
+            onClick={onReviewUrgent}
+            className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-full border border-[#B91C1C] bg-[#FEF2F2] px-4 text-[13px] font-semibold leading-5 tracking-[-0.03em] text-[#B91C1C] transition hover:-translate-y-0.5 hover:bg-[#FEE2E2]"
+          >
+            Review urgent guidance
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function MicrophoneIcon({ muted = false }: { muted?: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -239,6 +345,10 @@ function ResultPanel({
   const actions = recommendationActions(recommendation);
   const summary = recommendation?.symptomSummary;
   const isModal = variant === "modal";
+  const roleLabel =
+    recommendation?.providerRoleRecommendation?.recommendedRoleLabel ||
+    recommendation?.recommendedCareType ||
+    "care";
 
   return (
     <section className={`${isModal ? "" : "rounded-[18px] border border-[#D8E2EF] bg-white p-4 shadow-[0_16px_35px_rgba(30,136,229,0.08)]"}`}>
@@ -314,7 +424,7 @@ function ResultPanel({
           onClick={onBook}
           className="inline-flex min-h-12 cursor-pointer items-center justify-center whitespace-nowrap rounded-full bg-[linear-gradient(180deg,#1E88E5_0%,#0B5C9D_64%,#073E72_100%)] px-5 py-2 text-center text-[14px] font-semibold leading-5 tracking-[-0.03em] text-white shadow-[0_10px_22px_rgba(21,101,192,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 sm:text-[15px]"
         >
-          Book Appointment
+          Book {roleLabel}
         </button>
         <button
           type="button"
@@ -377,6 +487,7 @@ export function PatientAiAssistantPage() {
     () => "Stay hydrated, monitor new symptoms, and seek urgent care if breathing, chest pain, fainting, or confusion occurs.",
     [],
   );
+  const inlineRecommendation = recommendation ?? recommendationReminder;
   const modalRecommendation = isEmergencyModalOpen ? recommendation ?? recommendationReminder : null;
 
   const routeWithCountry = (path: string) => {
@@ -475,6 +586,11 @@ export function PatientAiAssistantPage() {
     };
   }, [recommendationReminder, recommendation]);
 
+  useEffect(() => {
+    if (!inlineRecommendation) return;
+    window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 0);
+  }, [inlineRecommendation]);
+
   function addMessages(nextMessages: AssistantMessage[]) {
     setMessages((current) => [...current, ...nextMessages]);
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 0);
@@ -527,7 +643,7 @@ export function PatientAiAssistantPage() {
         setActiveSymptomCheckId(response.recommendation.symptomCheck.id);
         setRecommendation(nextRecommendation);
         setRecommendationReminder(nextRecommendation);
-        setIsEmergencyModalOpen(true);
+        setIsEmergencyModalOpen(nextIsCritical);
         publishRecommendationNotification({
           recommendation: nextRecommendation,
           symptomCheckId: response.recommendation.symptomCheck.id,
@@ -783,6 +899,14 @@ export function PatientAiAssistantPage() {
                   {messages.map((message) => (
                     <AssistantBubble key={message.id} message={message} />
                   ))}
+                  {inlineRecommendation ? (
+                    <ProviderRoleSuggestionCard
+                      recommendation={inlineRecommendation}
+                      draft={draft}
+                      onBook={bookRecommendedCare}
+                      onReviewUrgent={() => setIsEmergencyModalOpen(true)}
+                    />
+                  ) : null}
                   {isSending ? <AssistantBubble message={{ id: "thinking", sender: "assistant", body: "Swift AI is thinking..." }} /> : null}
                   <div ref={chatEndRef} />
                 </div>
