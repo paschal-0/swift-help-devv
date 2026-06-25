@@ -48,6 +48,8 @@ const defaultRates: AdminReferralRate[] = [
   {
     level: 1,
     title: "Referrer",
+    regionCode: "NG",
+    currency: "NGN",
     patientSignup: 300,
     professionalSignup: 500,
     organizationOnboarded: 20000,
@@ -59,6 +61,8 @@ const defaultRates: AdminReferralRate[] = [
   {
     level: 2,
     title: "Community Advocate",
+    regionCode: "NG",
+    currency: "NGN",
     patientSignup: 0,
     professionalSignup: 1000,
     organizationOnboarded: 0,
@@ -70,6 +74,8 @@ const defaultRates: AdminReferralRate[] = [
   {
     level: 3,
     title: "Health Ambassador",
+    regionCode: "NG",
+    currency: "NGN",
     patientSignup: 0,
     professionalSignup: 1500,
     organizationOnboarded: 0,
@@ -358,6 +364,31 @@ function RateInput({
   );
 }
 
+function RateTextInput({
+  label,
+  maxLength,
+  onChange,
+  value,
+}: {
+  label: string;
+  maxLength: number;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[14px] font-light leading-5 text-[#334155]">{label}</span>
+      <input
+        type="text"
+        maxLength={maxLength}
+        value={value}
+        onChange={(event) => onChange(event.target.value.toUpperCase())}
+        className="mt-2 h-[46px] w-full rounded-[12px] border border-[#D5E1EF] bg-[#E3F2FD] px-4 text-[15px] font-semibold uppercase text-[#334155] outline-none focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+      />
+    </label>
+  );
+}
+
 function LevelRateCard({
   onChange,
   onSave,
@@ -369,8 +400,14 @@ function LevelRateCard({
   rate: AdminReferralRate;
   saving: boolean;
 }) {
-  const update = (key: keyof AdminReferralRate, value: number) => {
+  const update = (
+    key: "patientSignup" | "professionalSignup" | "organizationOnboarded" | "monthlyBonus" | "unlockMinReferrals" | "unlockMinProfessionals" | "unlockMinOrganizations",
+    value: number,
+  ) => {
     onChange({ ...rate, [key]: Math.max(0, Number.isFinite(value) ? value : 0) });
+  };
+  const updateText = (key: "regionCode" | "currency", value: string) => {
+    onChange({ ...rate, [key]: value.trim().toUpperCase() });
   };
 
   return (
@@ -379,6 +416,10 @@ function LevelRateCard({
         Level {rate.level} - {rate.title}
       </h3>
       <div className="mt-5 grid flex-1 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <RateTextInput label="Region code" maxLength={8} value={rate.regionCode || "NG"} onChange={(value) => updateText("regionCode", value)} />
+          <RateTextInput label="Currency" maxLength={3} value={rate.currency || "NGN"} onChange={(value) => updateText("currency", value)} />
+        </div>
         {rate.level === 1 ? (
           <>
             <RateInput label="Patient sign up" value={rate.patientSignup} onChange={(value) => update("patientSignup", value)} />

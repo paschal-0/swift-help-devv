@@ -439,6 +439,25 @@ export type ProfessionalReferralRecord = {
   status: "completed" | "pending";
 };
 
+export type ProfessionalReferralTier = {
+  id: string;
+  level: number;
+  badge: string;
+  title: string;
+  description: string;
+  threshold: number;
+  regionCode?: string;
+  currency?: string;
+  rewards: {
+    organizationAmountCents: number;
+    professionalAmountCents: number;
+    patientAmountCents: number;
+  };
+  active: boolean;
+  progressValue: number;
+  progressLabel: string;
+};
+
 export type ProfessionalReferrals = {
   referralCode: string;
   referralShareUrl: string;
@@ -452,6 +471,7 @@ export type ProfessionalReferrals = {
     currency: string;
   };
   records: ProfessionalReferralRecord[];
+  tiers?: ProfessionalReferralTier[];
 };
 
 export type ProfessionalSettings = {

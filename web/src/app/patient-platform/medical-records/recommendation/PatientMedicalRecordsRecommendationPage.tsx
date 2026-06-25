@@ -31,6 +31,7 @@ const fallbackRecommendation: Required<PatientMedicalRecordsRecommendation> = {
   selfCareAdvice: [],
   followUpWindow: "Complete an assessment first",
   shouldBookConsultation: false,
+  providerRoleRecommendation: null,
   disclaimer:
     "This guidance is informational and is not a diagnosis. If symptoms are severe, worsening, or you feel unsafe, seek urgent medical care.",
   aiGenerated: false,
@@ -72,6 +73,8 @@ function getRecommendationValue(
     followUpWindow: recommendation?.followUpWindow || fallbackRecommendation.followUpWindow,
     shouldBookConsultation:
       recommendation?.shouldBookConsultation ?? fallbackRecommendation.shouldBookConsultation,
+    providerRoleRecommendation:
+      recommendation?.providerRoleRecommendation ?? fallbackRecommendation.providerRoleRecommendation,
     disclaimer: recommendation?.disclaimer || fallbackRecommendation.disclaimer,
     aiGenerated: recommendation?.aiGenerated ?? fallbackRecommendation.aiGenerated,
     generatedAt: recommendation?.generatedAt || fallbackRecommendation.generatedAt,

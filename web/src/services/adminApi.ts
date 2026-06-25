@@ -807,6 +807,8 @@ export type ProviderRolesConfig = {
 export type AdminReferralRate = {
   level: number;
   title: string;
+  regionCode: string;
+  currency: string;
   patientSignup: number;
   professionalSignup: number;
   organizationOnboarded: number;

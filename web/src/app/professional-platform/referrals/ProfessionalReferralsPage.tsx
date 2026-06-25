@@ -144,6 +144,31 @@ function TierCard({ tier }: { tier: PartnerTier }) {
 }
 
 function buildPartnerTiers(referrals: ProfessionalReferrals | null): PartnerTier[] {
+  if (referrals?.tiers?.length) {
+    return referrals.tiers.map((tier) => ({
+      id:
+        tier.level === 1
+          ? "referrer"
+          : tier.level === 2
+            ? "community-advocate"
+            : "health-ambassador",
+      badge: tier.badge,
+      title: tier.title,
+      description: tier.description,
+      statusLabel: tier.active ? "Unlocked" : "Locked",
+      statusTone: tier.active ? "active" : "locked",
+      progress: tier.progressValue,
+      progressLabel: tier.progressLabel,
+      cardTone: tier.level === 1 ? "blue" : tier.level === 2 ? "green" : "gold",
+      rewards: [
+        { label: "Patient signup", value: formatApiMoney(tier.rewards.patientAmountCents, tier.currency || referrals.metrics.currency) },
+        { label: "Professional signup", value: formatApiMoney(tier.rewards.professionalAmountCents, tier.currency || referrals.metrics.currency) },
+        { label: "Organization onboarded", value: formatApiMoney(tier.rewards.organizationAmountCents, tier.currency || referrals.metrics.currency) },
+        { label: "Unlock criteria", value: tier.threshold > 0 ? `${tier.threshold} referrals` : "Verified account" },
+      ],
+    }));
+  }
+
   const totalReferrals = referrals?.metrics.totalReferrals ?? 0;
   const verifiedProfessionals = referrals?.metrics.professionalsReferred ?? 0;
   const advocateUnlocked = totalReferrals >= 20 && verifiedProfessionals >= 5;

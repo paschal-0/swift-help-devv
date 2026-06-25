@@ -381,6 +381,25 @@ export type OrganizationReferralRecord = {
   status: string;
 };
 
+export type OrganizationReferralTier = {
+  id: string;
+  level: number;
+  badge: string;
+  title: string;
+  description: string;
+  threshold: number;
+  regionCode?: string;
+  currency?: string;
+  rewards: {
+    organizationAmountCents: number;
+    professionalAmountCents: number;
+    patientAmountCents: number;
+  };
+  active: boolean;
+  progressValue: number;
+  progressLabel: string;
+};
+
 export type OrganizationReferrals = {
   referralCode: string;
   referralShareUrl: string;
@@ -394,6 +413,7 @@ export type OrganizationReferrals = {
     currency: string;
   };
   records: OrganizationReferralRecord[];
+  tiers?: OrganizationReferralTier[];
 };
 
 function buildQuery(params?: Record<string, string | number | boolean | undefined>) {

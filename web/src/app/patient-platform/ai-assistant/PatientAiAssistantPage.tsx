@@ -589,6 +589,7 @@ export function PatientAiAssistantPage() {
         primarySymptom,
         recommendedCareType: activeRecommendation?.recommendedCareType,
         recommendedCareDescription: activeRecommendation?.recommendedCareDescription,
+        providerRoleRecommendation: activeRecommendation?.providerRoleRecommendation ?? null,
         urgencyLevel: activeRecommendation?.urgencyLevel,
         headline: activeRecommendation?.headline,
         description: activeRecommendation?.description,
@@ -607,7 +608,15 @@ export function PatientAiAssistantPage() {
         bookingReason,
       }),
     );
-    router.push(routeWithCountry("/patient-platform/appointments/book?source=ai"));
+    const query = new URLSearchParams({ source: "ai" });
+    const roleRecommendation = activeRecommendation?.providerRoleRecommendation;
+    if (roleRecommendation?.recommendedCategory) {
+      query.set("providerCategory", roleRecommendation.recommendedCategory);
+    }
+    if (roleRecommendation?.recommendedRoleId) {
+      query.set("providerRoleId", roleRecommendation.recommendedRoleId);
+    }
+    router.push(routeWithCountry(`/patient-platform/appointments/book?${query.toString()}`));
   }
 
   function getSpeechRecognitionConstructor() {

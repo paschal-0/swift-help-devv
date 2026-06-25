@@ -315,6 +315,13 @@ export type PatientMedicalRecordsRecommendation = {
   selfCareAdvice?: string[];
   followUpWindow?: string;
   shouldBookConsultation?: boolean;
+  providerRoleRecommendation?: {
+    recommendedCategory?: "general" | "specialist";
+    recommendedRoleId?: string;
+    recommendedRoleLabel?: string;
+    reason?: string;
+    urgency?: "self_care" | "routine" | "soon" | "urgent" | "emergency";
+  } | null;
   disclaimer?: string;
   aiGenerated?: boolean;
   generatedAt?: string;
@@ -411,6 +418,8 @@ export type PatientReferralTier = {
   title: string;
   description: string;
   threshold: number;
+  regionCode?: string;
+  currency?: string;
   rewards: {
     organizationAmountCents: number;
     professionalAmountCents: number;

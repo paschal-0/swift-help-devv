@@ -51,6 +51,7 @@ type AiAssistantBookingContext = {
   description?: string;
   bookingReason?: string;
   symptomSummary?: PatientMedicalRecordsRecommendation["symptomSummary"];
+  providerRoleRecommendation?: PatientMedicalRecordsRecommendation["providerRoleRecommendation"];
 };
 
 const careTypes: CareType[] = [
@@ -217,6 +218,8 @@ function readAiAssistantBookingContext() {
 
 function careTypeFromAiContext(context: AiAssistantBookingContext | null) {
   if (!context) return null;
+  const recommendedCategory = context.providerRoleRecommendation?.recommendedCategory;
+  if (recommendedCategory) return recommendedCategory;
   const urgency = context.urgencyLevel ?? "";
   const careType = context.recommendedCareType?.toLowerCase() ?? "";
 
@@ -228,6 +231,8 @@ function careTypeFromAiContext(context: AiAssistantBookingContext | null) {
 function professionalTypeFromAiContext(
   context: AiAssistantBookingContext | null,
 ) {
+  const recommendedRoleId = context?.providerRoleRecommendation?.recommendedRoleId;
+  if (recommendedRoleId) return recommendedRoleId;
   const careType = context?.recommendedCareType?.toLowerCase() ?? "";
 
   if (careType.includes("nurse")) return "np";
@@ -329,6 +334,8 @@ export function PatientBookAppointmentPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isAiBooking = searchParams.get("source") === "ai";
+  const queryProviderCategory = searchParams.get("providerCategory");
+  const queryProviderRoleId = searchParams.get("providerRoleId");
   const [draft] = useState<Record<string, string> | null>(() => {
     const storedDraft = readPatientAppointmentDraft();
     if (storedDraft?.sourceAppointmentId || storedDraft?.sourceConsultationId) {
@@ -343,15 +350,17 @@ export function PatientBookAppointmentPage() {
     isAiBooking ? readAiAssistantBookingContext() : null,
   );
   const [selectedCareType, setSelectedCareType] = useState(
-    careTypeFromAiContext(aiBookingContext) ??
+    queryProviderCategory ??
+      careTypeFromAiContext(aiBookingContext) ??
       careTypeFromLabel(draft?.careType) ??
       "follow-up",
   );
   const [selectedProfessionalType, setSelectedProfessionalType] =
     useState(
-      (aiBookingContext
-        ? professionalTypeFromAiContext(aiBookingContext)
-        : null) ??
+      queryProviderRoleId ??
+        (aiBookingContext
+          ? professionalTypeFromAiContext(aiBookingContext)
+          : null) ??
         professionalTypeFromLabel(draft?.professionalType) ??
         "gp",
     );

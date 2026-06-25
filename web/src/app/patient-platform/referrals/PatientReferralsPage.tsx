@@ -119,6 +119,7 @@ function TierCard({ tier }: { tier: ReferralTier }) {
 
 function mapReferralTier(tier: PatientReferralTier, currency?: string): ReferralTier {
   const accent = tier.level === 1 ? "blue" : tier.level === 2 ? "green" : "gold";
+  const tierCurrency = tier.currency || currency;
 
   return {
     accent,
@@ -132,15 +133,15 @@ function mapReferralTier(tier: PatientReferralTier, currency?: string): Referral
     rewards: [
       {
         label: "Patient signup",
-        value: formatPatientMoney(tier.rewards.patientAmountCents, currency),
+        value: formatPatientMoney(tier.rewards.patientAmountCents, tierCurrency),
       },
       {
         label: "Professional signup",
-        value: formatPatientMoney(tier.rewards.professionalAmountCents, currency),
+        value: formatPatientMoney(tier.rewards.professionalAmountCents, tierCurrency),
       },
       {
         label: "Organization onboarded",
-        value: formatPatientMoney(tier.rewards.organizationAmountCents, currency),
+        value: formatPatientMoney(tier.rewards.organizationAmountCents, tierCurrency),
       },
       {
         label: "Unlock criteria",

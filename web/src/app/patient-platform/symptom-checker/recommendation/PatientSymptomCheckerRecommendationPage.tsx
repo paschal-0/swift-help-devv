@@ -101,6 +101,26 @@ export function PatientSymptomCheckerRecommendationPage() {
   );
   const possibleCauses = recommendation?.possibleCauses ?? [];
   const isEmergency = recommendation?.urgencyLevel === "emergency";
+  const providerRole = recommendation?.providerRoleRecommendation;
+  const recommendedCareLabel =
+    providerRole?.recommendedCategory === "specialist"
+      ? "Speciality"
+      : "General Consultation";
+  const bookButtonLabel =
+    providerRole?.recommendedCategory === "specialist"
+      ? "Book Specialist"
+      : "Book General Consultation";
+  const openRecommendedBooking = () => {
+    const query = new URLSearchParams();
+    query.set("source", "symptom");
+    if (providerRole?.recommendedCategory) {
+      query.set("providerCategory", providerRole.recommendedCategory);
+    }
+    if (providerRole?.recommendedRoleId) {
+      query.set("providerRoleId", providerRole.recommendedRoleId);
+    }
+    router.push(`/patient-platform/appointments/book?${query.toString()}`);
+  };
 
   return (
     <article className="mt-[18px] min-h-[930px] rounded-[12px] bg-[#F8FAFC] px-3 pb-6 pt-3 sm:mt-[26px] sm:px-5 sm:pb-8 sm:pt-4 xl:px-10 xl:pb-[34px] xl:pt-[17px]">
@@ -175,11 +195,30 @@ export function PatientSymptomCheckerRecommendationPage() {
 
           <div className="rounded-[12px] bg-[#F8FAFC] px-3 pb-4 pt-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:px-[23px] sm:pb-[15px] sm:pt-[15px]">
             <SectionPill>Recommended care type</SectionPill>
-            <p className="mt-3 text-[18px] font-medium leading-[21px] tracking-[-0.05em] text-[#334155] sm:mt-4 sm:text-[24px] sm:leading-[23px]">
-              {recommendation?.recommendedCareType ?? "-"}
-            </p>
-            <p className="mt-1 text-[14px] font-medium leading-[18px] tracking-[-0.05em] text-[#94A3B8] sm:text-[18px] sm:leading-[23px]">
-              {recommendation?.recommendedCareDescription ?? "A care type will be shown once the recommendation is ready."}
+            <div className="mt-3 grid gap-3 sm:mt-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+              <div className="rounded-[10px] border border-[#D7E5F4] bg-[#F8FBFF] px-3 py-2">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
+                  Care route
+                </span>
+                <span className="mt-1 block text-[16px] font-semibold leading-[20px] tracking-[-0.04em] text-[#1565C0] sm:text-[18px]">
+                  {recommendedCareLabel}
+                </span>
+              </div>
+              <div className="rounded-[10px] border border-[#D7E5F4] bg-[#F8FBFF] px-3 py-2">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
+                  Specific provider role
+                </span>
+                <span className="mt-1 block break-words text-[16px] font-semibold leading-[20px] tracking-[-0.04em] text-[#334155] sm:text-[18px]">
+                  {providerRole?.recommendedRoleLabel ??
+                    recommendation?.recommendedCareType ??
+                    "-"}
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 text-[14px] font-medium leading-[18px] tracking-[-0.05em] text-[#94A3B8] sm:text-[16px] sm:leading-[21px]">
+              {providerRole?.reason ||
+                recommendation?.recommendedCareDescription ||
+                "A care type will be shown once the recommendation is ready."}
             </p>
           </div>
 
@@ -239,10 +278,10 @@ export function PatientSymptomCheckerRecommendationPage() {
         </button>
         <button
           type="button"
-          onClick={() => router.push("/patient-platform/appointments/book")}
+          onClick={openRecommendedBooking}
           className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 py-2 text-center text-[15px] font-normal leading-[20px] tracking-[-0.05em] text-[#E3F2FD] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(17,75,127,0.28)] active:translate-y-0 active:scale-[0.985] sm:h-[46px] sm:w-[232px] sm:px-[14px] sm:py-0 sm:text-[16px] sm:leading-10 sm:whitespace-nowrap"
         >
-          {isEmergency ? "Book urgent care" : "Book Consultation"}
+          {isEmergency ? "Book urgent care" : bookButtonLabel}
         </button>
       </div>
     </article>
