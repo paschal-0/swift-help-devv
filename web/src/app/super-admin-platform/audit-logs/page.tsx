@@ -11,6 +11,7 @@ import {
   type AdminAuditLogsResponse,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type DropdownOption<T extends string> = {
   label: string;
@@ -186,11 +187,6 @@ function categoryClass(category: string) {
   return "text-[#334155]";
 }
 
-function csvEscape(value: string | number | null | undefined) {
-  const text = String(value ?? "");
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
 export default function SuperAdminAuditLogsRoute() {
   const { searchText } = useSuperAdminShell();
   const [query, setQuery] = useState("");
@@ -227,31 +223,25 @@ export default function SuperAdminAuditLogsRoute() {
     void loadLogs();
   }, [loadLogs]);
 
-  const exportCsv = () => {
+  const exportPdf = () => {
     if (!rows.length) {
       toast.info("There are no audit logs to export.");
       return;
     }
 
-    const header = ["Time", "Admin", "Action", "Target / detail", "Category", "IP address"];
-    const lines = rows.map((row) =>
-      [
+    exportTablePdf({
+      title: "Swifthelp Audit Logs",
+      filename: `swifthelp-audit-logs-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["Time", "Admin", "Action", "Target / detail", "Category", "IP address"],
+      rows: rows.map((row) => [
         formatAuditTime(row.createdAt),
         row.adminEmail,
         row.actionLabel,
         row.targetDetail,
         row.category,
         row.ipAddress,
-      ].map(csvEscape).join(","),
-    );
-    const csv = [header.map(csvEscape).join(","), ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `swifthelp-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      ]),
+    });
   };
 
   const pageCount = Math.max(meta.totalPages || 1, 1);
@@ -292,7 +282,7 @@ export default function SuperAdminAuditLogsRoute() {
           />
           <button
             type="button"
-            onClick={exportCsv}
+            onClick={exportPdf}
             className="ml-auto inline-flex h-[52px] min-w-[132px] cursor-pointer items-center justify-center gap-2 rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#0D5C91] px-5 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,145,0.2)]"
           >
             <Icon name="download" className="h-5 w-5" />

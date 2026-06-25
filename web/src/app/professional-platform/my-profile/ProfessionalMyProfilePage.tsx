@@ -500,10 +500,10 @@ export function ProfessionalMyProfilePage() {
           >
             <h2 className="text-[18px] font-medium leading-[23px] tracking-[-0.07em] text-[#334155]">Recent Activities</h2>
 
-            <div className="mt-[19px] overflow-x-auto">
-              <div className="min-w-[560px]">
-                <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1">
-                  <div className="relative pb-2 text-center">
+            <div className="mt-[19px] w-full overflow-hidden pb-2">
+              <div className="w-full">
+                <div className="hidden grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-end gap-6 border-b-[3px] border-[#E2E8F0] pb-1 sm:grid">
+                  <div className="relative pb-2 text-left">
                     <span className="text-[16px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0]">Activity</span>
                     <span className="absolute bottom-[-5px] left-0 h-1 w-20 bg-[#1565C0]" />
                   </div>
@@ -514,18 +514,20 @@ export function ProfessionalMyProfilePage() {
                 <div className="space-y-[13px] pt-[17px]">
                   {filteredActivities.length ? (
                     paginatedActivities.map((item) => (
-                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] items-center gap-6">
-                        <span className="min-w-0 truncate text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.activity}</span>
-                        <span className="min-w-0 truncate text-[12.403px] font-normal leading-[14px] tracking-[-0.05em] text-black">{item.dateTime}</span>
-                        <span
-                          className={`inline-flex h-[25px] w-full max-w-[124px] items-center justify-center justify-self-center truncate rounded-[6px] border px-2 text-[12px] font-normal leading-[14px] tracking-[-0.05em] ${
-                            item.status === "Completed"
-                              ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
-                              : "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                      <div key={item.id} className="flex min-h-[48px] flex-col gap-2 border-b border-[#E2E8F0] py-2 sm:grid sm:min-h-[36px] sm:grid-cols-[minmax(0,1.45fr)_minmax(150px,1fr)_132px] sm:items-center sm:gap-6 sm:border-b-0 sm:py-0">
+                        <span className="min-w-0 truncate text-[13px] font-medium leading-[16px] tracking-[-0.04em] text-[#334155] sm:text-[12.403px] sm:font-normal sm:leading-[14px] sm:text-black">{item.activity}</span>
+                        <div className="flex min-w-0 items-center justify-between gap-3 sm:contents">
+                          <span className="min-w-0 truncate text-[12px] font-normal leading-[14px] tracking-[-0.04em] text-[#64748B] sm:text-[12.403px] sm:text-black">{item.dateTime}</span>
+                          <span
+                            className={`inline-flex h-[25px] w-full max-w-[124px] items-center justify-center truncate rounded-[6px] border px-2 text-[11px] font-normal leading-[14px] tracking-[-0.04em] sm:justify-self-center sm:text-[12px] ${
+                              item.status === "Completed"
+                                ? "border-[#0D8C24] bg-[#E1FAE5] text-[#0D8C24]"
+                                : "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
                       </div>
                     ))
                   ) : (

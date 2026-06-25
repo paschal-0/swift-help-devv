@@ -8,6 +8,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useBlurValidationToast } from "@/lib/useBlurValidationToast";
 import { getApiErrorMessage, updateProfessionalProfile } from "@/services/authApi";
+import {
+  listPatientProviderRoles,
+  type PatientProviderRole,
+} from "@/services/patientApi";
 
 const consultationTypes = ["Virtual", "In person", "Both"] as const;
 const specialityOptions = [
@@ -46,6 +50,7 @@ export function ProfessionalOnboardingOnePage() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const showValidationToast = useBlurValidationToast();
+  const [providerRoles, setProviderRoles] = useState<PatientProviderRole[]>([]);
   const [formValues, setFormValues] = useState({
     professionalName: "",
     licenseNumber: "",
@@ -54,6 +59,33 @@ export function ProfessionalOnboardingOnePage() {
     consultationType: "Virtual",
     primaryPracticeLocation: "United States",
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    listPatientProviderRoles()
+      .then((config) => {
+        if (!isMounted) return;
+        const activeRoles = config.roles.filter((role) => role.isActive !== false);
+        setProviderRoles(activeRoles);
+        if (activeRoles.length) {
+          setFormValues((current) => ({
+            ...current,
+            speciality: activeRoles.some((role) => role.bookingLabel === current.speciality)
+              ? current.speciality
+              : activeRoles[0].bookingLabel,
+          }));
+        }
+      })
+      .catch(() => setProviderRoles([]));
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const dynamicSpecialityOptions =
+    providerRoles.length > 0
+      ? providerRoles.map((role) => role.bookingLabel || role.name)
+      : [...specialityOptions];
 
   const handleFieldChange =
     (
@@ -232,7 +264,7 @@ export function ProfessionalOnboardingOnePage() {
                       onChange={handleFieldChange("speciality")}
                       className="h-full w-full appearance-none rounded-[18px] border-0 bg-transparent pl-[24px] pr-[56px] text-[16px] font-light leading-[22px] tracking-[-0.05em] text-[#94a3b8] outline-none md:text-[18px]"
                     >
-                      {specialityOptions.map((speciality) => (
+                      {dynamicSpecialityOptions.map((speciality) => (
                         <option key={speciality} value={speciality}>
                           {speciality}
                         </option>

@@ -832,6 +832,8 @@ export function getPatientConsultation(consultationId: string) {
 export function listPatientProviders(params?: {
   search?: string;
   specialization?: string;
+  providerCategory?: string;
+  providerRoleId?: string;
   consultationType?: string;
 }) {
   return apiRequest<PatientProvider[]>(
@@ -840,6 +842,36 @@ export function listPatientProviders(params?: {
       method: "GET",
     },
   );
+}
+
+export type PatientProviderCategory = {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+};
+
+export type PatientProviderRole = {
+  id: string;
+  categoryId: string;
+  name: string;
+  bookingLabel: string;
+  description: string;
+  searchKeywords: string[];
+  requiredCertificates: string[];
+  verificationRequired: boolean;
+  isActive: boolean;
+};
+
+export type PatientProviderRolesConfig = {
+  categories: PatientProviderCategory[];
+  roles: PatientProviderRole[];
+};
+
+export function listPatientProviderRoles() {
+  return apiRequest<PatientProviderRolesConfig>("/patient/providers/roles", {
+    method: "GET",
+  });
 }
 
 export function getPatientProviderAvailability(

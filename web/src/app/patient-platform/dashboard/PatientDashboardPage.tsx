@@ -674,9 +674,9 @@ export function PatientDashboardPage() {
           </button>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <div className="min-w-[760px]">
-            <div className="grid h-16 grid-cols-[1fr_1fr_160px] items-center rounded-xl bg-[#0F172A] px-10 text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC]">
+        <div className="mt-4 w-full">
+          <div className="w-full">
+            <div className="hidden h-16 grid-cols-[1fr_1fr_160px] items-center rounded-xl bg-[#0F172A] px-10 text-[18px] font-normal leading-5 tracking-[-0.05em] text-[#F8FAFC] md:grid">
               <span>Activity</span>
               <span>Date & Time</span>
               <span className="text-center">Status</span>
@@ -689,15 +689,17 @@ export function PatientDashboardPage() {
                     key={activity.id}
                     type="button"
                     onClick={() => router.push("/patient-platform/consultations")}
-                    className="grid min-h-[61px] w-full cursor-pointer grid-cols-[minmax(0,1fr)_minmax(150px,1fr)_140px] items-center gap-4 border-b border-[#334155] px-6 py-3 text-left transition hover:bg-[#E3F2FD]/35"
+                    className="flex w-full cursor-pointer flex-col gap-2 border-b border-[#334155] px-4 py-3 text-left transition hover:bg-[#E3F2FD]/35 md:grid md:min-h-[61px] md:grid-cols-[minmax(0,1fr)_minmax(150px,1fr)_140px] md:items-center md:gap-4 md:px-6"
                   >
-                    <span className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[-0.04em] text-[#334155]">{activity.activity}</span>
-                    <span className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[-0.04em] text-[#334155]">{activity.time}</span>
-                    <span className={`inline-flex min-h-[28px] min-w-[108px] max-w-[132px] items-center justify-center justify-self-center truncate rounded-3xl px-3 text-[14px] leading-5 tracking-[-0.04em] ${
-                      activity.status === "Completed" ? "bg-[#D9F6E7] text-[#15A937]" : "bg-[#FEF3C7] text-[#B45309]"
-                    }`}>
-                      {activity.status}
-                    </span>
+                    <span className="min-w-0 truncate text-[16px] font-medium leading-5 tracking-[-0.04em] text-[#334155] md:font-normal">{activity.activity}</span>
+                    <div className="flex min-w-0 items-center justify-between gap-3 md:contents">
+                      <span className="min-w-0 truncate text-[14px] font-normal leading-5 tracking-[-0.04em] text-[#64748B] md:text-[16px] md:text-[#334155]">{activity.time}</span>
+                      <span className={`inline-flex min-h-[28px] min-w-[108px] max-w-[132px] items-center justify-center truncate rounded-3xl px-3 text-[14px] leading-5 tracking-[-0.04em] md:justify-self-center ${
+                        activity.status === "Completed" ? "bg-[#D9F6E7] text-[#15A937]" : "bg-[#FEF3C7] text-[#B45309]"
+                      }`}>
+                        {activity.status}
+                      </span>
+                    </div>
                   </button>
                 ))
               ) : (

@@ -4,10 +4,14 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "re
 import { toast } from "sonner";
 import {
   createAdminSystemConfig,
+  getAdminProviderRoles,
   listAdminSystemConfigs,
+  updateAdminProviderRoles,
   updateAdminPassword,
   updateAdminSystemConfig,
   type AdminSystemConfig,
+  type ProviderRoleConfig,
+  type ProviderRolesConfig,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 
@@ -18,6 +22,8 @@ type PasswordForm = {
   newPassword: string;
   confirmPassword: string;
 };
+
+type ProviderRoleDraft = Omit<ProviderRoleConfig, "id">;
 
 const tabs: Array<{ id: SettingsTab; label: string }> = [
   { id: "general", label: "General" },
@@ -47,6 +53,22 @@ const defaultValues: SettingsValues = {
   "settings.integration.sendgrid": "true",
   "settings.integration.daily": "true",
   "settings.integration.webhookUrl": "",
+};
+
+const emptyProviderRoles: ProviderRolesConfig = {
+  categories: [],
+  roles: [],
+};
+
+const defaultProviderRoleDraft: ProviderRoleDraft = {
+  categoryId: "general",
+  name: "",
+  bookingLabel: "",
+  description: "",
+  searchKeywords: [],
+  requiredCertificates: [],
+  verificationRequired: true,
+  isActive: true,
 };
 
 const descriptions: Record<string, string> = {
@@ -205,6 +227,9 @@ export default function SuperAdminSettingsRoute() {
     confirmPassword: "",
   });
   const [savingPassword, setSavingPassword] = useState(false);
+  const [providerRoles, setProviderRoles] = useState<ProviderRolesConfig>(emptyProviderRoles);
+  const [roleDraft, setRoleDraft] = useState<ProviderRoleDraft>(defaultProviderRoleDraft);
+  const [savingProviderRoles, setSavingProviderRoles] = useState(false);
 
   const configsByKey = useMemo(
     () => new Map(configs.map((config) => [config.key, config])),
@@ -213,14 +238,19 @@ export default function SuperAdminSettingsRoute() {
 
   useEffect(() => {
     let cancelled = false;
-    listAdminSystemConfigs({ category: "settings" })
-      .then((rows) => {
+    Promise.all([listAdminSystemConfigs({ category: "settings" }), getAdminProviderRoles()])
+      .then(([rows, roleConfig]) => {
         if (cancelled) return;
         setConfigs(rows);
         setValues({
           ...defaultValues,
           ...Object.fromEntries(rows.map((row) => [row.key, row.value])),
         });
+        setProviderRoles(roleConfig);
+        setRoleDraft((current) => ({
+          ...current,
+          categoryId: roleConfig.categories[0]?.id ?? "general",
+        }));
       })
       .catch((error) => {
         if (!cancelled) toast.error(getApiErrorMessage(error));
@@ -309,6 +339,58 @@ export default function SuperAdminSettingsRoute() {
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const saveProviderRoles = async (next: ProviderRolesConfig) => {
+    setSavingProviderRoles(true);
+    try {
+      const saved = await updateAdminProviderRoles(next);
+      setProviderRoles(saved);
+      toast.success("Provider roles saved.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingProviderRoles(false);
+    }
+  };
+
+  const addProviderRole = () => {
+    const name = roleDraft.name.trim();
+    const bookingLabel = roleDraft.bookingLabel.trim() || name;
+    if (!name) {
+      toast.error("Role name is required.");
+      return;
+    }
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const next: ProviderRolesConfig = {
+      ...providerRoles,
+      roles: [
+        ...providerRoles.roles.filter((role) => role.id !== id),
+        {
+          ...roleDraft,
+          id,
+          name,
+          bookingLabel,
+          description: roleDraft.description.trim(),
+          searchKeywords: roleDraft.searchKeywords,
+          requiredCertificates: roleDraft.requiredCertificates,
+        },
+      ],
+    };
+    setRoleDraft({
+      ...defaultProviderRoleDraft,
+      categoryId: roleDraft.categoryId,
+    });
+    void saveProviderRoles(next);
+  };
+
+  const toggleProviderRole = (roleId: string, isActive: boolean) => {
+    void saveProviderRoles({
+      ...providerRoles,
+      roles: providerRoles.roles.map((role) =>
+        role.id === roleId ? { ...role, isActive } : role,
+      ),
+    });
   };
 
   return (
@@ -464,6 +546,132 @@ export default function SuperAdminSettingsRoute() {
                     toggleConfig("settings.verification.medicalLicenseRequired", checked)
                   }
                 />
+              </div>
+            </Panel>
+            <Panel>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-[18px] font-bold tracking-tight text-[#334155]">
+                    Provider Categories & Roles
+                  </h2>
+                  <p className="mt-1 text-[14px] text-[#94A3B8]">
+                    Categories are fixed. Admins can add, edit, or archive roles used in onboarding and patient search.
+                  </p>
+                </div>
+                <StatusPill active label={`${providerRoles.roles.filter((role) => role.isActive).length} active roles`} />
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                {providerRoles.categories.map((category) => (
+                  <article key={category.id} className="rounded-[12px] border border-[#DDE5EF] bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="min-w-0 truncate text-[16px] font-bold text-[#334155]">{category.name}</h3>
+                      <StatusPill active={category.isActive} label={category.isActive ? "Active" : "Inactive"} />
+                    </div>
+                    <p className="mt-2 text-[13px] leading-5 text-[#64748B]">{category.description}</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-6 overflow-hidden rounded-[12px] border border-[#DDE5EF] bg-white">
+                <div className="grid grid-cols-[1.3fr_1fr_1fr_120px] gap-4 border-b border-[#DDE5EF] bg-[#E8EEF5] px-4 py-3 text-[13px] font-bold uppercase tracking-wide text-[#64748B]">
+                  <span>Role</span>
+                  <span>Category</span>
+                  <span>Certificates</span>
+                  <span>Status</span>
+                </div>
+                <div className="max-h-[360px] divide-y divide-[#E2E8F0] overflow-auto">
+                  {providerRoles.roles.map((role) => {
+                    const category = providerRoles.categories.find((item) => item.id === role.categoryId);
+                    return (
+                      <div key={role.id} className="grid grid-cols-[1.3fr_1fr_1fr_120px] gap-4 px-4 py-3 text-[14px] text-[#334155]">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{role.bookingLabel}</p>
+                          <p className="mt-0.5 truncate text-[12px] text-[#94A3B8]">{role.name}</p>
+                        </div>
+                        <span className="min-w-0 truncate">{category?.name ?? role.categoryId}</span>
+                        <span className="min-w-0 truncate">{role.requiredCertificates.join(", ") || "None"}</span>
+                        <Toggle
+                          checked={role.isActive}
+                          disabled={savingProviderRoles}
+                          onChange={(checked) => toggleProviderRole(role.id, checked)}
+                        />
+                      </div>
+                    );
+                  })}
+                  {!providerRoles.roles.length ? (
+                    <div className="px-4 py-8 text-center text-[14px] text-[#94A3B8]">No provider roles configured.</div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[12px] border border-[#DDE5EF] bg-white p-4">
+                <h3 className="text-[16px] font-bold text-[#334155]">Add provider role</h3>
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <SelectField
+                    label="Category"
+                    value={roleDraft.categoryId}
+                    onChange={(value) => setRoleDraft((current) => ({ ...current, categoryId: value }))}
+                    options={providerRoles.categories.map((category) => category.id)}
+                  />
+                  <Field
+                    label="Role name"
+                    value={roleDraft.name}
+                    onChange={(value) => setRoleDraft((current) => ({ ...current, name: value }))}
+                    placeholder="e.g. Paediatric Nurse"
+                  />
+                  <Field
+                    label="Booking label"
+                    value={roleDraft.bookingLabel}
+                    onChange={(value) => setRoleDraft((current) => ({ ...current, bookingLabel: value }))}
+                    placeholder="e.g. Paediatric Nursing Support"
+                  />
+                  <Field
+                    label="Required certificates"
+                    value={roleDraft.requiredCertificates.join(", ")}
+                    onChange={(value) =>
+                      setRoleDraft((current) => ({
+                        ...current,
+                        requiredCertificates: value.split(",").map((item) => item.trim()).filter(Boolean),
+                      }))
+                    }
+                    placeholder="Licence, certificate"
+                  />
+                  <Field
+                    label="Search keywords"
+                    value={roleDraft.searchKeywords.join(", ")}
+                    onChange={(value) =>
+                      setRoleDraft((current) => ({
+                        ...current,
+                        searchKeywords: value.split(",").map((item) => item.trim()).filter(Boolean),
+                      }))
+                    }
+                    placeholder="symptom, specialty, alias"
+                  />
+                  <Field
+                    label="Patient-facing description"
+                    value={roleDraft.description}
+                    onChange={(value) => setRoleDraft((current) => ({ ...current, description: value }))}
+                    placeholder="Short booking description"
+                  />
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                  <label className="flex cursor-pointer items-center gap-3 text-[14px] font-semibold text-[#334155]">
+                    <Toggle
+                      checked={roleDraft.verificationRequired}
+                      onChange={(checked) => setRoleDraft((current) => ({ ...current, verificationRequired: checked }))}
+                    />
+                    Verification required
+                  </label>
+                  <button
+                    type="button"
+                    disabled={savingProviderRoles}
+                    onClick={addProviderRole}
+                    className={primaryButtonClass}
+                  >
+                    {savingProviderRoles ? "Saving..." : "Add role"}
+                  </button>
+                </div>
               </div>
             </Panel>
           </div>

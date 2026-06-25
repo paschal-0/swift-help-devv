@@ -506,7 +506,7 @@ export function PatientMyProfilePage() {
 
             <div className="mt-[19px] w-full overflow-hidden pb-2">
               <div className="w-full">
-                <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] items-end gap-3 border-b-[3px] border-[#E2E8F0] pb-1">
+                <div className="hidden grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] items-end gap-3 border-b-[3px] border-[#E2E8F0] pb-1 sm:grid">
                   <div className="relative pb-2 text-center md:pl-2 md:text-left">
                     <span className="text-[14px] font-medium leading-[19px] tracking-[-0.05em] text-[#1565C0] md:text-[16px]">
                       Activity
@@ -524,14 +524,14 @@ export function PatientMyProfilePage() {
                 <div className="space-y-[13px] pt-[17px]">
                   {filteredActivities.length ? (
                     paginatedActivities.map((item) => (
-                      <div key={item.id} className="grid min-h-[36px] grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] items-center gap-3">
-                        <span className="min-w-0 truncate text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:pl-2 md:text-[12.403px]">
+                      <div key={item.id} className="flex min-h-[48px] flex-col gap-2 border-b border-[#E2E8F0] py-2 sm:grid sm:min-h-[36px] sm:grid-cols-[minmax(0,1.25fr)_minmax(112px,0.95fr)_minmax(92px,0.75fr)] sm:items-center sm:gap-3 sm:border-b-0 sm:py-0">
+                        <span className="min-w-0 truncate text-[13px] font-medium leading-[16px] tracking-[-0.04em] text-[#334155] md:pl-2 md:text-[12.403px] md:font-normal md:leading-[14px] md:text-black">
                           {item.activity}
                         </span>
-                        <span className="min-w-0 truncate text-center text-[12px] font-normal leading-[14px] tracking-[-0.05em] text-black md:text-[12.403px]">
-                          {item.dateTime}
-                        </span>
-                        <div className="flex justify-center">
+                        <div className="flex min-w-0 items-center justify-between gap-3 sm:contents">
+                          <span className="min-w-0 truncate text-[12px] font-normal leading-[14px] tracking-[-0.04em] text-[#64748B] sm:text-center sm:text-black md:text-[12.403px]">
+                            {item.dateTime}
+                          </span>
                           <span className={`inline-flex h-[25px] w-full max-w-[110px] items-center justify-center truncate rounded-[6px] border px-2 text-[10px] font-normal leading-[14px] tracking-[-0.04em] sm:text-[11px] ${getActivityStatusClass(item.status)}`}>
                             {item.status}
                           </span>

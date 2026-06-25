@@ -27,6 +27,7 @@ import {
   type CommunicationTranscript,
   type AiTriageHandoff,
 } from "@/services/communicationApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 function formatRoomType(value?: string | null) {
   return (value ?? "room")
@@ -282,15 +283,17 @@ export function CommunicationRoomPage() {
   const downloadComplianceReport = async () => {
     try {
       const report = await getCommunicationComplianceReport(roomId);
-      const blob = new Blob([JSON.stringify(report, null, 2)], {
-        type: "application/json",
+      exportTablePdf({
+        title: "Swifthelp Communication Compliance Report",
+        filename: `swifthelp-communication-compliance-${roomId}.pdf`,
+        columns: ["Field", "Value"],
+        rows: Object.entries(report).map(([key, value]) => [
+          key,
+          typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+            ? String(value)
+            : JSON.stringify(value),
+        ]),
       });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `swifthelp-communication-compliance-${roomId}.json`;
-      anchor.click();
-      URL.revokeObjectURL(url);
       toast.success("Compliance report downloaded");
     } catch (error) {
       toast.error(getApiErrorMessage(error));

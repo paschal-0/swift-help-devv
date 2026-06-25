@@ -29,6 +29,7 @@ import {
   type AdminAiSymptomChecksResponse,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 ChartJS.register(
   CategoryScale,
@@ -478,10 +479,17 @@ export default function SuperAdminAiTriageRoute() {
     }
   };
 
-  const exportCsv = () => {
-    const headers = ["User", "Email", "Primary symptom", "Associated symptoms", "Recommended care", "Risk", "Date"];
-    const lines = rows.map((row) =>
-      [
+  const exportPdf = () => {
+    if (!rows.length) {
+      toast.info("There are no AI symptom checks to export.");
+      return;
+    }
+
+    exportTablePdf({
+      title: "Swifthelp AI Symptom Checks",
+      filename: "ai-symptom-checks.pdf",
+      columns: ["User", "Email", "Primary symptom", "Associated symptoms", "Recommended care", "Risk", "Date"],
+      rows: rows.map((row) => [
         row.user.name,
         row.user.email || "",
         row.primarySymptom,
@@ -489,17 +497,9 @@ export default function SuperAdminAiTriageRoute() {
         row.recommendedCareType,
         row.riskLevel,
         row.date,
-      ]
-        .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const blob = new Blob([[headers.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "ai-symptom-checks.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+      ]),
+      filters: [filter !== "all" ? `Risk: ${formatRisk(filter)}` : ""].filter(Boolean),
+    });
   };
 
   const trendData = useMemo(
@@ -672,7 +672,7 @@ export default function SuperAdminAiTriageRoute() {
           />
           <button
             type="button"
-            onClick={exportCsv}
+            onClick={exportPdf}
             className="ml-auto h-[52px] w-[132px] cursor-pointer rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#0D5C91] text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,145,0.2)]"
           >
             Export

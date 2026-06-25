@@ -780,6 +780,30 @@ export type AdminSystemConfig = {
   updatedAt: string;
 };
 
+export type ProviderCategoryConfig = {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+};
+
+export type ProviderRoleConfig = {
+  id: string;
+  categoryId: string;
+  name: string;
+  bookingLabel: string;
+  description: string;
+  searchKeywords: string[];
+  requiredCertificates: string[];
+  verificationRequired: boolean;
+  isActive: boolean;
+};
+
+export type ProviderRolesConfig = {
+  categories: ProviderCategoryConfig[];
+  roles: ProviderRoleConfig[];
+};
+
 export type AdminReferralRate = {
   level: number;
   title: string;
@@ -1619,6 +1643,19 @@ export async function listAdminSystemConfigs(params: { category?: string } = {})
 
   return apiRequest<AdminSystemConfig[]>(`/admin/system-configs${suffix}`, {
     method: "GET",
+  });
+}
+
+export async function getAdminProviderRoles() {
+  return apiRequest<ProviderRolesConfig>("/admin/provider-roles", {
+    method: "GET",
+  });
+}
+
+export async function updateAdminProviderRoles(payload: ProviderRolesConfig) {
+  return apiRequest<ProviderRolesConfig>("/admin/provider-roles", {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 

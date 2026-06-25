@@ -14,6 +14,7 @@ import {
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type ReferralTab = "overview" | "referrers" | "payouts" | "levels";
 type LevelFilter = "all" | "Level 1" | "Level 2" | "Level 3";
@@ -225,11 +226,6 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function csvEscape(value: string | number | null | undefined) {
-  const text = String(value ?? "");
-  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function StatCard({
@@ -490,14 +486,16 @@ export default function SuperAdminReferralsRoute() {
       return;
     }
 
-    const csv = [header.map(csvEscape).join(","), ...rows.map((row) => row.map(csvEscape).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `swifthelp-referrals-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    exportTablePdf({
+      title: `Swifthelp Referrals - ${tab === "payouts" ? "Payouts" : "Referrers"}`,
+      filename: `swifthelp-referrals-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: header,
+      rows,
+      filters: [
+        mergedSearch ? `Search: ${mergedSearch}` : "",
+        level !== "all" ? `Level: ${level}` : "",
+      ].filter(Boolean),
+    });
   };
 
   const saveRate = async (rate: AdminReferralRate) => {

@@ -21,6 +21,7 @@ import {
   type AdminPaymentsOverview,
 } from "@/services/adminApi";
 import { getApiErrorMessage } from "@/services/authApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type PaymentTab = "transactions" | "subscriptions" | "referrals" | "escrows" | "configuration";
 type EscrowAction = "release_to_professional" | "refund_patient" | "partial_refund" | "send_to_review";
@@ -398,7 +399,7 @@ export default function SuperAdminPaymentsRoute() {
     }
   };
 
-  const exportCsv = () => {
+  const exportPdf = () => {
     const headersByTab: Record<PaymentTab, string[]> = {
       transactions: ["User", "ID", "Type", "Amount", "Date", "Method", "Status"],
       subscriptions: ["User", "User type", "Plan", "Started", "Next billing", "Amount", "Status"],
@@ -457,16 +458,16 @@ export default function SuperAdminPaymentsRoute() {
       return;
     }
 
-    const csv = [headersByTab[activeTab], ...rows]
-      .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `swifthelp-${activeTab}-payments.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    exportTablePdf({
+      title: `Swifthelp ${labelize(activeTab)} Payments`,
+      filename: `swifthelp-${activeTab}-payments.pdf`,
+      columns: headersByTab[activeTab],
+      rows,
+      filters: [
+        debouncedSearch ? `Search: ${debouncedSearch}` : "",
+        activeTab === "transactions" ? `Status: ${labelize(status)}` : "",
+      ].filter(Boolean),
+    });
   };
 
   const unavailableAction = () => toast.info("This row is not linked to a payment transaction yet.");
@@ -616,7 +617,7 @@ export default function SuperAdminPaymentsRoute() {
               {activeTab === "transactions" ? <StatusDropdown value={status} onChange={setStatus} /> : null}
               <button
                 type="button"
-                onClick={exportCsv}
+                onClick={exportPdf}
                 className="ml-auto flex h-12 w-[132px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[16px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)]"
               >
                 <Icon name="download" className="h-4 w-4" />

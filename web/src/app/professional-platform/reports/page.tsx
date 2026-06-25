@@ -22,6 +22,7 @@ import {
   type ProfessionalEarning,
   type ProfessionalPerformance,
 } from "@/services/professionalApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type ReportRange = "This month" | "Last month" | "This year" | "Custom range";
 type ReportTab = "consultations" | "earnings" | "general";
@@ -638,9 +639,7 @@ export default function ProfessionalReportsRoute() {
     earningsByConsultationId.get(consultation.id)?.amountCents ?? consultation.feeAmountCents;
 
   const exportReport = () => {
-    const rows = [
-      ["ID", "Patient", "Type", "Date", "Duration", "Earned", "Status"],
-      ...tableRows.map((consultation) => [
+    const rows = tableRows.map((consultation) => [
         consultation.id,
         consultation.patientName,
         getModeLabel(consultation.mode),
@@ -648,16 +647,18 @@ export default function ProfessionalReportsRoute() {
         `${getActualDurationMinutes(consultation)} min`,
         formatApiMoney(getConsultationEarnedAmount(consultation), consultation.currency),
         normalizeStatus(consultation.status),
-      ]),
-    ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `professional-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      ]);
+    if (!rows.length) {
+      toast.info("There are no report rows to export.");
+      return;
+    }
+    exportTablePdf({
+      title: "Swifthelp Professional Report",
+      filename: `professional-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["ID", "Patient", "Type", "Date", "Duration", "Earned", "Status"],
+      rows,
+      filters: [`Range: ${range}`, `Mode: ${modeFilter}`, `Status: ${statusFilter}`],
+    });
   };
 
   const openConsultationDetails = async (

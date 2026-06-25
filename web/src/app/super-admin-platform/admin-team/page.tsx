@@ -15,6 +15,7 @@ import {
   type AdminTeamRole,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type DropdownOption<T extends string> = {
   label: string;
@@ -192,11 +193,6 @@ function formatLastActive(value: string) {
   return formatDate(value);
 }
 
-function csvEscape(value: string | number | null | undefined) {
-  const text = String(value ?? "");
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
 function filterParams(filter: TeamFilter) {
   if (filter === "super_admin" || filter === "admin") {
     return { role: filter as AdminTeamRole };
@@ -262,31 +258,25 @@ export default function SuperAdminTeamRoute() {
     setMeta((current) => ({ ...current, page: 1 }));
   };
 
-  const exportCsv = () => {
+  const exportPdf = () => {
     if (!rows.length) {
       toast.info("There are no admin team members to export.");
       return;
     }
 
-    const header = ["Admin", "Email", "Role", "Permission", "Last active", "Status"];
-    const lines = rows.map((row) =>
-      [
+    exportTablePdf({
+      title: "Swifthelp Admin Team",
+      filename: `swifthelp-admin-team-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["Admin", "Email", "Role", "Permission", "Last active", "Status"],
+      rows: rows.map((row) => [
         row.fullName,
         row.email,
         row.roleLabel,
         row.permission,
         formatLastActive(row.lastActiveAt),
         row.status,
-      ].map(csvEscape).join(","),
-    );
-    const csv = [header.map(csvEscape).join(","), ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `swifthelp-admin-team-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      ]),
+    });
   };
 
   const submitInvite = async () => {
@@ -582,7 +572,7 @@ export default function SuperAdminTeamRoute() {
       <div className="mt-6 flex justify-end">
         <button
           type="button"
-          onClick={exportCsv}
+          onClick={exportPdf}
           className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[14px] border border-[#1565C0] px-5 text-[14px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
         >
           Export visible admins

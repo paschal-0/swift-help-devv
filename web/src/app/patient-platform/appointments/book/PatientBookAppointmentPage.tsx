@@ -7,9 +7,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { API_BASE_URL, getApiErrorMessage } from "@/services/authApi";
 import {
+  listPatientProviderRoles,
   listPatientProviders,
   type PatientMedicalRecordsRecommendation,
   type PatientProvider,
+  type PatientProviderRolesConfig,
 } from "@/services/patientApi";
 import { readPatientAppointmentDraft } from "@/utils/patientAppointmentDraft";
 
@@ -74,6 +76,26 @@ const professionalTypes: ProfessionalType[] = [
   { id: "np", label: "Nurse Practitioner" },
   { id: "specialist", label: "Specialist" },
 ];
+
+const fallbackProviderRolesConfig: PatientProviderRolesConfig = {
+  categories: careTypes.map((care) => ({
+    id: care.id,
+    name: care.title,
+    description: care.description,
+    isActive: true,
+  })),
+  roles: professionalTypes.map((type) => ({
+    id: type.id,
+    categoryId: type.id === "specialist" ? "specialist" : "general",
+    name: type.label,
+    bookingLabel: type.label,
+    description: type.label,
+    searchKeywords: [type.label],
+    requiredCertificates: [],
+    verificationRequired: true,
+    isActive: true,
+  })),
+};
 
 function formatRate(cents?: number | null, currencyCode = "NGN") {
   if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) {
@@ -337,6 +359,62 @@ export function PatientBookAppointmentPage() {
     draft?.professionalId ?? "",
   );
   const [providerCards, setProviderCards] = useState<ProfessionalCard[]>([]);
+  const [providerRolesConfig, setProviderRolesConfig] = useState<PatientProviderRolesConfig>(
+    fallbackProviderRolesConfig,
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    listPatientProviderRoles()
+      .then((config) => {
+        if (!isMounted) return;
+        setProviderRolesConfig(config.categories.length ? config : fallbackProviderRolesConfig);
+      })
+      .catch(() => {
+        if (isMounted) setProviderRolesConfig(fallbackProviderRolesConfig);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const configuredCareTypes = useMemo<CareType[]>(
+    () =>
+      providerRolesConfig.categories.map((category) => ({
+        id: category.id,
+        title:
+          category.id === "general"
+            ? "Book General Consultation"
+            : category.id === "specialist"
+              ? "Book Specialist"
+              : category.name,
+        description: category.description || category.name,
+      })),
+    [providerRolesConfig.categories],
+  );
+
+  const configuredProfessionalTypes = useMemo<ProfessionalType[]>(
+    () =>
+      providerRolesConfig.roles
+        .filter((role) => role.categoryId === selectedCareType && role.isActive !== false)
+        .map((role) => ({ id: role.id, label: role.bookingLabel || role.name })),
+    [providerRolesConfig.roles, selectedCareType],
+  );
+
+  useEffect(() => {
+    if (!configuredCareTypes.some((care) => care.id === selectedCareType)) {
+      setSelectedCareType(configuredCareTypes[0]?.id ?? "general");
+    }
+  }, [configuredCareTypes, selectedCareType]);
+
+  useEffect(() => {
+    if (
+      configuredProfessionalTypes.length &&
+      !configuredProfessionalTypes.some((type) => type.id === selectedProfessionalType)
+    ) {
+      setSelectedProfessionalType(configuredProfessionalTypes[0].id);
+    }
+  }, [configuredProfessionalTypes, selectedProfessionalType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -344,10 +422,12 @@ export function PatientBookAppointmentPage() {
     async function loadProviders() {
       try {
         const professionalTypeLabel =
-          professionalTypes.find((item) => item.id === selectedProfessionalType)
-            ?.label ?? professionalTypes[0].label;
+          configuredProfessionalTypes.find((item) => item.id === selectedProfessionalType)
+            ?.label ?? configuredProfessionalTypes[0]?.label;
         const response = await listPatientProviders({
           specialization: professionalTypeLabel,
+          providerCategory: selectedCareType,
+          providerRoleId: selectedProfessionalType,
         });
         if (!isMounted) return;
         const cards = response.map(mapProviderToCard);
@@ -369,19 +449,19 @@ export function PatientBookAppointmentPage() {
     return () => {
       isMounted = false;
     };
-  }, [draft?.professionalId, selectedProfessionalType]);
+  }, [configuredProfessionalTypes, draft?.professionalId, selectedCareType, selectedProfessionalType]);
 
   const visibleProfessionals = providerCards;
 
   const selectedCare = useMemo(
-    () => careTypes.find((i) => i.id === selectedCareType) || careTypes[0],
-    [selectedCareType],
+    () => configuredCareTypes.find((i) => i.id === selectedCareType) || configuredCareTypes[0] || careTypes[0],
+    [configuredCareTypes, selectedCareType],
   );
   const selectedProfessionalTypeLabel = useMemo(
     () =>
-      professionalTypes.find((item) => item.id === selectedProfessionalType)
-        ?.label ?? professionalTypes[0].label,
-    [selectedProfessionalType],
+      configuredProfessionalTypes.find((item) => item.id === selectedProfessionalType)
+        ?.label ?? configuredProfessionalTypes[0]?.label ?? professionalTypes[0].label,
+    [configuredProfessionalTypes, selectedProfessionalType],
   );
   const selectedProfessional = useMemo(
     () =>
@@ -473,7 +553,7 @@ export function PatientBookAppointmentPage() {
             </div>
 
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-color:#1E88E5_#E3F2FD] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#E3F2FD] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1E88E5] xl:grid xl:grid-cols-3 xl:overflow-visible xl:px-0">
-              {careTypes.map((item) => (
+              {configuredCareTypes.map((item) => (
                 <motion.button
                   key={item.id}
                   whileTap={{ scale: 0.97 }}
@@ -527,7 +607,7 @@ export function PatientBookAppointmentPage() {
                   }
                   className="h-[47px] w-full appearance-none rounded-[12px] border border-[#94A3B8] bg-transparent px-[17px] pr-12 text-[18px] font-light leading-[22px] tracking-[-0.05em] text-[#94A3B8] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#E3F2FD]"
                 >
-                  {professionalTypes.map((item) => (
+                  {configuredProfessionalTypes.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
                     </option>

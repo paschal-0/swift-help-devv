@@ -16,6 +16,7 @@ import {
   type UpdateAdminPatientPayload,
 } from "@/services/adminApi";
 import { useSuperAdminShell } from "../components/SuperAdminPlatformShell";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type StatusFilter = "all" | "active" | "suspended";
 
@@ -888,16 +889,20 @@ export default function SuperAdminPatientsRoute() {
       formatDate(patient.joinedAt),
       patient.location,
     ]);
-    const csv = [header, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "swifthelp-patients.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    if (!rows.length) {
+      toast.info("There are no patient rows to export.");
+      return;
+    }
+    exportTablePdf({
+      title: "Swifthelp Patients",
+      filename: "swifthelp-patients.pdf",
+      columns: header,
+      rows,
+      filters: [
+        (search.trim() || searchText.trim()) ? `Search: ${search.trim() || searchText.trim()}` : "",
+        status !== "all" ? `Status: ${status}` : "",
+      ].filter(Boolean),
+    });
   };
 
   const visibleRange = useMemo(() => {
