@@ -53,7 +53,6 @@ const defaultRates: AdminReferralRate[] = [
     patientSignup: 300,
     professionalSignup: 500,
     organizationOnboarded: 20000,
-    monthlyBonus: 0,
     unlockMinReferrals: 0,
     unlockMinProfessionals: 0,
     unlockMinOrganizations: 0,
@@ -66,7 +65,6 @@ const defaultRates: AdminReferralRate[] = [
     patientSignup: 0,
     professionalSignup: 1000,
     organizationOnboarded: 0,
-    monthlyBonus: 20000,
     unlockMinReferrals: 20,
     unlockMinProfessionals: 5,
     unlockMinOrganizations: 0,
@@ -79,7 +77,6 @@ const defaultRates: AdminReferralRate[] = [
     patientSignup: 0,
     professionalSignup: 1500,
     organizationOnboarded: 0,
-    monthlyBonus: 50000,
     unlockMinReferrals: 100,
     unlockMinProfessionals: 10,
     unlockMinOrganizations: 2,
@@ -401,7 +398,7 @@ function LevelRateCard({
   saving: boolean;
 }) {
   const update = (
-    key: "patientSignup" | "professionalSignup" | "organizationOnboarded" | "monthlyBonus" | "unlockMinReferrals" | "unlockMinProfessionals" | "unlockMinOrganizations",
+    key: "patientSignup" | "professionalSignup" | "organizationOnboarded" | "unlockMinReferrals" | "unlockMinProfessionals" | "unlockMinOrganizations",
     value: number,
   ) => {
     onChange({ ...rate, [key]: Math.max(0, Number.isFinite(value) ? value : 0) });
@@ -413,27 +410,19 @@ function LevelRateCard({
   return (
     <article className="flex min-h-[390px] min-w-0 flex-col rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC] p-4">
       <h3 className="text-[20px] font-semibold leading-6 text-[#334155]">
-        Level {rate.level} - {rate.title}
+        Level {rate.level} - {rate.title.replace(/^Level\s+\d+\s*-\s*/i, "")}
       </h3>
       <div className="mt-5 grid flex-1 gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <RateTextInput label="Region code" maxLength={8} value={rate.regionCode || "NG"} onChange={(value) => updateText("regionCode", value)} />
           <RateTextInput label="Currency" maxLength={3} value={rate.currency || "NGN"} onChange={(value) => updateText("currency", value)} />
         </div>
-        {rate.level === 1 ? (
-          <>
-            <RateInput label="Patient sign up" value={rate.patientSignup} onChange={(value) => update("patientSignup", value)} />
-            <RateInput label="Professional sign up" value={rate.professionalSignup} onChange={(value) => update("professionalSignup", value)} />
-            <RateInput label="Organization onboarded" value={rate.organizationOnboarded} onChange={(value) => update("organizationOnboarded", value)} />
-          </>
-        ) : (
-          <>
-            <RateInput label="Professionals sign up" value={rate.professionalSignup} onChange={(value) => update("professionalSignup", value)} />
-            <RateInput label="Monthly bonus" value={rate.monthlyBonus} onChange={(value) => update("monthlyBonus", value)} />
-            <RateInput label="Unlock min professionals" value={rate.unlockMinProfessionals} onChange={(value) => update("unlockMinProfessionals", value)} />
-            <RateInput label="Unlock min Organizations" value={rate.unlockMinOrganizations} onChange={(value) => update("unlockMinOrganizations", value)} />
-          </>
-        )}
+        <RateInput label="Patient sign up" value={rate.patientSignup} onChange={(value) => update("patientSignup", value)} />
+        <RateInput label="Professional sign up" value={rate.professionalSignup} onChange={(value) => update("professionalSignup", value)} />
+        <RateInput label="Organization onboarded" value={rate.organizationOnboarded} onChange={(value) => update("organizationOnboarded", value)} />
+        <RateInput label="Unlock min referrals" value={rate.unlockMinReferrals} onChange={(value) => update("unlockMinReferrals", value)} />
+        <RateInput label="Unlock min professionals" value={rate.unlockMinProfessionals} onChange={(value) => update("unlockMinProfessionals", value)} />
+        <RateInput label="Unlock min organizations" value={rate.unlockMinOrganizations} onChange={(value) => update("unlockMinOrganizations", value)} />
       </div>
       <button
         type="button"

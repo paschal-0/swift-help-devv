@@ -812,7 +812,6 @@ export type AdminReferralRate = {
   patientSignup: number;
   professionalSignup: number;
   organizationOnboarded: number;
-  monthlyBonus: number;
   unlockMinReferrals: number;
   unlockMinProfessionals: number;
   unlockMinOrganizations: number;
