@@ -230,6 +230,7 @@ export function PatientDashboardPage() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [confirmingConsultationId, setConfirmingConsultationId] = useState<string | null>(null);
   const [disputingConsultationId, setDisputingConsultationId] = useState<string | null>(null);
+  const [focusedImportantNoticeId, setFocusedImportantNoticeId] = useState<string | null>(null);
   const [payingConsultationId, setPayingConsultationId] = useState<string | null>(null);
   const [activityPage, setActivityPage] = useState(1);
 
@@ -338,9 +339,35 @@ export function PatientDashboardPage() {
 
   const visibleUpdates = useMemo(() => {
     const updates = (dashboard?.updates ?? []).filter((item) => !dismissedUpdateIds.includes(item.id));
-    if (!query) return updates;
-    return updates.filter((item) => [item.title, item.body, item.date].join(" ").toLowerCase().includes(query));
-  }, [dashboard?.updates, dismissedUpdateIds, query]);
+    const filtered = query
+      ? updates.filter((item) => [item.title, item.body, item.date].join(" ").toLowerCase().includes(query))
+      : updates;
+    if (!focusedImportantNoticeId) return filtered;
+    return [...filtered].sort((left, right) => {
+      if (left.consultationId === focusedImportantNoticeId) return -1;
+      if (right.consultationId === focusedImportantNoticeId) return 1;
+      return 0;
+    });
+  }, [dashboard?.updates, dismissedUpdateIds, focusedImportantNoticeId, query]);
+
+  useEffect(() => {
+    setFocusedImportantNoticeId(
+      new URLSearchParams(window.location.search).get("importantNotice"),
+    );
+  }, []);
+
+  useEffect(() => {
+    const consultationId = focusedImportantNoticeId;
+    if (!consultationId || !visibleUpdates.some((update) => update.consultationId === consultationId)) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`important-notice-${consultationId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [focusedImportantNoticeId, visibleUpdates]);
 
   const confirmConsultation = async (consultationId: string, updateId: string) => {
     if (confirmingConsultationId) return;
@@ -670,7 +697,15 @@ export function PatientDashboardPage() {
                   update.paymentStatus === "disputed" ||
                   update.paymentStatus === "review_required";
                 return (
-                <div key={update.id} className="min-h-[158px] rounded-md border border-[#1E88E5] p-2">
+                <div
+                  key={update.id}
+                  id={update.consultationId ? `important-notice-${update.consultationId}` : undefined}
+                  className={`scroll-mt-24 min-h-[158px] rounded-md border border-[#1E88E5] p-2 transition-shadow ${
+                    focusedImportantNoticeId === update.consultationId
+                      ? "ring-2 ring-[#1E88E5] ring-offset-2"
+                      : ""
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <span className="inline-flex h-[16.56px] min-w-[59px] items-center justify-center rounded-[15px] bg-[#E3F2FD] text-[10px] font-medium leading-[15px] tracking-[-0.05em] text-[#1E88E5]">
                       {isPaymentPending ? "Payment due" : isUnfinishedConsultation ? "Action needed" : "Due soon"}

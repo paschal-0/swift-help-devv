@@ -51,11 +51,18 @@ function getPatientNotificationTarget(notification: PatientNotification, country
     return `${countryPrefix}/patient-platform/consultations/rate`;
   }
 
+  if (
+    notification.consultationId &&
+    notification.metadata?.status === "ended_unconfirmed"
+  ) {
+    return `${countryPrefix}/patient-platform?importantNotice=${encodeURIComponent(notification.consultationId)}`;
+  }
+
   if (notification.appointmentId || type.includes("appointment")) {
     return `${countryPrefix}/patient-platform/appointments`;
   }
 
-  if (notification.consultationId || type.includes("consultation")) {
+  if (type.includes("consultation")) {
     return `${countryPrefix}/patient-platform/consultations`;
   }
 

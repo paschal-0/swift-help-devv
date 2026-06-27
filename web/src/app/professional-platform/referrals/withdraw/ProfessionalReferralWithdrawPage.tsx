@@ -156,7 +156,9 @@ export function ProfessionalReferralWithdrawPage() {
       setAvailableBalance((current) => Math.max(0, current - parsedAmountCents));
       setAmountInput("");
       setPassword("");
-      toast.success(`Withdrawal request for ${formatApiMoney(parsedAmountCents)} submitted`);
+      toast.success(
+        `Withdrawal request for ${formatApiMoney(parsedAmountCents, currency)} submitted`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to request withdrawal");
     } finally {

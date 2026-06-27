@@ -21,6 +21,7 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import { createAuthenticatedEventSource } from "@/services/authApi";
 import {
   acceptProfessionalRequest,
+  completeProfessionalConsultation,
   declineProfessionalRequest,
   formatApiMoney,
   getProfessionalDashboard,
@@ -742,6 +743,8 @@ export function ProfessionalDashboardPage() {
   const [professionalName, setProfessionalName] = useState("Professional");
   const [appointmentPage, setAppointmentPage] = useState(1);
   const [requestPage, setRequestPage] = useState(1);
+  const [completingConsultationId, setCompletingConsultationId] = useState<string | null>(null);
+  const [focusedImportantRequestId, setFocusedImportantRequestId] = useState<string | null>(null);
 
   const query = searchText.trim().toLowerCase();
   const now = useMemo(() => new Date(), []);
@@ -799,6 +802,21 @@ export function ProfessionalDashboardPage() {
       cancelled = true;
     };
   }, [earningsRange]);
+
+  useEffect(() => {
+    const consultationId = new URLSearchParams(window.location.search).get("importantRequest");
+    if (!consultationId || !importantNotices.some((notice) => notice.consultationId === consultationId)) {
+      return;
+    }
+
+    setFocusedImportantRequestId(consultationId);
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`important-request-${consultationId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [importantNotices]);
 
   useEffect(() => {
     let cancelled = false;
@@ -876,7 +894,15 @@ export function ProfessionalDashboardPage() {
         typeof notification.metadata?.consultationId === "string"
           ? notification.metadata.consultationId
           : null;
-      if (!consultationId) return;
+      if (
+        !consultationId ||
+        notification.metadata?.status !== "ended_unconfirmed"
+      ) {
+        return;
+      }
+      const canConfirmCompletion =
+        notification.title.toLowerCase().includes("patient confirmed") &&
+        notification.title.toLowerCase().includes("care");
 
       const notice: ImportantNotice = {
         id: `notification-${notification.id}`,
@@ -885,8 +911,8 @@ export function ProfessionalDashboardPage() {
         date: notification.createdAt,
         kind: "consultation_notice",
         consultationId,
-        actionLabel: "Open consultation",
-        actionHref: `/professional-platform/consultations/live?consultationId=${encodeURIComponent(consultationId)}`,
+        actionLabel: canConfirmCompletion ? "Mark complete" : "Review request",
+        actionHref: `/professional-platform?importantRequest=${encodeURIComponent(consultationId)}`,
       };
       setImportantNotices((current) => [
         notice,
@@ -1254,6 +1280,27 @@ export function ProfessionalDashboardPage() {
     router.push("/professional-platform/earnings");
   const handleOpenViewDetails = () =>
     router.push("/professional-platform/schedule");
+  const handleImportantNoticeAction = async (notice: ImportantNotice) => {
+    if (notice.actionLabel !== "Mark complete" || !notice.consultationId) {
+      if (notice.actionHref) router.push(notice.actionHref);
+      return;
+    }
+
+    if (completingConsultationId) return;
+    setCompletingConsultationId(notice.consultationId);
+    try {
+      await completeProfessionalConsultation(notice.consultationId);
+      setImportantNotices((current) => current.filter((item) => item.id !== notice.id));
+      const refreshed = await getProfessionalDashboard(earningsRange);
+      setDashboard(refreshed);
+      setImportantNotices(refreshed.importantNotices ?? []);
+      toast.success("Consultation confirmed. Payment release has been processed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to complete consultation");
+    } finally {
+      setCompletingConsultationId(null);
+    }
+  };
   const handleJoinAppointment = () => {
     toast.success("Opening schedule for consultation.");
     router.push("/professional-platform/schedule");
@@ -1713,7 +1760,12 @@ export function ProfessionalDashboardPage() {
                 {importantNotices.map((notice) => (
                   <article
                     key={notice.id}
-                    className="rounded-xl border border-[#1565C0] bg-[#E3F2FD] p-3"
+                    id={notice.consultationId ? `important-request-${notice.consultationId}` : undefined}
+                    className={`scroll-mt-24 rounded-xl border border-[#1565C0] bg-[#E3F2FD] p-3 transition-shadow ${
+                      focusedImportantRequestId === notice.consultationId
+                        ? "ring-2 ring-[#1E88E5] ring-offset-2"
+                        : ""
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="inline-flex h-[18px] items-center rounded-[15px] bg-[#F8FAFC] px-2 text-[10px] font-medium leading-[15px] tracking-[-0.04em] text-[#1565C0]">
@@ -1732,10 +1784,13 @@ export function ProfessionalDashboardPage() {
                     {notice.actionHref ? (
                       <button
                         type="button"
-                        onClick={() => router.push(notice.actionHref!)}
+                        disabled={completingConsultationId === notice.consultationId}
+                        onClick={() => void handleImportantNoticeAction(notice)}
                         className={`mt-3 inline-flex h-[30px] cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[11px] font-medium tracking-[-0.03em] text-[#E3F2FD] ${microInteractionClass}`}
                       >
-                        {notice.actionLabel ?? "Open"}
+                        {completingConsultationId === notice.consultationId
+                          ? "Confirming..."
+                          : notice.actionLabel ?? "Open"}
                       </button>
                     ) : null}
                   </article>

@@ -59,6 +59,13 @@ function getProfessionalNotificationTarget(notification: ProfessionalNotificatio
   }
 
   if (
+    typeof notification.metadata?.consultationId === "string" &&
+    notification.metadata?.status === "ended_unconfirmed"
+  ) {
+    return `${countryPrefix}/professional-platform?importantRequest=${encodeURIComponent(notification.metadata.consultationId)}`;
+  }
+
+  if (
     typeof notification.metadata?.consultationId === "string" ||
     typeof notification.metadata?.appointmentId === "string"
   ) {
