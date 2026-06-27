@@ -388,6 +388,7 @@ export type ProfessionalNotification = {
 export type EarningsSummary = {
   totalEarned: number;
   availableBalance: number;
+  reservedBalance: number;
   pendingEarnings: number;
   currency: string;
   transactionCount: number;
@@ -413,6 +414,11 @@ export type ProfessionalPayoutMethod = {
   bankName: string;
   accountName: string;
   accountNumberLast4: string;
+  bankCode: string | null;
+  currency: string;
+  provider: string;
+  providerRecipientCode: string | null;
+  verifiedAt: string | null;
   defaultMethod: boolean;
 };
 
@@ -422,7 +428,10 @@ export type ProfessionalPayout = {
   payoutMethodId: string;
   amountCents: number;
   currency: string;
-  status: "requested" | "processing" | "completed" | "failed" | "cancelled";
+  status: "requested" | "processing" | "completed" | "failed" | "cancelled" | "reversed";
+  providerReference: string | null;
+  providerTransferCode: string | null;
+  failureReason: string | null;
   processedAt: string | null;
   createdAt: string;
 };
@@ -1141,6 +1150,8 @@ export function createProfessionalPayoutMethod(payload: {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  bankCode: string;
+  currency: string;
   defaultMethod?: boolean;
 }) {
   return apiRequest<ProfessionalPayoutMethod>(
@@ -1155,11 +1166,19 @@ export function createProfessionalPayoutMethod(payload: {
 export function createProfessionalWithdrawal(payload: {
   payoutMethodId: string;
   amountCents: number;
+  password: string;
 }) {
   return apiRequest<ProfessionalPayout>("/professional/wallet/withdrawals", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function getPaystackBanks(currency = "NGN") {
+  return apiRequest<Array<{ id: number | null; name: string; code: string; currency: string }>>(
+    `/payments/paystack/banks?currency=${encodeURIComponent(currency)}`,
+    { method: "GET" },
+  );
 }
 
 export function listProfessionalPayouts() {

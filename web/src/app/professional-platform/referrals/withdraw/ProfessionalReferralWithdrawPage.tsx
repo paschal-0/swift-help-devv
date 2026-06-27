@@ -7,6 +7,7 @@ import {
   createProfessionalWithdrawal,
   formatApiMoney,
   getProfessionalWallet,
+  getPaystackBanks,
   type ProfessionalPayoutMethod,
 } from "@/services/professionalApi";
 
@@ -14,12 +15,16 @@ type AddBankFormState = {
   accountName: string;
   bankName: string;
   accountNumber: string;
+  bankCode: string;
+  currency: string;
 };
 
 const emptyAddBankForm: AddBankFormState = {
   accountName: "",
   bankName: "",
   accountNumber: "",
+  bankCode: "",
+  currency: "NGN",
 };
 
 export function ProfessionalReferralWithdrawPage() {
@@ -31,6 +36,8 @@ export function ProfessionalReferralWithdrawPage() {
   const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
   const [isSavingBank, setIsSavingBank] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [banks, setBanks] = useState<Array<{ name: string; code: string; currency: string }>>([]);
+  const [currency, setCurrency] = useState("NGN");
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +47,8 @@ export function ProfessionalReferralWithdrawPage() {
         const wallet = await getProfessionalWallet();
         if (cancelled) return;
         setAvailableBalance(wallet.summary.availableBalance);
+        setCurrency(wallet.summary.currency);
+        setAddBankForm((current) => ({ ...current, currency: wallet.summary.currency }));
         setPayoutMethods(wallet.payoutMethods);
         setSelectedMethodId(
           wallet.payoutMethods.find((method) => method.defaultMethod)?.id ??
@@ -59,6 +68,23 @@ export function ProfessionalReferralWithdrawPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getPaystackBanks(currency)
+      .then((items) => {
+        if (!cancelled) setBanks(items);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setBanks([]);
+          toast.error(error instanceof Error ? error.message : "Unable to load supported banks");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   const parsedAmountCents = Number(amountInput.replace(/[^\d]/g, "")) * 100;
   const selectedMethod = payoutMethods.find((method) => method.id === selectedMethodId);
@@ -86,6 +112,7 @@ export function ProfessionalReferralWithdrawPage() {
     if (
       addBankForm.accountName.trim().length < 3 ||
       addBankForm.bankName.trim().length < 2 ||
+      !addBankForm.bankCode ||
       addBankForm.accountNumber.trim().length < 10
     ) {
       toast.error("Complete the bank details first");
@@ -98,12 +125,14 @@ export function ProfessionalReferralWithdrawPage() {
         accountName: addBankForm.accountName.trim(),
         bankName: addBankForm.bankName.trim(),
         accountNumber: addBankForm.accountNumber.trim(),
+        bankCode: addBankForm.bankCode,
+        currency: addBankForm.currency,
         defaultMethod: payoutMethods.length === 0,
       });
       setPayoutMethods((current) => [method, ...current]);
       setSelectedMethodId(method.id);
-      setAddBankForm(emptyAddBankForm);
-      toast.success("Bank account added");
+      setAddBankForm({ ...emptyAddBankForm, currency });
+      toast.success("Bank account verified and added");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to add bank account");
     } finally {
@@ -122,6 +151,7 @@ export function ProfessionalReferralWithdrawPage() {
       await createProfessionalWithdrawal({
         payoutMethodId: selectedMethod.id,
         amountCents: parsedAmountCents,
+        password,
       });
       setAvailableBalance((current) => Math.max(0, current - parsedAmountCents));
       setAmountInput("");
@@ -151,7 +181,7 @@ export function ProfessionalReferralWithdrawPage() {
             Available balance
           </p>
           <p className="mt-3 text-[32px] font-semibold tracking-[-0.07em] text-[#334155]">
-            {formatApiMoney(availableBalance)}
+            {formatApiMoney(availableBalance, currency)}
           </p>
         </div>
 
@@ -170,7 +200,7 @@ export function ProfessionalReferralWithdrawPage() {
                   key={method.id}
                   type="button"
                   onClick={() => setSelectedMethodId(method.id)}
-                  className={`flex w-full items-center justify-between gap-4 rounded-[6px] border bg-[#F8FAFC] px-4 py-3 text-left transition ${
+                  className={`flex w-full cursor-pointer items-center justify-between gap-4 rounded-[6px] border bg-[#F8FAFC] px-4 py-3 text-left transition ${
                     active ? "border-[#1565C0]" : "border-[#E2E8F0] hover:border-[#bfdcff]"
                   }`}
                 >
@@ -188,19 +218,30 @@ export function ProfessionalReferralWithdrawPage() {
             })}
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
             <input
               value={addBankForm.accountName}
               onChange={(event) => setAddBankForm((current) => ({ ...current, accountName: event.target.value }))}
               placeholder="Account name"
               className="h-[46px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
             />
-            <input
-              value={addBankForm.bankName}
-              onChange={(event) => setAddBankForm((current) => ({ ...current, bankName: event.target.value }))}
-              placeholder="Bank name"
+            <select
+              value={addBankForm.bankCode}
+              onChange={(event) => {
+                const bank = banks.find((item) => item.code === event.target.value);
+                setAddBankForm((current) => ({
+                  ...current,
+                  bankCode: bank?.code ?? "",
+                  bankName: bank?.name ?? "",
+                }));
+              }}
               className="h-[46px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
-            />
+            >
+              <option value="">Select bank</option>
+              {banks.map((bank) => (
+                <option key={bank.code} value={bank.code}>{bank.name}</option>
+              ))}
+            </select>
             <input
               value={addBankForm.accountNumber}
               onChange={(event) => setAddBankForm((current) => ({ ...current, accountNumber: event.target.value.replace(/[^\d]/g, "") }))}
@@ -213,7 +254,7 @@ export function ProfessionalReferralWithdrawPage() {
             type="button"
             onClick={handleAddBank}
             disabled={isSavingBank}
-            className="mt-4 inline-flex h-[42px] items-center justify-center rounded-[10px] bg-[#1565C0] px-5 text-[14px] font-medium text-[#F8FAFC] disabled:opacity-50"
+            className="mt-4 inline-flex h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-[#1565C0] px-5 text-[14px] font-medium text-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSavingBank ? "Saving..." : "Add bank"}
           </button>

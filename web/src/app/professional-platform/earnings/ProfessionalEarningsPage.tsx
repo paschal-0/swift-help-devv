@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { useProfessionalPlatformShell } from "../components/ProfessionalPlatformShell";
 import {
-  createProfessionalWithdrawal,
   formatApiMoney,
   getProfessionalWallet,
   listProfessionalEarnings,
@@ -60,6 +60,7 @@ const payoutStatusLabel: Record<ProfessionalPayout["status"], TransactionStatus>
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
+  reversed: "Failed",
 };
 
 const statusTone = (status: TransactionStatus) => {
@@ -113,6 +114,7 @@ const buildSummaryCards = (
   const currentSummary: EarningsSummary = summary ?? {
     totalEarned: 0,
     availableBalance: 0,
+    reservedBalance: 0,
     pendingEarnings: 0,
     currency: "NGN",
     transactionCount: 0,
@@ -319,37 +321,12 @@ export function ProfessionalEarningsPage() {
           <h1 className="text-[24px] font-semibold leading-[42px] tracking-[-0.05em] text-[#334155]">Earnings</h1>
 
           <div className="flex w-full items-center gap-3 md:w-auto">
-            <button
-              type="button"
-              onClick={async () => {
-                const method = payoutMethodItems[payoutMethodIndex];
-                const availableBalance = walletSummary?.availableBalance ?? 0;
-
-                if (!method) {
-                  toast.error("Add a payout method before withdrawing.");
-                  return;
-                }
-
-                if (availableBalance <= 0) {
-                  toast.error("No available balance to withdraw.");
-                  return;
-                }
-
-                try {
-                  const payout = await createProfessionalWithdrawal({
-                    payoutMethodId: method.id,
-                    amountCents: availableBalance,
-                  });
-                  setPayoutItems((current) => [mapPayout(payout), ...current]);
-                  toast.success("Withdrawal request submitted.");
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Unable to submit withdrawal");
-                }
-              }}
-              className="inline-flex h-10 flex-1 items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-normal leading-none tracking-[-0.05em] whitespace-nowrap text-[#F8FAFC] shadow-sm sm:px-6 sm:text-[15.4719px] md:flex-none md:shadow-none"
+            <Link
+              href="/professional-platform/referrals/withdraw"
+              className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-normal leading-none tracking-[-0.05em] whitespace-nowrap text-[#F8FAFC] shadow-sm sm:px-6 sm:text-[15.4719px] md:flex-none md:shadow-none"
             >
               Withdraw funds
-            </button>
+            </Link>
             <button
               type="button"
               onClick={() => setPeriod((current) => (current === "This month" ? "Last month" : "This month"))}

@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/services/authApi";
 import {
   createPatientReferralPayoutMethod,
   getPatientReferralWallet,
+  getPatientPaystackBanks,
   requestPatientReferralWithdrawal,
   type PatientReferralPayoutMethod,
 } from "@/services/patientApi";
@@ -15,12 +16,16 @@ type AddBankFormState = {
   accountName: string;
   bankName: string;
   accountNumber: string;
+  bankCode: string;
+  currency: string;
 };
 
 const emptyAddBankForm: AddBankFormState = {
   accountName: "",
   bankName: "",
   accountNumber: "",
+  bankCode: "",
+  currency: "NGN",
 };
 
 function formatMoney(valueCents: number, currency: string) {
@@ -101,6 +106,7 @@ function AddBankModal({
   onClose,
   onChange,
   onSubmit,
+  banks,
 }: {
   open: boolean;
   form: AddBankFormState;
@@ -108,6 +114,7 @@ function AddBankModal({
   onClose: () => void;
   onChange: (field: keyof AddBankFormState, value: string) => void;
   onSubmit: () => void;
+  banks: Array<{ name: string; code: string }>;
 }) {
   return (
     <AnimatePresence>
@@ -161,13 +168,22 @@ function AddBankModal({
                 placeholder="Account holder name"
                 error={errors.accountName}
               />
-              <InputField
-                label="Bank name"
-                value={form.bankName}
-                onChange={(value) => onChange("bankName", value)}
-                placeholder="Kuda"
-                error={errors.bankName}
-              />
+              <label className="block">
+                <span className="mb-2 block text-[13px] font-medium text-[#334155] sm:text-[14px]">Bank</span>
+                <select
+                  value={form.bankCode}
+                  onChange={(event) => {
+                    const bank = banks.find((item) => item.code === event.target.value);
+                    onChange("bankCode", bank?.code ?? "");
+                    onChange("bankName", bank?.name ?? "");
+                  }}
+                  className={`h-[46px] w-full rounded-[10px] border bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none sm:h-[48px] ${errors.bankCode ? "border-[#DC2626]" : "border-[#CBD5E1] focus:border-[#1565C0]"}`}
+                >
+                  <option value="">Select bank</option>
+                  {banks.map((bank) => <option key={bank.code} value={bank.code}>{bank.name}</option>)}
+                </select>
+                {errors.bankCode ? <p className="mt-2 text-[12px] text-[#DC2626]">{errors.bankCode}</p> : null}
+              </label>
               <InputField
                 label="Account number"
                 value={form.accountNumber}
@@ -211,6 +227,8 @@ export function ReferralWithdrawPanel() {
   const [isAddBankOpen, setIsAddBankOpen] = useState(false);
   const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
   const [addBankErrors, setAddBankErrors] = useState<Partial<Record<keyof AddBankFormState, string>>>({});
+  const [banks, setBanks] = useState<Array<{ name: string; code: string; currency: string }>>([]);
+  const [password, setPassword] = useState("");
 
   const selectedBank = bankAccounts.find((bank) => bank.id === selectedBankId) ?? bankAccounts[0];
   const parsedAmountCents = Math.round(Number(amountInput.replace(/[^\d.]/g, "")) * 100);
@@ -230,6 +248,20 @@ export function ReferralWithdrawPanel() {
       .catch((error) => toast.error(getApiErrorMessage(error)));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getPatientPaystackBanks(currency)
+      .then((items) => {
+        if (!cancelled) setBanks(items);
+      })
+      .catch((error) => {
+        if (!cancelled) toast.error(getApiErrorMessage(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
+
   const amountError = useMemo(() => {
     if (!amountInput) {
       return "";
@@ -248,6 +280,7 @@ export function ReferralWithdrawPanel() {
     selectedBank &&
       amountInput &&
       !amountError &&
+      password.length >= 8 &&
       Number.isFinite(parsedAmountCents) &&
       parsedAmountCents > 0 &&
       !isSubmitting
@@ -255,7 +288,7 @@ export function ReferralWithdrawPanel() {
 
   const closeAddBankModal = () => {
     setIsAddBankOpen(false);
-    setAddBankForm(emptyAddBankForm);
+    setAddBankForm({ ...emptyAddBankForm, currency });
     setAddBankErrors({});
   };
 
@@ -273,6 +306,10 @@ export function ReferralWithdrawPanel() {
 
     if (addBankForm.bankName.trim().length < 2) {
       errors.bankName = "Enter the bank name.";
+    }
+
+    if (!addBankForm.bankCode) {
+      errors.bankCode = "Select a supported bank.";
     }
 
     if (addBankForm.accountNumber.trim().length < 10) {
@@ -295,6 +332,8 @@ export function ReferralWithdrawPanel() {
         accountName: addBankForm.accountName.trim(),
         bankName: addBankForm.bankName.trim(),
         accountNumber: addBankForm.accountNumber.trim(),
+        bankCode: addBankForm.bankCode,
+        currency,
         defaultMethod: bankAccounts.length === 0,
       });
       setBankAccounts((current) => [...current, newBank]);
@@ -317,12 +356,14 @@ export function ReferralWithdrawPanel() {
       await requestPatientReferralWithdrawal({
         payoutMethodId: selectedBank.id,
         amountCents: parsedAmountCents,
+        password,
       });
       setAvailableBalanceCents((current) => Math.max(0, current - parsedAmountCents));
       toast.success(
         `Withdrawal request for ${formatMoney(parsedAmountCents, currency)} submitted to ${selectedBank.bankName}`,
       );
       setAmountInput("");
+      setPassword("");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -423,6 +464,20 @@ export function ReferralWithdrawPanel() {
             ) : null}
           </section>
 
+          <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
+            <label className="block text-[14px] font-medium text-[#334155]" htmlFor="withdrawal-password">
+              Confirm account password
+            </label>
+            <input
+              id="withdrawal-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              className="mt-3 h-[46px] w-full rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[15px] text-[#334155] outline-none focus:border-[#1565C0]"
+            />
+          </section>
+
           <button
             type="button"
             disabled={!canWithdraw}
@@ -444,6 +499,7 @@ export function ReferralWithdrawPanel() {
           setAddBankErrors((current) => ({ ...current, [field]: "" }));
         }}
         onSubmit={handleAddBank}
+        banks={banks}
       />
     </>
   );

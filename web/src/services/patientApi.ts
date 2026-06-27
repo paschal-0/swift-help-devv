@@ -451,6 +451,10 @@ export type PatientReferralPayoutMethod = {
   bankName: string;
   accountName: string;
   accountNumberLast4: string;
+  bankCode: string | null;
+  currency: string;
+  providerRecipientCode: string | null;
+  verifiedAt: string | null;
   defaultMethod: boolean;
 };
 
@@ -1055,6 +1059,8 @@ export function createPatientReferralPayoutMethod(payload: {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  bankCode: string;
+  currency: string;
   defaultMethod?: boolean;
 }) {
   return apiRequest<PatientReferralPayoutMethod>(
@@ -1069,6 +1075,7 @@ export function createPatientReferralPayoutMethod(payload: {
 export function requestPatientReferralWithdrawal(payload: {
   payoutMethodId: string;
   amountCents: number;
+  password: string;
 }) {
   return apiRequest<{ id: string; status: string }>(
     "/patient/referrals/wallet/withdrawals",
@@ -1076,6 +1083,13 @@ export function requestPatientReferralWithdrawal(payload: {
       method: "POST",
       body: JSON.stringify(payload),
     },
+  );
+}
+
+export function getPatientPaystackBanks(currency = "NGN") {
+  return apiRequest<Array<{ id: number | null; name: string; code: string; currency: string }>>(
+    `/payments/paystack/banks?currency=${encodeURIComponent(currency)}`,
+    { method: "GET" },
   );
 }
 
