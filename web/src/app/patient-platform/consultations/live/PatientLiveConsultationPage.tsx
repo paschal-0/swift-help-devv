@@ -12,12 +12,14 @@ import {
   getPatientConsultationRoom,
   confirmPatientConsultationComplete,
   disputePatientConsultationCompletion,
+  initializePaystackConsultationPayment,
   joinPatientConsultation,
   leavePatientConsultation,
   listPatientConsultations,
   rejoinPatientConsultation,
   sendPatientConsultationMessage,
   updatePatientConsultationPresence,
+  verifyPaystackConsultationPayment,
   type PatientConsultation,
   type PatientConsultationMessage,
   type PatientNotification,
@@ -146,21 +148,35 @@ export function PatientLiveConsultationPage() {
     let cancelled = false;
 
     async function loadRoom() {
+      let attemptedConsultationId =
+        searchParams.get("consultationId") ?? searchParams.get("id");
       try {
-        const requestedId =
-          searchParams.get("consultationId") ?? searchParams.get("id");
+        let requestedId = attemptedConsultationId;
         const shouldRejoin = searchParams.get("rejoin") === "1";
+        const paymentReference = searchParams.get("reference");
+        const isPaystackReturn =
+          searchParams.get("payment") === "paystack" &&
+          Boolean(paymentReference);
+        if (isPaystackReturn && paymentReference) {
+          const verified = await verifyPaystackConsultationPayment(
+            paymentReference,
+          );
+          requestedId = verified.consultationId ?? requestedId;
+        }
         const storedId = window.sessionStorage.getItem(
           ACTIVE_CONSULTATION_STORAGE_KEY,
         );
         const consultations = await listPatientConsultations();
-        const consultationId =
+        const selectedConsultation =
           consultations.find(
             (item) => item.id === requestedId && isActive(item),
-          )?.id ||
-          consultations.find((item) => item.id === storedId && isActive(item))
-            ?.id ||
-          consultations.find(isActive)?.id;
+          ) ||
+          consultations.find(
+            (item) => item.id === storedId && isActive(item),
+          ) ||
+          consultations.find(isActive);
+        const consultationId = selectedConsultation?.id;
+        attemptedConsultationId = consultationId ?? attemptedConsultationId;
 
         if (!consultationId) {
           window.sessionStorage.removeItem(ACTIVE_CONSULTATION_STORAGE_KEY);
@@ -172,12 +188,23 @@ export function PatientLiveConsultationPage() {
           ACTIVE_CONSULTATION_STORAGE_KEY,
           consultationId,
         );
-        const [nextRoom, access] = await Promise.all([
-          getPatientConsultationRoom(consultationId),
-          shouldRejoin
-            ? rejoinPatientConsultation(consultationId)
-            : joinPatientConsultation(consultationId),
-        ]);
+        if (selectedConsultation.paymentStatus === "payment_pending") {
+          const payment = await initializePaystackConsultationPayment(
+            consultationId,
+          );
+          if (!payment.alreadyPaid) {
+            if (!payment.authorizationUrl) {
+              throw new Error("Paystack checkout URL was not returned");
+            }
+            window.location.assign(payment.authorizationUrl);
+            return;
+          }
+        }
+
+        const access = shouldRejoin
+          ? await rejoinPatientConsultation(consultationId)
+          : await joinPatientConsultation(consultationId);
+        const nextRoom = await getPatientConsultationRoom(consultationId);
 
         if (cancelled) return;
         setRoom(nextRoom);
@@ -190,9 +217,34 @@ export function PatientLiveConsultationPage() {
           canJoin: access.canJoin,
           waitingRoomStatus: access.waitingRoomStatus,
         });
+        if (isPaystackReturn) {
+          router.replace(
+            `/patient-platform/consultations/live?consultationId=${encodeURIComponent(consultationId)}`,
+            { scroll: false },
+          );
+          toast.success("Payment verified. Joining your consultation.");
+        }
       } catch (error) {
         if (!cancelled) {
           const message = getApiErrorMessage(error);
+          if (
+            attemptedConsultationId &&
+            message.toLowerCase().includes("payment is required")
+          ) {
+            try {
+              const payment = await initializePaystackConsultationPayment(
+                attemptedConsultationId,
+              );
+              if (!payment.alreadyPaid && payment.authorizationUrl) {
+                window.location.assign(payment.authorizationUrl);
+                return;
+              }
+            } catch (paymentError) {
+              setVideoAccessError(getApiErrorMessage(paymentError));
+              toast.error(getApiErrorMessage(paymentError));
+              return;
+            }
+          }
           setVideoAccessError(message);
           toast.error(message);
         }
@@ -204,6 +256,44 @@ export function PatientLiveConsultationPage() {
       cancelled = true;
     };
   }, [router, searchParams]);
+
+  useEffect(() => {
+    if (!consultation || !videoAccess?.roomId || videoAccess.canJoin) return;
+
+    let cancelled = false;
+    let polling = false;
+    const refreshWaitingRoomAccess = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const access = await joinPatientConsultation(consultation.id);
+        if (cancelled || !access.canJoin) return;
+        setVideoAccessError(null);
+        setVideoAccess({
+          roomId: access.roomId,
+          roomName: access.roomName,
+          meetingUrl: access.meetingUrl,
+          roomToken: access.roomToken,
+          canJoin: access.canJoin,
+          waitingRoomStatus: access.waitingRoomStatus,
+        });
+      } catch {
+        // Realtime admission remains primary; polling covers missed events.
+      } finally {
+        polling = false;
+      }
+    };
+
+    const interval = window.setInterval(
+      () => void refreshWaitingRoomAccess(),
+      2500,
+    );
+    void refreshWaitingRoomAccess();
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [consultation, videoAccess?.canJoin, videoAccess?.roomId]);
 
   useEffect(() => {
     if (!videoAccess?.roomId) return;

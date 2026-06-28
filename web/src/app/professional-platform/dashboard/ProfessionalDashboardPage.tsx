@@ -21,7 +21,7 @@ import { useProfessionalPlatformShell } from "../components/ProfessionalPlatform
 import { createAuthenticatedEventSource } from "@/services/authApi";
 import {
   acceptProfessionalRequest,
-  completeProfessionalConsultation,
+  confirmProfessionalConsultationComplete,
   declineProfessionalRequest,
   formatApiMoney,
   getProfessionalDashboard,
@@ -748,6 +748,17 @@ export function ProfessionalDashboardPage() {
 
   const query = searchText.trim().toLowerCase();
   const now = useMemo(() => new Date(), []);
+  const displayImportantNotices = useMemo(
+    () =>
+      importantNotices.filter(
+        (notice, index, list) =>
+          !notice.consultationId ||
+          list.findIndex(
+            (candidate) => candidate.consultationId === notice.consultationId,
+          ) === index,
+      ),
+    [importantNotices],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -805,7 +816,7 @@ export function ProfessionalDashboardPage() {
 
   useEffect(() => {
     const consultationId = new URLSearchParams(window.location.search).get("importantRequest");
-    if (!consultationId || !importantNotices.some((notice) => notice.consultationId === consultationId)) {
+    if (!consultationId || !displayImportantNotices.some((notice) => notice.consultationId === consultationId)) {
       return;
     }
 
@@ -816,7 +827,7 @@ export function ProfessionalDashboardPage() {
         .getElementById(`important-request-${consultationId}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-  }, [importantNotices]);
+  }, [displayImportantNotices]);
 
   useEffect(() => {
     let cancelled = false;
@@ -912,6 +923,9 @@ export function ProfessionalDashboardPage() {
         kind: "consultation_notice",
         consultationId,
         actionLabel: canConfirmCompletion ? "Mark complete" : "Review request",
+        actionKind: canConfirmCompletion
+          ? "confirm_completion"
+          : "open_consultation",
         actionHref: `/professional-platform?importantRequest=${encodeURIComponent(consultationId)}`,
       };
       setImportantNotices((current) => [
@@ -1281,7 +1295,10 @@ export function ProfessionalDashboardPage() {
   const handleOpenViewDetails = () =>
     router.push("/professional-platform/schedule");
   const handleImportantNoticeAction = async (notice: ImportantNotice) => {
-    if (notice.actionLabel !== "Mark complete" || !notice.consultationId) {
+    if (
+      notice.actionKind !== "confirm_completion" ||
+      !notice.consultationId
+    ) {
       if (notice.actionHref) router.push(notice.actionHref);
       return;
     }
@@ -1289,7 +1306,7 @@ export function ProfessionalDashboardPage() {
     if (completingConsultationId) return;
     setCompletingConsultationId(notice.consultationId);
     try {
-      await completeProfessionalConsultation(notice.consultationId);
+      await confirmProfessionalConsultationComplete(notice.consultationId);
       setImportantNotices((current) => current.filter((item) => item.id !== notice.id));
       const refreshed = await getProfessionalDashboard(earningsRange);
       setDashboard(refreshed);
@@ -1755,9 +1772,9 @@ export function ProfessionalDashboardPage() {
               </button>
             </div>
 
-            {importantNotices.length ? (
+            {displayImportantNotices.length ? (
               <div className="mt-5 space-y-3">
-                {importantNotices.map((notice) => (
+                {displayImportantNotices.map((notice) => (
                   <article
                     key={notice.id}
                     id={notice.consultationId ? `important-request-${notice.consultationId}` : undefined}
@@ -1799,7 +1816,7 @@ export function ProfessionalDashboardPage() {
             ) : null}
 
             {visibleRequests.length === 0 ? (
-              importantNotices.length === 0 ? (
+              displayImportantNotices.length === 0 ? (
                 <div className="mt-4 rounded-xl border border-dashed border-[#94A3B8] p-6 text-sm text-[#64748B]">
                   No request matches your search.
                 </div>

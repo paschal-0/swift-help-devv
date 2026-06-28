@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
   getPatientConsultationRoom,
+  initializePaystackConsultationPayment,
   joinPatientConsultation,
   listPatientConsultations,
   type PatientConsultation,
@@ -138,6 +139,10 @@ export function PatientConsultationRoomPage() {
         }
 
         window.sessionStorage.setItem(ACTIVE_CONSULTATION_STORAGE_KEY, selected.id);
+        if (selected.paymentStatus === "payment_pending") {
+          setRoom(null);
+          return;
+        }
         const nextRoom = await getPatientConsultationRoom(selected.id);
         if (!isMounted) return;
         setRoom(nextRoom);
@@ -189,12 +194,36 @@ export function PatientConsultationRoomPage() {
         router.push("/patient-platform/consultations/in-person");
         return;
       }
+      if (activeConsultation.paymentStatus === "payment_pending") {
+        const payment = await initializePaystackConsultationPayment(
+          activeConsultation.id,
+        );
+        if (!payment.alreadyPaid && payment.authorizationUrl) {
+          window.location.assign(payment.authorizationUrl);
+          return;
+        }
+      }
       await joinPatientConsultation(activeConsultation.id);
       router.push(
         `/patient-platform/consultations/live?consultationId=${encodeURIComponent(activeConsultation.id)}`,
       );
     } catch (error) {
-      toast.error(getApiErrorMessage(error));
+      const message = getApiErrorMessage(error);
+      if (message.toLowerCase().includes("payment is required")) {
+        try {
+          const payment = await initializePaystackConsultationPayment(
+            activeConsultation.id,
+          );
+          if (payment.authorizationUrl) {
+            window.location.assign(payment.authorizationUrl);
+            return;
+          }
+        } catch (paymentError) {
+          toast.error(getApiErrorMessage(paymentError));
+          return;
+        }
+      }
+      toast.error(message);
     } finally {
       setIsJoining(false);
     }
@@ -318,7 +347,13 @@ export function PatientConsultationRoomPage() {
             disabled={!activeConsultation || isJoining}
             className="mt-7 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-[24px] bg-[#1565C0] text-[16px] font-normal tracking-[-0.05em] text-[#F8FAFC] shadow-[0_0_16px_rgba(30,136,229,0.15)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isJoining ? "Opening..." : isInPersonConsultation(activeConsultation?.mode) ? "Open tracker" : "Join session"}
+            {isJoining
+              ? "Opening..."
+              : isInPersonConsultation(activeConsultation?.mode)
+                ? "Open tracker"
+                : activeConsultation?.paymentStatus === "payment_pending"
+                  ? "Pay & join session"
+                  : "Join session"}
           </motion.button>
 
           <motion.button

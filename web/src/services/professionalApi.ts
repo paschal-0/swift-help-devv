@@ -558,6 +558,7 @@ export type ProfessionalDashboard = {
     consultationId?: string | null;
     actionLabel?: string;
     actionHref?: string;
+    actionKind?: "confirm_completion" | "open_consultation" | string;
   }>;
   earnings: EarningsSummary;
   performance: {
@@ -908,6 +909,15 @@ export function completeProfessionalConsultation(
       method: "POST",
       body: JSON.stringify(payload),
     },
+  );
+}
+
+export function confirmProfessionalConsultationComplete(
+  consultationId: string,
+) {
+  return apiRequest<ProfessionalConsultation>(
+    `/professional/consultations/${encodeURIComponent(consultationId)}/confirm-complete`,
+    { method: "POST" },
   );
 }
 

@@ -175,10 +175,8 @@ export function ProfessionalLiveConsultationPage() {
           ACTIVE_CONSULTATION_STORAGE_KEY,
           consultationId,
         );
-        const [nextRoom, access] = await Promise.all([
-          getProfessionalConsultationRoom(consultationId),
-          joinProfessionalConsultation(consultationId),
-        ]);
+        const access = await joinProfessionalConsultation(consultationId);
+        const nextRoom = await getProfessionalConsultationRoom(consultationId);
 
         if (cancelled) return;
         setRoom(nextRoom);
