@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -36,6 +37,8 @@ export function ProfessionalReferralWithdrawPage() {
   const [addBankForm, setAddBankForm] = useState<AddBankFormState>(emptyAddBankForm);
   const [isSavingBank, setIsSavingBank] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [withdrawalError, setWithdrawalError] = useState("");
   const [banks, setBanks] = useState<Array<{ name: string; code: string; currency: string }>>([]);
   const [currency, setCurrency] = useState("NGN");
 
@@ -59,6 +62,8 @@ export function ProfessionalReferralWithdrawPage() {
         if (!cancelled) {
           toast.error(error instanceof Error ? error.message : "Unable to load wallet");
         }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     }
 
@@ -147,6 +152,7 @@ export function ProfessionalReferralWithdrawPage() {
     }
 
     setIsWithdrawing(true);
+    setWithdrawalError("");
     try {
       await createProfessionalWithdrawal({
         payoutMethodId: selectedMethod.id,
@@ -160,35 +166,50 @@ export function ProfessionalReferralWithdrawPage() {
         `Withdrawal request for ${formatApiMoney(parsedAmountCents, currency)} submitted`,
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to request withdrawal");
+      const message = error instanceof Error ? error.message : "Unable to request withdrawal";
+      setWithdrawalError(message);
+      toast.error(message);
     } finally {
       setIsWithdrawing(false);
     }
   };
 
   return (
-    <div className="mt-[18px] pb-10">
-      <div className="mx-auto max-w-[840px] rounded-[12px] bg-[#F8FAFC] px-6 py-7 shadow-[0_18px_42px_rgba(148,163,184,0.12)] sm:px-10 xl:px-[71px] xl:py-5">
-        <header className="text-center">
-          <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.05em] text-[#334155] xl:text-[24px]">
-            Withdraw Funds
-          </h1>
-          <p className="mt-2 text-[18px] font-medium tracking-[-0.05em] text-[#334155] xl:text-[16px]">
-            Transfer available professional earnings to your bank account.
-          </p>
+    <div className="mt-4 pb-10">
+      <div className="mx-auto max-w-[840px] rounded-[8px] bg-[#F8FAFC] px-4 py-6 shadow-[0_18px_42px_rgba(148,163,184,0.12)] sm:px-7 lg:px-10">
+        <header className="flex flex-col gap-4 border-b border-[#E2E8F0] pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-[24px] font-semibold leading-tight text-[#334155]">
+              Withdraw Funds
+            </h1>
+            <p className="mt-1.5 max-w-[560px] text-[14px] leading-5 text-[#64748B]">
+              Transfer available professional earnings to your bank account.
+            </p>
+          </div>
+          <Link
+            href="/professional-platform/earnings"
+            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[8px] border border-[#94A3B8] px-4 text-[13px] font-medium text-[#334155] transition hover:border-[#1565C0] hover:text-[#1565C0]"
+          >
+            Back to earnings
+          </Link>
         </header>
 
-        <div className="mt-8 rounded-[12px] bg-[#E3F2FD] px-4 py-5 text-center sm:px-6">
-          <p className="text-[20px] font-medium tracking-[-0.07em] text-[#1565C0] xl:text-[16px]">
+        <div className="mt-5 rounded-[8px] bg-[#E3F2FD] px-4 py-5 text-center sm:px-6">
+          <p className="text-[14px] font-medium text-[#1565C0]">
             Available balance
           </p>
-          <p className="mt-3 text-[32px] font-semibold tracking-[-0.07em] text-[#334155]">
-            {formatApiMoney(availableBalance, currency)}
+          <p className="mt-2 break-words text-[30px] font-semibold leading-none text-[#334155] sm:text-[34px]">
+            {isLoading ? "Loading..." : formatApiMoney(availableBalance, currency)}
           </p>
         </div>
 
-        <section className="mt-8 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-          <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Payment method</h2>
+        <section id="payout-method" className="scroll-mt-24 mt-5 rounded-[8px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
+          <div>
+            <h2 className="text-[17px] font-semibold text-[#334155]">Payout method</h2>
+            <p className="mt-1 text-[13px] leading-5 text-[#64748B]">
+              Add and select the verified bank account that should receive this withdrawal.
+            </p>
+          </div>
 
           <div className="mt-4 space-y-3">
             {payoutMethods.length === 0 ? (
@@ -210,7 +231,7 @@ export function ProfessionalReferralWithdrawPage() {
                     <span className="block text-[16px] tracking-[-0.07em] text-[#334155]">
                       {method.accountName}
                     </span>
-                    <span className="mt-1 block text-[14px] tracking-[-0.05em] text-[#94A3B8]">
+                    <span className="mt-1 block text-[13px] text-[#64748B]">
                       {method.bankName} - ****{method.accountNumberLast4}
                     </span>
                   </span>
@@ -225,7 +246,7 @@ export function ProfessionalReferralWithdrawPage() {
               value={addBankForm.accountName}
               onChange={(event) => setAddBankForm((current) => ({ ...current, accountName: event.target.value }))}
               placeholder="Account name"
-              className="h-[46px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              className="h-11 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
             />
             <select
               value={addBankForm.bankCode}
@@ -237,7 +258,7 @@ export function ProfessionalReferralWithdrawPage() {
                   bankName: bank?.name ?? "",
                 }));
               }}
-              className="h-[46px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              className="h-11 cursor-pointer rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
             >
               <option value="">Select bank</option>
               {banks.map((bank) => (
@@ -249,49 +270,57 @@ export function ProfessionalReferralWithdrawPage() {
               onChange={(event) => setAddBankForm((current) => ({ ...current, accountNumber: event.target.value.replace(/[^\d]/g, "") }))}
               placeholder="Account number"
               inputMode="numeric"
-              className="h-[46px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+              className="h-11 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
             />
           </div>
           <button
             type="button"
             onClick={handleAddBank}
             disabled={isSavingBank}
-            className="mt-4 inline-flex h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-[#1565C0] px-5 text-[14px] font-medium text-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSavingBank ? "Saving..." : "Add bank"}
           </button>
         </section>
 
-        <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-          <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Amount</h2>
+        <section id="withdrawal" className="scroll-mt-24 mt-4 rounded-[8px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#334155]">Withdrawal amount</h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">Enter the amount in {currency}.</p>
           <input
             value={amountInput}
             onChange={(event) => setAmountInput(event.target.value.replace(/[^\d]/g, ""))}
             inputMode="numeric"
             placeholder="0"
-            className="mt-4 h-[46px] w-full rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[16px] text-[#334155] outline-none focus:border-[#1565C0]"
+            className="mt-3 h-11 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[15px] text-[#334155] outline-none focus:border-[#1565C0]"
           />
           {amountError ? (
-            <p className="mt-2 text-[13px] tracking-[-0.05em] text-[#C2410C]">{amountError}</p>
+            <p className="mt-2 text-[13px] text-[#C2410C]">{amountError}</p>
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-[12px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
-          <h2 className="text-[18px] tracking-[-0.05em] text-[#334155]">Enter Account Password</h2>
+        <section className="mt-4 rounded-[8px] border border-[#E2E8F0] px-4 py-4 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#334155]">Confirm with account password</h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#64748B]">Your password is required to authorize a payout request.</p>
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="********"
-            className="mt-4 h-[46px] w-full rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-3 text-[16px] text-[#334155] outline-none focus:border-[#1565C0]"
+            className="mt-3 h-11 w-full rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[15px] text-[#334155] outline-none focus:border-[#1565C0]"
           />
         </section>
+
+        {withdrawalError ? (
+          <div role="alert" className="mt-4 rounded-[8px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-[13px] leading-5 text-[#B91C1C]">
+            {withdrawalError}
+          </div>
+        ) : null}
 
         <button
           type="button"
           disabled={!canWithdraw || isWithdrawing}
           onClick={handleWithdraw}
-          className="mt-12 inline-flex h-[52px] w-full items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[16px] font-medium tracking-[-0.05em] text-[#E3F2FD] shadow-[0_14px_28px_rgba(30,136,229,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+          className="mt-5 inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] text-[15px] font-medium text-white shadow-[0_14px_28px_rgba(30,136,229,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
         >
           {isWithdrawing ? "Submitting..." : "Withdraw"}
         </button>

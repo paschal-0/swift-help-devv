@@ -156,7 +156,6 @@ export function ProfessionalEarningsPage() {
     "All Statuses",
   );
   const [payoutFilter, setPayoutFilter] = useState<"All Payouts" | TransactionStatus>("All Payouts");
-  const [payoutMethodIndex, setPayoutMethodIndex] = useState(0);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
   const [mobileScrollbarsVisible, setMobileScrollbarsVisible] = useState(true);
@@ -165,9 +164,6 @@ export function ProfessionalEarningsPage() {
   const [payoutItems, setPayoutItems] = useState<TransactionItem[]>([]);
   const [payoutMethodItems, setPayoutMethodItems] = useState<ProfessionalPayoutMethod[]>([]);
   const mobileScrollbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const payoutMethods = payoutMethodItems.length
-    ? payoutMethodItems.map((method) => `${method.bankName} - **** ${method.accountNumberLast4}`)
-    : [];
   const showOverviewEmptyState = transactionItems.length === 0 && payoutItems.length === 0;
 
   const query = searchText.trim().toLowerCase();
@@ -237,8 +233,12 @@ export function ProfessionalEarningsPage() {
   const selectedTransaction =
     transactionItems.find((transaction) => transaction.id === selectedTransactionId) ?? null;
   const selectedPayout = payoutItems.find((transaction) => transaction.id === selectedPayoutId) ?? null;
-  const lastPayout = payoutItems[0] ?? null;
-  const activePayoutMethod = payoutMethods[payoutMethodIndex] ?? "No payout method added";
+  const lastPayout = payoutItems.find((payout) => payout.status === "Completed") ?? payoutItems[0] ?? null;
+  const activePayoutMethodItem =
+    payoutMethodItems.find((method) => method.defaultMethod) ?? payoutMethodItems[0] ?? null;
+  const activePayoutMethod = activePayoutMethodItem
+    ? `${activePayoutMethodItem.bankName} - **** ${activePayoutMethodItem.accountNumberLast4}`
+    : "No payout method added";
   const [activePayoutBank, activePayoutAccount = ""] = activePayoutMethod.split(" - ");
   const payoutSummaryItems = [
     {
@@ -247,7 +247,7 @@ export function ProfessionalEarningsPage() {
     },
     {
       label: "Pending payouts",
-      value: formatApiMoney(walletSummary?.pendingEarnings ?? 0, walletSummary?.currency ?? "NGN"),
+      value: formatApiMoney(walletSummary?.reservedBalance ?? 0, walletSummary?.currency ?? "NGN"),
     },
     {
       label: "Last Withdrawal",
@@ -322,15 +322,15 @@ export function ProfessionalEarningsPage() {
 
           <div className="flex w-full items-center gap-3 md:w-auto">
             <Link
-              href="/professional-platform/referrals/withdraw"
-              className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[20.6292px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-4 text-[13px] font-normal leading-none tracking-[-0.05em] whitespace-nowrap text-[#F8FAFC] shadow-sm sm:px-6 sm:text-[15.4719px] md:flex-none md:shadow-none"
+              href="/professional-platform/earnings/withdraw#withdrawal"
+              className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-5 text-[14px] font-medium leading-none whitespace-nowrap text-[#F8FAFC] shadow-sm transition hover:brightness-105 md:flex-none"
             >
               Withdraw funds
             </Link>
             <button
               type="button"
               onClick={() => setPeriod((current) => (current === "This month" ? "Last month" : "This month"))}
-              className="inline-flex h-10 items-center justify-center gap-1 rounded-[12px] border border-[#94A3B8] bg-white px-3 text-[16px] font-normal leading-[19px] tracking-[-0.05em] text-[#334155] md:h-8 md:bg-transparent"
+              className="inline-flex h-10 cursor-pointer items-center justify-center gap-1 rounded-[8px] border border-[#94A3B8] bg-white px-3 text-[14px] font-medium leading-[19px] text-[#334155] transition hover:border-[#1565C0] md:bg-transparent"
             >
               {period}
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -351,15 +351,15 @@ export function ProfessionalEarningsPage() {
             key={item.id}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="w-[85%] min-w-[260px] shrink-0 snap-center rounded-[12px] bg-[#F8FAFC] px-[17px] pb-[14px] pt-2 shadow-sm md:w-auto md:min-w-0 md:shrink md:shadow-none"
+            className="w-[85%] min-w-[260px] shrink-0 snap-center rounded-[8px] bg-[#F8FAFC] px-4 py-4 shadow-sm md:w-auto md:min-w-0 md:shrink"
           >
-            <span className="inline-flex h-[25px] items-center rounded-[12px] bg-[#E3F2FD] px-[10px] text-[16px] font-normal leading-5 tracking-[-0.05em] text-[#334155]">
+            <span className="inline-flex min-h-[24px] items-center rounded-[7px] bg-[#E3F2FD] px-2.5 text-[13px] font-medium leading-4 text-[#334155]">
               {item.title}
             </span>
-            <p className="mt-2 pt-1 text-[40px] font-semibold leading-[42px] tracking-[-0.05em] text-[#1565C0] md:text-[56px]">
+            <p className="mt-3 break-words text-[34px] font-semibold leading-none text-[#1565C0] md:text-[40px]">
               {item.value}
             </p>
-            <p className="mt-[10px] text-[14px] font-normal leading-[18px] tracking-[-0.05em] text-[#94A3B8]">
+            <p className="mt-3 text-[13px] font-normal leading-[18px] text-[#64748B]">
               {item.note}
             </p>
           </motion.article>
@@ -400,7 +400,7 @@ export function ProfessionalEarningsPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex h-[42px] min-w-fit whitespace-nowrap items-center justify-center rounded-[12px] px-5 text-[16px] leading-[22px] tracking-[-0.05em] transition md:min-w-[132px] md:px-4 ${
+              className={`inline-flex h-[42px] min-w-fit cursor-pointer whitespace-nowrap items-center justify-center rounded-[8px] px-5 text-[15px] leading-[22px] transition md:min-w-[132px] md:px-4 ${
                 activeTab === tab.id ? "bg-[#F8FAFC] font-medium text-[#334155]" : "font-light text-[#F8FAFC]"
               }`}
             >
@@ -424,15 +424,15 @@ export function ProfessionalEarningsPage() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-5 md:mt-4 md:gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,267px)]">
-            <article className="rounded-[12px] bg-transparent md:bg-[#F8FAFC]">
+            <article className="min-w-0 rounded-[8px] bg-transparent md:bg-[#F8FAFC]">
               <header className="flex items-center justify-between rounded-t-[12px] px-2 py-2 md:px-6 md:py-[14px]">
-                <h2 className="text-[20px] font-semibold leading-[22px] tracking-[-0.05em] text-[#334155] sm:text-[36px] lg:text-[18px]">
+                <h2 className="text-[18px] font-semibold leading-[22px] text-[#334155]">
                   Recent transactions
                 </h2>
                 <button
                   type="button"
                   onClick={() => setActiveTab("transactions")}
-                  className="text-[14px] font-medium leading-[22px] tracking-[-0.05em] text-[#1565C0] md:text-[16px] md:underline"
+                  className="cursor-pointer text-[14px] font-medium leading-[22px] text-[#1565C0] hover:underline"
                 >
                   See all
                 </button>
@@ -487,7 +487,7 @@ export function ProfessionalEarningsPage() {
 
             <aside className="mt-4 space-y-4 md:mt-0 md:space-y-2">
               <article className="rounded-[16px] border border-[#E2E8F0] bg-white p-4 shadow-sm md:border-none md:bg-[#F8FAFC] md:px-[10px] md:pb-[7px] md:pt-[13px] md:shadow-none">
-                <h3 className="text-[18px] font-semibold leading-[22px] tracking-[-0.05em] text-[#334155] md:text-[16px] md:font-medium">
+                <h3 className="text-[16px] font-semibold leading-[22px] text-[#334155]">
                   Payout Summary
                 </h3>
                 <div className="mt-4 space-y-[12px] md:mt-3 md:space-y-[9px]">
@@ -507,44 +507,38 @@ export function ProfessionalEarningsPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("payouts")}
-                    className="inline-flex h-[36px] items-center justify-center rounded-[10px] bg-[#F1F5F9] text-[14px] font-medium leading-[15px] tracking-[-0.05em] text-[#475569] md:h-[24px] md:rounded-[9.26984px] md:bg-[#E2E8F0] md:text-[#334155] md:font-light"
+                    className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[8px] bg-[#E2E8F0] px-3 text-[13px] font-medium leading-[15px] text-[#334155] transition hover:bg-[#CBD5E1]"
                   >
                     View Details
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => toast.success("Withdrawal flow started.")}
-                    className="inline-flex h-[36px] items-center justify-center rounded-[10px] bg-[#1565C0] text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#E3F2FD] shadow-sm md:h-[26px] md:rounded-[9.52381px] md:font-light md:shadow-none"
+                  <Link
+                    href="/professional-platform/earnings/withdraw#withdrawal"
+                    className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[13px] font-medium leading-4 text-white shadow-sm transition hover:brightness-105"
                   >
                     Withdraw
-                  </button>
+                  </Link>
                 </div>
               </article>
 
               <article className="rounded-[16px] border border-[#E2E8F0] bg-white p-4 shadow-sm md:border-none md:bg-[#F8FAFC] md:px-[13px] md:pb-[7px] md:pt-[10px] md:shadow-none">
-                <h3 className="text-[18px] font-semibold leading-[22px] tracking-[-0.05em] text-[#334155] md:text-[16px] md:font-medium">
+                <h3 className="text-[16px] font-semibold leading-[22px] text-[#334155]">
                   Payout Method
                 </h3>
                 <p className="mt-3 text-[14px] font-normal leading-[26px] tracking-[-0.05em] text-[#64748B] md:mt-[10px] md:text-[12px] md:font-light md:leading-[22px] md:text-[#334155]">
                   Bank name:{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutBank}</span>
                   <br />
-                  Account holder: <span className="font-semibold text-[#334155]">{payoutMethodItems[payoutMethodIndex]?.accountName ?? "Not added"}</span>
+                  Account holder: <span className="font-semibold text-[#334155]">{activePayoutMethodItem?.accountName ?? "Not added"}</span>
                   <br />
                   Account number:{" "}
                   <span className="font-semibold text-[#334155]">{activePayoutAccount}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPayoutMethodIndex((current) =>
-                      payoutMethods.length ? (current + 1) % payoutMethods.length : 0,
-                    )
-                  }
-                  className="mt-4 inline-flex h-[36px] w-full items-center justify-center rounded-[10px] bg-[#F1F5F9] text-[14px] font-medium leading-4 tracking-[-0.05em] text-[#1565C0] md:mt-[10px] md:h-[26px] md:rounded-[12px] md:bg-[#1565C0] md:text-[12px] md:font-normal md:text-[#E3F2FD]"
+                <Link
+                  href="/professional-platform/earnings/withdraw#payout-method"
+                  className="mt-4 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-[8px] bg-[linear-gradient(180deg,#1E88E5_0%,#114B7F_72.12%)] px-3 text-[13px] font-medium leading-4 text-white transition hover:brightness-105"
                 >
                   Manage Payout Method
-                </button>
+                </Link>
               </article>
 
               <article className="rounded-[16px] border border-[#E2E8F0] bg-white p-4 shadow-sm md:border-none md:bg-[#F8FAFC] md:px-3 md:py-[11px] md:shadow-none">
@@ -576,7 +570,7 @@ export function ProfessionalEarningsPage() {
                   current === "All Statuses" ? "Pending" : current === "Pending" ? "Available" : current === "Available" ? "Paid out" : "All Statuses"
                 )
               }
-              className="inline-flex h-10 w-full items-center justify-between gap-1 rounded-[12px] border border-[#E2E8F0] bg-white px-4 text-[15px] font-medium tracking-[-0.05em] text-[#334155] shadow-sm md:h-8 md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:text-[16px] md:font-normal md:shadow-none"
+              className="inline-flex h-10 w-full cursor-pointer items-center justify-between gap-1 rounded-[8px] border border-[#E2E8F0] bg-white px-4 text-[14px] font-medium text-[#334155] shadow-sm transition hover:border-[#1565C0] md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:shadow-none"
             >
               {transactionStatusFilter}
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#64748B] md:text-inherit" aria-hidden>
@@ -630,7 +624,7 @@ export function ProfessionalEarningsPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedTransactionId(transaction.id)}
-                      className="text-left font-semibold text-[#1565C0] underline"
+                      className="cursor-pointer text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details
                     </button>
@@ -667,7 +661,7 @@ export function ProfessionalEarningsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedTransactionId(transaction.id)}
-                        className="inline-flex h-8 items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0]"
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
                       >
                         View Details
                       </button>
@@ -692,7 +686,7 @@ export function ProfessionalEarningsPage() {
                   current === "All Payouts" ? "Requested" : current === "Requested" ? "Processing" : current === "Processing" ? "Completed" : "All Payouts"
                 )
               }
-              className="inline-flex h-10 w-full items-center justify-between gap-1 rounded-[12px] border border-[#E2E8F0] bg-white px-4 text-[15px] font-medium tracking-[-0.05em] text-[#334155] shadow-sm md:h-8 md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:text-[16px] md:font-normal md:shadow-none"
+              className="inline-flex h-10 w-full cursor-pointer items-center justify-between gap-1 rounded-[8px] border border-[#E2E8F0] bg-white px-4 text-[14px] font-medium text-[#334155] shadow-sm transition hover:border-[#1565C0] md:w-auto md:justify-center md:border-[#94A3B8] md:bg-transparent md:px-3 md:shadow-none"
             >
               {payoutFilter}
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#64748B] md:text-inherit" aria-hidden>
@@ -746,7 +740,7 @@ export function ProfessionalEarningsPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedPayoutId(payout.id)}
-                      className="text-left font-semibold text-[#1565C0] underline"
+                      className="cursor-pointer text-left font-semibold text-[#1565C0] underline"
                     >
                       View Details
                     </button>
@@ -783,7 +777,7 @@ export function ProfessionalEarningsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedPayoutId(payout.id)}
-                        className="inline-flex h-8 items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0]"
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-[#F1F5F9] px-3 text-[13px] font-medium text-[#1565C0] transition hover:bg-[#E2E8F0]"
                       >
                         View Details
                       </button>
