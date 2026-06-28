@@ -118,7 +118,7 @@ function ThemedDropdown<T extends string>({
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-[52px] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[26px] border border-[#DDE5EF] bg-[#F8FAFC] px-5 text-left text-[15px] font-medium leading-5 text-[#334155] shadow-[0_8px_22px_rgba(148,163,184,0.12)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
+        className="inline-flex h-11 w-full min-w-0 cursor-pointer items-center gap-3 rounded-[8px] border border-[#DDE5EF] bg-[#F8FAFC] px-4 text-left text-[14px] font-medium leading-5 text-[#334155] shadow-[0_6px_18px_rgba(148,163,184,0.10)] outline-none transition hover:border-[#1565C0] hover:bg-white focus:border-[#1565C0] focus:ring-2 focus:ring-[#B9D7F4]"
       >
         {showIcon && <Icon name="filter" className="h-5 w-5 shrink-0 text-[#334155]" />}
         <span className="min-w-0 flex-1 truncate">{selected.label}</span>
@@ -127,7 +127,7 @@ function ThemedDropdown<T extends string>({
         </svg>
       </button>
       {open ? (
-        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-[16px] border border-[#B9CBE0] bg-white p-1.5 shadow-[0_20px_44px_rgba(15,23,42,0.18)]">
+        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-[8px] border border-[#B9CBE0] bg-white p-1.5 shadow-[0_20px_44px_rgba(15,23,42,0.18)]">
           {options.map((option) => (
             <button
               key={option.value}
@@ -136,7 +136,7 @@ function ThemedDropdown<T extends string>({
                 onChange(option.value);
                 setOpen(false);
               }}
-              className={`flex h-10 w-full items-center rounded-xl px-3 text-left text-[13px] font-medium transition ${
+              className={`flex h-10 w-full items-center rounded-[7px] px-3 text-left text-[13px] font-medium transition ${
                 option.value === value ? "bg-[#1565C0] text-white" : "text-[#334155] hover:bg-[#E3F2FD]"
               }`}
             >
@@ -157,13 +157,13 @@ function StatCard({
   value: number;
 }) {
   return (
-    <article className="flex min-h-[118px] min-w-0 items-center gap-5 rounded-[14px] bg-[#F8FAFC] px-7 py-5 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full bg-[#D9F8DE] text-[#0D8C24]">
-        <Icon name="calendar" className="h-7 w-7" />
+    <article className="flex min-h-[104px] min-w-0 items-center gap-4 rounded-[8px] bg-[#F8FAFC] px-5 py-4 shadow-[0_8px_20px_rgba(148,163,184,0.10)]">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#D9F8DE] text-[#0D8C24]">
+        <Icon name="calendar" className="h-6 w-6" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[18px] font-light leading-5 text-[#94A3B8]">{label}</p>
-        <p className="mt-1 text-[42px] font-semibold leading-none text-[#334155]">{value.toLocaleString()}</p>
+        <p className="text-[14px] font-medium leading-5 text-[#64748B]">{label}</p>
+        <p className="mt-1 break-words text-[32px] font-semibold leading-none text-[#334155]">{value.toLocaleString()}</p>
       </div>
     </article>
   );
@@ -372,22 +372,22 @@ export default function SuperAdminTeamRoute() {
   const pageCount = Math.max(meta.totalPages || 1, 1);
 
   return (
-    <section className="pb-12 pt-[68px]">
-      <div className="mb-10 flex items-center justify-between gap-4">
-        <h1 className="text-[34px] font-semibold leading-tight text-[#334155]">Admin Team</h1>
+    <section className="pb-12 pt-8">
+      <div className="mb-7 flex items-center justify-between gap-4">
+        <h1 className="text-[30px] font-semibold leading-tight text-[#334155]">Admin Team</h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-7">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Total admins" value={summary.totalAdmins} />
         <StatCard label="Super admins" value={summary.superAdmins} />
         <StatCard label="Standard admins" value={summary.standardAdmins} />
       </div>
 
-      <div className="mt-9 rounded-[18px] bg-[#F8FAFC] p-6 shadow-[0_12px_28px_rgba(148,163,184,0.10)]">
-        <div className="flex items-center justify-between gap-5">
-          <div className="flex min-w-0 flex-1 items-center gap-4">
-            <label className="flex h-[52px] w-[390px] min-w-0 items-center gap-4 rounded-[26px] bg-[#E8EEF6] px-5 text-[#334155]">
-              <Icon name="search" className="h-6 w-6 shrink-0" />
+      <div className="mt-6 rounded-[8px] bg-[#F8FAFC] p-5 shadow-[0_10px_24px_rgba(148,163,184,0.10)]">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-[8px] bg-[#E8EEF6] px-4 text-[#334155] xl:max-w-[390px]">
+              <Icon name="search" className="h-5 w-5 shrink-0" />
               <input
                 value={query}
                 onChange={(event) => {
@@ -395,12 +395,12 @@ export default function SuperAdminTeamRoute() {
                   resetToFirstPage();
                 }}
                 placeholder="Search Admin"
-                className="min-w-0 flex-1 bg-transparent text-[15px] font-light text-[#334155] outline-none placeholder:text-[#94A3B8]"
+                className="min-w-0 flex-1 bg-transparent text-[14px] text-[#334155] outline-none placeholder:text-[#94A3B8]"
               />
             </label>
             <ThemedDropdown
               ariaLabel="Filter admin team"
-              className="w-[230px]"
+              className="w-full sm:w-[220px]"
               options={filterOptions}
               value={filter}
               onChange={(value) => {
@@ -413,15 +413,15 @@ export default function SuperAdminTeamRoute() {
             <button
               type="button"
               onClick={() => setInviteOpen(true)}
-              className="h-[52px] min-w-[156px] cursor-pointer rounded-[16px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F86] px-6 text-[17px] font-semibold text-white shadow-[0_12px_24px_rgba(13,92,150,0.20)] transition hover:brightness-105"
+              className="h-11 min-w-[144px] cursor-pointer rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#0B4F86] px-5 text-[14px] font-semibold text-white shadow-[0_10px_20px_rgba(13,92,150,0.18)] transition hover:brightness-105"
             >
               Invite admin
             </button>
           ) : null}
         </div>
 
-        <div className="mt-7 overflow-visible rounded-[14px] border border-[#D8E2EE] bg-[#F8FAFC]">
-          <table className="w-full table-fixed border-collapse">
+        <div className="mt-5 overflow-x-auto rounded-[8px] border border-[#D8E2EE] bg-[#F8FAFC]">
+          <table className="w-full min-w-[900px] table-fixed border-collapse">
             <colgroup>
               <col className="w-[21%]" />
               <col className="w-[21%]" />
@@ -435,11 +435,11 @@ export default function SuperAdminTeamRoute() {
                 {["Admin", "Email", "Role", "Permission", "Last active", "Actions"].map((header) => (
                   <th
                     key={header}
-                    className={`py-4 text-[18px] font-medium leading-6 text-[#334155] ${
-                      header === "Actions" ? "px-8 text-center" : "px-6"
+                    className={`py-3 text-[14px] font-semibold leading-5 text-[#334155] ${
+                      header === "Actions" ? "px-5 text-center" : "px-4"
                     }`}
                   >
-                    <span className="block truncate">{header}</span>
+                      <span className="block whitespace-normal">{header}</span>
                   </th>
                 ))}
               </tr>
@@ -454,31 +454,31 @@ export default function SuperAdminTeamRoute() {
               ) : rows.length ? (
                 rows.map((member) => (
                   <tr key={member.id} className="border-b border-[#D8E2EE] last:border-b-0">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <ProfileAvatar
                           src={member.avatarUrl}
                           alt={`${member.fullName} avatar`}
                           className="h-9 w-9 shrink-0 rounded-full text-[13px]"
                         />
-                        <span className="min-w-0 truncate text-[15px] font-medium text-[#334155]">
+                        <span className="min-w-0 break-words text-[14px] font-medium leading-5 text-[#334155]">
                           {member.fullName}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-[15px] font-light text-[#94A3B8]">
-                      <span className="block truncate">{member.email}</span>
+                    <td className="break-all px-4 py-3 text-[13px] leading-5 text-[#64748B]">
+                      <span className="block">{member.email}</span>
                     </td>
-                    <td className="px-6 py-4 text-[15px] font-light text-[#94A3B8]">
+                    <td className="px-4 py-3 text-[13px] leading-5 text-[#64748B]">
                       {member.roleLabel}
                     </td>
-                    <td className="px-6 py-4 text-[15px] font-light text-[#94A3B8]">
+                    <td className="px-4 py-3 text-[13px] leading-5 text-[#64748B]">
                       {member.permission}
                     </td>
-                    <td className="px-6 py-4 text-[15px] font-light text-[#94A3B8]">
+                    <td className="px-4 py-3 text-[13px] leading-5 text-[#64748B]">
                       {formatLastActive(member.lastActiveAt)}
                     </td>
-                    <td className="relative px-8 py-4 text-center">
+                    <td className="relative px-5 py-3 text-center">
                       <button
                         type="button"
                         onClick={() => setMenuFor((current) => (current === member.id ? null : member.id))}
@@ -488,7 +488,7 @@ export default function SuperAdminTeamRoute() {
                         <Icon name="more" className="h-5 w-5" />
                       </button>
                       {menuFor === member.id ? (
-                        <div className="absolute right-8 top-[48px] z-40 w-[210px] rounded-[16px] bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
+                        <div className="absolute right-5 top-[48px] z-40 w-[200px] rounded-[8px] bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
                           <button
                             type="button"
                             onClick={() => {
@@ -550,8 +550,8 @@ export default function SuperAdminTeamRoute() {
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-[#D8E2EE] px-6 py-5">
-            <p className="text-[15px] font-light text-[#94A3B8]">
+          <div className="flex min-w-[900px] items-center justify-between border-t border-[#D8E2EE] px-5 py-4">
+            <p className="text-[13px] text-[#64748B]">
               Showing {rows.length ? `${(meta.page - 1) * meta.limit + 1}-${(meta.page - 1) * meta.limit + rows.length}` : "0"} of{" "}
               {meta.total.toLocaleString()} admins
             </p>

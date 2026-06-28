@@ -137,16 +137,16 @@ function StatCard({
   helper?: string;
 }) {
   return (
-    <article className="grid min-h-[118px] min-w-0 grid-cols-[56px_minmax(0,1fr)] items-center gap-4 overflow-hidden rounded-[14px] bg-[#F8FAFC] px-5 py-4 shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-      <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon name={icon} className="h-7 w-7" />
+    <article className="grid min-h-[108px] min-w-0 grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-[8px] bg-[#F8FAFC] px-4 py-4 shadow-[0_8px_20px_rgba(148,163,184,0.10)]">
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon name={icon} className="h-6 w-6" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[15px] font-light leading-[18px] text-[#94A3B8]">{label}</span>
-        <span className="mt-1 block truncate text-[34px] font-semibold leading-none text-[#334155]" title={value}>
+        <span className="block text-[13px] font-medium leading-[17px] text-[#64748B]">{label}</span>
+        <span className="mt-1 block break-words text-[27px] font-semibold leading-[30px] text-[#334155]" title={value}>
           {value}
         </span>
-        {helper ? <span className="mt-2 block truncate text-[12px] font-semibold text-[#0D8C24]">{helper}</span> : null}
+        {helper ? <span className="mt-1.5 block text-[11px] font-semibold leading-4 text-[#0D8C24]">{helper}</span> : null}
       </span>
     </article>
   );
@@ -173,18 +173,18 @@ function StatusDropdown({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative w-full max-w-[150px] shrink-0">
+    <div ref={ref} className="relative w-full max-w-[160px] shrink-0">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-[24px] border border-[#D6E0EA] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155]"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-4 text-[13px] font-medium text-[#334155] transition hover:border-[#1565C0]"
       >
         <Icon name="filter" className="h-4 w-4 shrink-0" />
         <span className="truncate">{selected.label}</span>
         <Icon name="chevron" className="h-4 w-4 shrink-0 text-[#94A3B8]" />
       </button>
       {open ? (
-        <div className="absolute left-0 top-[54px] z-30 w-48 overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+        <div className="absolute left-0 top-12 z-30 w-48 overflow-hidden rounded-[8px] border border-[#E2E8F0] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
           {statusOptions.map((option) => (
             <button
               key={option.value}
@@ -269,8 +269,8 @@ function UserCell({ user }: { user: { name: string; avatarUrl: string | null; em
         <ProfileAvatar src={user.avatarUrl} alt={`${user.name} avatar`} className="h-full w-full rounded-full" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[14px] font-medium text-[#334155]">{user.name}</span>
-        {user.email ? <span className="block truncate text-[11px] text-[#94A3B8]">{user.email}</span> : null}
+        <span className="block break-words text-[13px] font-medium leading-4 text-[#334155]">{user.name}</span>
+        {user.email ? <span className="mt-0.5 block break-all text-[10px] leading-4 text-[#64748B]">{user.email}</span> : null}
       </span>
     </span>
   );
@@ -547,10 +547,10 @@ export default function SuperAdminPaymentsRoute() {
   return (
     <section className="min-w-0 pb-12">
       <div className="mb-7">
-        <h1 className="text-[34px] font-semibold leading-tight text-[#334155]">Payments</h1>
+        <h1 className="text-[30px] font-semibold leading-tight text-[#334155]">Payments</h1>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon="card"
           label="revenue this month"
@@ -578,9 +578,9 @@ export default function SuperAdminPaymentsRoute() {
         />
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-[14px] bg-[#F8FAFC] shadow-[0_12px_26px_rgba(148,163,184,0.12)]">
-        <div className="px-5 pt-6 sm:px-8">
-          <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+      <div className="mt-6 overflow-hidden rounded-[8px] bg-[#F8FAFC] shadow-[0_10px_24px_rgba(148,163,184,0.10)]">
+        <div className="px-4 pt-5 sm:px-6">
+          <div className="flex items-center gap-6 overflow-x-auto pb-1">
             {[
               ["transactions", "Transactions"],
               ["subscriptions", "Subscriptions"],
@@ -592,7 +592,7 @@ export default function SuperAdminPaymentsRoute() {
                 key={value}
                 type="button"
                 onClick={() => setActiveTab(value as PaymentTab)}
-                className={`h-10 border-b-[6px] text-[21px] font-medium leading-none transition ${
+                className={`h-10 shrink-0 whitespace-nowrap border-b-[3px] px-1 text-[15px] font-semibold leading-none transition ${
                   activeTab === value
                     ? "border-[#1565C0] text-[#1565C0]"
                     : "border-transparent text-[#94A3B8] hover:text-[#334155]"
@@ -604,8 +604,8 @@ export default function SuperAdminPaymentsRoute() {
           </div>
 
           {activeTab !== "configuration" ? (
-            <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center">
-              <label className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[24px] bg-[#E9EFF6] px-5 text-[#334155] lg:max-w-[390px]">
+            <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-[8px] bg-[#E9EFF6] px-4 text-[#334155] lg:max-w-[430px]">
                 <Icon name="search" className="h-5 w-5 shrink-0" />
                 <input
                   value={search}
@@ -618,7 +618,7 @@ export default function SuperAdminPaymentsRoute() {
               <button
                 type="button"
                 onClick={exportPdf}
-                className="ml-auto flex h-12 w-[132px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[16px] font-medium text-white shadow-[0_8px_16px_rgba(21,101,192,0.2)]"
+                className="ml-auto flex h-11 w-[124px] shrink-0 items-center justify-center gap-2 rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] text-[14px] font-semibold text-white shadow-[0_8px_16px_rgba(21,101,192,0.18)] transition hover:brightness-105"
               >
                 <Icon name="download" className="h-4 w-4" />
                 Export
@@ -627,7 +627,7 @@ export default function SuperAdminPaymentsRoute() {
           ) : null}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-5">
           {activeTab === "transactions" ? (
             <TransactionsTable
               loading={loading}
@@ -737,8 +737,8 @@ function TransactionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1040px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+      <table className="min-w-[960px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
             <th className="w-[20%] px-7 py-3 font-medium">User</th>
             <th className="w-[12%] px-4 py-3 font-medium">ID</th>
@@ -756,11 +756,11 @@ function TransactionsTable({
           {!loading && rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
               <td className="px-7 py-3"><UserCell user={row.user} /></td>
-              <td className="truncate px-4 py-3">{row.externalTransactionId}</td>
-              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{labelize(row.type)}</td>
-              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
-              <td className="truncate px-4 py-3">{formatDate(row.createdAt)}</td>
-              <td className="truncate px-4 py-3">{row.paymentMethod}</td>
+              <td className="break-all px-4 py-3 text-[12px]">{row.externalTransactionId}</td>
+              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{labelize(row.type)}</td>
+              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
+              <td className="break-words px-4 py-3">{row.paymentMethod}</td>
               <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
               <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
             </tr>
@@ -784,8 +784,8 @@ function SubscriptionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1040px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+      <table className="min-w-[960px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
             <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
             <th className="w-[13%] px-4 py-3 font-medium">User type</th>
@@ -802,11 +802,11 @@ function SubscriptionsTable({
           {rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
               <td className="px-7 py-3"><UserCell user={row.user} /></td>
-              <td className="truncate px-4 py-3">{row.userType}</td>
-              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.plan}</td>
-              <td className="truncate px-4 py-3">{formatDate(row.startedAt)}</td>
-              <td className="truncate px-4 py-3">{formatDate(row.nextBillingAt)}</td>
-              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="break-words px-4 py-3">{row.userType}</td>
+              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.plan}</td>
+              <td className="break-words px-4 py-3">{formatDate(row.startedAt)}</td>
+              <td className="break-words px-4 py-3">{formatDate(row.nextBillingAt)}</td>
+              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
               <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
               <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
             </tr>
@@ -826,8 +826,8 @@ function ReferralPayoutsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1040px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[18px] font-medium text-[#334155]">
+      <table className="min-w-[920px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
             <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
             <th className="w-[11%] px-4 py-3 font-medium">level</th>
@@ -843,11 +843,11 @@ function ReferralPayoutsTable({
           {rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
               <td className="px-7 py-3"><UserCell user={row.referrer} /></td>
-              <td className="truncate px-4 py-3 font-semibold text-[#1565C0]">{row.level}</td>
-              <td className="truncate px-4 py-3">{row.trigger}</td>
-              <td className="truncate px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
-              <td className="truncate px-4 py-3">{row.bankWallet}</td>
-              <td className="truncate px-4 py-3">{formatDate(row.createdAt)}</td>
+              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.level}</td>
+              <td className="break-words px-4 py-3">{row.trigger}</td>
+              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="break-words px-4 py-3">{row.bankWallet}</td>
+              <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
               <td className="px-7 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
             </tr>
           ))}
@@ -866,8 +866,8 @@ function EscrowReviewTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1180px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[17px] font-medium text-[#334155]">
+      <table className="min-w-[980px] w-full table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
             <th className="w-[18%] px-7 py-3 font-medium">Patient</th>
             <th className="w-[18%] px-4 py-3 font-medium">Professional</th>
@@ -885,22 +885,22 @@ function EscrowReviewTable({
               <td className="px-7 py-3"><UserCell user={row.payer} /></td>
               <td className="px-4 py-3"><UserCell user={row.professional} /></td>
               <td className="px-4 py-3">
-                <span className="block truncate font-semibold text-[#334155]" title={row.consultationLabel}>
+                <span className="block break-words font-semibold leading-5 text-[#334155]" title={row.consultationLabel}>
                   {row.consultationLabel}
                 </span>
-                <span className="mt-1 block truncate text-[11px] text-[#94A3B8]">
+                <span className="mt-1 block break-words text-[11px] leading-4 text-[#64748B]">
                   {labelize(row.completionConfirmationStatus ?? row.consultationStatus ?? "waiting")}
                 </span>
               </td>
-              <td className="truncate px-4 py-3 font-semibold text-[#334155]">
+              <td className="break-words px-4 py-3 font-semibold text-[#334155]">
                 {formatCurrency(row.amount, row.currency)}
               </td>
               <td className="px-4 py-3">
                 <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-[12px] font-semibold ${statusClass(row.escrowStatus)}`}>
-                  <span className="truncate">{labelize(row.escrowStatus)}</span>
+                  <span className="break-words text-center leading-4">{labelize(row.escrowStatus)}</span>
                 </span>
               </td>
-              <td className="truncate px-4 py-3">{formatDate(row.updatedAt)}</td>
+              <td className="break-words px-4 py-3">{formatDate(row.updatedAt)}</td>
               <td className="px-7 py-3">
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
@@ -956,36 +956,36 @@ function ConfigurationPanel({
   ];
 
   return (
-    <div className="px-5 pb-20 pt-2 sm:px-8">
-      <h2 className="text-[22px] font-semibold text-[#334155]">Subscription plan pricing</h2>
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+    <div className="px-4 pb-12 pt-2 sm:px-6">
+      <h2 className="text-[18px] font-semibold text-[#334155]">Subscription plan pricing</h2>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {planFields.map(({ label, plan }) => (
           <label key={label} className="block min-w-0">
-            <span className="block truncate text-[18px] font-light text-[#334155]">{label}</span>
-            <span className="mt-3 flex h-[46px] items-center rounded-[14px] border border-[#D6E0EA] bg-[#E3F2FD] px-4 text-[15px] font-medium text-[#334155]">
+            <span className="block text-[14px] font-medium leading-5 text-[#334155]">{label}</span>
+            <span className="mt-2 flex min-h-[44px] items-center rounded-[8px] border border-[#D6E0EA] bg-[#E3F2FD] px-4 py-2 text-[14px] font-medium text-[#334155]">
               {plan ? formatCurrency(plan.monthlyPrice, plan.currency) : "Not configured"}
             </span>
           </label>
         ))}
       </div>
 
-      <h2 className="mt-16 text-[22px] font-semibold text-[#334155]">Payment gateways</h2>
-      <div className="mt-6 space-y-7">
+      <h2 className="mt-10 text-[18px] font-semibold text-[#334155]">Payment gateways</h2>
+      <div className="mt-4 space-y-4">
         {overview.configuration.gateways.map((gateway) => (
           <div
             key={gateway.id}
-            className="grid gap-3 text-[18px] text-[#334155] lg:grid-cols-[minmax(0,1fr)_150px_280px] lg:items-center"
+            className="grid gap-3 rounded-[8px] border border-[#E2E8F0] bg-white px-4 py-3 text-[14px] text-[#334155] lg:grid-cols-[minmax(0,1fr)_130px_280px] lg:items-center"
           >
             <div className="min-w-0">
-              <span className="block truncate">{gateway.name}</span>
+              <span className="block break-words font-semibold">{gateway.name}</span>
               {gateway.updatedAt ? (
-                <span className="mt-1 block truncate text-[12px] text-[#94A3B8]">
+                <span className="mt-1 block text-[11px] text-[#64748B]">
                   Updated {formatDate(gateway.updatedAt)}
                 </span>
               ) : null}
             </div>
             <span
-              className={`w-fit rounded-full px-4 py-2 text-[16px] font-semibold lg:justify-self-end ${statusClass(gateway.status)}`}
+              className={`w-fit rounded-full px-3 py-1.5 text-[12px] font-semibold lg:justify-self-end ${statusClass(gateway.status)}`}
             >
               {gateway.status === "connected" ? "Connected" : "Setup needed"}
             </span>
@@ -994,7 +994,7 @@ function ConfigurationPanel({
                 <button
                   type="button"
                   onClick={() => onTest(gateway)}
-                  className="h-9 rounded-[12px] border border-[#D6E0EA] px-4 text-[14px] font-medium text-[#334155]"
+                  className="h-9 rounded-[8px] border border-[#D6E0EA] px-4 text-[13px] font-medium text-[#334155] transition hover:border-[#1565C0]"
                 >
                   Test
                 </button>
@@ -1002,7 +1002,7 @@ function ConfigurationPanel({
               <button
                 type="button"
                 onClick={() => onConfigure(gateway)}
-                className="h-9 rounded-[12px] bg-[#1565C0] px-4 text-[14px] font-medium text-white"
+                className="h-9 rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-4 text-[13px] font-medium text-white transition hover:brightness-105"
               >
                 {gateway.actionLabel}
               </button>
@@ -1010,7 +1010,7 @@ function ConfigurationPanel({
                 <button
                   type="button"
                   onClick={() => onDisconnect(gateway)}
-                  className="h-9 rounded-[12px] border border-[#FCA5A5] px-4 text-[14px] font-medium text-[#B91C1C]"
+                  className="h-9 rounded-[8px] border border-[#FCA5A5] px-4 text-[13px] font-medium text-[#B91C1C] transition hover:bg-[#FEF2F2]"
                 >
                   Disconnect
                 </button>
@@ -1048,12 +1048,12 @@ function GatewayConfigModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#334155]/45 px-4 py-8">
       <form
         onSubmit={submit}
-        className="max-h-[88vh] w-full max-w-[620px] overflow-y-auto rounded-[16px] bg-[#F8FAFC] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+        className="max-h-[88vh] w-full max-w-[620px] overflow-y-auto rounded-[8px] bg-[#F8FAFC] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#1565C0]">Secure gateway setup</p>
-            <h2 className="mt-2 truncate text-[26px] font-semibold text-[#334155]">{gateway.name}</h2>
+            <h2 className="mt-2 break-words text-[22px] font-semibold text-[#334155]">{gateway.name}</h2>
             <p className="mt-2 max-w-[500px] text-[14px] leading-6 text-[#64748B]">
               Values are encrypted before storage and are never shown again. Leave an existing field blank to keep it unchanged.
             </p>
@@ -1095,7 +1095,7 @@ function GatewayConfigModal({
                 placeholder={field.configured ? "Leave blank to keep current value" : field.placeholder}
                 autoComplete="off"
                 spellCheck={false}
-                className="mt-2 h-12 w-full rounded-[14px] border border-[#D6E0EA] bg-white px-4 text-[15px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+                className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-white px-4 text-[14px] font-medium text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
               />
               {field.helperText ? (
                 <span className="mt-1.5 block text-[12px] leading-5 text-[#64748B]">

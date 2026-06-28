@@ -371,8 +371,8 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
 
   return (
     <SuperAdminShellContext.Provider value={contextValue}>
-      <section className="min-h-screen bg-[#E2E8F0] text-[#334155]">
-        <aside className="fixed left-0 top-0 flex h-screen w-[327px] flex-col overflow-hidden bg-[#F8FAFC] px-[42px] py-[34px]">
+      <section className="super-admin-surface min-h-screen bg-[#E2E8F0] text-[#334155]">
+        <aside className="fixed left-0 top-0 flex h-screen w-[300px] flex-col overflow-hidden bg-[#F8FAFC] px-8 py-8">
           <Link href="/super-admin-platform" className="flex shrink-0 items-center gap-2">
             <Image src="/jam_medical.png" alt="Swifthelp logo" width={58} height={58} priority />
             <span className="text-[28px] font-semibold text-[#1E88E5]">Swifthelp</span>
@@ -400,7 +400,7 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="ml-[327px] min-h-screen min-w-0 overflow-x-hidden px-[31px] pb-16 pt-10">
+        <main className="super-admin-content ml-[300px] min-h-screen min-w-0 overflow-x-hidden px-6 pb-16 pt-8">
           <div className="mx-auto w-full max-w-[1280px]">
             <header className="flex items-center justify-between gap-8">
               <label className="relative block h-[57px] w-[344px] rounded-[24px] bg-[#F8FAFC] shadow-[0_0_25px_rgba(148,163,184,0.15)]">
@@ -453,6 +453,30 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
             {children}
           </div>
         </main>
+        <style jsx global>{`
+          .super-admin-surface,
+          .super-admin-surface * {
+            letter-spacing: 0 !important;
+          }
+
+          .super-admin-surface button:not(:disabled),
+          .super-admin-surface [role="button"] {
+            cursor: pointer;
+          }
+
+          .super-admin-surface button:disabled {
+            cursor: not-allowed;
+          }
+
+          .super-admin-content h1,
+          .super-admin-content h2,
+          .super-admin-content h3,
+          .super-admin-content p,
+          .super-admin-content td,
+          .super-admin-content th {
+            overflow-wrap: anywhere;
+          }
+        `}</style>
       </section>
     </SuperAdminShellContext.Provider>
   );
