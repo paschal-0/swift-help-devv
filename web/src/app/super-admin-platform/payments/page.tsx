@@ -279,13 +279,13 @@ function ActionMenu({
 
 function UserCell({ user }: { user: { name: string; avatarUrl: string | null; email?: string | null } }) {
   return (
-    <span className="flex min-w-0 items-center gap-3">
-      <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0]">
         <ProfileAvatar src={user.avatarUrl} alt={`${user.name} avatar`} className="h-full w-full rounded-full" />
       </span>
       <span className="min-w-0">
-        <span className="block break-words text-[13px] font-medium leading-4 text-[#334155]">{user.name}</span>
-        {user.email ? <span className="mt-0.5 block break-all text-[10px] leading-4 text-[#64748B]">{user.email}</span> : null}
+        <span className="block truncate text-[12px] font-semibold leading-4 text-[#334155]" title={user.name}>{user.name}</span>
+        {user.email ? <span className="mt-0.5 block truncate text-[10px] leading-3 text-[#64748B]" title={user.email}>{user.email}</span> : null}
       </span>
     </span>
   );
@@ -774,32 +774,32 @@ function TransactionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1024px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
+      <table className="w-full min-w-[1160px] table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-6 py-3 font-medium">User</th>
-            <th className="w-[13%] px-4 py-3 font-medium">ID</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Type</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Date</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Method</th>
-            <th className="w-[10%] px-4 py-3 font-medium">Status</th>
-            <th className="w-[9%] px-6 py-3 text-right font-medium">Actions</th>
+            <th className="w-[20%] px-5 py-3 font-medium">User</th>
+            <th className="w-[16%] px-3 py-3 font-medium">ID</th>
+            <th className="w-[13%] px-3 py-3 font-medium">Type</th>
+            <th className="w-[13%] px-3 py-3 font-medium">Amount</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Date</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Method</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Status</th>
+            <th className="w-[6%] px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+        <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#94A3B8]">
           {loading ? <EmptyRows columns={8} message="Loading payments..." /> : null}
           {!loading && !rows.length ? <EmptyRows columns={8} message="No payment transactions match the current filters." /> : null}
           {!loading && rows.map((row) => (
-            <tr key={row.id} className="h-[58px]">
-              <td className="px-6 py-3"><UserCell user={row.user} /></td>
-              <td className="break-all px-4 py-3 text-[12px]">{row.externalTransactionId}</td>
-              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{labelize(row.type)}</td>
-              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
-              <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
-              <td className="break-words px-4 py-3">{row.paymentMethod}</td>
-              <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
-              <td className="px-6 py-3"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
+            <tr key={row.id} className="h-[56px]">
+              <td className="px-5 py-2.5"><UserCell user={row.user} /></td>
+              <td className="px-3 py-2.5"><span className="block truncate" title={row.externalTransactionId}>{row.externalTransactionId}</span></td>
+              <td className="px-3 py-2.5 font-semibold text-[#1565C0]"><span className="block truncate" title={labelize(row.type)}>{labelize(row.type)}</span></td>
+              <td className="px-3 py-2.5 font-medium text-[#64748B]"><span className="block truncate" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</span></td>
+              <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.createdAt)}</td>
+              <td className="px-3 py-2.5"><span className="block truncate" title={row.paymentMethod}>{row.paymentMethod}</span></td>
+              <td className="px-3 py-2.5"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold leading-4 ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-4 py-2.5"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
             </tr>
           ))}
         </tbody>
@@ -821,31 +821,31 @@ function SubscriptionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1024px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
+      <table className="w-full min-w-[1120px] table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-6 py-3 font-medium">User</th>
-            <th className="w-[13%] px-4 py-3 font-medium">User type</th>
-            <th className="w-[10%] px-4 py-3 font-medium">Plan</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Started</th>
-            <th className="w-[14%] px-4 py-3 font-medium">Next billing</th>
-            <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[10%] px-4 py-3 font-medium">Status</th>
-            <th className="w-[10%] px-6 py-3 text-right font-medium">Actions</th>
+            <th className="w-[21%] px-5 py-3 font-medium">User</th>
+            <th className="w-[13%] px-3 py-3 font-medium">User type</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Plan</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Started</th>
+            <th className="w-[14%] px-3 py-3 font-medium">Next billing</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Amount</th>
+            <th className="w-[11%] px-3 py-3 font-medium">Status</th>
+            <th className="w-[7%] px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+        <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={8} message="No subscription payments are available yet." /> : null}
           {rows.map((row) => (
-            <tr key={row.id} className="h-[58px]">
-              <td className="px-6 py-3"><UserCell user={row.user} /></td>
-              <td className="break-words px-4 py-3">{row.userType}</td>
-              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.plan}</td>
-              <td className="break-words px-4 py-3">{formatDate(row.startedAt)}</td>
-              <td className="break-words px-4 py-3">{formatDate(row.nextBillingAt)}</td>
-              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
-              <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
-              <td className="px-6 py-3"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
+            <tr key={row.id} className="h-[56px]">
+              <td className="px-5 py-2.5"><UserCell user={row.user} /></td>
+              <td className="px-3 py-2.5"><span className="block truncate" title={row.userType}>{row.userType}</span></td>
+              <td className="px-3 py-2.5 font-semibold text-[#1565C0]"><span className="block truncate" title={row.plan}>{row.plan}</span></td>
+              <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.startedAt)}</td>
+              <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.nextBillingAt)}</td>
+              <td className="px-3 py-2.5 font-medium text-[#64748B]"><span className="block truncate" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</span></td>
+              <td className="px-3 py-2.5"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold leading-4 ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-4 py-2.5"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
             </tr>
           ))}
         </tbody>
@@ -863,29 +863,29 @@ function ReferralPayoutsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1024px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
+      <table className="w-full min-w-[1080px] table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-6 py-3 font-medium">Referrer</th>
-            <th className="w-[11%] px-4 py-3 font-medium">Level</th>
-            <th className="w-[17%] px-4 py-3 font-medium">Trigger</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[16%] px-4 py-3 font-medium">Bank/wallet</th>
-            <th className="w-[13%] px-4 py-3 font-medium">Date</th>
-            <th className="w-[11%] px-6 py-3 text-right font-medium">Actions</th>
+            <th className="w-[22%] px-5 py-3 font-medium">Referrer</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Level</th>
+            <th className="w-[18%] px-3 py-3 font-medium">Trigger</th>
+            <th className="w-[13%] px-3 py-3 font-medium">Amount</th>
+            <th className="w-[16%] px-3 py-3 font-medium">Bank/wallet</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Date</th>
+            <th className="w-[7%] px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+        <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={7} message="No referral payouts are available yet." /> : null}
           {rows.map((row) => (
-            <tr key={row.id} className="h-[58px]">
-              <td className="px-6 py-3"><UserCell user={row.referrer} /></td>
-              <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.level}</td>
-              <td className="break-words px-4 py-3">{row.trigger}</td>
-              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
-              <td className="break-words px-4 py-3">{row.bankWallet}</td>
-              <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
-              <td className="px-6 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
+            <tr key={row.id} className="h-[56px]">
+              <td className="px-5 py-2.5"><UserCell user={row.referrer} /></td>
+              <td className="px-3 py-2.5 font-semibold text-[#1565C0]"><span className="block truncate" title={row.level}>{row.level}</span></td>
+              <td className="px-3 py-2.5"><span className="block truncate" title={row.trigger}>{row.trigger}</span></td>
+              <td className="px-3 py-2.5 font-medium text-[#64748B]"><span className="block truncate" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</span></td>
+              <td className="px-3 py-2.5"><span className="block truncate" title={row.bankWallet}>{row.bankWallet}</span></td>
+              <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.createdAt)}</td>
+              <td className="px-4 py-2.5"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
             </tr>
           ))}
         </tbody>
@@ -903,61 +903,61 @@ function EscrowReviewTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[1080px] w-full table-fixed border-collapse">
-        <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
+      <table className="w-full min-w-[1160px] table-fixed border-collapse">
+        <thead className="bg-[#E1E8F0] text-left text-[13px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[18%] px-6 py-3 font-medium">Patient</th>
-            <th className="w-[18%] px-4 py-3 font-medium">Professional</th>
-            <th className="w-[16%] px-4 py-3 font-medium">Consultation</th>
-            <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[13%] px-4 py-3 font-medium">Escrow</th>
-            <th className="w-[11%] px-4 py-3 font-medium">Updated</th>
-            <th className="w-[13%] px-6 py-3 text-right font-medium">Decision</th>
+            <th className="w-[18%] px-5 py-3 font-medium">Patient</th>
+            <th className="w-[18%] px-3 py-3 font-medium">Professional</th>
+            <th className="w-[16%] px-3 py-3 font-medium">Consultation</th>
+            <th className="w-[12%] px-3 py-3 font-medium">Amount</th>
+            <th className="w-[14%] px-3 py-3 font-medium">Escrow</th>
+            <th className="w-[10%] px-3 py-3 font-medium">Updated</th>
+            <th className="w-[12%] px-4 py-3 text-right font-medium">Decision</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
+        <tbody className="divide-y divide-[#DDE5EF] text-[12px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={7} message="No consultation escrows need review right now." /> : null}
           {rows.map((row) => (
-            <tr key={row.id} className="h-[76px] align-middle">
-              <td className="px-6 py-3"><UserCell user={row.payer} /></td>
-              <td className="px-4 py-3"><UserCell user={row.professional} /></td>
-              <td className="px-4 py-3">
-                <span className="block break-words font-semibold leading-5 text-[#334155]" title={row.consultationLabel}>
+            <tr key={row.id} className="h-[68px] align-middle">
+              <td className="px-5 py-2.5"><UserCell user={row.payer} /></td>
+              <td className="px-3 py-2.5"><UserCell user={row.professional} /></td>
+              <td className="px-3 py-2.5">
+                <span className="block truncate font-semibold leading-4 text-[#334155]" title={row.consultationLabel}>
                   {row.consultationLabel}
                 </span>
-                <span className="mt-1 block break-words text-[11px] leading-4 text-[#64748B]">
+                <span className="mt-1 block truncate text-[10px] leading-3 text-[#64748B]" title={labelize(row.completionConfirmationStatus ?? row.consultationStatus ?? "waiting")}>
                   {labelize(row.completionConfirmationStatus ?? row.consultationStatus ?? "waiting")}
                 </span>
               </td>
-              <td className="truncate px-4 py-3 font-semibold text-[#334155]" title={formatCurrency(row.amount, row.currency)}>
-                {formatCurrency(row.amount, row.currency)}
+              <td className="px-3 py-2.5 font-semibold text-[#334155]">
+                <span className="block truncate" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</span>
               </td>
-              <td className="px-4 py-3">
-                <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-[12px] font-semibold ${statusClass(row.escrowStatus)}`}>
-                  <span className="break-words text-center leading-4">{labelize(row.escrowStatus)}</span>
+              <td className="px-3 py-2.5">
+                <span className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(row.escrowStatus)}`}>
+                  <span className="truncate leading-4" title={labelize(row.escrowStatus)}>{labelize(row.escrowStatus)}</span>
                 </span>
               </td>
-              <td className="break-words px-4 py-3">{formatDate(row.updatedAt)}</td>
-              <td className="px-6 py-3">
+              <td className="whitespace-nowrap px-3 py-2.5">{formatDate(row.updatedAt)}</td>
+              <td className="px-4 py-2.5">
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => onResolve(row, "release_to_professional")}
-                    className="h-8 cursor-pointer rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-3 text-[11px] font-semibold text-white shadow-[0_8px_14px_rgba(21,101,192,0.16)]"
+                    className="h-8 cursor-pointer rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-2.5 text-[11px] font-semibold text-white shadow-[0_8px_14px_rgba(21,101,192,0.16)]"
                   >
                     Release
                   </button>
                   <button
                     type="button"
                     onClick={() => onResolve(row, "refund_patient")}
-                    className="h-8 cursor-pointer rounded-[8px] border border-[#B91C1C] bg-[#FEF2F2] px-3 text-[11px] font-semibold text-[#B91C1C]"
+                    className="h-8 cursor-pointer rounded-[8px] border border-[#B91C1C] bg-[#FEF2F2] px-2.5 text-[11px] font-semibold text-[#B91C1C]"
                   >
                     Refund
                   </button>
                   <button
                     type="button"
                     onClick={() => onResolve(row, "partial_refund")}
-                    className="h-8 cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-white px-3 text-[11px] font-semibold text-[#1565C0]"
+                    className="h-8 cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-white px-2.5 text-[11px] font-semibold text-[#1565C0]"
                   >
                     Partial
                   </button>
