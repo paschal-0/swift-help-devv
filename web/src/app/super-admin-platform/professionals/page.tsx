@@ -847,8 +847,8 @@ export default function SuperAdminProfessionalsRoute() {
           </button>
         </div>
 
-        <div className="mt-6 rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC]">
-          <table className="w-full table-fixed text-left">
+        <div className="mt-6 overflow-x-auto rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC]">
+          <table className="w-full min-w-[1040px] table-fixed text-left">
             <thead>
               <tr className="h-[52px] border-b border-[#DDE5EF] text-[15px] font-medium leading-5 text-[#334155]">
                 <th className="w-[22%] px-6 py-3 font-medium">Name</th>
@@ -857,7 +857,7 @@ export default function SuperAdminProfessionalsRoute() {
                 <th className="w-[10%] px-4 py-3 font-medium">Rating</th>
                 <th className="w-[14%] px-4 py-3 font-medium">Joined date</th>
                 <th className="w-[11%] px-4 py-3 font-medium">Status</th>
-                <th className="w-[10%] py-3 pl-4 pr-8 text-right font-medium">Actions</th>
+                <th className="w-[10%] py-3 pl-4 pr-6 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -887,7 +887,7 @@ export default function SuperAdminProfessionalsRoute() {
                         {professional.status === "active" ? "Active" : "Suspended"}
                       </span>
                     </td>
-                    <td className="relative py-2 pl-4 pr-8 text-right">
+                    <td className="relative py-2 pl-4 pr-6 text-right">
                       <button
                         type="button"
                         onClick={() => setOpenMenuId(openMenuId === professional.id ? null : professional.id)}

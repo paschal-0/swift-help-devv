@@ -472,9 +472,13 @@ export function SuperAdminPlatformShell({ children }: { children: ReactNode }) {
           .super-admin-content h2,
           .super-admin-content h3,
           .super-admin-content p,
-          .super-admin-content td,
-          .super-admin-content th {
+          .super-admin-content td {
             overflow-wrap: anywhere;
+          }
+
+          .super-admin-content th {
+            white-space: nowrap;
+            overflow-wrap: normal;
           }
         `}</style>
       </section>

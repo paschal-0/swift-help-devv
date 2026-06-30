@@ -858,16 +858,16 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] table-fixed border-collapse xl:min-w-0">
-          <thead className="bg-[#E1E8F0] text-left text-[15px] font-medium text-[#334155] xl:text-[17px]">
+        <table className="w-full min-w-[960px] table-fixed border-collapse">
+          <thead className="bg-[#E1E8F0] text-left text-[14px] font-medium text-[#334155] xl:text-[15px]">
             <tr>
               <th className="w-[20%] px-5 py-4 font-medium xl:px-6">Professional</th>
-              <th className="w-[12%] px-3 py-4 font-medium xl:px-4">Speciality</th>
-              <th className="w-[14%] px-3 py-4 font-medium xl:px-4">Consultations</th>
-              <th className="w-[8%] px-3 py-4 font-medium xl:px-4">Shifts</th>
+              <th className="w-[13%] px-4 py-4 font-medium">Speciality</th>
+              <th className="w-[15%] px-4 py-4 font-medium">Consultations</th>
+              <th className="w-[10%] px-4 py-4 font-medium">Shifts</th>
               <th className="w-[12%] px-3 py-4 font-medium xl:px-4">Avg rating</th>
-              <th className="w-[21%] px-3 py-4 font-medium xl:px-4">Revenue</th>
-              <th className="w-[13%] py-4 pl-3 pr-5 font-medium xl:pl-4 xl:pr-6">Status</th>
+              <th className="w-[18%] px-4 py-4 font-medium">Revenue</th>
+              <th className="w-[12%] py-4 pl-4 pr-6 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#DDE5EF] text-[13px] text-[#94A3B8] xl:text-[14px]">
@@ -879,12 +879,12 @@ function ProfessionalTable({ rows, title }: { rows: AdminProfessionalReportRow[]
             {rows.map((row) => (
               <tr key={row.id} className="h-[64px] transition-colors hover:bg-slate-50/50">
                 <td className="max-w-0 truncate px-5 py-3 font-medium xl:px-6"><ProfessionalCell row={row} /></td>
-                <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#1565C0] xl:px-4">{row.specialty}</td>
-                <td className="max-w-0 truncate px-3 py-3 xl:px-4">{row.consultations}</td>
-                <td className="max-w-0 truncate px-3 py-3 xl:px-4">{row.shifts}</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#1565C0]">{row.specialty}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.consultations}</td>
+                <td className="max-w-0 truncate px-4 py-3">{row.shifts}</td>
                 <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#334155] xl:px-4">{row.averageRating || 0} ★</td>
-                <td className="max-w-0 truncate px-3 py-3 font-semibold text-[#0D8C24] xl:px-4">{formatCurrency(row.revenue, row.currency)}</td>
-                <td className="max-w-0 truncate py-3 pl-3 pr-5 font-semibold text-[#1565C0] xl:pl-4 xl:pr-6">{row.status}</td>
+                <td className="max-w-0 truncate px-4 py-3 font-semibold text-[#0D8C24]" title={formatCurrency(row.revenue, row.currency)}>{formatCurrency(row.revenue, row.currency)}</td>
+                <td className="max-w-0 truncate py-3 pl-4 pr-6 font-semibold text-[#1565C0]">{row.status}</td>
               </tr>
             ))}
           </tbody>

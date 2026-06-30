@@ -162,8 +162,8 @@ function StatCard({
         <Icon name="calendar" className="h-6 w-6" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium leading-5 text-[#64748B]">{label}</p>
-        <p className="mt-1 break-words text-[32px] font-semibold leading-none text-[#334155]">{value.toLocaleString()}</p>
+        <p className="truncate text-[14px] font-medium leading-5 text-[#64748B]" title={label}>{label}</p>
+        <p className="mt-1 truncate text-[32px] font-semibold leading-none text-[#334155]" title={value.toLocaleString()}>{value.toLocaleString()}</p>
       </div>
     </article>
   );

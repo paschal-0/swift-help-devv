@@ -142,11 +142,11 @@ function StatCard({
         <Icon name={icon} className="h-6 w-6" />
       </span>
       <span className="min-w-0">
-        <span className="block text-[13px] font-medium leading-[17px] text-[#64748B]">{label}</span>
-        <span className="mt-1 block break-words text-[27px] font-semibold leading-[30px] text-[#334155]" title={value}>
+        <span className="block truncate text-[13px] font-medium leading-[17px] text-[#64748B]" title={label}>{label}</span>
+        <span className="mt-1 block truncate text-[27px] font-semibold leading-[30px] text-[#334155]" title={value}>
           {value}
         </span>
-        {helper ? <span className="mt-1.5 block text-[11px] font-semibold leading-4 text-[#0D8C24]">{helper}</span> : null}
+        {helper ? <span className="mt-1.5 block truncate text-[11px] font-semibold leading-4 text-[#0D8C24]" title={helper}>{helper}</span> : null}
       </span>
     </article>
   );
@@ -177,7 +177,7 @@ function StatusDropdown({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-4 text-[13px] font-medium text-[#334155] transition hover:border-[#1565C0]"
+        className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-4 text-[13px] font-medium text-[#334155] transition hover:border-[#1565C0]"
       >
         <Icon name="filter" className="h-4 w-4 shrink-0" />
         <span className="truncate">{selected.label}</span>
@@ -193,7 +193,7 @@ function StatusDropdown({
                 onChange(option.value);
                 setOpen(false);
               }}
-              className={`block w-full px-4 py-3 text-left text-[14px] font-medium ${
+              className={`block w-full cursor-pointer px-4 py-3 text-left text-[14px] font-medium ${
                 option.value === value ? "bg-[#E3F2FD] text-[#1565C0]" : "text-[#64748B] hover:bg-[#F8FAFC]"
               }`}
             >
@@ -237,22 +237,22 @@ function ActionMenu({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-9 w-9 items-center justify-center rounded-full text-[#94A3B8] hover:bg-[#EAF2FB] hover:text-[#1565C0]"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#94A3B8] hover:bg-[#EAF2FB] hover:text-[#1565C0]"
         aria-label="Open row actions"
       >
         <Icon name="more" className="h-5 w-5" />
       </button>
       {open ? (
         <div className="absolute right-0 top-10 z-40 w-[160px] rounded-[14px] bg-white py-3 shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
-          <button type="button" onClick={() => handleClick(onView)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+          <button type="button" onClick={() => handleClick(onView)} className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
             <Icon name="eye" className="h-5 w-5" />
             View
           </button>
-          <button type="button" onClick={() => handleClick(onRemove)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+          <button type="button" onClick={() => handleClick(onRemove)} className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
             <Icon name="trash" className="h-5 w-5" />
             Remove
           </button>
-          <button type="button" onClick={() => handleClick(onFlag)} className="flex w-full items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
+          <button type="button" onClick={() => handleClick(onFlag)} className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-[16px] font-medium text-[#334155] hover:bg-[#F8FAFC]">
             <Icon name="flag" className="h-5 w-5" />
             Flag
           </button>
@@ -737,17 +737,17 @@ function TransactionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[960px] w-full table-fixed border-collapse">
+      <table className="min-w-[1024px] w-full table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-7 py-3 font-medium">User</th>
-            <th className="w-[12%] px-4 py-3 font-medium">ID</th>
+            <th className="w-[20%] px-6 py-3 font-medium">User</th>
+            <th className="w-[13%] px-4 py-3 font-medium">ID</th>
             <th className="w-[12%] px-4 py-3 font-medium">Type</th>
-            <th className="w-[10%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[14%] px-4 py-3 font-medium">Date</th>
-            <th className="w-[14%] px-4 py-3 font-medium">Method</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Amount</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Date</th>
+            <th className="w-[12%] px-4 py-3 font-medium">Method</th>
             <th className="w-[10%] px-4 py-3 font-medium">Status</th>
-            <th className="w-[8%] px-7 py-3 text-right font-medium">Actions</th>
+            <th className="w-[9%] px-6 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
@@ -755,14 +755,14 @@ function TransactionsTable({
           {!loading && !rows.length ? <EmptyRows columns={8} message="No payment transactions match the current filters." /> : null}
           {!loading && rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
-              <td className="px-7 py-3"><UserCell user={row.user} /></td>
+              <td className="px-6 py-3"><UserCell user={row.user} /></td>
               <td className="break-all px-4 py-3 text-[12px]">{row.externalTransactionId}</td>
               <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{labelize(row.type)}</td>
-              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
               <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
               <td className="break-words px-4 py-3">{row.paymentMethod}</td>
-              <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
-              <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
+              <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-6 py-3"><ActionMenu onFlag={() => onFlag(row.id)} onRemove={() => onRemove(row.id)} onView={() => onView(row.id)} /></td>
             </tr>
           ))}
         </tbody>
@@ -784,31 +784,31 @@ function SubscriptionsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[960px] w-full table-fixed border-collapse">
+      <table className="min-w-[1024px] w-full table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
+            <th className="w-[20%] px-6 py-3 font-medium">User</th>
             <th className="w-[13%] px-4 py-3 font-medium">User type</th>
             <th className="w-[10%] px-4 py-3 font-medium">Plan</th>
             <th className="w-[12%] px-4 py-3 font-medium">Started</th>
             <th className="w-[14%] px-4 py-3 font-medium">Next billing</th>
             <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
             <th className="w-[10%] px-4 py-3 font-medium">Status</th>
-            <th className="w-[10%] px-7 py-3 text-right font-medium">Actions</th>
+            <th className="w-[10%] px-6 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={8} message="No subscription payments are available yet." /> : null}
           {rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
-              <td className="px-7 py-3"><UserCell user={row.user} /></td>
+              <td className="px-6 py-3"><UserCell user={row.user} /></td>
               <td className="break-words px-4 py-3">{row.userType}</td>
               <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.plan}</td>
               <td className="break-words px-4 py-3">{formatDate(row.startedAt)}</td>
               <td className="break-words px-4 py-3">{formatDate(row.nextBillingAt)}</td>
-              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
-              <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
-              <td className="px-7 py-3"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
+              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
+              <td className="px-4 py-3"><span className={`inline-flex rounded-full px-3 py-1 text-[13px] font-semibold ${statusClass(row.status)}`}>{labelize(row.status)}</span></td>
+              <td className="px-6 py-3"><ActionMenu onFlag={() => onFlag(row)} onRemove={() => onRemove(row)} onView={() => onView(row)} /></td>
             </tr>
           ))}
         </tbody>
@@ -826,29 +826,29 @@ function ReferralPayoutsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[920px] w-full table-fixed border-collapse">
+      <table className="min-w-[1024px] w-full table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[20%] px-7 py-3 font-medium">Referrer</th>
-            <th className="w-[11%] px-4 py-3 font-medium">level</th>
-            <th className="w-[18%] px-4 py-3 font-medium">Trigger</th>
+            <th className="w-[20%] px-6 py-3 font-medium">Referrer</th>
+            <th className="w-[11%] px-4 py-3 font-medium">Level</th>
+            <th className="w-[17%] px-4 py-3 font-medium">Trigger</th>
             <th className="w-[12%] px-4 py-3 font-medium">Amount</th>
-            <th className="w-[17%] px-4 py-3 font-medium">Bank/wallet</th>
-            <th className="w-[12%] px-4 py-3 font-medium">Date</th>
-            <th className="w-[10%] px-7 py-3 text-right font-medium">Actions</th>
+            <th className="w-[16%] px-4 py-3 font-medium">Bank/wallet</th>
+            <th className="w-[13%] px-4 py-3 font-medium">Date</th>
+            <th className="w-[11%] px-6 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={7} message="No referral payouts are available yet." /> : null}
           {rows.map((row) => (
             <tr key={row.id} className="h-[58px]">
-              <td className="px-7 py-3"><UserCell user={row.referrer} /></td>
+              <td className="px-6 py-3"><UserCell user={row.referrer} /></td>
               <td className="break-words px-4 py-3 font-semibold text-[#1565C0]">{row.level}</td>
               <td className="break-words px-4 py-3">{row.trigger}</td>
-              <td className="break-words px-4 py-3">{formatCurrency(row.amount, row.currency)}</td>
+              <td className="truncate px-4 py-3" title={formatCurrency(row.amount, row.currency)}>{formatCurrency(row.amount, row.currency)}</td>
               <td className="break-words px-4 py-3">{row.bankWallet}</td>
               <td className="break-words px-4 py-3">{formatDate(row.createdAt)}</td>
-              <td className="px-7 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
+              <td className="px-6 py-3"><ActionMenu onFlag={onUnavailable} onRemove={onUnavailable} onView={onUnavailable} /></td>
             </tr>
           ))}
         </tbody>
@@ -866,23 +866,23 @@ function EscrowReviewTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-[980px] w-full table-fixed border-collapse">
+      <table className="min-w-[1080px] w-full table-fixed border-collapse">
         <thead className="bg-[#E1E8F0] text-left text-[14px] font-semibold text-[#334155]">
           <tr>
-            <th className="w-[18%] px-7 py-3 font-medium">Patient</th>
+            <th className="w-[18%] px-6 py-3 font-medium">Patient</th>
             <th className="w-[18%] px-4 py-3 font-medium">Professional</th>
-            <th className="w-[15%] px-4 py-3 font-medium">Consultation</th>
+            <th className="w-[16%] px-4 py-3 font-medium">Consultation</th>
             <th className="w-[11%] px-4 py-3 font-medium">Amount</th>
             <th className="w-[13%] px-4 py-3 font-medium">Escrow</th>
-            <th className="w-[10%] px-4 py-3 font-medium">Updated</th>
-            <th className="w-[15%] px-7 py-3 text-right font-medium">Decision</th>
+            <th className="w-[11%] px-4 py-3 font-medium">Updated</th>
+            <th className="w-[13%] px-6 py-3 text-right font-medium">Decision</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#DDE5EF] text-[14px] text-[#94A3B8]">
           {!rows.length ? <EmptyRows columns={7} message="No consultation escrows need review right now." /> : null}
           {rows.map((row) => (
             <tr key={row.id} className="h-[76px] align-middle">
-              <td className="px-7 py-3"><UserCell user={row.payer} /></td>
+              <td className="px-6 py-3"><UserCell user={row.payer} /></td>
               <td className="px-4 py-3"><UserCell user={row.professional} /></td>
               <td className="px-4 py-3">
                 <span className="block break-words font-semibold leading-5 text-[#334155]" title={row.consultationLabel}>
@@ -892,7 +892,7 @@ function EscrowReviewTable({
                   {labelize(row.completionConfirmationStatus ?? row.consultationStatus ?? "waiting")}
                 </span>
               </td>
-              <td className="break-words px-4 py-3 font-semibold text-[#334155]">
+              <td className="truncate px-4 py-3 font-semibold text-[#334155]" title={formatCurrency(row.amount, row.currency)}>
                 {formatCurrency(row.amount, row.currency)}
               </td>
               <td className="px-4 py-3">
@@ -901,7 +901,7 @@ function EscrowReviewTable({
                 </span>
               </td>
               <td className="break-words px-4 py-3">{formatDate(row.updatedAt)}</td>
-              <td className="px-7 py-3">
+              <td className="px-6 py-3">
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"

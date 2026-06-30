@@ -956,17 +956,17 @@ export default function SuperAdminPatientsRoute() {
           </button>
         </div>
 
-        <div className="mt-6 rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC]">
-          <table className="w-full table-fixed text-left">
+        <div className="mt-6 overflow-x-auto rounded-[16px] border border-[#DDE5EF] bg-[#F8FAFC]">
+          <table className="w-full min-w-[1040px] table-fixed text-left">
             <thead>
               <tr className="h-[52px] border-b border-[#DDE5EF] text-[15px] font-medium leading-5 text-[#334155]">
                 <th className="w-[20%] px-6 py-3 font-medium">Name</th>
-                <th className="w-[22%] px-4 py-3 font-medium">Email</th>
+                <th className="w-[21%] px-4 py-3 font-medium">Email</th>
                 <th className="w-[16%] px-4 py-3 font-medium">Phone</th>
                 <th className="w-[10%] px-4 py-3 font-medium">Status</th>
                 <th className="w-[14%] px-4 py-3 font-medium">Joined date</th>
-                <th className="w-[9%] px-4 py-3 font-medium">Location</th>
-                <th className="w-[9%] py-3 pl-4 pr-8 text-right font-medium">Actions</th>
+                <th className="w-[10%] px-4 py-3 font-medium">Location</th>
+                <th className="w-[9%] py-3 pl-4 pr-6 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1000,7 +1000,7 @@ export default function SuperAdminPatientsRoute() {
                     </td>
                     <td className="truncate px-4 py-2 text-[#94A3B8]">{formatDate(patient.joinedAt)}</td>
                     <td className="truncate px-4 py-2 text-[#94A3B8]">{patient.location}</td>
-                    <td className="relative py-2 pl-4 pr-8 text-right">
+                    <td className="relative py-2 pl-4 pr-6 text-right">
                       <button
                         type="button"
                         onClick={() => setOpenMenuId(openMenuId === patient.id ? null : patient.id)}
