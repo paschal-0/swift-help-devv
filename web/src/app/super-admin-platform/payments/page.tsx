@@ -12,9 +12,11 @@ import {
   removeAdminPaymentTransaction,
   resolveAdminConsultationEscrow,
   testAdminPaymentGateway,
+  updateAdminPaymentSettlementPolicy,
   type AdminConsultationEscrowRow,
   type AdminPaymentGatewayRow,
   type AdminPaymentReferralPayoutRow,
+  type AdminPaymentSettlementPolicy,
   type AdminPaymentStatus,
   type AdminPaymentSubscriptionRow,
   type AdminPaymentTransaction,
@@ -63,7 +65,20 @@ const defaultOverview: AdminPaymentsOverview = {
   subscriptions: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
   referralPayouts: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
   escrows: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } },
-  configuration: { plans: [], gateways: [] },
+  configuration: {
+    plans: [],
+    gateways: [],
+    settlementPolicy: {
+      feeType: "percentage",
+      feePercentage: 10,
+      fixedFeeCents: 0,
+      applyFeeTo: "billable_amount",
+      minimumBillableMinutes: 15,
+      unusedTimeRefundEnabled: true,
+      disputeWindowHours: 48,
+      autoSettlementDelayHours: 24,
+    },
+  },
 };
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
@@ -297,6 +312,7 @@ export default function SuperAdminPaymentsRoute() {
   const [viewing, setViewing] = useState<AdminPaymentTransaction | null>(null);
   const [configuringGateway, setConfiguringGateway] = useState<AdminPaymentGatewayRow | null>(null);
   const [savingGateway, setSavingGateway] = useState(false);
+  const [savingSettlementPolicy, setSavingSettlementPolicy] = useState(false);
   const [resolvingEscrow, setResolvingEscrow] = useState<{
     row: AdminConsultationEscrowRow;
     action: EscrowAction;
@@ -513,6 +529,25 @@ export default function SuperAdminPaymentsRoute() {
     }
   };
 
+  const handleSaveSettlementPolicy = async (payload: AdminPaymentSettlementPolicy) => {
+    setSavingSettlementPolicy(true);
+    try {
+      const updated = await updateAdminPaymentSettlementPolicy(payload);
+      setOverview((current) => ({
+        ...current,
+        configuration: {
+          ...current.configuration,
+          settlementPolicy: updated,
+        },
+      }));
+      toast.success("Settlement policy saved.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingSettlementPolicy(false);
+    }
+  };
+
   const handleResolveEscrow = async (
     row: AdminConsultationEscrowRow,
     action: EscrowAction,
@@ -657,8 +692,10 @@ export default function SuperAdminPaymentsRoute() {
           {activeTab === "configuration" ? (
             <ConfigurationPanel
               overview={overview}
+              savingSettlementPolicy={savingSettlementPolicy}
               onConfigure={setConfiguringGateway}
               onDisconnect={handleDisconnectGateway}
+              onSaveSettlementPolicy={handleSaveSettlementPolicy}
               onTest={handleTestGateway}
             />
           ) : null}
@@ -936,13 +973,17 @@ function EscrowReviewTable({
 
 function ConfigurationPanel({
   overview,
+  savingSettlementPolicy,
   onConfigure,
   onDisconnect,
+  onSaveSettlementPolicy,
   onTest,
 }: {
   overview: AdminPaymentsOverview;
+  savingSettlementPolicy: boolean;
   onConfigure: (gateway: AdminPaymentGatewayRow) => void;
   onDisconnect: (gateway: AdminPaymentGatewayRow) => void;
+  onSaveSettlementPolicy: (policy: AdminPaymentSettlementPolicy) => void;
   onTest: (gateway: AdminPaymentGatewayRow) => void;
 }) {
   const plans = overview.configuration.plans;
@@ -957,6 +998,12 @@ function ConfigurationPanel({
 
   return (
     <div className="px-4 pb-12 pt-2 sm:px-6">
+      <SettlementPolicyPanel
+        policy={overview.configuration.settlementPolicy}
+        saving={savingSettlementPolicy}
+        onSave={onSaveSettlementPolicy}
+      />
+
       <h2 className="text-[18px] font-semibold text-[#334155]">Subscription plan pricing</h2>
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {planFields.map(({ label, plan }) => (
@@ -1023,6 +1070,155 @@ function ConfigurationPanel({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function SettlementPolicyPanel({
+  onSave,
+  policy,
+  saving,
+}: {
+  onSave: (policy: AdminPaymentSettlementPolicy) => void;
+  policy: AdminPaymentSettlementPolicy;
+  saving: boolean;
+}) {
+  const [draft, setDraft] = useState<AdminPaymentSettlementPolicy>(policy);
+  const fixedFeeMajor = (draft.fixedFeeCents / 100).toString();
+
+  useEffect(() => {
+    setDraft(policy);
+  }, [policy]);
+
+  const update = <K extends keyof AdminPaymentSettlementPolicy>(
+    key: K,
+    value: AdminPaymentSettlementPolicy[K],
+  ) => setDraft((current) => ({ ...current, [key]: value }));
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave({
+      ...draft,
+      feePercentage: Math.max(Number(draft.feePercentage) || 0, 0),
+      fixedFeeCents: Math.max(Math.round(Number(draft.fixedFeeCents) || 0), 0),
+      minimumBillableMinutes: Math.max(Number(draft.minimumBillableMinutes) || 0, 0),
+      disputeWindowHours: Math.max(Number(draft.disputeWindowHours) || 0, 0),
+      autoSettlementDelayHours: Math.max(Number(draft.autoSettlementDelayHours) || 0, 0),
+    });
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mb-8 rounded-[8px] border border-[#D6E0EA] bg-white px-4 py-5"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-[18px] font-semibold text-[#334155]">Escrow settlement policy</h2>
+          <p className="mt-1 max-w-[720px] text-[13px] leading-5 text-[#64748B]">
+            Patient disputes stay in admin review. These settings only control confirmed-care settlement, platform fee, and unused-time refund math.
+          </p>
+        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="h-10 cursor-pointer rounded-[8px] bg-gradient-to-b from-[#1E88E5] to-[#064D83] px-5 text-[13px] font-semibold text-white shadow-[0_8px_16px_rgba(21,101,192,0.18)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? "Saving..." : "Save policy"}
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Platform fee type</span>
+          <select
+            value={draft.feeType}
+            onChange={(event) => update("feeType", event.target.value as AdminPaymentSettlementPolicy["feeType"])}
+            className="mt-2 h-11 w-full cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          >
+            <option value="none">No platform fee</option>
+            <option value="percentage">Percentage</option>
+            <option value="fixed">Fixed fee</option>
+            <option value="percentage_plus_fixed">Percentage + fixed</option>
+          </select>
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Fee percentage</span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={draft.feePercentage}
+            onChange={(event) => update("feePercentage", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Fixed fee</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={fixedFeeMajor}
+            onChange={(event) => update("fixedFeeCents", Math.round((Number(event.target.value) || 0) * 100))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Fee calculated from</span>
+          <select
+            value={draft.applyFeeTo}
+            onChange={(event) => update("applyFeeTo", event.target.value as AdminPaymentSettlementPolicy["applyFeeTo"])}
+            className="mt-2 h-11 w-full cursor-pointer rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          >
+            <option value="billable_amount">Billable amount</option>
+            <option value="full_payment">Full payment</option>
+          </select>
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Minimum billable minutes</span>
+          <input
+            type="number"
+            min="0"
+            value={draft.minimumBillableMinutes}
+            onChange={(event) => update("minimumBillableMinutes", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Dispute window hours</span>
+          <input
+            type="number"
+            min="0"
+            value={draft.disputeWindowHours}
+            onChange={(event) => update("disputeWindowHours", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="block min-w-0">
+          <span className="text-[13px] font-semibold text-[#334155]">Auto review delay hours</span>
+          <input
+            type="number"
+            min="0"
+            value={draft.autoSettlementDelayHours}
+            onChange={(event) => update("autoSettlementDelayHours", Number(event.target.value))}
+            className="mt-2 h-11 w-full rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 text-[13px] font-medium text-[#334155] outline-none focus:border-[#1565C0]"
+          />
+        </label>
+        <label className="flex min-h-[68px] cursor-pointer items-center justify-between gap-4 rounded-[8px] border border-[#D6E0EA] bg-[#F8FAFC] px-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-[13px] font-semibold text-[#334155]">Unused-time refund</span>
+            <span className="mt-1 block text-[11px] leading-4 text-[#64748B]">Refund only after care is confirmed, never from a dispute click.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={draft.unusedTimeRefundEnabled}
+            onChange={(event) => update("unusedTimeRefundEnabled", event.target.checked)}
+            className="h-5 w-5 shrink-0 cursor-pointer accent-[#1565C0]"
+          />
+        </label>
+      </div>
+    </form>
   );
 }
 
@@ -1195,6 +1391,17 @@ function EscrowResolutionModal({
           <InfoTile label="Professional" value={row.professional.name} />
           <InfoTile label="Consultation" value={row.consultationLabel} />
           <InfoTile label="Escrow amount" value={formatCurrency(row.amount, row.currency)} />
+          <InfoTile label="Platform fee" value={formatCurrency(row.platformFee ?? 0, row.currency)} />
+          <InfoTile label="Professional payout" value={formatCurrency(row.professionalAmount ?? 0, row.currency)} />
+          <InfoTile label="Patient refund" value={formatCurrency(row.patientRefund ?? 0, row.currency)} />
+          <InfoTile
+            label="Billable time"
+            value={
+              row.billableDurationMinutes
+                ? `${row.billableDurationMinutes} of ${row.paidDurationMinutes ?? "paid"} minutes`
+                : "Not calculated yet"
+            }
+          />
         </div>
 
         {isPartial ? (

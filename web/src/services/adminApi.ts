@@ -978,6 +978,11 @@ export type AdminConsultationEscrowRow = {
   amount: number;
   platformFee: number;
   professionalAmount: number;
+  patientRefund?: number;
+  paidDurationMinutes?: number | null;
+  billableDurationMinutes?: number | null;
+  billableGross?: number | null;
+  minimumBillableMinutes?: number | null;
   currency: string;
   disputedAt: string | null;
   reviewStartedAt: string | null;
@@ -987,6 +992,17 @@ export type AdminConsultationEscrowRow = {
   resolutionNote: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AdminPaymentSettlementPolicy = {
+  feeType: "none" | "percentage" | "fixed" | "percentage_plus_fixed";
+  feePercentage: number;
+  fixedFeeCents: number;
+  applyFeeTo: "billable_amount" | "full_payment";
+  minimumBillableMinutes: number;
+  unusedTimeRefundEnabled: boolean;
+  disputeWindowHours: number;
+  autoSettlementDelayHours: number;
 };
 
 export type AdminPaymentPlanRow = {
@@ -1069,6 +1085,7 @@ export type AdminPaymentsOverview = {
   configuration: {
     plans: AdminPaymentPlanRow[];
     gateways: AdminPaymentGatewayRow[];
+    settlementPolicy: AdminPaymentSettlementPolicy;
   };
 };
 
@@ -1706,6 +1723,15 @@ export async function configureAdminPaymentGateway(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export async function updateAdminPaymentSettlementPolicy(
+  payload: Partial<AdminPaymentSettlementPolicy>,
+) {
+  return apiRequest<AdminPaymentSettlementPolicy>("/admin/payments/settlement-policy", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function testAdminPaymentGateway(gatewayId: string) {
