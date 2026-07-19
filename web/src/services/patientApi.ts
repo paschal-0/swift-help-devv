@@ -151,6 +151,10 @@ export type PaystackConsultationPayment = {
   reference?: string;
   transactionId?: string;
   consultationId?: string;
+  planId?: string;
+  planName?: string;
+  subscriptionStatus?: string;
+  autoRenew?: boolean;
   paymentStatus?: string;
   escrowStatus?: string;
 };
@@ -1166,8 +1170,27 @@ export function initializePaystackConsultationPayment(consultationId: string) {
   });
 }
 
+export function initializePaystackSubscriptionPayment(payload: {
+  planId: string;
+  billingEmail: string;
+  billingName: string;
+  autoRenew?: boolean;
+}) {
+  return apiRequest<PaystackConsultationPayment>("/payments/paystack/subscriptions/initialize", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function verifyPaystackConsultationPayment(reference: string) {
   return apiRequest<PaystackConsultationPayment>("/payments/paystack/verify", {
+    method: "POST",
+    body: JSON.stringify({ reference }),
+  });
+}
+
+export function verifyPaystackSubscriptionPayment(reference: string) {
+  return apiRequest<PaystackConsultationPayment>("/payments/paystack/subscriptions/verify", {
     method: "POST",
     body: JSON.stringify({ reference }),
   });

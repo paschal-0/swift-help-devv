@@ -9,11 +9,13 @@ import {
   getPatientBilling,
   getPatientProfile,
   getPatientSubscription,
+  initializePaystackSubscriptionPayment,
   updatePatientAccount,
   updatePatientNotificationPreferences,
   updatePatientPassword,
   updatePatientSecurityPreferences,
   updatePatientSubscriptionAutoRenew,
+  verifyPaystackSubscriptionPayment,
   type PatientBilling,
 } from "@/services/patientApi";
 import { exportTablePdf } from "@/utils/pdfExport";
@@ -44,9 +46,6 @@ type PasswordForm = {
 type SubscriptionPaymentForm = {
   fullName: string;
   email: string;
-  cardNumber: string;
-  expiry: string;
-  cvv: string;
 };
 
 type SelectOption = {
@@ -124,9 +123,6 @@ const emptyGeneralForm: GeneralForm = {
 const emptySubscriptionPaymentForm: SubscriptionPaymentForm = {
   fullName: "",
   email: "",
-  cardNumber: "",
-  expiry: "",
-  cvv: "",
 };
 
 const billingRowsPerPage = 5;
@@ -526,7 +522,12 @@ function ToggleRow({
 }
 
 export function PatientSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (typeof window === "undefined") {
+      return "general";
+    }
+    return new URLSearchParams(window.location.search).get("tab") === "billing" ? "billing" : "general";
+  });
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -549,6 +550,7 @@ export function PatientSettingsPage() {
   const [billingPage, setBillingPage] = useState(1);
   const [showSubscriptionPayment, setShowSubscriptionPayment] = useState(false);
   const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<AvailableBillingPlan | BillingPlan | null>(null);
+  const [submittingSubscription, setSubmittingSubscription] = useState(false);
   const [subscriptionPaymentForm, setSubscriptionPaymentForm] = useState<SubscriptionPaymentForm>(
     emptySubscriptionPaymentForm,
   );
@@ -646,6 +648,41 @@ export function PatientSettingsPage() {
       toast.error(getApiErrorMessage(error));
       setLoading(false);
     });
+  }, [loadSettings]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    const isSubscriptionReturn = params.get("payment") === "paystack-subscription";
+
+    if (!isSubscriptionReturn || !reference) {
+      return;
+    }
+
+    let cancelled = false;
+    verifyPaystackSubscriptionPayment(reference)
+      .then((payment) => {
+        if (cancelled) {
+          return;
+        }
+        setSubscriptionStatus(payment.subscriptionStatus ?? "active");
+        if (typeof payment.autoRenew === "boolean") {
+          setAutoRenew(payment.autoRenew);
+        }
+        toast.success("Subscription payment verified.");
+        void loadSettings();
+        const cleanUrl = `${window.location.pathname}?tab=billing`;
+        window.history.replaceState(null, "", cleanUrl);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(getApiErrorMessage(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadSettings]);
 
   useEffect(() => {
@@ -789,19 +826,7 @@ export function PatientSettingsPage() {
   };
 
   const updateSubscriptionPaymentField = (field: keyof SubscriptionPaymentForm, value: string) => {
-    const nextValue =
-      field === "cardNumber"
-        ? value.replace(/\D/g, "").slice(0, 19)
-        : field === "expiry"
-          ? value
-              .replace(/[^\d/]/g, "")
-              .replace(/^(\d{2})(\d)/, "$1/$2")
-              .slice(0, 5)
-          : field === "cvv"
-            ? value.replace(/\D/g, "").slice(0, 4)
-            : value;
-
-    setSubscriptionPaymentForm((current) => ({ ...current, [field]: nextValue }));
+    setSubscriptionPaymentForm((current) => ({ ...current, [field]: value }));
   };
 
   const startSubscriptionPayment = (plan: AvailableBillingPlan | BillingPlan | null) => {
@@ -819,9 +844,7 @@ export function PatientSettingsPage() {
     }));
   };
 
-  const submitSubscriptionPayment = () => {
-    const cardDigits = subscriptionPaymentForm.cardNumber.replace(/\D/g, "");
-
+  const submitSubscriptionPayment = async () => {
     if (!selectedSubscriptionPlan) {
       toast.error("Choose a subscription plan first.");
       return;
@@ -830,12 +853,25 @@ export function PatientSettingsPage() {
       toast.error("Enter the billing name and email.");
       return;
     }
-    if (cardDigits.length < 12 || !subscriptionPaymentForm.expiry.trim() || subscriptionPaymentForm.cvv.length < 3) {
-      toast.error("Enter valid payment card details.");
-      return;
-    }
 
-    toast.info("Subscription checkout is ready for secure payment processing.");
+    setSubmittingSubscription(true);
+    try {
+      const payment = await initializePaystackSubscriptionPayment({
+        planId: selectedSubscriptionPlan.id,
+        billingName: subscriptionPaymentForm.fullName,
+        billingEmail: subscriptionPaymentForm.email,
+        autoRenew: true,
+      });
+
+      if (!payment.authorizationUrl) {
+        throw new Error("Paystack checkout URL was not returned.");
+      }
+
+      window.location.assign(payment.authorizationUrl);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setSubmittingSubscription(false);
+    }
   };
 
   const exportBillingHistory = () => {
@@ -1260,48 +1296,19 @@ export function PatientSettingsPage() {
                       className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
                     />
                   </label>
-                  <label className="flex min-w-0 flex-col gap-2 lg:col-span-2">
-                    <span className="text-[14px] font-semibold text-[#334155]">Card number</span>
-                    <input
-                      inputMode="numeric"
-                      value={subscriptionPaymentForm.cardNumber}
-                      onChange={(event) => updateSubscriptionPaymentField("cardNumber", event.target.value)}
-                      placeholder="1234 1234 1234 1234"
-                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
-                    />
-                  </label>
-                  <label className="flex min-w-0 flex-col gap-2">
-                    <span className="text-[14px] font-semibold text-[#334155]">Expiry</span>
-                    <input
-                      inputMode="numeric"
-                      value={subscriptionPaymentForm.expiry}
-                      onChange={(event) => updateSubscriptionPaymentField("expiry", event.target.value)}
-                      placeholder="MM/YY"
-                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
-                    />
-                  </label>
-                  <label className="flex min-w-0 flex-col gap-2">
-                    <span className="text-[14px] font-semibold text-[#334155]">CVV</span>
-                    <input
-                      inputMode="numeric"
-                      value={subscriptionPaymentForm.cvv}
-                      onChange={(event) => updateSubscriptionPaymentField("cvv", event.target.value)}
-                      placeholder="123"
-                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
-                    />
-                  </label>
                 </div>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[12px] font-medium leading-5 text-[#64748B]">
-                    Your subscription payment will continue through secure checkout before activation.
+                    Card details are entered on Paystack secure checkout before activation.
                   </p>
                   <button
                     type="button"
                     onClick={submitSubscriptionPayment}
-                    className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-6 text-[14px] font-semibold text-white transition hover:-translate-y-px"
+                    disabled={submittingSubscription}
+                    className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-6 text-[14px] font-semibold text-white transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Continue subscription
+                    {submittingSubscription ? "Opening Paystack..." : "Continue to Paystack"}
                   </button>
                 </div>
               </section>
