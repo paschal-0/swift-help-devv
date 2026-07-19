@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
 import type { PatientProfilePayload } from "@/services/authApi";
@@ -42,6 +41,14 @@ type PasswordForm = {
   confirmPassword: string;
 };
 
+type SubscriptionPaymentForm = {
+  fullName: string;
+  email: string;
+  cardNumber: string;
+  expiry: string;
+  cvv: string;
+};
+
 type SelectOption = {
   label: string;
   value: string;
@@ -63,6 +70,7 @@ type BillingHistoryItem = {
 };
 
 type BillingPlan = NonNullable<PatientBilling["currentPlan"]>;
+type AvailableBillingPlan = PatientBilling["availablePlans"][number];
 
 const tabs: Array<{ id: SettingsTab; label: string }> = [
   { id: "general", label: "General" },
@@ -112,6 +120,16 @@ const emptyGeneralForm: GeneralForm = {
   allergies: "",
   medicalConditions: "",
 };
+
+const emptySubscriptionPaymentForm: SubscriptionPaymentForm = {
+  fullName: "",
+  email: "",
+  cardNumber: "",
+  expiry: "",
+  cvv: "",
+};
+
+const billingRowsPerPage = 5;
 
 const defaultNotifications: Record<NotificationKey, boolean> = {
   email: true,
@@ -508,7 +526,6 @@ function ToggleRow({
 }
 
 export function PatientSettingsPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -529,6 +546,12 @@ export function PatientSettingsPage() {
   const [availablePlans, setAvailablePlans] = useState<PatientBilling["availablePlans"]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
+  const [billingPage, setBillingPage] = useState(1);
+  const [showSubscriptionPayment, setShowSubscriptionPayment] = useState(false);
+  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState<AvailableBillingPlan | BillingPlan | null>(null);
+  const [subscriptionPaymentForm, setSubscriptionPaymentForm] = useState<SubscriptionPaymentForm>(
+    emptySubscriptionPaymentForm,
+  );
   const [sessionLabel, setSessionLabel] = useState("Current browser session");
 
   const loadSettings = useCallback(async () => {
@@ -564,6 +587,11 @@ export function PatientSettingsPage() {
 
         setGeneralForm(nextGeneralForm);
         setLastLoadedGeneral(nextGeneralForm);
+        setSubscriptionPaymentForm((current) => ({
+          ...current,
+          fullName: current.fullName || nextGeneralForm.fullName,
+          email: current.email || nextGeneralForm.email,
+        }));
         setNotifications({
           email: asBoolean(notificationPreferences.email, defaultNotifications.email),
           sms: asBoolean(notificationPreferences.sms, defaultNotifications.sms),
@@ -647,6 +675,13 @@ export function PatientSettingsPage() {
     () => availablePlans.find((plan) => plan.id !== currentPlan?.id) ?? availablePlans[0] ?? null,
     [availablePlans, currentPlan?.id],
   );
+
+  const totalBillingPages = Math.max(1, Math.ceil(billingHistory.length / billingRowsPerPage));
+  const currentBillingPage = Math.min(billingPage, totalBillingPages);
+  const paginatedBillingHistory = useMemo(() => {
+    const start = (currentBillingPage - 1) * billingRowsPerPage;
+    return billingHistory.slice(start, start + billingRowsPerPage);
+  }, [billingHistory, currentBillingPage]);
 
   const updateGeneralField = (field: keyof GeneralForm, value: string) => {
     setGeneralForm((current) => ({ ...current, [field]: value }));
@@ -751,6 +786,56 @@ export function PatientSettingsPage() {
     } finally {
       setSavingAutoRenew(false);
     }
+  };
+
+  const updateSubscriptionPaymentField = (field: keyof SubscriptionPaymentForm, value: string) => {
+    const nextValue =
+      field === "cardNumber"
+        ? value.replace(/\D/g, "").slice(0, 19)
+        : field === "expiry"
+          ? value
+              .replace(/[^\d/]/g, "")
+              .replace(/^(\d{2})(\d)/, "$1/$2")
+              .slice(0, 5)
+          : field === "cvv"
+            ? value.replace(/\D/g, "").slice(0, 4)
+            : value;
+
+    setSubscriptionPaymentForm((current) => ({ ...current, [field]: nextValue }));
+  };
+
+  const startSubscriptionPayment = (plan: AvailableBillingPlan | BillingPlan | null) => {
+    if (!plan) {
+      toast.info("No subscription plan is available yet.");
+      return;
+    }
+
+    setSelectedSubscriptionPlan(plan);
+    setShowSubscriptionPayment(true);
+    setSubscriptionPaymentForm((current) => ({
+      ...current,
+      fullName: current.fullName || generalForm.fullName,
+      email: current.email || generalForm.email,
+    }));
+  };
+
+  const submitSubscriptionPayment = () => {
+    const cardDigits = subscriptionPaymentForm.cardNumber.replace(/\D/g, "");
+
+    if (!selectedSubscriptionPlan) {
+      toast.error("Choose a subscription plan first.");
+      return;
+    }
+    if (!subscriptionPaymentForm.fullName.trim() || !subscriptionPaymentForm.email.trim()) {
+      toast.error("Enter the billing name and email.");
+      return;
+    }
+    if (cardDigits.length < 12 || !subscriptionPaymentForm.expiry.trim() || subscriptionPaymentForm.cvv.length < 3) {
+      toast.error("Enter valid payment card details.");
+      return;
+    }
+
+    toast.info("Subscription checkout is ready for secure payment processing.");
   };
 
   const exportBillingHistory = () => {
@@ -1128,14 +1213,99 @@ export function PatientSettingsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => router.push("/pricing")}
+                    onClick={() => startSubscriptionPayment(highlightedPlan)}
                     className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
                   >
-                    Review pricing
+                    Add payment detail
                   </button>
                 </div>
               </div>
             </section>
+
+            {showSubscriptionPayment ? (
+              <section className="rounded-[16px] border border-[#1565C0] bg-white p-5 shadow-[0_14px_30px_rgba(21,101,192,0.08)] sm:p-6">
+                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-[18px] font-semibold text-[#334155] sm:text-[20px]">
+                      Subscription payment details
+                    </h2>
+                    <p className="mt-1 text-[13px] font-medium text-[#64748B] sm:text-[14px]">
+                      {selectedSubscriptionPlan?.name ?? "Selected plan"} - {selectedSubscriptionPlan?.priceLabel ?? "Plan price"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSubscriptionPayment(false)}
+                    className="inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-[8px] border border-[#DDE6F0] px-4 text-[13px] font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <label className="flex min-w-0 flex-col gap-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">Billing name</span>
+                    <input
+                      value={subscriptionPaymentForm.fullName}
+                      onChange={(event) => updateSubscriptionPaymentField("fullName", event.target.value)}
+                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">Billing email</span>
+                    <input
+                      type="email"
+                      value={subscriptionPaymentForm.email}
+                      onChange={(event) => updateSubscriptionPaymentField("email", event.target.value)}
+                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-2 lg:col-span-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">Card number</span>
+                    <input
+                      inputMode="numeric"
+                      value={subscriptionPaymentForm.cardNumber}
+                      onChange={(event) => updateSubscriptionPaymentField("cardNumber", event.target.value)}
+                      placeholder="1234 1234 1234 1234"
+                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">Expiry</span>
+                    <input
+                      inputMode="numeric"
+                      value={subscriptionPaymentForm.expiry}
+                      onChange={(event) => updateSubscriptionPaymentField("expiry", event.target.value)}
+                      placeholder="MM/YY"
+                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-2">
+                    <span className="text-[14px] font-semibold text-[#334155]">CVV</span>
+                    <input
+                      inputMode="numeric"
+                      value={subscriptionPaymentForm.cvv}
+                      onChange={(event) => updateSubscriptionPaymentField("cvv", event.target.value)}
+                      placeholder="123"
+                      className="min-h-[44px] rounded-[10px] border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-[14px] font-medium text-[#334155] outline-none transition focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/15"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-[12px] font-medium leading-5 text-[#64748B]">
+                    Your subscription payment will continue through secure checkout before activation.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={submitSubscriptionPayment}
+                    className="inline-flex min-h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-6 text-[14px] font-semibold text-white transition hover:-translate-y-px"
+                  >
+                    Continue subscription
+                  </button>
+                </div>
+              </section>
+            ) : null}
 
             <section className="rounded-[16px] border border-[#DDE6F0] bg-[#F8FAFC] p-5 sm:p-7">
               <h2 className="mb-6 text-[18px] font-semibold text-[#334155] sm:text-[20px]">Payment Method</h2>
@@ -1181,31 +1351,41 @@ export function PatientSettingsPage() {
                 </button>
               </div>
               <div className="overflow-x-auto rounded-[14px] border border-[#DDE6F0]">
-                <table className="min-w-[760px] w-full border-collapse text-left">
+                <table className="w-full min-w-[680px] table-fixed border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-[#DDE6F0] bg-white text-[15px] font-semibold text-[#64748B]">
-                      <th className="px-5 py-4">Transaction ID</th>
-                      <th className="px-5 py-4">Date</th>
-                      <th className="px-5 py-4">Amount</th>
-                      <th className="px-5 py-4">Plan</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4 text-right">Action</th>
+                    <tr className="border-b border-[#DDE6F0] bg-white text-[12px] font-semibold uppercase text-[#64748B]">
+                      <th className="w-[23%] px-3 py-3">Transaction ID</th>
+                      <th className="w-[20%] px-3 py-3">Date</th>
+                      <th className="w-[12%] px-3 py-3">Amount</th>
+                      <th className="w-[16%] px-3 py-3">Plan</th>
+                      <th className="w-[14%] px-3 py-3">Status</th>
+                      <th className="w-[15%] px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {billingHistory.length > 0 ? (
-                      billingHistory.map((item) => (
+                      paginatedBillingHistory.map((item) => (
                         <tr key={item.id} className="border-b border-[#DDE6F0] last:border-b-0">
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.id}</td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.date}</td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.amount}</td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.plan}</td>
-                          <td className="px-5 py-4 font-semibold text-[#0E9F3E]">{item.status}</td>
-                          <td className="px-5 py-4 text-right">
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={item.id}>{item.id}</span>
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={formatBillingDate(item.date)}>
+                              {formatBillingDate(item.date)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">{item.amount}</td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={item.plan}>{item.plan}</span>
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-semibold text-[#0E9F3E]">
+                            <span className="block truncate" title={item.status}>{item.status}</span>
+                          </td>
+                          <td className="px-3 py-3 text-right">
                             <button
                               type="button"
                               onClick={() => downloadInvoice(item)}
-                              className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                              className="inline-flex min-h-[32px] cursor-pointer items-center justify-center rounded-[8px] border border-[#1565C0] px-3 text-[12px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
                             >
                               Download
                             </button>
@@ -1222,6 +1402,35 @@ export function PatientSettingsPage() {
                   </tbody>
                 </table>
               </div>
+              {billingHistory.length > billingRowsPerPage ? (
+                <div className="mt-4 flex flex-col gap-3 text-[13px] font-semibold text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    Showing {(currentBillingPage - 1) * billingRowsPerPage + 1}-
+                    {Math.min(currentBillingPage * billingRowsPerPage, billingHistory.length)} of {billingHistory.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBillingPage((page) => Math.max(1, page - 1))}
+                      disabled={currentBillingPage === 1}
+                      className="inline-flex min-h-[34px] cursor-pointer items-center rounded-[8px] border border-[#DDE6F0] px-4 text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="rounded-[8px] bg-white px-3 py-2 text-[#334155]">
+                      {currentBillingPage} / {totalBillingPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBillingPage((page) => Math.min(totalBillingPages, page + 1))}
+                      disabled={currentBillingPage === totalBillingPages}
+                      className="inline-flex min-h-[34px] cursor-pointer items-center rounded-[8px] border border-[#DDE6F0] px-4 text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </section>
           </div>
         ) : null}

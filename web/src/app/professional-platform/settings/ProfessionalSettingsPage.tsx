@@ -76,6 +76,8 @@ const defaultAvailabilityForm: AvailabilityForm = {
   endTime: "17:00",
 };
 
+const billingRowsPerPage = 5;
+
 function formatSettingLabel(key: string) {
   return key
     .replace(/([A-Z])/g, " $1")
@@ -366,6 +368,7 @@ export function ProfessionalSettingsPage() {
   const [lastLoadedGeneral, setLastLoadedGeneral] = useState<GeneralForm>(emptyGeneralForm);
   const [availabilityForm, setAvailabilityForm] = useState<AvailabilityForm>(defaultAvailabilityForm);
   const [lastLoadedAvailability, setLastLoadedAvailability] = useState<AvailabilityForm>(defaultAvailabilityForm);
+  const [billingPage, setBillingPage] = useState(1);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: "",
     newPassword: "",
@@ -418,6 +421,16 @@ export function ProfessionalSettingsPage() {
 
   const notificationEntries = useMemo(() => Object.entries(settings?.notificationPreferences ?? {}), [settings]);
   const securityEntries = useMemo(() => Object.entries(settings?.securityPreferences ?? {}), [settings]);
+  const professionalBillingHistory = useMemo(
+    () => settings?.billing?.billingHistory ?? [],
+    [settings?.billing?.billingHistory],
+  );
+  const totalBillingPages = Math.max(1, Math.ceil(professionalBillingHistory.length / billingRowsPerPage));
+  const currentBillingPage = Math.min(billingPage, totalBillingPages);
+  const paginatedBillingHistory = useMemo(() => {
+    const start = (currentBillingPage - 1) * billingRowsPerPage;
+    return professionalBillingHistory.slice(start, start + billingRowsPerPage);
+  }, [currentBillingPage, professionalBillingHistory]);
 
   const updateGeneralField = (field: keyof GeneralForm, value: string) => {
     setGeneralForm((current) => ({ ...current, [field]: value }));
@@ -863,33 +876,43 @@ export function ProfessionalSettingsPage() {
               }
             >
               <div className="overflow-x-auto rounded-[14px] border border-[#DDE6F0]">
-                <table className="w-full min-w-[860px] border-collapse text-left">
+                <table className="w-full min-w-[700px] table-fixed border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-[#DDE6F0] bg-white text-[15px] font-semibold text-[#64748B]">
-                      <th className="px-5 py-4">Transaction ID</th>
-                      <th className="px-5 py-4">Date</th>
-                      <th className="px-5 py-4">Amount</th>
-                      <th className="px-5 py-4">Source</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4 text-right">Action</th>
+                    <tr className="border-b border-[#DDE6F0] bg-white text-[12px] font-semibold uppercase text-[#64748B]">
+                      <th className="w-[23%] px-3 py-3">Transaction ID</th>
+                      <th className="w-[17%] px-3 py-3">Date</th>
+                      <th className="w-[13%] px-3 py-3">Amount</th>
+                      <th className="w-[18%] px-3 py-3">Source</th>
+                      <th className="w-[14%] px-3 py-3">Status</th>
+                      <th className="w-[15%] px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {settings?.billing?.billingHistory.length ? (
-                      settings.billing.billingHistory.map((item) => (
+                    {professionalBillingHistory.length ? (
+                      paginatedBillingHistory.map((item) => (
                         <tr key={`${item.type}-${item.id}`} className="border-b border-[#DDE6F0] last:border-b-0">
-                          <td className="max-w-[190px] truncate px-5 py-4 text-[#94A3B8]" title={item.transactionId}>
-                            {item.transactionId}
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={item.transactionId}>{item.transactionId}</span>
                           </td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{formatDate(item.date)}</td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{formatApiMoney(item.amountCents, item.currency)}</td>
-                          <td className="max-w-[260px] truncate px-5 py-4 text-[#94A3B8]" title={item.plan}>{item.plan}</td>
-                          <td className="px-5 py-4 font-semibold text-[#0E9F3E]">{formatSettingLabel(item.status)}</td>
-                          <td className="px-5 py-4 text-right">
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={formatDate(item.date)}>{formatDate(item.date)}</span>
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            {formatApiMoney(item.amountCents, item.currency)}
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#94A3B8]">
+                            <span className="block truncate" title={item.plan}>{item.plan}</span>
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-semibold text-[#0E9F3E]">
+                            <span className="block truncate" title={formatSettingLabel(item.status)}>
+                              {formatSettingLabel(item.status)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-right">
                             <button
                               type="button"
                               onClick={() => downloadReceipt(item)}
-                              className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                              className="inline-flex min-h-[32px] cursor-pointer items-center justify-center rounded-[8px] border border-[#1565C0] px-3 text-[12px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
                             >
                               Download
                             </button>
@@ -906,6 +929,35 @@ export function ProfessionalSettingsPage() {
                   </tbody>
                 </table>
               </div>
+              {professionalBillingHistory.length > billingRowsPerPage ? (
+                <div className="mt-4 flex flex-col gap-3 text-[13px] font-semibold text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    Showing {(currentBillingPage - 1) * billingRowsPerPage + 1}-
+                    {Math.min(currentBillingPage * billingRowsPerPage, professionalBillingHistory.length)} of {professionalBillingHistory.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBillingPage((page) => Math.max(1, page - 1))}
+                      disabled={currentBillingPage === 1}
+                      className="inline-flex min-h-[34px] cursor-pointer items-center rounded-[8px] border border-[#DDE6F0] px-4 text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="rounded-[8px] bg-white px-3 py-2 text-[#334155]">
+                      {currentBillingPage} / {totalBillingPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBillingPage((page) => Math.min(totalBillingPages, page + 1))}
+                      disabled={currentBillingPage === totalBillingPages}
+                      className="inline-flex min-h-[34px] cursor-pointer items-center rounded-[8px] border border-[#DDE6F0] px-4 text-[#1565C0] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </SettingsCard>
           </div>
         ) : null}
