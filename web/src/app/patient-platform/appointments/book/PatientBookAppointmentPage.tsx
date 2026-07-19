@@ -402,28 +402,29 @@ export function PatientBookAppointmentPage() {
     [providerRolesConfig.categories],
   );
 
+  const activeCareType = useMemo(
+    () =>
+      configuredCareTypes.some((care) => care.id === selectedCareType)
+        ? selectedCareType
+        : configuredCareTypes[0]?.id ?? "general",
+    [configuredCareTypes, selectedCareType],
+  );
+
   const configuredProfessionalTypes = useMemo<ProfessionalType[]>(
     () =>
       providerRolesConfig.roles
-        .filter((role) => role.categoryId === selectedCareType && role.isActive !== false)
+        .filter((role) => role.categoryId === activeCareType && role.isActive !== false)
         .map((role) => ({ id: role.id, label: role.bookingLabel || role.name })),
-    [providerRolesConfig.roles, selectedCareType],
+    [providerRolesConfig.roles, activeCareType],
   );
 
-  useEffect(() => {
-    if (!configuredCareTypes.some((care) => care.id === selectedCareType)) {
-      setSelectedCareType(configuredCareTypes[0]?.id ?? "general");
-    }
-  }, [configuredCareTypes, selectedCareType]);
-
-  useEffect(() => {
-    if (
-      configuredProfessionalTypes.length &&
-      !configuredProfessionalTypes.some((type) => type.id === selectedProfessionalType)
-    ) {
-      setSelectedProfessionalType(configuredProfessionalTypes[0].id);
-    }
-  }, [configuredProfessionalTypes, selectedProfessionalType]);
+  const activeProfessionalType = useMemo(
+    () =>
+      configuredProfessionalTypes.some((type) => type.id === selectedProfessionalType)
+        ? selectedProfessionalType
+        : configuredProfessionalTypes[0]?.id ?? "",
+    [configuredProfessionalTypes, selectedProfessionalType],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -431,12 +432,12 @@ export function PatientBookAppointmentPage() {
     async function loadProviders() {
       try {
         const professionalTypeLabel =
-          configuredProfessionalTypes.find((item) => item.id === selectedProfessionalType)
+          configuredProfessionalTypes.find((item) => item.id === activeProfessionalType)
             ?.label ?? configuredProfessionalTypes[0]?.label;
         const response = await listPatientProviders({
           specialization: professionalTypeLabel,
-          providerCategory: selectedCareType,
-          providerRoleId: selectedProfessionalType,
+          providerCategory: activeCareType,
+          providerRoleId: activeProfessionalType,
         });
         if (!isMounted) return;
         const cards = response.map(mapProviderToCard);
@@ -458,19 +459,19 @@ export function PatientBookAppointmentPage() {
     return () => {
       isMounted = false;
     };
-  }, [configuredProfessionalTypes, draft?.professionalId, selectedCareType, selectedProfessionalType]);
+  }, [activeCareType, activeProfessionalType, configuredProfessionalTypes, draft?.professionalId]);
 
   const visibleProfessionals = providerCards;
 
   const selectedCare = useMemo(
-    () => configuredCareTypes.find((i) => i.id === selectedCareType) || configuredCareTypes[0] || careTypes[0],
-    [configuredCareTypes, selectedCareType],
+    () => configuredCareTypes.find((i) => i.id === activeCareType) || configuredCareTypes[0] || careTypes[0],
+    [activeCareType, configuredCareTypes],
   );
   const selectedProfessionalTypeLabel = useMemo(
     () =>
-      configuredProfessionalTypes.find((item) => item.id === selectedProfessionalType)
+      configuredProfessionalTypes.find((item) => item.id === activeProfessionalType)
         ?.label ?? configuredProfessionalTypes[0]?.label ?? professionalTypes[0].label,
-    [configuredProfessionalTypes, selectedProfessionalType],
+    [activeProfessionalType, configuredProfessionalTypes],
   );
   const selectedProfessional = useMemo(
     () =>
@@ -568,18 +569,18 @@ export function PatientBookAppointmentPage() {
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedCareType(item.id)}
                   className={`relative flex min-w-[260px] snap-center flex-col items-center justify-center rounded-[20px] border p-4 text-center transition-all xl:h-[192px] xl:min-w-0 xl:items-start xl:justify-start xl:rounded-[12px] xl:px-3 xl:py-4 xl:text-left ${
-                    selectedCareType === item.id
+                    activeCareType === item.id
                       ? "border-[#1565C0] bg-[#F2F8FF] shadow-md xl:bg-[#E3F2FD]"
                       : "border-[#D7E5F4] bg-white xl:border-[#94A3B8] xl:bg-transparent"
                   }`}
                 >
                   <BranchIcon
-                    selected={selectedCareType === item.id}
+                    selected={activeCareType === item.id}
                     className="mb-3 h-10 w-10 xl:h-11 xl:w-11"
                   />
                   <p
                     className={`text-[16px] font-medium xl:text-[14px] xl:font-light xl:leading-[18px] xl:tracking-[-0.06em] ${
-                      selectedCareType === item.id
+                      activeCareType === item.id
                         ? "text-[#1565C0]"
                         : "text-[#334155]"
                     }`}
@@ -610,7 +611,7 @@ export function PatientBookAppointmentPage() {
               <div className="relative h-[47px] w-full">
                 <select
                   id="professional-type"
-                  value={selectedProfessionalType}
+                  value={activeProfessionalType}
                   onChange={(event) =>
                     setSelectedProfessionalType(event.target.value)
                   }

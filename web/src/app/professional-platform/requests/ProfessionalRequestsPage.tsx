@@ -449,10 +449,12 @@ export function ProfessionalRequestsPage({
     );
     if (!targetRequest) return;
 
-    setActiveTab(targetRequest.status);
-    setSelectedRequestId(targetRequest.id);
-    setPanelSearch("");
-    setFilterMode("all");
+    queueMicrotask(() => {
+      setActiveTab(targetRequest.status);
+      setSelectedRequestId(targetRequest.id);
+      setPanelSearch("");
+      setFilterMode("all");
+    });
   }, [requests, targetRequestId]);
 
   const filteredRequests = useMemo(() => {

@@ -58,16 +58,6 @@ const dayOptions: Array<{ key: DayKey; label: string }> = [
   { key: "sunday", label: "Sun" },
 ];
 
-const roleOptions = [
-  "General Practitioner",
-  "Doctor",
-  "Nurse",
-  "Specialist",
-  "Therapist",
-  "Pharmacist",
-  "Care professional",
-];
-
 const emptyGeneralForm: GeneralForm = {
   fullName: "",
   email: "",
@@ -100,47 +90,21 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function SelectField({
+function ReadOnlyField({
   label,
   value,
-  onChange,
-  options,
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
-  options: string[];
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-2">
       <span className="text-[15px] font-medium text-[#111827] sm:text-[16px]">{label}</span>
-      <span className="relative flex min-h-[48px] items-center rounded-[10px] border border-[#94A3B8] bg-[#F8FAFC] transition focus-within:border-[#1565C0] focus-within:ring-2 focus-within:ring-[#1565C0]/15">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-full min-h-[48px] w-full cursor-pointer appearance-none rounded-[10px] border-0 bg-transparent px-4 pr-11 text-[15px] font-medium text-[#334155] outline-none sm:text-[16px]"
-        >
-          <option value="">Select role</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <svg
-          viewBox="0 0 24 24"
-          className="pointer-events-none absolute right-4 h-5 w-5 text-[#94A3B8]"
-          aria-hidden
-        >
-          <path
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.5"
-            d="m6 9 6 6 6-6"
-          />
-        </svg>
+      <span className="flex min-h-[48px] items-center rounded-[10px] border border-[#CBD5E1] bg-[#EEF3F8] px-4 text-[15px] font-medium text-[#64748B] sm:text-[16px]">
+        <span className="min-w-0 flex-1 truncate">{value || "Not provided"}</span>
+        <span className="ml-3 shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-semibold text-[#64748B]">
+          Locked
+        </span>
       </span>
     </label>
   );
@@ -477,7 +441,6 @@ export function ProfessionalSettingsPage() {
         updateProfessionalPlatformProfile({
           professionalName: generalForm.fullName,
           professionalBio: generalForm.professionalBio,
-          specialization: generalForm.role,
           experienceYears: Number.isFinite(experienceYears) ? experienceYears : undefined,
         }),
       ]);
@@ -620,11 +583,9 @@ export function ProfessionalSettingsPage() {
                   placeholder="+234 801 111 1111"
                   type="tel"
                 />
-                <SelectField
+                <ReadOnlyField
                   label="Role"
                   value={generalForm.role}
-                  onChange={(value) => updateGeneralField("role", value)}
-                  options={roleOptions}
                 />
                 <Field
                   label="Years of experience"

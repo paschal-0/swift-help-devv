@@ -124,11 +124,8 @@ function ProfessionalAvatar({
   name: string;
   size?: string;
 }) {
-  const [hasImageError, setHasImageError] = useState(false);
-
-  useEffect(() => {
-    setHasImageError(false);
-  }, [src]);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const hasImageError = Boolean(src && failedSrc === src);
 
   if (!src || hasImageError) {
     return <InitialsAvatar name={name} className={`${size} text-[14px]`} />;
@@ -143,7 +140,7 @@ function ProfessionalAvatar({
         sizes="64px"
         className="object-cover"
         unoptimized
-        onError={() => setHasImageError(true)}
+        onError={() => setFailedSrc(src)}
       />
     </span>
   );

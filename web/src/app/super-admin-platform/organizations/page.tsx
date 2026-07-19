@@ -518,7 +518,6 @@ export default function SuperAdminOrganizationsRoute() {
   const [summary, setSummary] = useState(defaultSummary);
   const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
-  const [menuTarget, setMenuTarget] = useState<AdminOrganizationListItem | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminOrganizationDetail | null>(null);
   const [editingDetail, setEditingDetail] = useState<AdminOrganizationDetail | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminOrganizationListItem | AdminOrganizationDetail | null>(null);
