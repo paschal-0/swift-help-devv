@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  changeProfessionalPassword,
   getProfessionalProfile,
   getProfessionalSettings,
   formatApiMoney,
@@ -16,6 +18,7 @@ import {
   type ProfessionalSettings,
   type WeeklyAvailability,
 } from "@/services/professionalApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type SettingsTab = "general" | "notifications" | "security" | "billing";
 type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -351,6 +354,7 @@ function buildWeeklySchedule(form: AvailabilityForm, current: WeeklyAvailability
 }
 
 export function ProfessionalSettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -509,6 +513,10 @@ export function ProfessionalSettingsPage() {
   };
 
   const savePassword = async () => {
+    if (!passwordForm.currentPassword.trim()) {
+      toast.error("Enter your current password.");
+      return;
+    }
     if (passwordForm.newPassword.length < 6) {
       toast.error("New password must be at least 6 characters.");
       return;
@@ -520,7 +528,10 @@ export function ProfessionalSettingsPage() {
 
     setSavingPassword(true);
     try {
-      await updateProfessionalAccountSettings({ password: passwordForm.newPassword });
+      await changeProfessionalPassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       toast.success("Password updated");
     } catch (error) {
@@ -528,6 +539,47 @@ export function ProfessionalSettingsPage() {
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const exportBillingHistory = () => {
+    const rows = settings?.billing?.billingHistory ?? [];
+
+    if (!rows.length) {
+      toast.info("There is no professional billing activity to export.");
+      return;
+    }
+
+    exportTablePdf({
+      title: "SwiftHELP Professional Billing History",
+      filename: `swifthelp-professional-billing-history-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["Transaction ID", "Date", "Amount", "Source", "Status"],
+      rows: rows.map((item) => [
+        item.transactionId,
+        formatDate(item.date),
+        formatApiMoney(item.amountCents, item.currency),
+        item.plan,
+        formatSettingLabel(item.status),
+      ]),
+      filters: ["Account: Professional"],
+    });
+    toast.success("Billing history PDF exported.");
+  };
+
+  const downloadReceipt = (item: NonNullable<ProfessionalSettings["billing"]>["billingHistory"][number]) => {
+    exportTablePdf({
+      title: "SwiftHELP Professional Billing Receipt",
+      filename: `swifthelp-professional-receipt-${item.transactionId.replace(/[^a-z0-9-]/gi, "-")}.pdf`,
+      columns: ["Field", "Value"],
+      rows: [
+        ["Transaction ID", item.transactionId],
+        ["Date", formatDate(item.date)],
+        ["Amount", formatApiMoney(item.amountCents, item.currency)],
+        ["Source", item.plan],
+        ["Status", formatSettingLabel(item.status)],
+      ],
+      filters: ["Generated from professional settings"],
+    });
+    toast.success("Receipt PDF downloaded.");
   };
 
   return (
@@ -747,7 +799,14 @@ export function ProfessionalSettingsPage() {
 
         {!loading && activeTab === "billing" ? (
           <div className="space-y-5">
-            <SettingsCard title="Billing and plan">
+            <SettingsCard
+              title="Billing and plan"
+              right={
+                <PrimaryButton variant="secondary" onClick={() => router.push("/pricing")}>
+                  Review pricing
+                </PrimaryButton>
+              }
+            >
               <div className="grid gap-4 lg:grid-cols-3">
                 {[
                   {
@@ -795,9 +854,16 @@ export function ProfessionalSettingsPage() {
               </div>
             </SettingsCard>
 
-            <SettingsCard title="Recent billing activity">
+            <SettingsCard
+              title="Recent billing activity"
+              right={
+                <PrimaryButton variant="secondary" onClick={exportBillingHistory}>
+                  Export
+                </PrimaryButton>
+              }
+            >
               <div className="overflow-x-auto rounded-[14px] border border-[#DDE6F0]">
-                <table className="min-w-[760px] w-full border-collapse text-left">
+                <table className="w-full min-w-[860px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[#DDE6F0] bg-white text-[15px] font-semibold text-[#64748B]">
                       <th className="px-5 py-4">Transaction ID</th>
@@ -805,22 +871,34 @@ export function ProfessionalSettingsPage() {
                       <th className="px-5 py-4">Amount</th>
                       <th className="px-5 py-4">Source</th>
                       <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {settings?.billing?.billingHistory.length ? (
                       settings.billing.billingHistory.map((item) => (
                         <tr key={`${item.type}-${item.id}`} className="border-b border-[#DDE6F0] last:border-b-0">
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.transactionId.slice(0, 8)}</td>
+                          <td className="max-w-[190px] truncate px-5 py-4 text-[#94A3B8]" title={item.transactionId}>
+                            {item.transactionId}
+                          </td>
                           <td className="px-5 py-4 text-[#94A3B8]">{formatDate(item.date)}</td>
                           <td className="px-5 py-4 text-[#94A3B8]">{formatApiMoney(item.amountCents, item.currency)}</td>
-                          <td className="px-5 py-4 text-[#94A3B8]">{item.plan}</td>
+                          <td className="max-w-[260px] truncate px-5 py-4 text-[#94A3B8]" title={item.plan}>{item.plan}</td>
                           <td className="px-5 py-4 font-semibold text-[#0E9F3E]">{formatSettingLabel(item.status)}</td>
+                          <td className="px-5 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => downloadReceipt(item)}
+                              className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
+                            >
+                              Download
+                            </button>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-[#94A3B8]">
+                        <td colSpan={6} className="px-5 py-8 text-center text-[#94A3B8]">
                           No professional billing activity yet.
                         </td>
                       </tr>

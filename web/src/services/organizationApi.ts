@@ -315,7 +315,12 @@ export type OrganizationSettings = {
   notificationPreferences: Record<string, unknown>;
   securityPreferences: Record<string, unknown>;
   billing: {
-    currentPlan: Record<string, unknown>;
+    currentPlan: {
+      id: string;
+      name: string;
+      priceLabel: string;
+      status: string;
+    } | null;
     paymentMethods: Array<{
       id: string;
       brand: string;

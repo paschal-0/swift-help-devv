@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getApiErrorMessage, updatePatientProfile } from "@/services/authApi";
 import type { PatientProfilePayload } from "@/services/authApi";
@@ -11,10 +12,12 @@ import {
   getPatientSubscription,
   updatePatientAccount,
   updatePatientNotificationPreferences,
+  updatePatientPassword,
   updatePatientSecurityPreferences,
   updatePatientSubscriptionAutoRenew,
   type PatientBilling,
 } from "@/services/patientApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 type SettingsTab = "general" | "notifications" | "security" | "billing";
 type NotificationKey = "email" | "sms" | "push" | "reminders" | "updates" | "payments" | "promotions";
@@ -206,6 +209,20 @@ function parseBillingHistory(value: unknown): BillingHistoryItem[] {
     }));
 }
 
+function formatBillingDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value || "Not available";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(date);
+}
+
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[#94A3B8]" aria-hidden>
@@ -243,17 +260,6 @@ function CardIcon() {
       <path
         fill="currentColor"
         d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm16 3V6a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3h14ZM5 12v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6H5Zm2 3h5v2H7v-2Z"
-      />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M9 3a1 1 0 0 0-1 1v1H5a1 1 0 1 0 0 2h1v12a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h1a1 1 0 1 0 0-2h-3V4a1 1 0 0 0-1-1H9Zm1 2h4v0h-4Zm-1 2h6v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7Zm1 3v7h2v-7h-2Zm4 0v7h2v-7h-2Z"
       />
     </svg>
   );
@@ -502,10 +508,12 @@ function ToggleRow({
 }
 
 export function PatientSettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingAutoRenew, setSavingAutoRenew] = useState(false);
   const [generalForm, setGeneralForm] = useState<GeneralForm>(emptyGeneralForm);
   const [lastLoadedGeneral, setLastLoadedGeneral] = useState<GeneralForm>(emptyGeneralForm);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
@@ -549,7 +557,7 @@ export function PatientSettingsPage() {
           address: asText(profile.preferredLocation),
           gender: asText(profile.gender),
           bloodGroup: asText(profile.bloodGroup),
-          languagePreference: asText(profile.languagePreference),
+          languagePreference: asText(profile.locale ?? profile.languagePreference),
           allergies: listToText(profile.allergies ?? profile.knownAllergies),
           medicalConditions: listToText(profile.medicalConditions),
         };
@@ -653,13 +661,13 @@ export function PatientSettingsPage() {
     try {
       const allergies = textToList(generalForm.allergies);
       const medicalConditions = textToList(generalForm.medicalConditions);
-      const profilePayload: PatientProfilePayload & { languagePreference?: string } = {
+      const profilePayload: PatientProfilePayload = {
         dateOfBirth: generalForm.dateOfBirth || undefined,
         gender: generalForm.gender || undefined,
         phone: generalForm.phone || undefined,
         preferredLocation: generalForm.address || undefined,
         bloodGroup: generalForm.bloodGroup || undefined,
-        languagePreference: generalForm.languagePreference || undefined,
+        locale: generalForm.languagePreference || undefined,
         allergies,
         medicalConditions,
       };
@@ -683,6 +691,10 @@ export function PatientSettingsPage() {
   };
 
   const handleSavePassword = async () => {
+    if (!passwordForm.currentPassword.trim()) {
+      toast.error("Enter your current password.");
+      return;
+    }
     if (passwordForm.newPassword.length < 6) {
       toast.error("New password must be at least 6 characters.");
       return;
@@ -694,7 +706,10 @@ export function PatientSettingsPage() {
 
     setSavingPassword(true);
     try {
-      await updatePatientAccount({ password: passwordForm.newPassword });
+      await updatePatientPassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       toast.success("Password updated.");
     } catch (error) {
@@ -722,13 +737,59 @@ export function PatientSettingsPage() {
     });
   };
 
-  const toggleAutoRenew = () => {
+  const toggleAutoRenew = async () => {
     const nextValue = !autoRenew;
     setAutoRenew(nextValue);
-    updatePatientSubscriptionAutoRenew(nextValue).catch((error) => {
+    setSavingAutoRenew(true);
+    try {
+      const response = await updatePatientSubscriptionAutoRenew(nextValue);
+      setSubscriptionStatus(asText(response.status) || (nextValue ? "active" : "paused"));
+      toast.success(nextValue ? "Auto-renew enabled." : "Subscription auto-renew cancelled.");
+    } catch (error) {
       setAutoRenew(!nextValue);
       toast.error(getApiErrorMessage(error));
+    } finally {
+      setSavingAutoRenew(false);
+    }
+  };
+
+  const exportBillingHistory = () => {
+    if (!billingHistory.length) {
+      toast.info("There is no billing history to export.");
+      return;
+    }
+
+    exportTablePdf({
+      title: "SwiftHELP Patient Billing History",
+      filename: `swifthelp-patient-billing-history-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["Transaction ID", "Date", "Amount", "Plan", "Status"],
+      rows: billingHistory.map((item) => [
+        item.id,
+        formatBillingDate(item.date),
+        item.amount,
+        item.plan,
+        item.status,
+      ]),
+      filters: ["Account: Patient"],
     });
+    toast.success("Billing history PDF exported.");
+  };
+
+  const downloadInvoice = (item: BillingHistoryItem) => {
+    exportTablePdf({
+      title: "SwiftHELP Patient Billing Receipt",
+      filename: `swifthelp-patient-receipt-${item.id.replace(/[^a-z0-9-]/gi, "-")}.pdf`,
+      columns: ["Field", "Value"],
+      rows: [
+        ["Transaction ID", item.id],
+        ["Date", formatBillingDate(item.date)],
+        ["Amount", item.amount],
+        ["Plan", item.plan],
+        ["Status", item.status],
+      ],
+      filters: ["Generated from patient settings"],
+    });
+    toast.success("Receipt PDF downloaded.");
   };
 
   return (
@@ -1004,12 +1065,9 @@ export function PatientSettingsPage() {
                     Current
                   </span>
                 </div>
-                <PrimaryButton
-                  variant="secondary"
-                  onClick={() => toast.info("No other active sessions were returned for this account.")}
-                >
-                  Sign out all other sessions
-                </PrimaryButton>
+                <p className="rounded-[12px] border border-[#DDE6F0] bg-white px-4 py-3 text-[14px] font-medium text-[#64748B]">
+                  No other active sessions were returned for this account.
+                </p>
               </div>
             </SettingsCard>
           </div>
@@ -1044,9 +1102,10 @@ export function PatientSettingsPage() {
                   <button
                     type="button"
                     onClick={toggleAutoRenew}
+                    disabled={savingAutoRenew}
                     className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
                   >
-                    {autoRenew ? "Cancel Subscription" : "Enable Auto-renew"}
+                    {savingAutoRenew ? "Saving..." : autoRenew ? "Cancel Subscription" : "Enable Auto-renew"}
                   </button>
                 </div>
 
@@ -1069,10 +1128,10 @@ export function PatientSettingsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => toast.info("Plan upgrades are not available yet.")}
+                    onClick={() => router.push("/pricing")}
                     className="mt-8 flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] border border-[#DDE6F0] bg-[#F8FAFC] px-5 text-[16px] font-semibold text-[#1565C0] transition hover:bg-white"
                   >
-                    Upgrade
+                    Review pricing
                   </button>
                 </div>
               </div>
@@ -1095,14 +1154,11 @@ export function PatientSettingsPage() {
                           {method.brand} {method.last4 ? `**** **** ${method.last4}` : "ending not available"}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => toast.info("Payment method removal is not available yet.")}
-                        className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#FFE2E2] text-[#C62828] transition hover:bg-[#FFD1D1]"
-                        aria-label={`Remove ${method.brand} payment method`}
-                      >
-                        <TrashIcon />
-                      </button>
+                      {method.isDefault ? (
+                        <span className="shrink-0 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-[#1565C0]">
+                          Default
+                        </span>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -1118,7 +1174,7 @@ export function PatientSettingsPage() {
                 <h2 className="text-[18px] font-semibold text-[#334155] sm:text-[20px]">Billing history</h2>
                 <button
                   type="button"
-                  onClick={() => toast.info("Billing export is not available yet.")}
+                  onClick={exportBillingHistory}
                   className="inline-flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-[10px] bg-gradient-to-b from-[#1E88E5] to-[#0F5B93] px-8 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(21,101,192,0.18)] transition hover:-translate-y-px sm:w-auto"
                 >
                   Export
@@ -1148,7 +1204,7 @@ export function PatientSettingsPage() {
                           <td className="px-5 py-4 text-right">
                             <button
                               type="button"
-                              onClick={() => toast.info("Invoice download is not available yet.")}
+                              onClick={() => downloadInvoice(item)}
                               className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#1565C0] px-6 text-[15px] font-semibold text-[#1565C0] transition hover:bg-[#E3F2FD]"
                             >
                               Download

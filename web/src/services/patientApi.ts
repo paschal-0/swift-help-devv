@@ -773,6 +773,16 @@ export function updatePatientSecurityPreferences(payload: {
   });
 }
 
+export function updatePatientPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return apiRequest<{ message: string }>("/profile/password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getPatientSubscription() {
   return apiRequest<{ autoRenew: boolean; status: string }>(
     "/profile/subscriptions",

@@ -79,6 +79,7 @@ export type PatientProfilePayload = {
   gender?: string;
   phone?: string;
   preferredLocation?: string;
+  locale?: string;
   consultationType?: string;
   bloodGroup?: string;
   allergies?: string[];

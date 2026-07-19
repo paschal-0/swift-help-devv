@@ -1230,6 +1230,16 @@ export function updateProfessionalAccountSettings(
   });
 }
 
+export function changeProfessionalPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return apiRequest<{ message: string }>("/professional/settings/password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateProfessionalNotificationSettings(
   payload: Record<string, boolean>,
 ) {

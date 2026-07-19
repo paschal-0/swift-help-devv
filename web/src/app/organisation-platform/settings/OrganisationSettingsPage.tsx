@@ -2,17 +2,19 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   changeOrganizationPassword,
-  exportOrganizationReports,
   formatOrganizationMoney,
   getOrganizationSettings,
   updateOrganizationNotificationPreferences,
   updateOrganizationOperatingPreference,
   updateOrganizationPreferences,
   updateOrganizationSecurityPreferences,
+  type OrganizationSettings,
 } from "@/services/organizationApi";
+import { exportTablePdf } from "@/utils/pdfExport";
 
 const settingTabs = ["General", "Notifications", "Security", "Billing and plan"] as const;
 const operatingDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -49,16 +51,6 @@ type SessionItem = {
   status: "Current" | "Missed";
 };
 
-type PlanCard = {
-  id: string;
-  name: string;
-  durationLabel: string;
-  priceLabel: string;
-  features: string[];
-  accent: "light" | "dark";
-  actionLabel: string;
-};
-
 type PaymentMethod = {
   id: string;
   label: string;
@@ -72,6 +64,8 @@ type BillingHistoryItem = {
   amount: string;
   plan: string;
   status: string;
+  invoiceUrl?: string | null;
+  invoicePdf?: string | null;
 };
 
 const defaultNotificationSections: NotificationSection[] = [
@@ -80,25 +74,25 @@ const defaultNotificationSections: NotificationSection[] = [
     title: "Shift Notifications",
     items: [
       {
-        id: "professional-accepted",
+        id: "professionalAccepted",
         title: "Professional accepted a shift",
         description: "Get notified when a professional accepts one of your shifts",
         enabled: true,
       },
       {
-        id: "professional-declined",
+        id: "professionalDeclined",
         title: "Professional declined a shift",
         description: "Get notified when a professional declines your shift",
         enabled: true,
       },
       {
-        id: "unfilled-shift",
+        id: "unfilledShift",
         title: "Shift unfilled 2 hours before start",
         description: "Alert when a shift still has open roles 2 hours before start time",
         enabled: true,
       },
       {
-        id: "late-cancellation",
+        id: "lateCancellation",
         title: "Late cancellation",
         description: "Notify when a professional cancels a shift they already accepted",
         enabled: true,
@@ -110,25 +104,25 @@ const defaultNotificationSections: NotificationSection[] = [
     title: "Shift Update Notifications",
     items: [
       {
-        id: "professional-left-home",
+        id: "professionalLeftHome",
         title: "Professional left home",
         description: "Get notified when a professional starts their journey to the facility",
         enabled: true,
       },
       {
-        id: "professional-arrived",
+        id: "professionalArrived",
         title: "Professional arrived at facility",
         description: "Confirm arrival before shift start time",
         enabled: true,
       },
       {
-        id: "shift-started",
+        id: "shiftStarted",
         title: "Shift started",
         description: "Notify when a professional checks in to begin the shift",
         enabled: true,
       },
       {
-        id: "shift-completed",
+        id: "shiftCompleted",
         title: "Shift completed",
         description: "Notify when a professional checks out at end of shift",
         enabled: true,
@@ -140,19 +134,19 @@ const defaultNotificationSections: NotificationSection[] = [
     title: "Shift Updates Notification",
     items: [
       {
-        id: "referral-reward",
+        id: "referralReward",
         title: "Referral reward earned",
         description: "Get notified when you earn a referral reward",
         enabled: true,
       },
       {
-        id: "platform-updates",
+        id: "platformUpdates",
         title: "Platform updates",
         description: "News and updates about Swifthelp features",
         enabled: true,
       },
       {
-        id: "weekly-summary",
+        id: "weeklySummary",
         title: "Weekly summary email",
         description: "Receive a weekly digest of your shift activity",
         enabled: true,
@@ -163,29 +157,6 @@ const defaultNotificationSections: NotificationSection[] = [
 
 const initialSessions: SessionItem[] = [
   { id: "session-current", label: "Chrome on macOS", status: "Current" },
-  { id: "session-lagos-1", label: "Chrome on macOS", location: "Lagos. 2h ago", status: "Missed" },
-  { id: "session-lagos-2", label: "Chrome on macOS", location: "Lagos. 2h ago", status: "Missed" },
-];
-
-const planCards: PlanCard[] = [
-  {
-    id: "beginner",
-    name: "Beginner",
-    durationLabel: "30 days remaining",
-    priceLabel: "$10/Month",
-    features: ["Up to 5 shifts/month", "10 professionals", "Basic reports"],
-    accent: "light",
-    actionLabel: "Cancel Subscription",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    durationLabel: "365 Days",
-    priceLabel: "$10/Month",
-    features: ["Up to 5 shifts/month", "10 professionals", "Basic reports"],
-    accent: "dark",
-    actionLabel: "Upgrade",
-  },
 ];
 
 const initialPaymentMethods: PaymentMethod[] = [];
@@ -238,17 +209,6 @@ function CardIcon() {
       <path
         fill="currentColor"
         d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm16 4V7H4v2h16Zm-9 6H6v2h5v-2Z"
-      />
-    </svg>
-  );
-}
-
-function CancelIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-      <path
-        fill="currentColor"
-        d="m12 10.59 4.95-4.95 1.41 1.41L13.41 12l4.95 4.95-1.41 1.41L12 13.41l-4.95 4.95-1.41-1.41L10.59 12 5.64 7.05l1.41-1.41L12 10.59Z"
       />
     </svg>
   );
@@ -483,6 +443,7 @@ function SessionStatusBadge({ status }: { status: SessionItem["status"] }) {
 }
 
 export function OrganisationSettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("General");
   const [defaultShiftDuration, setDefaultShiftDuration] = useState("8 hours");
   const [timeZone, setTimeZone] = useState("(PST) Pacific Standard Time");
@@ -496,7 +457,8 @@ export function OrganisationSettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [sessions, setSessions] = useState(initialSessions);
+  const [sessions] = useState(initialSessions);
+  const [currentPlan, setCurrentPlan] = useState<OrganizationSettings["billing"]["currentPlan"]>(null);
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods);
   const [billingHistory, setBillingHistory] = useState(initialBillingHistory);
 
@@ -521,7 +483,20 @@ export function OrganisationSettingsPage() {
         setCurrency(String(preferences.currency ?? "NGN"));
         setOperatingStartTime(String(operatingPreference?.startTime ?? "8:00 AM"));
         setOperatingEndTime(String(operatingPreference?.endTime ?? "8:00 AM"));
-        setTwoFactorEnabled(Boolean(security.twoFactorEnabled));
+        setNotificationSections((sections) =>
+          sections.map((section) => ({
+            ...section,
+            items: section.items.map((item) => ({
+              ...item,
+              enabled:
+                typeof settings.notificationPreferences[item.id] === "boolean"
+                  ? Boolean(settings.notificationPreferences[item.id])
+                  : item.enabled,
+            })),
+          })),
+        );
+        setTwoFactorEnabled(Boolean(security.twoFactor));
+        setCurrentPlan(settings.billing.currentPlan);
         setPaymentMethods(
           settings.billing.paymentMethods.map((method, index) => ({
             id: method.id,
@@ -541,6 +516,8 @@ export function OrganisationSettingsPage() {
             amount: formatOrganizationMoney(item.amountCents, item.currency),
             plan: item.description ?? formatLabel(item.type),
             status: formatLabel(item.status),
+            invoiceUrl: item.invoiceUrl ?? null,
+            invoicePdf: item.invoicePdf ?? null,
           })),
         );
       })
@@ -620,12 +597,24 @@ export function OrganisationSettingsPage() {
           nextEnabled = !item.enabled;
           return { ...item, enabled: nextEnabled };
         }),
-      }))
+      })),
     );
 
-    updateOrganizationNotificationPreferences({ [itemId]: nextEnabled }).catch((error) => {
-      toast.error(error instanceof Error ? error.message : "Unable to save notification setting.");
-    });
+    updateOrganizationNotificationPreferences({ [itemId]: nextEnabled })
+      .then(() => {
+        toast.success("Notification setting saved.");
+      })
+      .catch((error) => {
+        setNotificationSections((current) =>
+          current.map((section) => ({
+            ...section,
+            items: section.items.map((item) =>
+              item.id === itemId ? { ...item, enabled: !nextEnabled } : item,
+            ),
+          })),
+        );
+        toast.error(error instanceof Error ? error.message : "Unable to save notification setting.");
+      });
   };
 
   const handlePasswordUpdate = async () => {
@@ -649,56 +638,64 @@ export function OrganisationSettingsPage() {
   };
 
   const handleTwoFactorToggle = () => {
-    setTwoFactorEnabled((current) => {
-      const next = !current;
-      updateOrganizationSecurityPreferences({ twoFactorEnabled: next })
-        .then(() => {
-          toast.success(next ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
-        })
-        .catch((error) => {
-          toast.error(error instanceof Error ? error.message : "Unable to update security setting.");
-        });
-      return next;
-    });
+    const next = !twoFactorEnabled;
+
+    setTwoFactorEnabled(next);
+    updateOrganizationSecurityPreferences({ twoFactor: next })
+      .then(() => {
+        toast.success(next ? "Two-factor authentication enabled." : "Two-factor authentication disabled.");
+      })
+      .catch((error) => {
+        setTwoFactorEnabled(!next);
+        toast.error(error instanceof Error ? error.message : "Unable to update security setting.");
+      });
   };
 
-  const handleSignOutOtherSessions = () => {
-    setSessions((current) => current.filter((session) => session.status === "Current"));
-    toast.success("Signed out all other sessions.");
-  };
-
-  const handlePlanAction = (plan: PlanCard) => {
-    if (plan.id === "beginner") {
-      toast.info("Subscription cancellation is managed by the SwiftHelp admin team.");
+  const handleExportBillingHistory = () => {
+    if (!billingHistory.length) {
+      toast.info("There is no organization billing history to export.");
       return;
     }
 
-    toast.info("Plan upgrades are managed by the SwiftHelp admin team.");
-  };
-
-  const handleDeletePaymentMethod = (id: string) => {
-    setPaymentMethods((current) => {
-      if (current.length === 1) {
-        toast.error("At least one payment method must remain.");
-        return current;
-      }
-
-      toast.success("Payment method removed.");
-      return current.filter((method) => method.id !== id);
+    exportTablePdf({
+      title: "SwiftHELP Organization Billing History",
+      filename: `swifthelp-organization-billing-history-${new Date().toISOString().slice(0, 10)}.pdf`,
+      columns: ["Transaction ID", "Date", "Amount", "Plan", "Status"],
+      rows: billingHistory.map((item) => [
+        item.transactionId,
+        item.date,
+        item.amount,
+        item.plan,
+        item.status,
+      ]),
+      filters: ["Account: Organization"],
     });
+    toast.success("Billing history PDF exported.");
   };
 
-  const handleExportBillingHistory = async () => {
-    try {
-      await exportOrganizationReports({ format: "csv" });
-      toast.success("Billing history export started.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to export billing history.");
+  const handleDownloadInvoice = (item: BillingHistoryItem) => {
+    const invoiceUrl = item.invoicePdf ?? item.invoiceUrl;
+
+    if (invoiceUrl) {
+      window.open(invoiceUrl, "_blank", "noopener,noreferrer");
+      toast.success("Invoice opened.");
+      return;
     }
-  };
 
-  const handleDownloadInvoice = (transactionId: string) => {
-    toast.success(`Invoice ${transactionId} download started.`);
+    exportTablePdf({
+      title: "SwiftHELP Organization Billing Receipt",
+      filename: `swifthelp-organization-receipt-${item.transactionId.replace(/[^a-z0-9-]/gi, "-")}.pdf`,
+      columns: ["Field", "Value"],
+      rows: [
+        ["Transaction ID", item.transactionId],
+        ["Date", item.date],
+        ["Amount", item.amount],
+        ["Plan", item.plan],
+        ["Status", item.status],
+      ],
+      filters: ["Generated from organization settings"],
+    });
+    toast.success("Receipt PDF downloaded.");
   };
 
   const renderGeneralTab = () => (
@@ -946,16 +943,9 @@ export function OrganisationSettingsPage() {
           ))}
         </div>
 
-        <motion.button
-          type="button"
-          onClick={handleSignOutOtherSessions}
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ duration: 0.2, ease: premiumEase }}
-          className={`mt-6 inline-flex min-h-[42px] w-full min-w-0 items-center justify-center whitespace-normal rounded-[12px] border border-[#1565C0] px-3 py-2 text-center text-[13px] leading-5 tracking-[-0.05em] text-[#1565C0] transition hover:bg-[#eff6ff] sm:mt-8 sm:h-[42px] sm:w-auto sm:min-w-[218px] sm:px-[18px] sm:py-0 sm:text-[16px] sm:leading-[40px] ${microInteractionClass}`}
-        >
-          Sign out all other sessions
-        </motion.button>
+        <p className="mt-6 text-[13px] font-light leading-[18px] tracking-[-0.05em] text-[#64748B] sm:text-[15px]">
+          No other active sessions were returned for this organization account.
+        </p>
       </motion.article>
     </div>
   );
@@ -968,62 +958,78 @@ export function OrganisationSettingsPage() {
         </h2>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
-          {planCards.map((plan) => {
-            const dark = plan.accent === "dark";
+          <motion.article
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ duration: 0.22, ease: premiumEase }}
+            className="rounded-[12px] border border-[#1565C0] bg-[#E3F2FD] px-4 py-5 text-[#334155] shadow-sm sm:px-5 sm:py-6"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div>
+                <h3 className="text-[24px] font-medium tracking-[-0.05em] text-[#334155]">
+                  {currentPlan?.name ?? "Organization plan"}
+                </h3>
+                <p className="mt-1 text-[18px] font-light tracking-[-0.05em] text-[#94A3B8]">
+                  {currentPlan?.status ? formatLabel(currentPlan.status) : "Current workspace access"}
+                </p>
+              </div>
+              <p className="text-[26px] font-medium tracking-[-0.05em] text-[#334155] sm:text-[30px]">
+                {currentPlan?.priceLabel ?? "Not configured"}
+              </p>
+            </div>
 
-            return (
-              <motion.article
-                key={plan.id}
-                whileHover={{ y: -3, scale: 1.01 }}
-                transition={{ duration: 0.22, ease: premiumEase }}
-                className={`rounded-[12px] border px-4 py-5 sm:px-5 sm:py-6 ${
-                  dark
-                    ? "border-[#1565C0] bg-[#0F172A] text-[#F8FAFC] shadow-[0_18px_42px_rgba(15,23,42,0.14)]"
-                    : "border-[#1565C0] bg-[#E3F2FD] text-[#334155] shadow-sm"
-                }`}
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div>
-                    <h3 className={`text-[24px] font-medium tracking-[-0.05em] ${dark ? "text-[#F8FAFC]" : "text-[#334155]"}`}>
-                      {plan.name}
-                    </h3>
-                    <p className={`mt-1 text-[18px] font-light tracking-[-0.05em] ${dark ? "text-[#E3F2FD]" : "text-[#94A3B8]"}`}>
-                      {plan.durationLabel}
-                    </p>
-                  </div>
-                  <p className={`text-[26px] font-medium tracking-[-0.05em] sm:text-[30px] ${dark ? "text-[#F8FAFC]" : "text-[#334155]"}`}>
-                    {plan.priceLabel}
-                  </p>
+            <div className="mt-6 space-y-2 sm:mt-10">
+              {["Shift posting", "Workforce dashboard", "Billing controls"].map((feature) => (
+                <div key={feature} className="flex items-start gap-2">
+                  <CheckIcon />
+                  <span className="text-[18px] font-light leading-[26px] tracking-[-0.05em] text-[#334155]">
+                    {feature}
+                  </span>
                 </div>
+              ))}
+            </div>
+          </motion.article>
 
-                <div className="mt-6 space-y-2 sm:mt-10">
-                  {plan.features.map((feature) => (
-                    <div key={feature} className="flex items-start gap-2">
-                      <CheckIcon />
-                      <span className={`text-[18px] font-light leading-[26px] tracking-[-0.05em] ${dark ? "text-[#F8FAFC]" : "text-[#334155]"}`}>
-                        {feature}
-                      </span>
-                    </div>
-                  ))}
+          <motion.article
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ duration: 0.22, ease: premiumEase }}
+            className="rounded-[12px] border border-[#1565C0] bg-[#0F172A] px-4 py-5 text-[#F8FAFC] shadow-[0_18px_42px_rgba(15,23,42,0.14)] sm:px-5 sm:py-6"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div>
+                <h3 className="text-[24px] font-medium tracking-[-0.05em] text-[#F8FAFC]">
+                  Organization plans
+                </h3>
+                <p className="mt-1 text-[18px] font-light tracking-[-0.05em] text-[#E3F2FD]">
+                  Compare available plans
+                </p>
+              </div>
+              <p className="text-[26px] font-medium tracking-[-0.05em] text-[#F8FAFC] sm:text-[30px]">
+                Pricing
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-2 sm:mt-10">
+              {["Unlimited shift posting", "Priority staff matching", "Enterprise support"].map((feature) => (
+                <div key={feature} className="flex items-start gap-2">
+                  <CheckIcon />
+                  <span className="text-[18px] font-light leading-[26px] tracking-[-0.05em] text-[#F8FAFC]">
+                    {feature}
+                  </span>
                 </div>
+              ))}
+            </div>
 
-                <motion.button
-                  type="button"
-                  onClick={() => handlePlanAction(plan)}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  transition={{ duration: 0.2, ease: premiumEase }}
-                  className={`mt-6 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] border text-[16px] tracking-[-0.05em] transition ${
-                    dark
-                      ? "border-[#1E88E5] bg-[#F8FAFC] text-[#1565C0] hover:bg-[#eff6ff]"
-                      : "border-[#1E88E5] bg-[#F8FAFC] text-[#1565C0] hover:bg-[#eff6ff]"
-                  }`}
-                >
-                  {plan.actionLabel}
-                </motion.button>
-              </motion.article>
-            );
-          })}
+            <motion.button
+              type="button"
+              onClick={() => router.push("/pricing")}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: premiumEase }}
+              className="mt-6 inline-flex h-[43px] w-full cursor-pointer items-center justify-center rounded-[8px] border border-[#1E88E5] bg-[#F8FAFC] text-[16px] tracking-[-0.05em] text-[#1565C0] transition hover:bg-[#eff6ff]"
+            >
+              Review pricing
+            </motion.button>
+          </motion.article>
         </div>
       </section>
 
@@ -1051,17 +1057,11 @@ export function OrganisationSettingsPage() {
                 <span className="truncate text-[15px] font-light tracking-[-0.07em] sm:text-[18px]">{method.label}</span>
               </div>
 
-              <motion.button
-                type="button"
-                onClick={() => handleDeletePaymentMethod(method.id)}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.94 }}
-                transition={{ duration: 0.2, ease: premiumEase }}
-                className="inline-flex h-[33px] w-[33px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#FFE7E7] text-[#AA1717] transition hover:brightness-95"
-                aria-label={`Delete ${method.label}`}
-              >
-                <CancelIcon />
-              </motion.button>
+              {method.highlighted ? (
+                <span className="inline-flex min-h-[28px] shrink-0 items-center rounded-[8px] bg-white px-3 text-[13px] font-medium tracking-[-0.05em] text-[#1565C0]">
+                  Default
+                </span>
+              ) : null}
             </motion.div>
           )) : (
             <div className="rounded-[12px] border border-dashed border-[#C9D7E6] bg-[#F8FAFC] px-4 py-5 text-[15px] text-[#94A3B8]">
@@ -1093,7 +1093,7 @@ export function OrganisationSettingsPage() {
         </div>
 
         <div className="overflow-x-auto pb-2 [scrollbar-color:#1565C0_#DCEAF8] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DCEAF8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1565C0] sm:pb-0">
-          <table className="min-w-full border-collapse">
+          <table className="w-full min-w-[860px] border-collapse">
             <thead>
               <tr className="border-b border-[#E2E8F0] text-left">
                 <th className="px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#334155]">Transaction ID</th>
@@ -1112,15 +1112,23 @@ export function OrganisationSettingsPage() {
                   transition={{ duration: 0.2, ease: premiumEase }}
                   className="border-b border-[#E2E8F0]"
                 >
-                  <td className="px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">{item.transactionId}</td>
+                  <td className="max-w-[190px] px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">
+                    <span className="block truncate" title={item.transactionId}>
+                      {item.transactionId}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">{item.date}</td>
                   <td className="px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">{item.amount}</td>
-                  <td className="px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">{item.plan}</td>
+                  <td className="max-w-[220px] px-6 py-4 text-[16px] font-light tracking-[-0.07em] text-[#94A3B8]">
+                    <span className="block truncate" title={item.plan}>
+                      {item.plan}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-[16px] font-normal tracking-[-0.07em] text-[#19AA4A]">{item.status}</td>
                   <td className="px-6 py-4">
                     <motion.button
                       type="button"
-                      onClick={() => handleDownloadInvoice(item.transactionId)}
+                      onClick={() => handleDownloadInvoice(item)}
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       transition={{ duration: 0.2, ease: premiumEase }}
