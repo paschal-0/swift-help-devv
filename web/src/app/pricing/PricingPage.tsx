@@ -1,8 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+
+import { containerClass } from "../landing/classes";
 
 type Audience = "patients" | "professionals" | "organizations";
 
@@ -147,7 +148,7 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "Setup and onboarding from GBP 500 to GBP 5,000",
       ],
       cta: "Book a Demo",
-      href: "/#contact",
+      href: "/contact",
     },
   ],
 };
@@ -167,15 +168,6 @@ const partnerTabs = [
   "Leaderboard",
   "Marketing Tools",
   "Rank Progress",
-];
-
-const marketingTools = [
-  "Referral link",
-  "QR code",
-  "Landing page",
-  "Social media templates",
-  "Flyers",
-  "Referral cards",
 ];
 
 const faqs = [
@@ -201,49 +193,49 @@ const faqs = [
   },
 ];
 
-function CheckMark() {
+function Mark() {
   return (
-    <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#DFF7EA] text-[13px] font-semibold text-[#087443]">
+    <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e3f2fd] text-[13px] font-semibold text-[#1565c0]">
       +
     </span>
   );
 }
 
-function ArrowMark() {
-  return <span aria-hidden="true">-&gt;</span>;
-}
-
 function PlanCard({ plan }: { plan: PricingPlan }) {
   return (
     <article
-      className={`flex h-full min-w-0 flex-col rounded-[8px] border bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(15,23,42,0.10)] sm:p-6 ${
-        plan.featured ? "border-[#1565C0] ring-2 ring-[#D6ECFF]" : "border-[#DDE6F0]"
+      className={`flex h-full min-w-0 flex-col rounded-[8px] border bg-white p-6 shadow-[0_18px_55px_rgba(30,136,229,0.10)] transition duration-300 hover:-translate-y-1 max-[767px]:p-5 ${
+        plan.featured ? "border-[#1565c0] ring-2 ring-[#d5ecff]" : "border-[#dbeafe]"
       }`}
     >
       {plan.featured ? (
-        <span className="mb-4 w-fit rounded-full bg-[#E8F4FF] px-3 py-1 text-[12px] font-semibold uppercase text-[#1565C0]">
+        <span className="mb-5 w-fit rounded-full bg-[#e3f2fd] px-4 py-2 text-[12px] font-semibold uppercase text-[#1565c0]">
           Most relevant
         </span>
       ) : null}
-      <div className="min-w-0">
-        <h2 className="text-[22px] font-semibold leading-7 text-[#1F2937]">{plan.name}</h2>
-        <p className="mt-3 text-[30px] font-semibold leading-10 text-[#0F172A]">{plan.price}</p>
-        <p className="mt-3 text-[14px] leading-6 text-[#64748B]">{plan.description}</p>
-      </div>
+      <h2 className="m-0 text-[24px] font-semibold leading-8 tracking-[-0.05em] text-slate-950 max-[767px]:text-[20px]">
+        {plan.name}
+      </h2>
+      <p className="mt-3 text-[34px] font-semibold leading-10 tracking-[-0.05em] text-[#1565c0] max-[767px]:text-[28px]">
+        {plan.price}
+      </p>
+      <p className="mt-4 min-h-[72px] text-[16px] font-light leading-6 tracking-[-0.05em] text-slate-700 max-[767px]:min-h-0 max-[767px]:text-[14px]">
+        {plan.description}
+      </p>
 
       <div className="mt-6 space-y-3">
         {plan.features.map((feature) => (
-          <p key={feature} className="flex min-w-0 items-start gap-3 text-[14px] leading-6 text-[#334155]">
-            <CheckMark />
+          <p key={feature} className="flex min-w-0 items-start gap-3 text-[15px] leading-6 tracking-[-0.05em] text-slate-800">
+            <Mark />
             <span className="min-w-0 break-words">{feature}</span>
           </p>
         ))}
       </div>
 
       {plan.highlights?.length ? (
-        <div className="mt-5 space-y-2 rounded-[8px] bg-[#F8FAFC] p-4">
+        <div className="mt-5 space-y-2 rounded-[8px] bg-[#f4fbff] p-4">
           {plan.highlights.map((highlight) => (
-            <p key={highlight} className="text-[13px] font-medium leading-5 text-[#475569]">
+            <p key={highlight} className="text-[14px] font-medium leading-5 tracking-[-0.05em] text-slate-700">
               {highlight}
             </p>
           ))}
@@ -252,14 +244,14 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
 
       <Link
         href={plan.href}
-        className={`mt-auto inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[8px] px-4 py-3 text-center text-[14px] font-semibold transition ${
+        className={`mt-auto inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[45px] px-5 py-3 text-center text-[18px] font-normal tracking-[-0.05em] transition max-[767px]:text-[16px] ${
           plan.featured
-            ? "bg-[#1565C0] text-white hover:bg-[#0F5B93]"
-            : "border border-[#1565C0] bg-white text-[#1565C0] hover:bg-[#E8F4FF]"
+            ? "bg-[linear-gradient(180deg,#1e88e5_0%,#114b7f_72.12%)] text-[#e3f2fd] hover:brightness-110"
+            : "border border-[#1565c0] bg-white text-[#1565c0] hover:bg-[#e3f2fd]"
         }`}
       >
         {plan.cta}
-        <ArrowMark />
+        <span aria-hidden="true">-&gt;</span>
       </Link>
     </article>
   );
@@ -270,174 +262,156 @@ export function PricingPage() {
   const plans = useMemo(() => pricingPlans[audience], [audience]);
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
-      <header className="border-b border-[#DDE6F0] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-          <Link href="/" className="inline-flex min-w-0 items-center gap-2 text-[22px] font-semibold text-[#1E88E5]">
-            <Image src="/jam_medical.png" alt="Swifthelp logo" width={40} height={40} className="h-10 w-10 object-contain" />
-            <span className="truncate">Swifthelp</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/" className="hidden rounded-[8px] px-4 py-2 text-[14px] font-medium text-[#475569] hover:bg-[#F1F5F9] sm:inline-flex">
-              Home
-            </Link>
-            <Link href="/get-started/login" className="rounded-[8px] bg-[#1565C0] px-4 py-2 text-[14px] font-semibold text-white hover:bg-[#0F5B93]">
-              Log in
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="border-b border-[#DDE6F0] bg-[#EAF6F0]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:py-16">
-          <div className="min-w-0">
-            <p className="w-fit rounded-full border border-[#B7E4C7] bg-white px-4 py-2 text-[13px] font-semibold uppercase text-[#087443]">
-              Swift HELP subscriptions
-            </p>
-            <h1 className="mt-6 max-w-4xl text-[42px] font-semibold leading-[1.08] text-[#102A43] sm:text-[58px]">
-              Simple, Transparent Pricing for Modern Healthcare Access
-            </h1>
-            <p className="mt-5 max-w-3xl text-[17px] leading-8 text-[#425466]">
-              Whether you are a patient, healthcare professional, or organization, Swift HELP scales with your needs across AI triage, care booking, and healthcare workforce management.
-            </p>
-          </div>
-
-          <aside className="rounded-[8px] border border-[#CDEBDD] bg-white p-5 shadow-sm">
-            <p className="text-[14px] font-semibold text-[#087443]">Revenue model</p>
-            <div className="mt-4 space-y-4">
-              {[
-                ["Subscriptions", "Premium patient, professional, and organization plans."],
-                ["Transactions", "Commission on paid bookings and care services."],
-                ["Growth", "Partner Network rewards with transparent payout rules."],
-              ].map(([label, text]) => (
-                <div key={label} className="border-l-4 border-[#20A66A] pl-4">
-                  <p className="font-semibold text-[#1F2937]">{label}</p>
-                  <p className="mt-1 text-[13px] leading-5 text-[#64748B]">{text}</p>
-                </div>
-              ))}
+    <main className="bg-white text-slate-900">
+      <section className="bg-[#e3f2fd] pb-[90px] pt-[35px] max-[767px]:pb-14 max-[767px]:pt-5">
+        <div className={containerClass}>
+          <div className="grid items-center gap-10 px-6 max-[767px]:px-2 lg:grid-cols-[minmax(0,1fr)_390px]">
+            <div className="min-w-0">
+              <p className="m-0 text-[24px] font-light leading-7 tracking-[-0.05em] text-[#1e1e1e] max-[767px]:text-[16px] max-[767px]:leading-5">
+                Swift HELP Pricing
+              </p>
+              <h1 className="m-0 mt-5 max-w-[830px] text-[56px] font-semibold leading-[60px] tracking-[-0.05em] text-[#1e1e1e] max-[767px]:mt-3 max-[767px]:text-[34px] max-[767px]:leading-9">
+                Simple, Transparent Pricing for Modern Healthcare Access
+              </h1>
+              <p className="mt-6 max-w-[760px] text-[24px] font-light leading-8 tracking-[-0.05em] text-[#1e1e1e] max-[767px]:mt-4 max-[767px]:text-[16px] max-[767px]:leading-6">
+                Whether you are a patient, healthcare professional, or organization,
+                Swift HELP scales with your needs.
+              </p>
             </div>
-          </aside>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-[26px] font-semibold text-[#1F2937]">Choose pricing by audience</h2>
-            <p className="mt-2 text-[15px] leading-6 text-[#64748B]">
-              The page stays clean while showing the right plans for each user type.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 rounded-[8px] border border-[#DDE6F0] bg-white p-1">
-            {(Object.keys(audienceLabels) as Audience[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setAudience(key)}
-                className={`min-h-[42px] rounded-[6px] px-3 text-[13px] font-semibold transition sm:px-5 ${
-                  audience === key ? "bg-[#1565C0] text-white shadow-sm" : "text-[#475569] hover:bg-[#F1F5F9]"
-                }`}
-              >
-                {audienceLabels[key]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-8 grid items-stretch gap-5 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} />
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-[#DDE6F0] bg-white">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
-          {trustItems.map((item) => (
-            <div key={item} className="flex items-start gap-3">
-              <CheckMark />
-              <p className="text-[14px] font-semibold leading-6 text-[#334155]">{item}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div>
-            <p className="text-[13px] font-semibold uppercase text-[#B45309]">Growth program</p>
-            <h2 className="mt-3 text-[30px] font-semibold leading-10 text-[#1F2937]">Swift HELP Partner Network</h2>
-            <p className="mt-4 text-[15px] leading-7 text-[#64748B]">
-              A referral and ambassador program can sit inside the platform without being described as network marketing. The important controls are transparent rewards, fraud checks, and payout audit trails.
-            </p>
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <article className="rounded-[8px] border border-[#F2D9A6] bg-[#FFF8E8] p-5">
-              <h3 className="text-[18px] font-semibold text-[#7C4A03]">Placement inside Swift HELP</h3>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {["Home", "Bookings", "Messages", "Wallet", "Partner Network", "Settings"].map((item) => (
-                  <span key={item} className="rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-[#7C4A03]">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-[8px] border border-[#CDEBDD] bg-[#F0FBF6] p-5">
-              <h3 className="text-[18px] font-semibold text-[#087443]">Partner section tabs</h3>
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {partnerTabs.map((tab) => (
-                  <span key={tab} className="rounded-[6px] bg-white px-3 py-2 text-[13px] font-medium text-[#334155]">
-                    {tab}
-                  </span>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-[8px] border border-[#DDE6F0] bg-white p-5 lg:col-span-2">
-              <h3 className="text-[18px] font-semibold text-[#1F2937]">Marketing toolkit</h3>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {marketingTools.map((tool) => (
-                  <div key={tool} className="rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[14px] font-medium text-[#334155]">
-                    {tool}
+            <aside className="rounded-[8px] border border-white/80 bg-white p-6 shadow-[0_18px_55px_rgba(30,136,229,0.13)]">
+              <p className="text-[18px] font-semibold leading-6 tracking-[-0.05em] text-[#1565c0]">
+                Multi-revenue platform
+              </p>
+              <div className="mt-5 space-y-4">
+                {[
+                  ["Subscriptions", "Premium plans for patients, professionals, and organizations."],
+                  ["Transactions", "Platform fees on consultations, services, and shift bookings."],
+                  ["Partner Network", "Referral growth with transparent reward and payout rules."],
+                ].map(([label, text]) => (
+                  <div key={label} className="border-l-4 border-[#1e88e5] pl-4">
+                    <p className="font-semibold tracking-[-0.05em] text-slate-950">{label}</p>
+                    <p className="mt-1 text-[14px] leading-5 tracking-[-0.05em] text-slate-700">{text}</p>
                   </div>
                 ))}
               </div>
-            </article>
+            </aside>
           </div>
         </div>
       </section>
 
-      <section className="bg-[#102A43]">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-12 text-white sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
-          <div>
-            <h2 className="text-[30px] font-semibold leading-10">Launch sequence</h2>
-            <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[#CFE3F6]">
-              Referral + status + visibility + recurring reward + community creates a long-term acquisition engine when the payout rules are controlled and auditable.
-            </p>
+      <section className="py-[72px] max-[767px]:py-12">
+        <div className={containerClass}>
+          <div className="flex items-end justify-between gap-6 px-6 max-[900px]:flex-col max-[900px]:items-start max-[767px]:px-2">
+            <div>
+              <h2 className="m-0 text-[42px] font-semibold leading-[46px] tracking-[-0.05em] text-black max-[767px]:text-[30px] max-[767px]:leading-9">
+                Choose your access
+              </h2>
+              <p className="mt-3 max-w-[560px] text-[21px] font-light leading-7 tracking-[-0.05em] text-[#1e1e1e] max-[767px]:text-[15px] max-[767px]:leading-6">
+                Use the toggle to keep patient, professional, and organization
+                pricing clear.
+              </p>
+            </div>
+            <div className="grid w-full max-w-[560px] grid-cols-3 rounded-[45px] border border-[#dbeafe] bg-white p-1 shadow-[0_10px_35px_rgba(30,136,229,0.10)] max-[767px]:max-w-none">
+              {(Object.keys(audienceLabels) as Audience[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setAudience(key)}
+                  className={`min-h-[52px] rounded-[45px] px-4 text-[17px] font-normal tracking-[-0.05em] transition max-[767px]:min-h-[44px] max-[767px]:px-2 max-[767px]:text-[13px] ${
+                    audience === key
+                      ? "bg-[#334155] text-white shadow-sm"
+                      : "text-slate-700 hover:bg-[#e3f2fd]"
+                  }`}
+                >
+                  {audienceLabels[key]}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-3">
-            {["Closed beta", "Public referral launch", "Ambassador growth", "Regional partnerships"].map((phase, index) => (
-              <div key={phase} className="flex items-center gap-3 rounded-[8px] bg-white/10 px-4 py-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#20A66A] text-[13px] font-semibold text-white">
-                  {index + 1}
-                </span>
-                <span className="text-[14px] font-semibold">{phase}</span>
+
+          <div className="mt-10 grid items-stretch gap-6 px-6 max-[767px]:px-2 lg:grid-cols-3">
+            {plans.map((plan) => (
+              <PlanCard key={plan.name} plan={plan} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f4fbff] py-12">
+        <div className={containerClass}>
+          <div className="grid gap-5 px-6 max-[767px]:px-2 sm:grid-cols-2 lg:grid-cols-4">
+            {trustItems.map((item) => (
+              <div key={item} className="flex items-start gap-3 rounded-[8px] bg-white p-5 shadow-[0_12px_35px_rgba(30,136,229,0.08)]">
+                <Mark />
+                <p className="text-[16px] font-semibold leading-6 tracking-[-0.05em] text-slate-800">{item}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-5 lg:grid-cols-2">
-          {faqs.map((faq) => (
-            <article key={faq.question} className="rounded-[8px] border border-[#DDE6F0] bg-white p-5">
-              <h3 className="text-[17px] font-semibold text-[#1F2937]">{faq.question}</h3>
-              <p className="mt-3 text-[14px] leading-6 text-[#64748B]">{faq.answer}</p>
-            </article>
-          ))}
+      <section className="py-[78px] max-[767px]:py-12">
+        <div className={containerClass}>
+          <div className="grid gap-9 px-6 max-[767px]:px-2 lg:grid-cols-[380px_minmax(0,1fr)]">
+            <div>
+              <p className="text-[20px] font-light leading-7 tracking-[-0.05em] text-[#1565c0]">
+                Investor-friendly growth
+              </p>
+              <h2 className="mt-3 text-[42px] font-semibold leading-[46px] tracking-[-0.05em] text-black max-[767px]:text-[30px] max-[767px]:leading-9">
+                Swift HELP Partner Network
+              </h2>
+              <p className="mt-5 text-[20px] font-light leading-7 tracking-[-0.05em] text-[#1e1e1e] max-[767px]:text-[15px] max-[767px]:leading-6">
+                Use referral marketing, ambassador contracts, transparent payouts,
+                and fraud scoring so the program is measurable and auditable.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <article className="rounded-[8px] border border-[#dbeafe] bg-white p-5 shadow-sm">
+                <h3 className="text-[24px] font-semibold leading-8 tracking-[-0.05em] text-slate-950">
+                  Platform placement
+                </h3>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {["Home", "Bookings", "Messages", "Wallet", "Partner Network", "Settings"].map((item) => (
+                    <span key={item} className="rounded-full bg-[#e3f2fd] px-3 py-2 text-[14px] font-medium tracking-[-0.05em] text-[#1565c0]">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-[8px] border border-[#dbeafe] bg-white p-5 shadow-sm">
+                <h3 className="text-[24px] font-semibold leading-8 tracking-[-0.05em] text-slate-950">
+                  Partner section tabs
+                </h3>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  {partnerTabs.map((tab) => (
+                    <span key={tab} className="rounded-[8px] bg-[#f4fbff] px-3 py-2 text-[14px] font-medium tracking-[-0.05em] text-slate-700">
+                      {tab}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#e3f2fd] py-[72px] max-[767px]:py-12">
+        <div className={containerClass}>
+          <div className="grid gap-5 px-6 max-[767px]:px-2 lg:grid-cols-2">
+            {faqs.map((faq) => (
+              <article key={faq.question} className="rounded-[8px] bg-white p-6 shadow-[0_12px_35px_rgba(30,136,229,0.10)]">
+                <h3 className="text-[22px] font-semibold leading-8 tracking-[-0.05em] text-slate-950">
+                  {faq.question}
+                </h3>
+                <p className="mt-3 text-[16px] font-light leading-6 tracking-[-0.05em] text-slate-700">
+                  {faq.answer}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </main>

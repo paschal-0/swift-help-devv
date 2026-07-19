@@ -2,13 +2,22 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const links = [
-  { href: "#home", label: "Home" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#features", label: "Features" },
+type NavLink = {
+  href: string;
+  label: string;
+  hash?: string;
+};
+
+const links: NavLink[] = [
+  { href: "/#home", label: "Home", hash: "#home" },
+  { href: "/#how-it-works", label: "How it works", hash: "#how-it-works" },
+  { href: "/#features", label: "Features", hash: "#features" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/contact", label: "Contact" },
 ];
 
 const navLinkClass =
@@ -16,8 +25,10 @@ const navLinkClass =
 
 export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState("#home");
+  const currentPath = stripCountryPrefix(pathname ?? "/");
 
   useEffect(() => {
     const syncActiveLink = () => {
@@ -32,9 +43,10 @@ export function Navbar() {
 
   return (
     <nav className="relative flex min-h-[82px] items-center justify-between rounded-[200px] bg-white px-4 py-3 shadow-[0_15px_65px_rgba(30,136,229,0.15)] xl:min-h-[109px] xl:px-10 xl:py-5 max-[767px]:z-50 max-[767px]:h-[62px] max-[767px]:min-h-0 max-[767px]:flex-nowrap max-[767px]:rounded-[400px] max-[767px]:px-6 max-[767px]:py-2.5">
-      <a
-        href="#home"
+      <Link
+        href="/#home"
         className="inline-flex items-center gap-1 text-[22px] font-medium tracking-[-0.05em] text-[#1e88e5] xl:text-[28px] max-[767px]:text-[22px]"
+        onClick={() => setIsMenuOpen(false)}
       >
         <span className="inline-flex h-9 w-9 items-center justify-center lg:h-12 lg:w-12 max-[767px]:h-9 max-[767px]:w-9">
           <Image
@@ -46,7 +58,7 @@ export function Navbar() {
           />
         </span>
         <span className="text-[#1e88e5]">Swifthelp</span>
-      </a>
+      </Link>
 
       <button
         className="relative z-[100] hidden h-[18px] w-[25px] flex-col justify-between bg-transparent p-0 max-[767px]:order-2 max-[767px]:flex"
@@ -76,34 +88,40 @@ export function Navbar() {
             : "hidden items-center gap-1 min-[768px]:flex xl:min-[768px]:gap-2"
         }
       >
-        {links.map((link) => (
-          <motion.a
-            key={link.label}
-            href={link.href}
-            className={`${navLinkClass} ${activeHref === link.href ? "drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]" : "text-slate-700 hover:text-slate-900"
-              }`}
-            onClick={() => {
-              setActiveHref(link.href);
-              setIsMenuOpen(false);
-            }}
-            whileHover={{ y: -1, scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 420, damping: 28 }}
-          >
-            {activeHref === link.href && (
-              <motion.span
-                layoutId="active-nav-pill"
-                className="absolute inset-0 rounded-[32px] bg-[#334155]"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              />
-            )}
-            <span
-              className={`relative z-20 whitespace-nowrap ${activeHref === link.href ? "text-white" : ""}`}
+        {links.map((link) => {
+          const isActive = link.hash
+            ? currentPath === "/" && activeHref === link.hash
+            : currentPath === link.href;
+
+          return (
+            <motion.a
+              key={link.label}
+              href={link.href}
+              className={`${navLinkClass} ${isActive ? "drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]" : "text-slate-700 hover:text-slate-900"
+                }`}
+              onClick={() => {
+                setActiveHref(link.hash ?? link.href);
+                setIsMenuOpen(false);
+              }}
+              whileHover={{ y: -1, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28 }}
             >
-              {link.label}
-            </span>
-          </motion.a>
-        ))}
+              {isActive && (
+                <motion.span
+                  layoutId="active-nav-pill"
+                  className="absolute inset-0 rounded-[32px] bg-[#334155]"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              )}
+              <span
+                className={`relative z-20 whitespace-nowrap ${isActive ? "text-white" : ""}`}
+              >
+                {link.label}
+              </span>
+            </motion.a>
+          );
+        })}
         <motion.button
           type="button"
           onClick={() => {
@@ -124,4 +142,14 @@ export function Navbar() {
       </div>
     </nav>
   );
+}
+
+function stripCountryPrefix(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] && /^[a-z]{2}$/.test(segments[0])) {
+    segments.shift();
+  }
+
+  return segments.length ? `/${segments.join("/")}` : "/";
 }

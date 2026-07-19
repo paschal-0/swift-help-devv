@@ -48,6 +48,12 @@ export function FooterSection() {
               >
                 Features
               </a>
+              <Link
+                href="/pricing"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
+              >
+                Pricing
+              </Link>
             </div>
 
             <div className="flex flex-col gap-[11px] max-[767px]:gap-2">
@@ -69,6 +75,12 @@ export function FooterSection() {
               >
                 Terms
               </a>
+              <Link
+                href="/contact"
+                className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
+              >
+                Contact
+              </Link>
             </div>
 
             <div className="flex flex-col gap-[11px] max-[767px]:gap-2">

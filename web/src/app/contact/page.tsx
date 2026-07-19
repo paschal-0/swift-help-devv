@@ -2,22 +2,22 @@ import type { Metadata } from "next";
 
 import { Header } from "../landing/components/Header";
 import { FooterSection } from "../landing/sections/FooterSection";
-import { PricingPage } from "./PricingPage";
+import { ContactSection } from "../landing/sections/ContactSection";
 
 export const metadata: Metadata = {
-  title: "Pricing | Swift Help",
+  title: "Contact | Swift Help",
   description:
-    "Transparent Swift HELP pricing for patients, healthcare professionals, organizations, and partner growth.",
+    "Contact Swift HELP for patient support, professional onboarding, organization demos, and healthcare platform questions.",
 };
 
-export default function PricingRoute() {
+export default function ContactRoute() {
   return (
     <div className="w-full overflow-x-hidden bg-white text-slate-900">
       <div className="[zoom:0.92] max-[1320px]:[zoom:1]">
         <Header />
-      </div>
-      <PricingPage />
-      <div className="[zoom:0.92] max-[1320px]:[zoom:1]">
+        <main>
+          <ContactSection />
+        </main>
         <FooterSection />
       </div>
     </div>
