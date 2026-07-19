@@ -18,7 +18,7 @@ export function FooterSection() {
           <div className="flex items-center gap-2 text-[24px] font-medium leading-8 tracking-[-0.05em] max-[767px]:gap-2 max-[767px]:text-[18px] max-[767px]:leading-6">
             <span className="inline-flex h-[66px] w-[66px] items-center justify-center max-[767px]:h-11 max-[767px]:w-11">
               <Image
-                src="/Vector%20%283%29.png"
+                src="/Vector (3).png"
                 alt="Swifthelp footer logo"
                 width={66}
                 height={66}
@@ -30,24 +30,24 @@ export function FooterSection() {
 
           <div className="grid grid-cols-3 gap-8 max-[1100px]:col-span-1 max-[1100px]:grid-cols-3 max-[1100px]:grid-cols-2 max-[767px]:grid-cols-1 max-[767px]:gap-6">
             <div className="flex flex-col gap-[11px] max-[767px]:gap-2">
-              <a
-                href="#home"
+              <Link
+                href="/#home"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
               >
                 Home
-              </a>
-              <a
-                href="#how-it-works"
+              </Link>
+              <Link
+                href="/#how-it-works"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
               >
                 How it works
-              </a>
-              <a
-                href="#features"
+              </Link>
+              <Link
+                href="/#features"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
               >
                 Features
-              </a>
+              </Link>
               <Link
                 href="/pricing"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
@@ -57,12 +57,12 @@ export function FooterSection() {
             </div>
 
             <div className="flex flex-col gap-[11px] max-[767px]:gap-2">
-              <a
-                href="#faq"
+              <Link
+                href="/#faq"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
               >
                 FAQ&apos;s
-              </a>
+              </Link>
               <a
                 href="#"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
@@ -76,10 +76,10 @@ export function FooterSection() {
                 Terms
               </a>
               <Link
-                href="/contact"
+                href="/#contact"
                 className="text-[21px] font-medium leading-8 tracking-[-0.05em] transition duration-200 hover:text-[#60a5fa] active:scale-[0.98] max-[767px]:text-[14px] max-[767px]:leading-[18px]"
               >
-                Contact
+                Contact us
               </Link>
             </div>
 

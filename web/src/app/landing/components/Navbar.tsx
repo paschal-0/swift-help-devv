@@ -17,7 +17,7 @@ const links: NavLink[] = [
   { href: "/#how-it-works", label: "How it works", hash: "#how-it-works" },
   { href: "/#features", label: "Features", hash: "#features" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/contact", label: "Contact" },
+  { href: "/#contact", label: "Contact", hash: "#contact" },
 ];
 
 const navLinkClass =

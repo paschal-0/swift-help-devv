@@ -148,7 +148,7 @@ const pricingPlans: Record<Audience, PricingPlan[]> = {
         "Setup and onboarding from GBP 500 to GBP 5,000",
       ],
       cta: "Book a Demo",
-      href: "/contact",
+      href: "/#contact",
     },
   ],
 };
