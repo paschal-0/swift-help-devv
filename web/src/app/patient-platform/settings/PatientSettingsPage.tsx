@@ -204,7 +204,8 @@ function parsePaymentMethods(value: unknown): PaymentMethod[] {
         last4,
         isDefault: asBoolean(method.isDefault ?? method.default, index === 0),
       };
-    });
+    })
+    .filter((method) => method.last4.trim().length > 0);
 }
 
 function parseBillingHistory(value: unknown): BillingHistoryItem[] {
@@ -627,7 +628,7 @@ export function PatientSettingsPage() {
         setSubscriptionStatus(billingResponse.value.subscription.status);
         setCurrentPlan(billingResponse.value.currentPlan);
         setAvailablePlans(billingResponse.value.availablePlans);
-        setPaymentMethods(billingResponse.value.paymentMethods);
+        setPaymentMethods(parsePaymentMethods(billingResponse.value.paymentMethods));
         setBillingHistory(
           billingResponse.value.billingHistory.map((item) => ({
             id: item.id,
@@ -1328,7 +1329,7 @@ export function PatientSettingsPage() {
                       <div className="flex min-w-0 items-center gap-4">
                         <CardIcon />
                         <p className="truncate text-[16px] font-medium text-[#334155] sm:text-[18px]">
-                          {method.brand} {method.last4 ? `**** **** ${method.last4}` : "ending not available"}
+                          {method.brand} **** **** {method.last4}
                         </p>
                       </div>
                       {method.isDefault ? (
@@ -1340,7 +1341,7 @@ export function PatientSettingsPage() {
                   ))
                 ) : (
                   <div className="rounded-[14px] border border-dashed border-[#C9D7E6] bg-white p-6 text-[#94A3B8]">
-                    No payment method was returned for this patient account.
+                    No saved payment method yet. Subscription card details are entered securely on Paystack checkout.
                   </div>
                 )}
               </div>
