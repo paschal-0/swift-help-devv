@@ -2,15 +2,13 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const links = [
   { href: "#home", label: "Home" },
   { href: "#how-it-works", label: "How it works" },
   { href: "#features", label: "Features" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "#contact", label: "Contact" },
 ];
 
 const navLinkClass =
@@ -18,7 +16,6 @@ const navLinkClass =
 
 export function Navbar() {
   const router = useRouter();
-  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState("#home");
 
@@ -79,30 +76,21 @@ export function Navbar() {
             : "hidden items-center gap-1 min-[768px]:flex xl:min-[768px]:gap-2"
         }
       >
-        {links.map((link) => {
-          const isRouteLink = link.href.startsWith("/");
-          const isActive = isRouteLink ? pathname === link.href : activeHref === link.href;
-
-          return (
+        {links.map((link) => (
           <motion.a
             key={link.label}
             href={link.href}
-            className={`${navLinkClass} ${isActive ? "drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]" : "text-slate-700 hover:text-slate-900"
+            className={`${navLinkClass} ${activeHref === link.href ? "drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]" : "text-slate-700 hover:text-slate-900"
               }`}
-            onClick={(event) => {
-              if (isRouteLink) {
-                event.preventDefault();
-                router.push(link.href);
-              } else {
-                setActiveHref(link.href);
-              }
+            onClick={() => {
+              setActiveHref(link.href);
               setIsMenuOpen(false);
             }}
             whileHover={{ y: -1, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 420, damping: 28 }}
           >
-            {isActive && (
+            {activeHref === link.href && (
               <motion.span
                 layoutId="active-nav-pill"
                 className="absolute inset-0 rounded-[32px] bg-[#334155]"
@@ -110,13 +98,12 @@ export function Navbar() {
               />
             )}
             <span
-              className={`relative z-20 whitespace-nowrap ${isActive ? "text-white" : ""}`}
+              className={`relative z-20 whitespace-nowrap ${activeHref === link.href ? "text-white" : ""}`}
             >
               {link.label}
             </span>
           </motion.a>
-          );
-        })}
+        ))}
         <motion.button
           type="button"
           onClick={() => {

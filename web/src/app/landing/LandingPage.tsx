@@ -1,6 +1,5 @@
 import { Header } from "./components/Header";
 import { CapabilitiesSection } from "./sections/CapabilitiesSection";
-import { ContactSection } from "./sections/ContactSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/HeroSection";
@@ -27,7 +26,6 @@ export function LandingPage() {
         <FaqSection />
       </main>
       <div className="[zoom:0.92] max-[1320px]:[zoom:1]">
-        <ContactSection />
         <FooterSection />
       </div>
     </div>
