@@ -1113,7 +1113,7 @@ export function ProfessionalSchedulePage() {
       router.push(`${countryPrefix}/communication/rooms/${roomState.room.id}`);
       toast.success(
         handoverScheduleMode === "scheduled"
-          ? "Handover scheduled and notifications sent."
+          ? "Handover scheduled. Notifications will be sent at the scheduled time."
           : "Handover room opened and notifications sent.",
       );
     } catch (error) {
