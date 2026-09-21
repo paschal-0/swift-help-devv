@@ -44,13 +44,13 @@ function formatNumber(value: number) {
 
 const countryColumns = [
   { key: "countryName", label: "Country" },
-  { key: "patients", label: "Patients" },
-  { key: "professionals", label: "Professionals" },
-  { key: "organizations", label: "Organisations" },
-  { key: "appointments", label: "Appointments" },
-  { key: "completedAppointments", label: "Completed" },
+  { key: "totalAccounts", label: "Accounts" },
+  { key: "appointments", label: "Care activity" },
+  { key: "pendingApprovals", label: "Ops queue" },
+  { key: "flaggedAppointments", label: "Flags" },
   { key: "transactions", label: "Payments" },
   { key: "revenue", label: "Revenue" },
+  { key: "lastActivityAt", label: "Last activity" },
 ] as const;
 
 type CountryColumnKey = (typeof countryColumns)[number]["key"];
@@ -90,6 +90,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatShortDate(value?: string | null) {
+  if (!value) return "No activity";
+  return new Intl.DateTimeFormat("en-NG", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 function formatRelative(value: string) {
   const diffMs = Date.now() - new Date(value).getTime();
   const seconds = Math.max(1, Math.round(diffMs / 1000));
@@ -103,6 +113,11 @@ function formatRelative(value: string) {
 
 function prettify(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function compactId(value?: string | null) {
+  if (!value) return null;
+  return value.length > 14 ? `${value.slice(0, 10)}...` : value;
 }
 
 function chartLabel(date: string) {
@@ -224,7 +239,14 @@ export function SuperAdminDashboardPage() {
     if (!dashboard) return [];
     if (!query) return dashboard.liveActivity;
     return dashboard.liveActivity.filter((activity) =>
-      [activity.text, activity.countryName ?? "", activity.countryCode ?? ""]
+      [
+        activity.text,
+        activity.actor ?? "",
+        activity.status ?? "",
+        activity.reference ?? "",
+        activity.countryName ?? "",
+        activity.countryCode ?? "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(query),
@@ -254,6 +276,11 @@ export function SuperAdminDashboardPage() {
       }
       if (key === "revenue") {
         return (countryRevenueTotal(a) - countryRevenueTotal(b)) * factor;
+      }
+      if (key === "lastActivityAt") {
+        const aTime = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+        const bTime = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+        return (aTime - bTime) * factor;
       }
       return (a[key] - b[key]) * factor;
     });
@@ -435,7 +462,24 @@ export function SuperAdminDashboardPage() {
               filteredActivity.map((activity, index) => (
                 <div key={`${activity.occurredAt}-${index}`} className="flex items-center gap-4 px-5 py-3">
                   <span className="h-8 w-8 shrink-0 rounded-full bg-[#E3F2FD]" />
-                  <span className="min-w-0 flex-1 text-[15px] text-[#334155]">{activity.text}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-medium text-[#334155]">
+                      {activity.text}
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-[12px] text-[#64748B]">
+                      {activity.actor ? <span className="truncate">{activity.actor}</span> : null}
+                      {activity.status ? (
+                        <span className="rounded-full bg-[#EEF6FF] px-2 py-0.5 font-semibold text-[#1565C0]">
+                          {prettify(activity.status)}
+                        </span>
+                      ) : null}
+                      {activity.reference ? (
+                        <span className="truncate font-mono text-[11px] text-[#94A3B8]">
+                          {compactId(activity.reference)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
                   {activity.countryName ? (
                     <span className="shrink-0 rounded-full bg-[#E3F2FD] px-3 py-1 text-[12px] font-medium text-[#1565C0]">
                       {activity.countryName}
@@ -626,7 +670,7 @@ export function SuperAdminDashboardPage() {
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          <table className="w-full min-w-[1080px] border-collapse text-left">
             <thead>
               <tr className="border-b border-[#E2E8F0] text-[13px] font-semibold uppercase text-[#64748B]">
                 {countryColumns.map((column) => (
@@ -660,30 +704,47 @@ export function SuperAdminDashboardPage() {
                     key={row.countryCode ?? "unknown"}
                     className="border-b border-[#E2E8F0] text-[15px] text-[#334155] last:border-b-0"
                   >
-                    <td className="px-3 py-3 font-medium">
-                      {row.countryName}
-                      {row.countryCode ? (
-                        <span className="ml-2 text-[13px] text-[#94A3B8]">
-                          {row.countryCode}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3">{formatNumber(row.patients)}</td>
                     <td className="px-3 py-3">
-                      {formatNumber(row.professionals)}
+                      <span className="block font-semibold text-[#334155]">
+                        {row.countryName}
+                      </span>
+                      <span className="text-[12px] text-[#94A3B8]">
+                        {row.countryCode ?? "Unknown"}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      {formatNumber(row.organizations)}
+                      <span className="block font-semibold text-[#334155]">
+                        {formatNumber(row.totalAccounts)}
+                      </span>
+                      <span className="block text-[12px] text-[#94A3B8]">
+                        P {formatNumber(row.patients)} / Pro {formatNumber(row.professionals)} / Org {formatNumber(row.organizations)}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      {formatNumber(row.appointments)}
+                      <span className="block font-semibold text-[#334155]">
+                        {formatNumber(row.appointments)}
+                      </span>
+                      <span className="block text-[12px] text-[#94A3B8]">
+                        {formatNumber(row.completedAppointments)} completed / {formatNumber(row.aiTriageChecks)} AI checks
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      {formatNumber(row.completedAppointments)}
+                      <span className="block font-semibold text-[#334155]">
+                        {formatNumber(row.pendingApprovals)}
+                      </span>
+                      <span className="block text-[12px] text-[#94A3B8]">
+                        {formatNumber(row.openAppointments)} open appts / {formatNumber(row.openShifts)} open shifts
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      {formatNumber(row.transactions)}
+                      <span className={row.flaggedAppointments ? "font-semibold text-[#C62828]" : "text-[#94A3B8]"}>
+                        {formatNumber(row.flaggedAppointments)}
+                      </span>
+                      <span className="block text-[12px] text-[#94A3B8]">
+                        {formatNumber(row.cancelledAppointments)} cancelled
+                      </span>
                     </td>
+                    <td className="px-3 py-3">{formatNumber(row.transactions)}</td>
                     <td className="px-3 py-3">
                       {row.revenue.length ? (
                         <span className="flex flex-col gap-0.5">
@@ -696,6 +757,9 @@ export function SuperAdminDashboardPage() {
                       ) : (
                         <span className="text-[#94A3B8]">—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-3 text-[13px] text-[#64748B]">
+                      {formatShortDate(row.lastActivityAt)}
                     </td>
                   </tr>
                 ))

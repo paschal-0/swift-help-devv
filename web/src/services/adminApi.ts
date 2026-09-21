@@ -18,19 +18,30 @@ export type SuperAdminActivity = {
   occurredAt: string;
   countryCode?: string | null;
   countryName?: string | null;
+  actor?: string | null;
+  status?: string | null;
+  reference?: string | null;
 };
 
 /** Activity and finance totals for one country. */
 export type AdminCountryBreakdownRow = {
   countryCode: string | null;
   countryName: string;
+  totalAccounts: number;
   patients: number;
   professionals: number;
   organizations: number;
+  pendingApprovals: number;
   appointments: number;
   completedAppointments: number;
+  openAppointments: number;
+  cancelledAppointments: number;
+  flaggedAppointments: number;
+  aiTriageChecks: number;
+  openShifts: number;
   transactions: number;
   revenue: Array<{ currency: string; amount: number }>;
+  lastActivityAt: string | null;
 };
 
 export type SuperAdminHealthRow = {
@@ -86,6 +97,54 @@ export type SuperAdminDashboard = {
     count: number;
   }>;
   countryBreakdown: AdminCountryBreakdownRow[];
+};
+
+export type AdminFraudFlagSeverity = "low" | "medium" | "high";
+export type AdminFraudFlagStatus = "open" | "resolved" | "dismissed";
+export type AdminFraudFlagTargetType =
+  | "user"
+  | "payment"
+  | "booking"
+  | "professional"
+  | "referral"
+  | "shift";
+
+export type AdminFraudFlag = {
+  id: string;
+  ruleKey: string;
+  targetType: AdminFraudFlagTargetType;
+  targetId: string;
+  userId: string | null;
+  severity: AdminFraudFlagSeverity;
+  status: AdminFraudFlagStatus;
+  score: number;
+  title: string;
+  reason: string;
+  evidence: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown> | null;
+  source: "auto" | "manual";
+  resolvedByUserId: string | null;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminFraudFlagsResponse = {
+  summary: {
+    open: number;
+    high: number;
+    medium: number;
+    resolved: number;
+    autoDetectionEnabled: boolean;
+  };
+  data: AdminFraudFlag[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 export type AdminReportCard = {
@@ -1913,6 +1972,47 @@ export async function removeAdminPaymentTransaction(transactionId: string) {
   return apiRequest<MessageResponse>(`/admin/payments/transactions/${transactionId}`, {
     method: "DELETE",
   });
+}
+
+export async function listAdminFraudFlags(params: {
+  status?: AdminFraudFlagStatus | "all";
+  severity?: AdminFraudFlagSeverity | "all";
+  targetType?: AdminFraudFlagTargetType | "all";
+  search?: string;
+  page?: number;
+  limit?: number;
+} = {}) {
+  const query = new URLSearchParams();
+  if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.severity && params.severity !== "all") query.set("severity", params.severity);
+  if (params.targetType && params.targetType !== "all") query.set("targetType", params.targetType);
+  if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  return apiRequest<AdminFraudFlagsResponse>(`/admin/fraud-flags${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function runAdminFraudScan() {
+  return apiRequest<{
+    enabled: boolean;
+    created: number;
+    open: number;
+    flags: AdminFraudFlag[];
+  }>("/admin/fraud-flags/scan", { method: "POST" });
+}
+
+export async function resolveAdminFraudFlag(
+  flagId: string,
+  payload: { action: "resolved" | "dismissed"; note?: string },
+) {
+  return apiRequest<MessageResponse & { flag: AdminFraudFlag }>(
+    `/admin/fraud-flags/${encodeURIComponent(flagId)}/resolve`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
 }
 
 export async function listAdminConsultationEscrows() {

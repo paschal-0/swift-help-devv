@@ -38,7 +38,8 @@ type NavIcon =
   | "team"
   | "notifications"
   | "verify"
-  | "audit";
+  | "audit"
+  | "fraud";
 
 type NavItem = {
   label: string;
@@ -93,6 +94,7 @@ const mainNav: NavItem[] = [
 const systemNav: NavItem[] = [
   { label: "Settings", href: "/super-admin-platform/settings", icon: "settings" },
   { label: "Admin Team", href: "/super-admin-platform/admin-team", icon: "team" },
+  { label: "Fraud Detection", href: "/super-admin-platform/fraud", icon: "fraud" },
   { label: "Audit Logs", href: "/super-admin-platform/audit-logs", icon: "audit" },
 ];
 
@@ -232,6 +234,14 @@ function Icon({ type, active }: { type: NavIcon | "logout" | "search"; active?: 
     return (
       <svg viewBox="0 0 24 24" className={common} aria-hidden>
         <path fill={color} d="M6 2h9l3 3v17H6V2Zm2 5v2h8V7H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z" />
+      </svg>
+    );
+  }
+
+  if (type === "fraud") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden>
+        <path fill={color} d="M12 2 4 5v6.2c0 4.5 3.1 8.7 8 10.8 4.9-2.1 8-6.3 8-10.8V5l-8-3Zm0 3.1 6 2.25v3.85c0 3.25-2.2 6.45-6 8.6-3.8-2.15-6-5.35-6-8.6V7.35l6-2.25ZM11 7h2v6h-2V7Zm0 8h2v2h-2v-2Z" />
       </svg>
     );
   }
