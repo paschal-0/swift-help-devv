@@ -6,17 +6,17 @@ const features = [
   {
     title: "Patients",
     text: "Check symptoms, book consultations, and manage care.",
-    imageSrc: "/frame%2071.png",
+    imageSrc: "/frame 71.png",
   },
   {
     title: "Professionals",
     text: "Offer services, manage schedules, and grow your reach.",
-    imageSrc: "/Frame%2072.png",
+    imageSrc: "/Frame 72.png",
   },
   {
     title: "Organizations",
     text: "Fill staffing gaps and manage workforce efficiently.",
-    imageSrc: "/Frame%2070.png",
+    imageSrc: "/Frame 70.png",
   },
 ];
 

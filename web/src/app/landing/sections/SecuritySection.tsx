@@ -8,7 +8,7 @@ import { containerClass } from "../classes";
 const controls = [
   {
     label: "End-to-end encryption",
-    iconSrc: "/Frame%2031.png",
+    iconSrc: "/Frame 31.png",
   },
   {
     label: "Role-based access control",

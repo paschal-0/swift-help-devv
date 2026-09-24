@@ -120,7 +120,7 @@ export function HowItWorksSection() {
                     <div className="flex items-start gap-2.5">
                       <div className="flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-full border-2 border-[#1e88e5] bg-slate-300">
                         <Image
-                          src="/Group%2014.png"
+                          src="/Group 14.png"
                           alt="Doctor avatar"
                           width={38}
                           height={38}
@@ -175,7 +175,7 @@ export function HowItWorksSection() {
                     <div className="grid grid-cols-[1.2fr_1fr] gap-3 max-[1100px]:grid-cols-[88px_1fr] max-[1100px]:items-start max-[1100px]:gap-1.5">
                       <div className="relative overflow-hidden rounded-[16px] bg-slate-900 max-[1100px]:h-[112px] max-[1100px]:rounded-[14px]">
                         <Image
-                          src="/Group%2014.png"
+                          src="/Group 14.png"
                           alt="Consultation video preview"
                           width={180}
                           height={117}

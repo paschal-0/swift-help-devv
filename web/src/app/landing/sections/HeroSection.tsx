@@ -100,7 +100,7 @@ export function HeroSection() {
             transition={{ type: "spring", stiffness: 96, damping: 20, mass: 0.95, delay: 0.04 }}
           >
             <Image
-              src="/Group%2014.png"
+              src="/Group 14.png"
               alt="Doctor with healthcare workflow highlights"
               width={768}
               height={618}

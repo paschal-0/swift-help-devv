@@ -77,7 +77,7 @@ export function TestimonialSection() {
                 <div className="mt-4 flex items-center gap-[10px] max-[1100px]:mt-3 max-[1100px]:gap-2">
                   <div className="relative h-[44px] w-[44px] overflow-hidden rounded-full border-[3px] border-[#5b2c10] max-[1100px]:h-[34px] max-[1100px]:w-[34px] max-[1100px]:border-[2px]">
                     <Image
-                      src="/Group%2014.png"
+                      src="/Group 14.png"
                       alt={`${item.name} avatar`}
                       fill
                       className="object-cover object-top"

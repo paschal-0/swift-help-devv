@@ -20,13 +20,13 @@ const contacts = [
     title: "CALL US",
     text: "Prefer to talk? Give us a call and our support team will guide you through any questions.",
     value: "+2348884993662",
-    iconSrc: "/Vector%20%281%29.png",
+    iconSrc: "/Vector (1).png",
   },
   {
     title: "CONTACT US",
     text: "Send us a message and we will get back to you as soon as possible with the help you need.",
     value: "swifthelp@gmail.com",
-    iconSrc: "/Vector%20%282%29.png",
+    iconSrc: "/Vector (2).png",
   },
 ];
 
