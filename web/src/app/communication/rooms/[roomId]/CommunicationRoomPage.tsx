@@ -6,21 +6,28 @@ import { toast } from "sonner";
 import { ConsultationVideoRoom } from "@/components/ConsultationVideoRoom";
 import { getApiErrorMessage } from "@/services/authApi";
 import {
+  acceptCommunicationHandover,
   appendCommunicationTranscript,
   completeCommunicationTranscription,
   createCommunicationRoomAccess,
+  declineCommunicationHandover,
   generateAiTriageHandoff,
   getCommunicationAnalytics,
   getCommunicationComplianceReport,
   getCommunicationRecordingArchive,
   getCommunicationRoom,
+  markCommunicationHandoverRead,
   startAiVoiceBot,
   startCommunicationRecording,
   startCommunicationTranscription,
   stopAiVoiceBot,
   stopCommunicationRecording,
   translateCommunicationText,
+  updateCommunicationHandover,
+  updateCommunicationHandoverTask,
   updateCommunicationConsent,
+  type CommunicationHandover,
+  type CommunicationHandoverTask,
   type CommunicationParticipant,
   type CommunicationRecording,
   type CommunicationRoom,
@@ -44,6 +51,31 @@ function getRoomHeading(value?: string | null) {
   return "Live Consultation";
 }
 
+const emptyHandoverDraft = {
+  patientName: "",
+  patientReference: "",
+  patientLocation: "",
+  situation: "",
+  background: "",
+  assessment: "",
+  recommendation: "",
+  taskText: "",
+};
+
+function handoverToDraft(handover: CommunicationHandover | null) {
+  if (!handover) return emptyHandoverDraft;
+  return {
+    patientName: handover.patient?.name ?? "",
+    patientReference: handover.patient?.reference ?? "",
+    patientLocation: handover.patient?.location ?? "",
+    situation: handover.sbar?.situation ?? "",
+    background: handover.sbar?.background ?? "",
+    assessment: handover.sbar?.assessment ?? "",
+    recommendation: handover.sbar?.recommendation ?? "",
+    taskText: (handover.tasks ?? []).map((task) => task.title).join("\n"),
+  };
+}
+
 export function CommunicationRoomPage() {
   const params = useParams<{ roomId: string }>();
   const router = useRouter();
@@ -60,6 +92,9 @@ export function CommunicationRoomPage() {
   const [participants, setParticipants] = useState<CommunicationParticipant[]>([]);
   const [recording, setRecording] = useState<CommunicationRecording | null>(null);
   const [transcript, setTranscript] = useState<CommunicationTranscript | null>(null);
+  const [handover, setHandover] = useState<CommunicationHandover | null>(null);
+  const [handoverDraft, setHandoverDraft] = useState(emptyHandoverDraft);
+  const [handoverBusy, setHandoverBusy] = useState(false);
   const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
   const [consentDraft, setConsentDraft] = useState({
     recordingConsent: false,
@@ -92,6 +127,8 @@ export function CommunicationRoomPage() {
         setParticipants(state.participants);
         setRecording(state.recordings[0] ?? null);
         setTranscript(state.transcripts[0] ?? null);
+        setHandover(state.handover ?? null);
+        setHandoverDraft(handoverToDraft(state.handover ?? null));
         setAnalytics(nextAnalytics.totals);
         setAccess({
           roomName: nextAccess.roomName,
@@ -118,6 +155,13 @@ export function CommunicationRoomPage() {
       cancelled = true;
     };
   }, [roomId]);
+
+  useEffect(() => {
+    if (room?.type !== "shift_handover" || !handover?.id) return;
+    void markCommunicationHandoverRead(roomId)
+      .then((nextHandover) => setHandover(nextHandover))
+      .catch(() => undefined);
+  }, [handover?.id, room?.type, roomId]);
 
   const saveConsent = async () => {
     try {
@@ -300,6 +344,86 @@ export function CommunicationRoomPage() {
     }
   };
 
+  const saveHandover = async () => {
+    setHandoverBusy(true);
+    try {
+      const tasks = handoverDraft.taskText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((title, index) => ({
+          id: handover?.tasks[index]?.id,
+          title,
+          status: handover?.tasks[index]?.status ?? ("open" as const),
+        }));
+      const saved = await updateCommunicationHandover(roomId, {
+        patient: {
+          name: handoverDraft.patientName,
+          reference: handoverDraft.patientReference,
+          location: handoverDraft.patientLocation,
+        },
+        sbar: {
+          situation: handoverDraft.situation,
+          background: handoverDraft.background,
+          assessment: handoverDraft.assessment,
+          recommendation: handoverDraft.recommendation,
+        },
+        tasks,
+      });
+      setHandover(saved);
+      setHandoverDraft(handoverToDraft(saved));
+      toast.success("Handover updated");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
+
+  const acceptHandover = async () => {
+    setHandoverBusy(true);
+    try {
+      const saved = await acceptCommunicationHandover(roomId);
+      setHandover(saved);
+      toast.success("Handover accepted");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
+
+  const declineHandover = async () => {
+    const reason = window.prompt("Reason for declining this handover?");
+    setHandoverBusy(true);
+    try {
+      const saved = await declineCommunicationHandover(roomId, reason ?? undefined);
+      setHandover(saved);
+      toast.success("Handover declined");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
+
+  const toggleHandoverTask = async (task: CommunicationHandoverTask) => {
+    setHandoverBusy(true);
+    try {
+      const saved = await updateCommunicationHandoverTask(
+        roomId,
+        task.id,
+        task.status === "done" ? "open" : "done",
+      );
+      setHandover(saved);
+      setHandoverDraft(handoverToDraft(saved));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
+
   const leaveRoom = async () => {
     setEnding(true);
     router.back();
@@ -387,6 +511,12 @@ export function CommunicationRoomPage() {
                         : "Handover recipient"}
                     </dd>
                   </div>
+                  <div className="flex gap-1">
+                    <dt className="text-[#94A3B8]">Status:</dt>
+                    <dd className="font-medium capitalize text-[#334155]">
+                      {handover?.status ?? "pending"}
+                    </dd>
+                  </div>
                   {typeof room.metadata?.scheduledFor === "string" ? (
                     <div className="flex gap-1">
                       <dt className="text-[#94A3B8]">Scheduled:</dt>
@@ -405,11 +535,21 @@ export function CommunicationRoomPage() {
           sharedInfoContent={
             <div className="space-y-4">
               {room?.type === "shift_handover" ? (
-                <section className="rounded-[12px] bg-[#E3F2FD] p-3">
-                  <p className="font-medium text-[#334155]">Handover brief</p>
-                  <dl className="mt-2 space-y-2 text-[12px] text-[#64748B]">
+                <section className="rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-[#334155]">Structured handover</p>
+                      <p className="mt-1 text-[12px] text-[#64748B]">
+                        SBAR, acceptance, read receipts, and tasks are audited.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold capitalize text-[#1565C0]">
+                      {handover?.status ?? "pending"}
+                    </span>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-1 gap-2 text-[12px] text-[#64748B]">
                     {typeof room.metadata?.shiftCode === "string" ? (
-                      <div>
+                      <div className="rounded-[8px] bg-white p-2">
                         <dt className="font-medium text-[#334155]">Shift</dt>
                         <dd>
                           {room.metadata.shiftCode}
@@ -419,13 +559,143 @@ export function CommunicationRoomPage() {
                         </dd>
                       </div>
                     ) : null}
-                    {typeof room.metadata?.note === "string" ? (
-                      <div>
-                        <dt className="font-medium text-[#334155]">Notes</dt>
-                        <dd className="whitespace-pre-line">{room.metadata.note}</dd>
-                      </div>
-                    ) : null}
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <input
+                        value={handoverDraft.patientName}
+                        onChange={(event) =>
+                          setHandoverDraft((current) => ({
+                            ...current,
+                            patientName: event.target.value,
+                          }))
+                        }
+                        placeholder="Patient name"
+                        className="h-9 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                      <input
+                        value={handoverDraft.patientReference}
+                        onChange={(event) =>
+                          setHandoverDraft((current) => ({
+                            ...current,
+                            patientReference: event.target.value,
+                          }))
+                        }
+                        placeholder="Patient reference"
+                        className="h-9 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                      <input
+                        value={handoverDraft.patientLocation}
+                        onChange={(event) =>
+                          setHandoverDraft((current) => ({
+                            ...current,
+                            patientLocation: event.target.value,
+                          }))
+                        }
+                        placeholder="Ward / location"
+                        className="h-9 rounded-[8px] border border-[#CBD5E1] bg-white px-2 text-[12px] text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                    </div>
+                    {[
+                      ["Situation", "situation"],
+                      ["Background", "background"],
+                      ["Assessment", "assessment"],
+                      ["Recommendation", "recommendation"],
+                    ].map(([label, key]) => (
+                      <label key={key} className="block">
+                        <span className="font-medium text-[#334155]">{label}</span>
+                        <textarea
+                          value={
+                            handoverDraft[key as keyof typeof handoverDraft] as string
+                          }
+                          onChange={(event) =>
+                            setHandoverDraft((current) => ({
+                              ...current,
+                              [key]: event.target.value,
+                            }))
+                          }
+                          className="mt-1 min-h-[64px] w-full resize-none rounded-[8px] border border-[#CBD5E1] bg-white px-2 py-2 text-[12px] text-[#334155] outline-none focus:border-[#1565C0]"
+                        />
+                      </label>
+                    ))}
+                    <label className="block">
+                      <span className="font-medium text-[#334155]">Outstanding tasks</span>
+                      <textarea
+                        value={handoverDraft.taskText}
+                        onChange={(event) =>
+                          setHandoverDraft((current) => ({
+                            ...current,
+                            taskText: event.target.value,
+                          }))
+                        }
+                        placeholder="One task per line"
+                        className="mt-1 min-h-[70px] w-full resize-none rounded-[8px] border border-[#CBD5E1] bg-white px-2 py-2 text-[12px] text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                    </label>
                   </dl>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={handoverBusy}
+                      onClick={() => void saveHandover()}
+                      className="rounded-[8px] bg-[#1565C0] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-60"
+                    >
+                      Save handover
+                    </button>
+                    <button
+                      type="button"
+                      disabled={handoverBusy}
+                      onClick={() => void acceptHandover()}
+                      className="rounded-[8px] border border-[#15803D] px-3 py-1.5 text-[12px] font-medium text-[#15803D] disabled:opacity-60"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      disabled={handoverBusy}
+                      onClick={() => void declineHandover()}
+                      className="rounded-[8px] border border-[#C82B33] px-3 py-1.5 text-[12px] font-medium text-[#C82B33] disabled:opacity-60"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                  {handover?.tasks.length ? (
+                    <div className="mt-3 space-y-2">
+                      {handover.tasks.map((task) => (
+                        <button
+                          key={task.id}
+                          type="button"
+                          disabled={handoverBusy}
+                          onClick={() => void toggleHandoverTask(task)}
+                          className="flex w-full items-start gap-2 rounded-[8px] bg-white px-3 py-2 text-left text-[12px] text-[#334155]"
+                        >
+                          <span
+                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                              task.status === "done"
+                                ? "border-[#15803D] bg-[#DCFCE7] text-[#15803D]"
+                                : "border-[#94A3B8]"
+                            }`}
+                          >
+                            {task.status === "done" ? "OK" : ""}
+                          </span>
+                          <span>
+                            <span className="font-medium">{task.title}</span>
+                            {task.completedAt ? (
+                              <span className="block text-[#64748B]">
+                                Completed {new Date(task.completedAt).toLocaleString()}
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="mt-3 grid gap-2 text-[11px] text-[#64748B] sm:grid-cols-2">
+                    <div className="rounded-[8px] bg-white p-2">
+                      Read receipts: {handover?.readReceipts.length ?? 0}
+                    </div>
+                    <div className="rounded-[8px] bg-white p-2">
+                      Accepted: {handover?.acceptanceReceipts.length ?? 0}
+                    </div>
+                  </div>
                 </section>
               ) : null}
               {room?.type === "team" ? (

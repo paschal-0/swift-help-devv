@@ -280,6 +280,14 @@ export function OrganisationDashboardPage() {
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
   const [selectedShiftId, setSelectedShiftId] = useState("");
   const [roomNote, setRoomNote] = useState("");
+  const [handoverPatientName, setHandoverPatientName] = useState("");
+  const [handoverPatientReference, setHandoverPatientReference] = useState("");
+  const [handoverPatientLocation, setHandoverPatientLocation] = useState("");
+  const [handoverSituation, setHandoverSituation] = useState("");
+  const [handoverBackground, setHandoverBackground] = useState("");
+  const [handoverAssessment, setHandoverAssessment] = useState("");
+  const [handoverRecommendation, setHandoverRecommendation] = useState("");
+  const [handoverTaskText, setHandoverTaskText] = useState("");
   const [emergencyLocation, setEmergencyLocation] = useState("");
   const [isLoadingRoomOptions, setIsLoadingRoomOptions] = useState(false);
   const [isStartingRoom, setIsStartingRoom] = useState(false);
@@ -504,6 +512,13 @@ export function OrganisationDashboardPage() {
       toast.error("Choose the shift this handover belongs to.");
       return;
     }
+    if (
+      roomModalKind === "handover" &&
+      (!handoverSituation.trim() || !handoverRecommendation.trim())
+    ) {
+      toast.error("Add the handover situation and recommendation before notifying recipients.");
+      return;
+    }
     if (roomModalKind === "emergency" && !roomNote.trim()) {
       toast.error("Add a short emergency brief before notifying responders.");
       return;
@@ -518,6 +533,11 @@ export function OrganisationDashboardPage() {
         selectedParticipantIds.includes(recipient.userId),
       );
       const selectedNames = selectedRecipients.map((recipient) => recipient.name);
+      const handoverTasks = handoverTaskText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((title) => ({ title, status: "open" as const }));
       const commonPayload = {
         participantUserIds: selectedParticipantIds,
         metadata: {
@@ -571,6 +591,18 @@ export function OrganisationDashboardPage() {
                   role: selectedShift?.role,
                   startsAt: selectedShift?.startsAt,
                   endsAt: selectedShift?.endsAt,
+                  patient: {
+                    name: handoverPatientName.trim(),
+                    reference: handoverPatientReference.trim(),
+                    location: handoverPatientLocation.trim(),
+                  },
+                  sbar: {
+                    situation: handoverSituation.trim(),
+                    background: handoverBackground.trim(),
+                    assessment: handoverAssessment.trim(),
+                    recommendation: handoverRecommendation.trim(),
+                  },
+                  tasks: handoverTasks,
                 },
                 expiresAt,
               })
@@ -959,6 +991,72 @@ export function OrganisationDashboardPage() {
                     className="mt-2 w-full resize-none rounded-[8px] border border-[#94A3B8] bg-white px-4 py-3 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
                   />
                 </label>
+
+                {roomModalKind === "handover" ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <input
+                        value={handoverPatientName}
+                        onChange={(event) =>
+                          setHandoverPatientName(event.target.value)
+                        }
+                        placeholder="Patient name"
+                        className="h-11 rounded-[8px] border border-[#94A3B8] bg-white px-4 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                      <input
+                        value={handoverPatientReference}
+                        onChange={(event) =>
+                          setHandoverPatientReference(event.target.value)
+                        }
+                        placeholder="Patient ID / reference"
+                        className="h-11 rounded-[8px] border border-[#94A3B8] bg-white px-4 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                      <input
+                        value={handoverPatientLocation}
+                        onChange={(event) =>
+                          setHandoverPatientLocation(event.target.value)
+                        }
+                        placeholder="Ward / location"
+                        className="h-11 rounded-[8px] border border-[#94A3B8] bg-white px-4 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        ["Situation", handoverSituation, setHandoverSituation],
+                        ["Background", handoverBackground, setHandoverBackground],
+                        ["Assessment", handoverAssessment, setHandoverAssessment],
+                        [
+                          "Recommendation",
+                          handoverRecommendation,
+                          setHandoverRecommendation,
+                        ],
+                      ].map(([label, value, setter]) => (
+                        <label key={label as string} className="block">
+                          <span className="text-xs font-semibold text-[#334155]">
+                            {label as string}
+                          </span>
+                          <textarea
+                            value={value as string}
+                            onChange={(event) =>
+                              (setter as (next: string) => void)(
+                                event.target.value,
+                              )
+                            }
+                            rows={3}
+                            className="mt-1 w-full resize-none rounded-[8px] border border-[#94A3B8] bg-white px-4 py-2 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <textarea
+                      value={handoverTaskText}
+                      onChange={(event) => setHandoverTaskText(event.target.value)}
+                      placeholder="Outstanding tasks - one per line"
+                      rows={3}
+                      className="w-full resize-none rounded-[8px] border border-[#94A3B8] bg-white px-4 py-3 text-sm text-[#334155] outline-none focus:border-[#1565C0]"
+                    />
+                  </div>
+                ) : null}
 
                 <div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

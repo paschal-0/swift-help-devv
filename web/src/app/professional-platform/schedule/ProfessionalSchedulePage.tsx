@@ -619,6 +619,14 @@ export function ProfessionalSchedulePage() {
     useState<HandoverScheduleMode>("now");
   const [handoverScheduledAt, setHandoverScheduledAt] = useState("");
   const [handoverNote, setHandoverNote] = useState("");
+  const [handoverPatientName, setHandoverPatientName] = useState("");
+  const [handoverPatientReference, setHandoverPatientReference] = useState("");
+  const [handoverPatientLocation, setHandoverPatientLocation] = useState("");
+  const [handoverSituation, setHandoverSituation] = useState("");
+  const [handoverBackground, setHandoverBackground] = useState("");
+  const [handoverAssessment, setHandoverAssessment] = useState("");
+  const [handoverRecommendation, setHandoverRecommendation] = useState("");
+  const [handoverTaskText, setHandoverTaskText] = useState("");
 
   const query = searchText.trim().toLowerCase();
   const activeAppointmentDetails = useMemo(() => {
@@ -1075,6 +1083,10 @@ export function ProfessionalSchedulePage() {
       toast.error("Choose who should receive the handover.");
       return;
     }
+    if (!handoverSituation.trim() || !handoverRecommendation.trim()) {
+      toast.error("Add the handover situation and recommendation before sending.");
+      return;
+    }
 
     const linkedShift = handoverOptions?.activeShifts.find(
       (shift) => shift.offerId === target.offerId,
@@ -1084,6 +1096,11 @@ export function ProfessionalSchedulePage() {
         ? new Date(handoverScheduledAt).toISOString()
         : undefined;
     const expiryBase = scheduledFor ? new Date(scheduledFor).getTime() : Date.now();
+    const handoverTasks = handoverTaskText
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((title) => ({ title, status: "open" as const }));
 
     setIsStartingHandover(true);
     try {
@@ -1104,6 +1121,18 @@ export function ProfessionalSchedulePage() {
           scheduleDate: selectedDate,
           scheduledFor,
           note: handoverNote.trim() || undefined,
+          patient: {
+            name: handoverPatientName.trim(),
+            reference: handoverPatientReference.trim(),
+            location: handoverPatientLocation.trim(),
+          },
+          sbar: {
+            situation: handoverSituation.trim(),
+            background: handoverBackground.trim(),
+            assessment: handoverAssessment.trim(),
+            recommendation: handoverRecommendation.trim(),
+          },
+          tasks: handoverTasks,
           shiftCode: linkedShift?.shiftCode,
           facilityName: linkedShift?.facilityName,
           organizationName: linkedShift?.organizationName,
@@ -1271,8 +1300,63 @@ export function ProfessionalSchedulePage() {
                 <textarea
                   value={handoverNote}
                   onChange={(event) => setHandoverNote(event.target.value)}
-                  placeholder="Add handover notes, patient context, pending tasks, or urgency..."
+                  placeholder="Optional free-text note for extra context..."
                   className="min-h-[96px] w-full resize-none rounded-[10px] border border-[#CBD5E1] bg-white px-3 py-3 text-[14px] text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
+                />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input
+                    value={handoverPatientName}
+                    onChange={(event) => setHandoverPatientName(event.target.value)}
+                    placeholder="Patient name"
+                    className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                  />
+                  <input
+                    value={handoverPatientReference}
+                    onChange={(event) =>
+                      setHandoverPatientReference(event.target.value)
+                    }
+                    placeholder="Patient ID / reference"
+                    className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                  />
+                  <input
+                    value={handoverPatientLocation}
+                    onChange={(event) =>
+                      setHandoverPatientLocation(event.target.value)
+                    }
+                    placeholder="Ward / location"
+                    className="h-11 rounded-[10px] border border-[#CBD5E1] bg-white px-3 text-[14px] text-[#334155] outline-none focus:border-[#1565C0]"
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ["Situation", handoverSituation, setHandoverSituation],
+                    ["Background", handoverBackground, setHandoverBackground],
+                    ["Assessment", handoverAssessment, setHandoverAssessment],
+                    [
+                      "Recommendation",
+                      handoverRecommendation,
+                      setHandoverRecommendation,
+                    ],
+                  ].map(([label, value, setter]) => (
+                    <label key={label as string} className="block">
+                      <span className="text-[12px] font-semibold text-[#334155]">
+                        {label as string}
+                      </span>
+                      <textarea
+                        value={value as string}
+                        onChange={(event) =>
+                          (setter as (next: string) => void)(event.target.value)
+                        }
+                        className="mt-1 min-h-[78px] w-full resize-none rounded-[10px] border border-[#CBD5E1] bg-white px-3 py-2 text-[13px] text-[#334155] outline-none focus:border-[#1565C0]"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  value={handoverTaskText}
+                  onChange={(event) => setHandoverTaskText(event.target.value)}
+                  placeholder="Outstanding tasks - one per line"
+                  className="min-h-[82px] w-full resize-none rounded-[10px] border border-[#CBD5E1] bg-white px-3 py-3 text-[14px] text-[#334155] outline-none placeholder:text-[#94A3B8] focus:border-[#1565C0]"
                 />
               </div>
 

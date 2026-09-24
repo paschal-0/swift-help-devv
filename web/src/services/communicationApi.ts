@@ -61,6 +61,58 @@ export type CommunicationRoom = {
   metadata?: Record<string, unknown>;
 };
 
+export type CommunicationHandoverStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "completed";
+
+export type CommunicationHandoverTask = {
+  id: string;
+  title: string;
+  details?: string | null;
+  ownerUserId?: string | null;
+  dueAt?: string | null;
+  status: "open" | "done";
+  completedAt?: string | null;
+  completedByUserId?: string | null;
+};
+
+export type CommunicationHandover = {
+  id: string;
+  communicationRoomId: string;
+  fromUserId: string;
+  fromRole: string;
+  organizationUserId: string | null;
+  shiftOfferId: string | null;
+  consultationId: string | null;
+  status: CommunicationHandoverStatus;
+  recipientUserIds: string[];
+  patient: {
+    name: string;
+    reference: string;
+    location: string;
+  };
+  sbar: {
+    situation: string;
+    background: string;
+    assessment: string;
+    recommendation: string;
+  };
+  tasks: CommunicationHandoverTask[];
+  readReceipts: Array<{ userId: string; role: string; at: string }>;
+  acceptanceReceipts: Array<{ userId: string; role: string; at: string }>;
+  declineReceipts: Array<{
+    userId: string;
+    role: string;
+    at: string;
+    reason?: string | null;
+  }>;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CommunicationRoomType =
   | "consultation"
   | "team"
@@ -116,6 +168,7 @@ export type CommunicationRoomState = {
   participants: CommunicationParticipant[];
   recordings: CommunicationRecording[];
   transcripts: CommunicationTranscript[];
+  handover?: CommunicationHandover | null;
 };
 
 export type CommunicationComplianceReport = {
@@ -225,6 +278,70 @@ export function getCommunicationRoom(roomId: string) {
   return apiRequest<CommunicationRoomState>(
     `/communication/rooms/${encodeURIComponent(roomId)}`,
     { method: "GET" },
+  );
+}
+
+export function getCommunicationHandover(roomId: string) {
+  return apiRequest<{
+    handover: CommunicationHandover;
+    auditLog: Array<Record<string, unknown>>;
+  }>(`/communication/rooms/${encodeURIComponent(roomId)}/handover`, {
+    method: "GET",
+  });
+}
+
+export function updateCommunicationHandover(
+  roomId: string,
+  payload: {
+    patient?: Partial<CommunicationHandover["patient"]>;
+    sbar?: Partial<CommunicationHandover["sbar"]>;
+    tasks?: Array<Partial<CommunicationHandoverTask>>;
+  },
+) {
+  return apiRequest<CommunicationHandover>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/handover`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function markCommunicationHandoverRead(roomId: string) {
+  return apiRequest<CommunicationHandover>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/handover/read`,
+    { method: "POST" },
+  );
+}
+
+export function acceptCommunicationHandover(roomId: string) {
+  return apiRequest<CommunicationHandover>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/handover/accept`,
+    { method: "POST" },
+  );
+}
+
+export function declineCommunicationHandover(roomId: string, reason?: string) {
+  return apiRequest<CommunicationHandover>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/handover/decline`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export function updateCommunicationHandoverTask(
+  roomId: string,
+  taskId: string,
+  status: CommunicationHandoverTask["status"],
+) {
+  return apiRequest<CommunicationHandover>(
+    `/communication/rooms/${encodeURIComponent(roomId)}/handover/tasks/${encodeURIComponent(taskId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
   );
 }
 
