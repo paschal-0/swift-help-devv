@@ -420,6 +420,21 @@ export async function completeOrganizationTeamOnboarding() {
   });
 }
 
+/**
+ * Echoes the CSRF cookie back as a header.
+ *
+ * The session cookie rides along automatically on any request a browser makes,
+ * including one triggered by another site. Only scripts on our own origin can
+ * read this cookie, so returning it in a header proves the request came from
+ * our own pages rather than someone else's.
+ */
+function csrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match ? { "x-csrf-token": decodeURIComponent(match[1]) } : {};
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit,
@@ -430,6 +445,7 @@ export async function apiRequest<T>(
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...csrfHeader(),
       ...init.headers,
     },
   });
